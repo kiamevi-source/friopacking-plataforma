@@ -25,6 +25,21 @@
   const vistaEl = document.getElementById('view-vista');
   const iframe  = document.getElementById('vista-frame');
 
+  // ── Vistas nativas (no usan el iframe legacy) ──
+  // key de hash → { el: contenedor, init: fn que renderiza (idempotente) }
+  const NATIVE_VIEWS = {
+    servicios: {
+      el: document.getElementById('view-servicios'),
+      init: () => { if (typeof window.loadServicios === 'function') window.loadServicios(); },
+    },
+    // Mapa Global de Operaciones Polarix (globo terráqueo interactivo)
+    mapa: {
+      el: document.getElementById('view-globe'),
+      init:   () => { if (window.PolarixGlobe) { window.PolarixGlobe.setActive(true); window.PolarixGlobe.mount(); } },
+      deinit: () => { if (window.PolarixGlobe) window.PolarixGlobe.setActive(false); },
+    },
+  };
+
   let iframeReady = false;
   let pendingView = null;
 
@@ -473,6 +488,14 @@
     });
   }
 
+  // ── Ocultar todas las vistas nativas registradas ──
+  function hideNativeViews() {
+    Object.values(NATIVE_VIEWS).forEach((v) => {
+      if (v.el) v.el.style.display = 'none';
+      if (typeof v.deinit === 'function') { try { v.deinit(); } catch (e) { /* no-op */ } }
+    });
+  }
+
   // ── API principal ──
   function showView(name) {
     name = (name || '').trim();
@@ -482,7 +505,20 @@
     if (name === HOME_KEY) {
       homeEl.style.display  = '';
       vistaEl.style.display = 'none';
+      hideNativeViews();
       updateActive(HOME_KEY);
+      return;
+    }
+
+    // Vistas nativas (ej. "servicios"): contenido propio, sin iframe legacy
+    if (NATIVE_VIEWS[name]) {
+      homeEl.style.display  = 'none';
+      vistaEl.style.display = 'none';
+      hideNativeViews();
+      const v = NATIVE_VIEWS[name];
+      if (v.el) v.el.style.display = '';
+      updateActive(name);
+      try { v.init(); } catch (e) { console.warn('[router-views] native view init falló:', e); }
       return;
     }
 
@@ -492,6 +528,7 @@
     // Cualquier otra vista: mostrar iframe, ocultar home
     homeEl.style.display  = 'none';
     vistaEl.style.display = '';
+    hideNativeViews();
     updateActive(name);
     ensureIframeLoaded(() => gotoLegacyView(legacyView));
   }

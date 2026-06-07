@@ -268,6 +268,10 @@
         <i data-lucide="folder-kanban" class="ic"></i>
         <span>Proyectos</span>
       </a>
+      <a href="#servicios" class="nav-item">
+        <i data-lucide="layers" class="ic"></i>
+        <span>Servicios</span>
+      </a>
       <a href="#gerencial" class="nav-item">
         <i data-lucide="bar-chart-3" class="ic"></i>
         <span>Dashboard Gerencial</span>
@@ -508,6 +512,9 @@
 
     </div><!-- /#view-home -->
 
+    <!-- ═══════════════ VIEW: SERVICIOS (nativo · portafolio_servicios) ═══════════════ -->
+    <div id="view-servicios" style="display:none"></div>
+
     <!-- ═══════════════ VIEW: VISTA (iframe del legacy) ═══════════════ -->
     <div id="view-vista" style="display:none">
       <iframe
@@ -516,6 +523,44 @@
         title="Vista del legacy"
         style="width:100%;height:calc(100vh - 90px);border:none;border-radius:14px;background:#f3f5f9;box-shadow:0 1px 2px rgba(15,30,53,.04),0 12px 28px -8px rgba(15,30,53,.08);display:block"
       ></iframe>
+    </div>
+
+    <!-- ═══════════════ VIEW: GLOBO — Mapa Global de Operaciones Polarix ═══════════════ -->
+    <div id="view-globe" style="display:none">
+      <div class="pg-stage">
+        <div id="globe-canvas"></div>
+
+        <!-- Cabecera ejecutiva (overlay) -->
+        <div class="pg-head">
+          <div class="pg-head-id">
+            <span class="pg-eyebrow"><span class="pg-live"></span>Red Global · Polarix</span>
+            <h1 class="pg-h1">Mapa Global de Operaciones</h1>
+            <p class="pg-sub">Operaciones internacionales de la red Polarix</p>
+          </div>
+          <div class="pg-kpis">
+            <div class="pg-kpi"><div class="pg-kpi-v" id="pg-kpi-proj">—</div><div class="pg-kpi-l">Operaciones</div></div>
+            <div class="pg-kpi"><div class="pg-kpi-v" id="pg-kpi-pais">—</div><div class="pg-kpi-l">Países</div></div>
+            <div class="pg-kpi"><div class="pg-kpi-v" id="pg-kpi-ventas">—</div><div class="pg-kpi-l">Ventas red</div></div>
+            <div class="pg-kpi"><div class="pg-kpi-v" id="pg-kpi-pers">—</div><div class="pg-kpi-l">Personal</div></div>
+          </div>
+        </div>
+
+        <!-- Leyenda -->
+        <div class="pg-legend">
+          <span class="pg-leg-item"><i style="background:#3ECBB0"></i>Operativo</span>
+          <span class="pg-leg-item"><i style="background:#4F8DF5"></i>En expansión</span>
+          <span class="pg-leg-item"><i style="background:#F2B544"></i>En construcción</span>
+        </div>
+
+        <!-- Controles -->
+        <div class="pg-toolbar">
+          <button id="pg-rotate" class="pg-tbtn"><span class="pg-rotate-ic">◍</span><span class="pg-rotate-txt">Rotación</span></button>
+          <button id="pg-home" class="pg-tbtn">⟲ Vista global</button>
+        </div>
+
+        <!-- Panel lateral ejecutivo -->
+        <aside id="pg-panel" class="pg-panel"></aside>
+      </div>
     </div>
 
   </main>
@@ -527,7 +572,10 @@
 <script src="js/router.js"></script>
 <script src="js/nuevo-proyecto.js"></script>
 <script src="js/views/inicio.js"></script>
-<script src="js/router-views.js?v=20260602j"></script>
+<script src="js/views/servicios.js?v=20260607a"></script>
+<script src="https://unpkg.com/globe.gl"></script>
+<script src="js/globe.js?v=20260607a"></script>
+<script src="js/router-views.js?v=20260607k"></script>
 
 </body>
 </html>
