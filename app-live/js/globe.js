@@ -1,123 +1,139 @@
 /* ════════════════════════════════════════════════════════════════════
-   globe.js — Mapa Global de Operaciones Polarix
-   Globo terráqueo interactivo estilo Google Earth corporativo (Globe.gl).
-   - Texturas NASA Blue Marble (continentes/costas/relieve/agua) vía CDN.
-   - Nodos luminosos por proyecto + halos pulsantes.
-   - Arcos 3D animados (flujo de partículas) entre operaciones.
-   - Clic en proyecto → vuelo suave + zoom + panel ejecutivo + nodo resaltado.
-   - Rotación automática lenta. Render perezoso (solo al entrar a #mapa).
-   Dependencias: globe.gl (UMD global `Globe`)
-   API pública: window.PolarixGlobe.mount() / .setActive(bool)
+   globe.js — Mapa de Operaciones FrioPacking
+   Mapa corporativo estilo Google Maps / Waze / ArcGIS (Leaflet + clustering).
+   - Mapa real con calles, avenidas y carreteras (CARTO Voyager + satélite Esri).
+   - Revelado progresivo por zoom (clustering inteligente, sin líneas/ruido):
+       · Nivel país  → clusters por región (totales en hover).
+       · Nivel depto → círculos agrupados (n° obras · avance · cartera).
+       · Nivel ciudad→ marcadores individuales (etiqueta sólo en hover).
+       · Zoom máximo → calles reales (look Waze / Google Maps).
+   - Clic en cluster → zoom + expansión animada. Clic en obra → panel ejecutivo.
+   - DATOS REALES: 32 proyectos FrioPacking en Perú.
+   Dependencias: leaflet, leaflet.markercluster (UMD global `L`)
+   API pública: window.FrioMap.mount() / .setActive(bool)
    ════════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  // ── Texturas (assets oficiales de three-globe, servidos por CDN) ──
-  const TEX = {
-    globe: '//unpkg.com/three-globe/example/img/earth-blue-marble.jpg',
-    bump:  '//unpkg.com/three-globe/example/img/earth-topology.png',
-    sky:   '//unpkg.com/three-globe/example/img/night-sky.png',
-  };
-
-  // ── Paleta de marca ──
+  // ── Paleta por estado de obra ──
   const C = {
-    teal:  '#3ECBB0',  // operativo
-    blue:  '#4F8DF5',  // expansión
-    amber: '#F2B544',  // en obra
-    navy:  '#0a1729',
+    teal:  '#3ECBB0',  // En plan
+    blue:  '#4F8DF5',  // Adelantado
+    amber: '#F2B544',  // Leve atraso
+    red:   '#E24B4A',  // Atrasado
+    gray:  '#7E8BA3',  // En pausa
   };
 
-  // ── Operaciones internacionales de Polarix ──
-  // nombre · país · ciudad · lat · lng · ventas (USD) · personal · capacidad (m³)
+  // ── Cartera real de proyectos FrioPacking (Perú) ──
   const PROJECTS = [
-    { id:'lima',   nombre:'Centro Logístico Polarix',  pais:'Perú',      ciudad:'Lima',             lat:-12.0464, lng:-77.0428, ventas:48200000, personal:320, capacidad:85000, estado:'sede',      tipo:'Sede Central' },
-    { id:'scl',    nombre:'Cold Hub Santiago',         pais:'Chile',     ciudad:'Santiago',         lat:-33.4489, lng:-70.6693, ventas:22400000, personal:140, capacidad:42000, estado:'operativo', tipo:'Almacenamiento' },
-    { id:'gye',    nombre:'Terminal Frío Guayaquil',   pais:'Ecuador',   ciudad:'Guayaquil',        lat:-2.1709,  lng:-79.9224, ventas:15800000, personal:96,  capacidad:30000, estado:'operativo', tipo:'Exportación' },
-    { id:'bog',    nombre:'Polarix Andina',            pais:'Colombia',  ciudad:'Bogotá',           lat:4.7110,   lng:-74.0721, ventas:19100000, personal:110, capacidad:36000, estado:'operativo', tipo:'Distribución' },
-    { id:'mex',    nombre:'Polarix Norteamérica',      pais:'México',    ciudad:'Ciudad de México', lat:19.4326,  lng:-99.1332, ventas:27600000, personal:165, capacidad:52000, estado:'operativo', tipo:'Distribución' },
-    { id:'gru',    nombre:'Hub Frío São Paulo',        pais:'Brasil',    ciudad:'São Paulo',        lat:-23.5505, lng:-46.6333, ventas:31200000, personal:190, capacidad:60000, estado:'operativo', tipo:'Almacenamiento' },
-    { id:'mia',    nombre:'Gateway Polarix Miami',     pais:'Estados Unidos', ciudad:'Miami',       lat:25.7617,  lng:-80.1918, ventas:24900000, personal:88,  capacidad:40000, estado:'operativo', tipo:'Hub Distribución' },
-    { id:'mad',    nombre:'Polarix Europa',            pais:'España',    ciudad:'Madrid',           lat:40.4168,  lng:-3.7038,  ventas:17300000, personal:72,  capacidad:28000, estado:'expansion', tipo:'Apertura 2027' },
-    { id:'pty',    nombre:'Zona Franca Polarix',       pais:'Panamá',    ciudad:'Ciudad de Panamá', lat:8.9824,   lng:-79.5199, ventas:12600000, personal:64,  capacidad:22000, estado:'operativo', tipo:'Tránsito' },
-    { id:'eze',    nombre:'Polarix Sur',               pais:'Argentina', ciudad:'Buenos Aires',     lat:-34.6037, lng:-58.3816, ventas:14700000, personal:85,  capacidad:26000, estado:'obra',      tipo:'En construcción' },
+    { id:'agroberries', nombre:'AGROBERRIES', sup:'Diego Asmat', dep:'Lambayeque', prov:'Lambayeque', ciudad:'Olmos', zona:'Norte', lat:-5.8573, lng:-79.7736, ventas:641560.13, fact:323383.61, avance:53.7, spi:1.0, estado:'EN PLAN', tipo:'Refrigeración' },
+    { id:'agrofloral', nombre:'AGROFLORAL', sup:'Luis Goycochea', dep:'Lima', prov:'Cañete', ciudad:'San Vicente de Cañete', zona:'Centro', lat:-13.076, lng:-76.389, ventas:520799.42, fact:415687.02, avance:87.1, spi:0.98, estado:'EN PLAN', tipo:'Mecánica' },
+    { id:'arafoods', nombre:'ARAFOODS', sup:'Steve Sarmiento', dep:'Ancash', prov:'Casma', ciudad:'Casma', zona:'Norte', lat:-9.4754, lng:-78.2897, ventas:805597.47, fact:632370.43, avance:98.4, spi:1.0, estado:'EN PLAN', tipo:'Refrigeración' },
+    { id:'berry-harvest', nombre:'BERRY HARVEST', sup:'Irwin Gutierrez', dep:'Lambayeque', prov:'Lambayeque', ciudad:'Olmos', zona:'Norte', lat:-6.0173, lng:-79.6127, ventas:347856.25, fact:130401.3, avance:38.9, spi:0.88, estado:'LEVE ATRASO', tipo:'Refrigeración' },
+    { id:'bomarea', nombre:'BOMAREA', sup:'Jorvin Paredes', dep:'Lambayeque', prov:'Lambayeque', ciudad:'Olmos', zona:'Norte', lat:-6.1773, lng:-79.7736, ventas:1500000, fact:300000, avance:7.3, spi:0.96, estado:'EN PLAN', tipo:'Civil' },
+    { id:'delice', nombre:'DELICE', sup:'Wilson Urbina', dep:'Lima', prov:'Lima', ciudad:'Lurín', zona:'Centro', lat:-12.2759, lng:-76.8736, ventas:360886.11, fact:175954.12, avance:88.2, spi:0.95, estado:'LEVE ATRASO', tipo:'Packing' },
+    { id:'frusan', nombre:'FRUSAN', sup:'Victor Ramirez', dep:'Lambayeque', prov:'Lambayeque', ciudad:'Olmos', zona:'Norte', lat:-6.0173, lng:-79.9345, ventas:4008997.04, fact:3536984.79, avance:90.3, spi:0.95, estado:'LEVE ATRASO', tipo:'Refrigeración' },
+    { id:'imbarex', nombre:'IMBAREX', sup:'Jean Percy Casas', dep:'Ica', prov:'Pisco', ciudad:'Humay', zona:'Sur', lat:-13.635, lng:-76.002, ventas:853450, fact:406535, avance:82.8, spi:0.97, estado:'EN PLAN', tipo:'Packing' },
+    { id:'qpack', nombre:'QPACK', sup:'Jesus Cabrera', dep:'La Libertad', prov:'Ascope', ciudad:'Casa Grande', zona:'Norte', lat:-7.7548, lng:-79.1951, ventas:2856251.96, fact:2242724.21, avance:43.5, spi:0.82, estado:'ATRASADO', tipo:'Packing' },
+    { id:'santa-sofia', nombre:'SANTA SOFIA', sup:'Steve Sarmiento', dep:'Ica', prov:'Ica', ciudad:'Subtanjalla', zona:'Sur', lat:-14.0842, lng:-75.7481, ventas:545000, fact:245250, avance:77.7, spi:0.93, estado:'LEVE ATRASO', tipo:'Packing' },
+    { id:'smartpacking', nombre:'SMARTPACKING', sup:'Erick Salvador', dep:'La Libertad', prov:'Virú', ciudad:'Virú', zona:'Norte', lat:-8.2522, lng:-78.7537, ventas:75700.16, fact:22710.05, avance:62.8, spi:1.0, estado:'EN PLAN', tipo:'Packing' },
+    { id:'ta-export', nombre:'TA EXPORT', sup:'Patrick Vasquez', dep:'Ica', prov:'Ica', ciudad:'Salas', zona:'Sur', lat:-14.1742, lng:-75.6936, ventas:1460000.01, fact:722375.36, avance:46.8, spi:0.82, estado:'ATRASADO', tipo:'Refrigeración' },
+    { id:'tal-sa', nombre:'TAL SA', sup:'Dennis Saravia', dep:'La Libertad', prov:'Trujillo', ciudad:'Salaverry', zona:'Norte', lat:-8.227, lng:-78.964, ventas:1700000, fact:425000, avance:63.0, spi:1.0, estado:'EN PLAN', tipo:'Civil' },
+    { id:'talsa-pto-morin', nombre:'TALSA PTO. MORIN', sup:'Antero Ávila', dep:'La Libertad', prov:'Virú', ciudad:'Virú', zona:'Norte', lat:-8.4122, lng:-78.592, ventas:352587.8, fact:105776.36, avance:81.0, spi:1.01, estado:'EN PLAN', tipo:'Mecánica' },
+    { id:'torre-blanca', nombre:'TORRE BLANCA', sup:'Waldir Saldaña', dep:'Lima', prov:'Huaral', ciudad:'Chancay', zona:'Centro', lat:-11.5619, lng:-77.2683, ventas:718498.3, fact:292015.43, avance:58.7, spi:0.95, estado:'EN PLAN', tipo:'Refrigeración' },
+    { id:'tyt', nombre:'TyT', sup:'Luis Silva', dep:'Lima', prov:'Huaral', ciudad:'Huaral', zona:'Centro', lat:-11.1053, lng:-77.2067, ventas:227719.49, fact:136631.69, avance:47.6, spi:0.99, estado:'EN PLAN', tipo:'Refrigeración' },
+    { id:'vanguard-prosembra', nombre:'VANGUARD/PROSEMBRA', sup:'Victor Flores', dep:'Ica', prov:'Pisco', ciudad:'Tupac Amaru Inca', zona:'Sur', lat:-13.805, lng:-76.235, ventas:3551664.97, fact:2754312.12, avance:99.5, spi:0.99, estado:'EN PLAN', tipo:'Packing' },
+    { id:'viveros-el-tambo', nombre:'VIVEROS EL TAMBO', sup:'Dylan Marquina', dep:'Piura', prov:'Piura', ciudad:'Piura', zona:'Norte', lat:-5.1945, lng:-80.6328, ventas:216754.9, fact:0, avance:27.7, spi:0.92, estado:'LEVE ATRASO', tipo:'Civil' },
+    { id:'camposol', nombre:'CAMPOSOL', sup:'Renato Jara', dep:'La Libertad', prov:'Virú', ciudad:'Chao', zona:'Norte', lat:-8.5349, lng:-78.9017, ventas:497385.27, fact:99477.05, avance:13.0, spi:0.87, estado:'LEVE ATRASO', tipo:'Refrigeración' },
+    { id:'reiter', nombre:'REITER', sup:'Gustavo Martinez', dep:'Ica', prov:'Chincha', ciudad:'San Antonio', zona:'Norte', lat:-13.25, lng:-76.15, ventas:110710, fact:33213, avance:22.5, spi:1.42, estado:'ADELANTADO', tipo:'Packing' },
+    { id:'diamond', nombre:'DIAMOND', sup:'Sin asignar', dep:'La Libertad', prov:'Trujillo', ciudad:'Trujillo', zona:'Norte', lat:-8.115, lng:-79.029, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Packing' },
+    { id:'branchout', nombre:'BRANCHOUT', sup:'Sin asignar', dep:'Lima', prov:'Lima', ciudad:'Lima', zona:'Centro', lat:-11.886, lng:-77.043, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Refrigeración' },
+    { id:'oslo', nombre:'OSLO', sup:'Sin asignar', dep:'Lima', prov:'Lima', ciudad:'Lima', zona:'Centro', lat:-11.9966, lng:-76.8874, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Refrigeración' },
+    { id:'tal-acopio', nombre:'TAL ACOPIO', sup:'Sin asignar', dep:'La Libertad', prov:'Virú', ciudad:'Virú', zona:'Norte', lat:-8.5722, lng:-78.7537, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Civil' },
+    { id:'prolan', nombre:'PROLAN', sup:'Sin asignar', dep:'Lima', prov:'Lima', ciudad:'Lima', zona:'Centro', lat:-12.1754, lng:-76.9468, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Mecánica' },
+    { id:'rintisa', nombre:'RINTISA', sup:'Sin asignar', dep:'Lima', prov:'Lima', ciudad:'Lima', zona:'Centro', lat:-12.1754, lng:-77.1392, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Mecánica' },
+    { id:'agrokasa', nombre:'AGROKASA', sup:'Sin asignar', dep:'Ica', prov:'Ica', ciudad:'Ica', zona:'Sur', lat:-13.9081, lng:-75.7286, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Refrigeración' },
+    { id:'icyp', nombre:'ICYP', sup:'Sin asignar', dep:'Ica', prov:'Ica', ciudad:'Ica', zona:'Sur', lat:-14.2281, lng:-75.7286, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Mecánica' },
+    { id:'arca-continental', nombre:'ARCA CONTINENTAL', sup:'Sin asignar', dep:'Lambayeque', prov:'Chiclayo', ciudad:'Chiclayo', zona:'Norte', lat:-6.7714, lng:-79.8409, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Refrigeración' },
+    { id:'viru', nombre:'VIRÚ', sup:'Sin asignar', dep:'La Libertad', prov:'Virú', ciudad:'Virú', zona:'Norte', lat:-8.4122, lng:-78.9154, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Refrigeración' },
+    { id:'agrolatina', nombre:'AGROLATINA', sup:'Sin asignar', dep:'Ica', prov:'Nazca', ciudad:'Nazca', zona:'Sur', lat:-14.8294, lng:-74.9286, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Refrigeración' },
+    { id:'aib', nombre:'AIB', sup:'Sin asignar', dep:'Lima', prov:'Lima', ciudad:'Lima', zona:'Centro', lat:-11.9966, lng:-77.1986, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Mecánica' },
   ];
 
-  // ── Conexiones (rutas operativas). Hub principal = Lima ──
-  const HUB = 'lima';
-  const EXTRA_LINKS = [['mia','mad'], ['pty','mex'], ['gru','scl'], ['bog','mia']];
-
-  function projById(id) { return PROJECTS.find(p => p.id === id); }
-
   function estadoColor(est) {
-    return est === 'operativo' || est === 'sede' ? C.teal
-         : est === 'expansion' ? C.blue
-         : C.amber;
+    return est === 'EN PLAN'     ? C.teal
+         : est === 'ADELANTADO'  ? C.blue
+         : est === 'LEVE ATRASO' ? C.amber
+         : est === 'ATRASADO'    ? C.red
+         : C.gray; // PAUSA
   }
   function estadoLabel(est) {
-    return est === 'sede' ? 'Sede central'
-         : est === 'operativo' ? 'Operativo'
-         : est === 'expansion' ? 'En expansión'
-         : 'En construcción';
-  }
-
-  function buildArcs() {
-    const arcs = [];
-    const hub = projById(HUB);
-    PROJECTS.forEach(p => {
-      if (p.id === HUB) return;
-      arcs.push({ startLat:hub.lat, startLng:hub.lng, endLat:p.lat, endLng:p.lng, color:estadoColor(p.estado) });
-    });
-    EXTRA_LINKS.forEach(([a, b]) => {
-      const pa = projById(a), pb = projById(b);
-      if (pa && pb) arcs.push({ startLat:pa.lat, startLng:pa.lng, endLat:pb.lat, endLng:pb.lng, color:'#2db59a' });
-    });
-    return arcs;
+    return est === 'EN PLAN'     ? 'En plan'
+         : est === 'ADELANTADO'  ? 'Adelantado'
+         : est === 'LEVE ATRASO' ? 'Leve atraso'
+         : est === 'ATRASADO'    ? 'Atrasado'
+         : 'En pausa'; // PAUSA
   }
 
   function fmtMoney(n) {
-    if (n >= 1e6) return '$' + (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 1e6) return '$' + (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
     if (n >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
-    return '$' + n;
+    return '$' + Math.round(n);
   }
-  function fmtNum(n) { return n.toLocaleString('es-PE'); }
+
+  function statsOf(list) {
+    const activos = list.filter(p => p.estado !== 'PAUSA');
+    const cartera = list.reduce((s, p) => s + p.ventas, 0);
+    const avance = activos.length
+      ? Math.round(activos.reduce((s, p) => s + p.avance, 0) / activos.length)
+      : 0;
+    return { n: list.length, cartera, avance };
+  }
 
   // ── Estado del módulo ──
-  let globe = null;
+  let map = null;
+  let cluster = null;
   let mounted = false;
   let active = false;
-  let selectedId = null;
   let resizeObs = null;
-  let hlTimer = null;
-  const MAX_VENTAS = Math.max(...PROJECTS.map(p => p.ventas));
+  let selectedId = null;
+  const markers = {};   // id → L.marker
+  let streetLayer = null, satLayer = null, satLabels = null, currentBase = 'street';
 
-  // ── Altura del haz luminoso proporcional a las ventas (look Palantir/FlightRadar) ──
-  function pointAlt(p) {
-    const base = 0.04 + (p.ventas / MAX_VENTAS) * 0.30;
-    return p.id === selectedId ? base + 0.06 : base;
+  const PERU_BOUNDS = (function () {
+    const lats = PROJECTS.map(p => p.lat), lngs = PROJECTS.map(p => p.lng);
+    return L.latLngBounds(
+      [Math.min(...lats) - 0.6, Math.min(...lngs) - 0.6],
+      [Math.max(...lats) + 0.6, Math.max(...lngs) + 0.6]
+    );
+  })();
+
+  // ── Iconos de marcador (pin de obra) ──
+  function markerIcon(p, on) {
+    const col = estadoColor(p.estado);
+    return L.divIcon({
+      className: 'fp-mk-wrap',
+      html: `<span class="fp-mk${on ? ' on' : ''}" style="--c:${col}"></span>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+    });
   }
-  function pointRad(p) { return p.id === selectedId ? 0.55 : 0.34; }
 
-  // Refrescar las capas que dependen de la selección
-  function refreshLayers() {
-    if (!globe) return;
-    globe.pointsData(PROJECTS).labelsData(PROJECTS);
-    globe.ringsData(selectedId ? PROJECTS.filter(p => p.id === selectedId) : PROJECTS);
-  }
-
-  // ── Vuelo suave + zoom + panel + resaltado ──
-  // IMPORTANTE: re-asignar datos de capa (points/labels/rings) en el MISMO tick que
-  // pointOfView cancela el tween de cámara en globe.gl. Por eso volamos primero y
-  // diferimos el resaltado (crecer el haz + enfocar el halo) hasta terminar el vuelo.
-  function focusProject(p) {
-    selectedId = p.id;
-    openPanel(p);
-    if (globe) {
-      globe.controls().autoRotate = false;
-      setRotateBtn(false);
-      globe.pointOfView({ lat: p.lat, lng: p.lng, altitude: 1.05 }, 1200);
-      clearTimeout(hlTimer);
-      hlTimer = setTimeout(refreshLayers, 1280);
-    }
+  // ── Icono de cluster (círculo agrupado) ──
+  function clusterIcon(c) {
+    const kids = c.getAllChildMarkers().map(m => m.options.proj);
+    const st = statsOf(kids);
+    const size = st.n >= 12 ? 60 : st.n >= 5 ? 50 : 42;
+    // color por salud media (avance) de las obras agrupadas
+    const tone = st.avance >= 70 ? C.teal : st.avance >= 40 ? C.amber : C.red;
+    return L.divIcon({
+      className: 'fp-cluster-wrap',
+      html: `<div class="fp-cl" style="--c:${tone};width:${size}px;height:${size}px">
+               <b>${st.n}</b><i>obras</i>
+             </div>`,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
   }
 
   // ── Panel lateral ejecutivo ──
@@ -125,210 +141,226 @@
     const panel = document.getElementById('pg-panel');
     if (!panel) return;
     const col = estadoColor(p.estado);
-    const maxCap = Math.max(...PROJECTS.map(x => x.capacidad));
-    const capPct = Math.round((p.capacidad / maxCap) * 100);
+    const avPct = Math.max(0, Math.min(100, Math.round(p.avance)));
     panel.innerHTML = `
       <button class="pg-panel-close" id="pg-panel-close" aria-label="Cerrar">&times;</button>
       <div class="pg-panel-flag" style="--c:${col}">${estadoLabel(p.estado)}</div>
       <h2 class="pg-panel-title">${p.nombre}</h2>
       <div class="pg-panel-loc">
-        <span>${p.ciudad}, ${p.pais}</span>
-        <span class="pg-panel-coord">${p.lat.toFixed(2)}°, ${p.lng.toFixed(2)}°</span>
+        <span><b>Cliente:</b> ${p.nombre}</span>
+        <span>${p.ciudad}, ${p.prov} · ${p.dep}</span>
       </div>
-      <div class="pg-panel-type">${p.tipo}</div>
+      <div class="pg-panel-type">${p.tipo} · Zona ${p.zona}</div>
 
       <div class="pg-stats">
         <div class="pg-stat">
-          <div class="pg-stat-lbl">Ventas anuales</div>
+          <div class="pg-stat-lbl">Presupuesto</div>
           <div class="pg-stat-val">${fmtMoney(p.ventas)}</div>
         </div>
         <div class="pg-stat">
-          <div class="pg-stat-lbl">Personal</div>
-          <div class="pg-stat-val">${fmtNum(p.personal)}</div>
+          <div class="pg-stat-lbl">Facturado</div>
+          <div class="pg-stat-val">${fmtMoney(p.fact)}</div>
         </div>
       </div>
 
       <div class="pg-cap">
-        <div class="pg-cap-head">
-          <span>Capacidad instalada</span>
-          <b>${fmtNum(p.capacidad)} m³</b>
+        <div class="pg-cap-head"><span>Avance de obra</span><b>${avPct}%</b></div>
+        <div class="pg-cap-track"><div class="pg-cap-bar" style="width:${avPct}%;background:${col}"></div></div>
+      </div>
+
+      <div class="pg-stats">
+        <div class="pg-stat">
+          <div class="pg-stat-lbl">Supervisor</div>
+          <div class="pg-stat-val" style="font-size:15px">${p.sup}</div>
         </div>
-        <div class="pg-cap-track"><div class="pg-cap-bar" style="width:${capPct}%;background:${col}"></div></div>
+        <div class="pg-stat">
+          <div class="pg-stat-lbl">Estado</div>
+          <div class="pg-stat-val" style="font-size:15px;color:${col}">${estadoLabel(p.estado)}</div>
+        </div>
       </div>
 
       <div class="pg-panel-foot">
         <span class="pg-dot-sm" style="--c:${col}"></span>
-        Nodo operativo Polarix · Red Global
+        Obra FrioPacking · ${p.prov}, ${p.dep}
       </div>`;
     panel.classList.add('open');
     const close = document.getElementById('pg-panel-close');
-    if (close) close.addEventListener('click', closePanel);
+    if (close) close.addEventListener('click', () => closePanel());
   }
 
-  // defer=true cuando hay un pointOfView en curso en el mismo tick (no romper el vuelo)
-  function closePanel(defer) {
+  function closePanel() {
     const panel = document.getElementById('pg-panel');
     if (panel) panel.classList.remove('open');
+    if (selectedId && markers[selectedId]) {
+      const prev = PROJECTS.find(p => p.id === selectedId);
+      markers[selectedId].setIcon(markerIcon(prev, false));
+    }
     selectedId = null;
-    clearTimeout(hlTimer);
-    if (defer) hlTimer = setTimeout(refreshLayers, 1280);
-    else refreshLayers();
   }
 
-  // ── Botón de rotación ──
-  function setRotateBtn(on) {
-    const b = document.getElementById('pg-rotate');
-    if (!b) return;
-    b.classList.toggle('off', !on);
-    b.querySelector('.pg-rotate-txt').textContent = on ? 'Rotación' : 'Pausado';
+  // ── Clic en obra → vuelo + zoom + panel + resaltado ──
+  function focusProject(p) {
+    if (selectedId && markers[selectedId]) {
+      const prev = PROJECTS.find(x => x.id === selectedId);
+      markers[selectedId].setIcon(markerIcon(prev, false));
+    }
+    selectedId = p.id;
+    if (markers[p.id]) markers[p.id].setIcon(markerIcon(p, true));
+    openPanel(p);
+    if (map) map.flyTo([p.lat, p.lng], Math.max(map.getZoom(), 13), { duration: 1.1 });
   }
 
-  function dims() {
-    const wrap = document.getElementById('globe-canvas');
-    return wrap ? { w: wrap.clientWidth, h: wrap.clientHeight } : { w: 0, h: 0 };
+  // ── Tooltip agregado de cluster (hover) ──
+  function clusterTip(st) {
+    return `<div class="fp-cltip">
+        <strong>${st.n} proyectos</strong>
+        <span>Avance prom. <b>${st.avance}%</b></span>
+        <span>Cartera <b>${fmtMoney(st.cartera)}</b></span>
+      </div>`;
   }
 
-  // ── Inicialización del globo ──
-  function initGlobe() {
+  // ── Capas base ──
+  function buildLayers() {
+    streetLayer = L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      { subdomains: 'abcd', maxZoom: 20,
+        attribution: '&copy; OpenStreetMap &copy; CARTO' }
+    );
+    satLayer = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 19, attribution: 'Imagery &copy; Esri' }
+    );
+    satLabels = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 19, pane: 'shadowPane' }
+    );
+  }
+
+  function setBase(kind) {
+    if (!map) return;
+    if (kind === 'sat') {
+      map.removeLayer(streetLayer);
+      satLayer.addTo(map); satLabels.addTo(map);
+      currentBase = 'sat';
+    } else {
+      map.removeLayer(satLayer); map.removeLayer(satLabels);
+      streetLayer.addTo(map);
+      currentBase = 'street';
+    }
+    const btn = document.getElementById('pg-rotate');
+    if (btn) btn.querySelector('.pg-rotate-txt').textContent =
+      currentBase === 'sat' ? 'Calles' : 'Satélite';
+  }
+
+  // ── Inicialización del mapa ──
+  function initMap() {
     const el = document.getElementById('globe-canvas');
-    if (!el || typeof Globe === 'undefined') return false;
-    const { w, h } = dims();
+    if (!el || typeof L === 'undefined' || !L.markerClusterGroup) return false;
 
-    globe = Globe()(el)
-      .width(w).height(h)
-      .backgroundImageUrl(TEX.sky)
-      .globeImageUrl(TEX.globe)
-      .bumpImageUrl(TEX.bump)
-      .showAtmosphere(true)
-      .atmosphereColor('#5fa8ff')
-      .atmosphereAltitude(0.20)
-      // ── Arcos 3D con flujo de partículas ──
-      .arcsData(buildArcs())
-      .arcColor('color')
-      .arcAltitude(0.28)
-      .arcStroke(0.55)
-      .arcDashLength(0.4)
-      .arcDashGap(0.18)
-      .arcDashInitialGap(() => Math.random())
-      .arcDashAnimateTime(2600)
-      .arcsTransitionDuration(0)
-      // ── Halos pulsantes ──
-      .ringsData(PROJECTS)
-      .ringLat('lat').ringLng('lng')
-      .ringColor(p => (t => `rgba(${hexRgb(estadoColor(p.estado))},${1 - t})`))
-      .ringMaxRadius(4)
-      .ringPropagationSpeed(2)
-      .ringRepeatPeriod(1400)
-      // ── Nodos luminosos (haces WebGL · altura = ventas) ──
-      .pointLat('lat').pointLng('lng')
-      .pointColor(p => estadoColor(p.estado))
-      .pointAltitude(pointAlt)
-      .pointRadius(pointRad)
-      .pointResolution(18)
-      .pointsTransitionDuration(700)
-      .pointsData(PROJECTS)
-      .onPointClick(p => focusProject(p))
-      .onPointHover(p => { document.body.style.cursor = p ? 'pointer' : 'default'; })
-      // ── Etiquetas de ciudad ──
-      .labelLat('lat').labelLng('lng')
-      .labelText('ciudad')
-      .labelColor(p => p.id === selectedId ? '#ffffff' : 'rgba(226,238,255,0.85)')
-      .labelSize(p => p.id === selectedId ? 1.15 : 0.9)
-      .labelDotRadius(0)
-      .labelAltitude(p => pointAlt(p) + 0.01)
-      .labelResolution(2)
-      .labelsData(PROJECTS)
-      .onLabelClick(p => focusProject(p));
+    map = L.map(el, {
+      zoomControl: false,
+      attributionControl: true,
+      minZoom: 4, maxZoom: 19,
+      worldCopyJump: true,
+    });
+    L.control.zoom({ position: 'topleft' }).addTo(map);
 
-    // Iluminación / controles
-    const controls = globe.controls();
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.32;
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-    controls.minDistance = 180;
-    controls.maxDistance = 520;
+    buildLayers();
+    streetLayer.addTo(map);
+    map.fitBounds(PERU_BOUNDS, { padding: [40, 40] });
 
-    // Punto de vista inicial: Latinoamérica en perspectiva
-    globe.pointOfView({ lat: -10, lng: -72, altitude: 2.45 }, 0);
-
-    // Clic en el océano/vacío → cerrar panel y reanudar
-    el.addEventListener('click', (e) => {
-      if (e.target === el || e.target.tagName === 'CANVAS') {
-        closePanel();
-        controls.autoRotate = true;
-        setRotateBtn(true);
-      }
+    cluster = L.markerClusterGroup({
+      showCoverageOnHover: false,     // sin polígonos/ruido
+      zoomToBoundsOnClick: true,      // clic cluster → zoom + expansión
+      spiderfyOnMaxZoom: true,
+      maxClusterRadius: 58,
+      disableClusteringAtZoom: 11,    // obras individuales a nivel ciudad
+      iconCreateFunction: clusterIcon,
     });
 
-    // Resize responsivo
-    resizeObs = new ResizeObserver(() => {
-      if (!active) return;
-      const d = dims();
-      globe.width(d.w).height(d.h);
+    PROJECTS.forEach(p => {
+      const m = L.marker([p.lat, p.lng], { icon: markerIcon(p, false), proj: p });
+      m.bindTooltip(
+        `<b>${p.nombre}</b><span>${p.ciudad} · ${estadoLabel(p.estado)}</span>`,
+        { direction: 'top', offset: [0, -10], className: 'fp-tt', opacity: 1 }
+      );
+      m.on('click', () => focusProject(p));
+      markers[p.id] = m;
+      cluster.addLayer(m);
     });
+    map.addLayer(cluster);
+
+    // tooltip agregado al pasar sobre un cluster
+    cluster.on('clustermouseover', (e) => {
+      const kids = e.layer.getAllChildMarkers().map(m => m.options.proj);
+      e.layer.bindTooltip(clusterTip(statsOf(kids)),
+        { direction: 'top', offset: [0, -8], className: 'fp-tt fp-tt-cl', opacity: 1 }
+      ).openTooltip();
+    });
+
+    // clic en el mapa vacío → cerrar panel
+    map.on('click', () => closePanel());
+
+    resizeObs = new ResizeObserver(() => { if (active && map) map.invalidateSize(); });
     resizeObs.observe(el);
 
     return true;
   }
 
-  function hexRgb(hex) {
-    const h = hex.replace('#', '');
-    const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(',');
+  // ── KPIs de cabecera (nivel país) ──
+  function fillKpis() {
+    const st = statsOf(PROJECTS);
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    set('pg-kpi-proj', st.n);
+    set('pg-kpi-pais', new Set(PROJECTS.map(p => p.dep)).size);
+    set('pg-kpi-ventas', fmtMoney(st.cartera));
+    set('pg-kpi-pers', st.avance + '%');
   }
 
-  // ── KPIs de cabecera ──
-  function fillKpis() {
-    const tV = PROJECTS.reduce((s, p) => s + p.ventas, 0);
-    const tP = PROJECTS.reduce((s, p) => s + p.personal, 0);
-    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-    set('pg-kpi-proj', PROJECTS.length);
-    set('pg-kpi-pais', new Set(PROJECTS.map(p => p.pais)).size);
-    set('pg-kpi-ventas', fmtMoney(tV));
-    set('pg-kpi-pers', fmtNum(tP));
+  // ── Encuadre a un departamento (salto desde el globo ejecutivo) ──
+  function deptBounds(dep) {
+    const ps = PROJECTS.filter(p => p.dep === dep);
+    if (!ps.length) return PERU_BOUNDS;
+    const lats = ps.map(p => p.lat), lngs = ps.map(p => p.lng);
+    return L.latLngBounds(
+      [Math.min(...lats) - 0.25, Math.min(...lngs) - 0.25],
+      [Math.max(...lats) + 0.25, Math.max(...lngs) + 0.25]
+    );
+  }
+
+  function focusDept(dep) {
+    closePanel();
+    if (!map) return;
+    map.flyToBounds(deptBounds(dep), { padding: [60, 60], maxZoom: 11, duration: 1.2 });
+  }
+
+  function wireToolbar() {
+    const t = document.getElementById('pg-rotate');
+    if (t) t.addEventListener('click', () => setBase(currentBase === 'sat' ? 'street' : 'sat'));
+    const home = document.getElementById('pg-home');
+    if (home) home.addEventListener('click', () => {
+      closePanel();
+      map.flyToBounds(PERU_BOUNDS, { padding: [40, 40], duration: 1.0 });
+    });
   }
 
   // ── Montaje (perezoso): se llama al entrar a #mapa ──
   function mount() {
     active = true;
     if (!mounted) {
-      const ok = initGlobe();
-      if (!ok) { setTimeout(mount, 250); active = true; return; } // esperar a Globe.gl
+      const ok = initMap();
+      if (!ok) { setTimeout(mount, 250); return; } // esperar a Leaflet
       mounted = true;
       fillKpis();
       wireToolbar();
+      // el contenedor estaba oculto → recalcular tamaño
+      setTimeout(() => { if (map) { map.invalidateSize(); map.fitBounds(PERU_BOUNDS, { padding: [40, 40] }); } }, 60);
     } else {
-      // re-encajar tamaño al volver a la vista
-      const d = dims();
-      globe.width(d.w).height(d.h);
-      globe.controls().autoRotate = !document.getElementById('pg-rotate')?.classList.contains('off');
+      setTimeout(() => { if (map) map.invalidateSize(); }, 60);
     }
   }
 
-  function wireToolbar() {
-    const r = document.getElementById('pg-rotate');
-    if (r) r.addEventListener('click', () => {
-      const c = globe.controls();
-      c.autoRotate = !c.autoRotate;
-      setRotateBtn(c.autoRotate);
-    });
-    const home = document.getElementById('pg-home');
-    if (home) home.addEventListener('click', () => {
-      closePanel(true); // diferir refresh: hay pointOfView en curso
-      globe.pointOfView({ lat: -10, lng: -72, altitude: 2.45 }, 1200);
-      globe.controls().autoRotate = true;
-      setRotateBtn(true);
-    });
-  }
+  function setActive(on) { active = on; }
 
-  function setActive(on) {
-    active = on;
-    if (globe) {
-      // pausar rotación cuando no está visible (ahorra CPU)
-      if (!on) globe.controls().autoRotate = false;
-    }
-  }
-
-  window.PolarixGlobe = { mount, setActive, focus: focusProject, instance: () => globe };
+  window.FrioMap = { mount, setActive, focus: focusProject, focusDept, data: PROJECTS, instance: () => map };
 })();

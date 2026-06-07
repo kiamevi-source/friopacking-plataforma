@@ -35,6 +35,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
+<!-- Leaflet + clustering (Mapa de Operaciones) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<!-- Globe.gl (Vista Ejecutiva — globo terráqueo) -->
+<script src="https://unpkg.com/globe.gl"></script>
+
 <!-- CSS modular -->
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/layout.css">
@@ -525,37 +533,69 @@
       ></iframe>
     </div>
 
-    <!-- ═══════════════ VIEW: GLOBO — Mapa Global de Operaciones Polarix ═══════════════ -->
+    <!-- ═══════════════ VIEW: GLOBO — Mapa de Operaciones FrioPacking ═══════════════ -->
     <div id="view-globe" style="display:none">
-      <div class="pg-stage">
+
+      <!-- Conmutador de modos: Ejecutivo (globo) ↔ Operativo (mapa) -->
+      <div class="fp-modes">
+        <button id="mode-exec" class="fp-mode is-active"><span class="fp-mode-ic">🌎</span>Vista Ejecutiva</button>
+        <button id="mode-op" class="fp-mode"><span class="fp-mode-ic">📍</span>Vista Operativa</button>
+      </div>
+
+      <!-- ═════ MODO 1 — VISTA EJECUTIVA (globo terráqueo) ═════ -->
+      <div id="exec-stage" class="exec-stage">
+        <div id="globe-exec-canvas"></div>
+
+        <div class="exec-overlay">
+          <div class="exec-id">
+            <span class="pg-eyebrow"><span class="pg-live"></span>Presencia nacional · FrioPacking</span>
+            <h1 class="exec-h1">Operaciones en el Perú</h1>
+            <p class="exec-sub">Vista ejecutiva · explora el globo y haz clic en un departamento para gestionar sus obras</p>
+          </div>
+        </div>
+
+        <div class="exec-kpis">
+          <div class="exec-kpi"><div class="exec-kpi-v" id="exg-proj">—</div><div class="exec-kpi-l">Proyectos</div></div>
+          <div class="exec-kpi"><div class="exec-kpi-v" id="exg-dep">—</div><div class="exec-kpi-l">Departamentos</div></div>
+          <div class="exec-kpi"><div class="exec-kpi-v" id="exg-cartera">—</div><div class="exec-kpi-l">Cartera total</div></div>
+          <div class="exec-kpi"><div class="exec-kpi-v" id="exg-avance">—</div><div class="exec-kpi-l">Avance prom.</div></div>
+        </div>
+
+        <div class="exec-hint">Clic en un departamento para entrar a la Vista Operativa</div>
+      </div>
+
+      <!-- ═════ MODO 2 — VISTA OPERATIVA (mapa Leaflet) ═════ -->
+      <div id="op-stage" class="pg-stage" style="display:none">
         <div id="globe-canvas"></div>
 
         <!-- Cabecera ejecutiva (overlay) -->
         <div class="pg-head">
           <div class="pg-head-id">
-            <span class="pg-eyebrow"><span class="pg-live"></span>Red Global · Polarix</span>
-            <h1 class="pg-h1">Mapa Global de Operaciones</h1>
-            <p class="pg-sub">Operaciones internacionales de la red Polarix</p>
+            <span class="pg-eyebrow"><span class="pg-live"></span>Operaciones · FrioPacking</span>
+            <h1 class="pg-h1">Mapa de Operaciones</h1>
+            <p class="pg-sub">Explora la cartera por región · acerca el zoom para ver cada obra</p>
           </div>
           <div class="pg-kpis">
-            <div class="pg-kpi"><div class="pg-kpi-v" id="pg-kpi-proj">—</div><div class="pg-kpi-l">Operaciones</div></div>
-            <div class="pg-kpi"><div class="pg-kpi-v" id="pg-kpi-pais">—</div><div class="pg-kpi-l">Países</div></div>
-            <div class="pg-kpi"><div class="pg-kpi-v" id="pg-kpi-ventas">—</div><div class="pg-kpi-l">Ventas red</div></div>
-            <div class="pg-kpi"><div class="pg-kpi-v" id="pg-kpi-pers">—</div><div class="pg-kpi-l">Personal</div></div>
+            <div class="pg-kpi"><div class="pg-kpi-v" id="pg-kpi-proj">—</div><div class="pg-kpi-l">Proyectos</div></div>
+            <div class="pg-kpi"><div class="pg-kpi-v" id="pg-kpi-pais">—</div><div class="pg-kpi-l">Departamentos</div></div>
+            <div class="pg-kpi"><div class="pg-kpi-v" id="pg-kpi-ventas">—</div><div class="pg-kpi-l">Cartera total</div></div>
+            <div class="pg-kpi"><div class="pg-kpi-v" id="pg-kpi-pers">—</div><div class="pg-kpi-l">Avance prom.</div></div>
           </div>
         </div>
 
         <!-- Leyenda -->
         <div class="pg-legend">
-          <span class="pg-leg-item"><i style="background:#3ECBB0"></i>Operativo</span>
-          <span class="pg-leg-item"><i style="background:#4F8DF5"></i>En expansión</span>
-          <span class="pg-leg-item"><i style="background:#F2B544"></i>En construcción</span>
+          <span class="pg-leg-item"><i style="background:#3ECBB0"></i>En plan</span>
+          <span class="pg-leg-item"><i style="background:#4F8DF5"></i>Adelantado</span>
+          <span class="pg-leg-item"><i style="background:#F2B544"></i>Leve atraso</span>
+          <span class="pg-leg-item"><i style="background:#E24B4A"></i>Atrasado</span>
+          <span class="pg-leg-item"><i style="background:#7E8BA3"></i>En pausa</span>
         </div>
 
         <!-- Controles -->
         <div class="pg-toolbar">
-          <button id="pg-rotate" class="pg-tbtn"><span class="pg-rotate-ic">◍</span><span class="pg-rotate-txt">Rotación</span></button>
-          <button id="pg-home" class="pg-tbtn">⟲ Vista global</button>
+          <button id="pg-rotate" class="pg-tbtn"><span class="pg-rotate-ic">◍</span><span class="pg-rotate-txt">Satélite</span></button>
+          <button id="pg-home" class="pg-tbtn">⟲ Vista Perú</button>
         </div>
 
         <!-- Panel lateral ejecutivo -->
@@ -573,9 +613,9 @@
 <script src="js/nuevo-proyecto.js"></script>
 <script src="js/views/inicio.js"></script>
 <script src="js/views/servicios.js?v=20260607a"></script>
-<script src="https://unpkg.com/globe.gl"></script>
-<script src="js/globe.js?v=20260607a"></script>
-<script src="js/router-views.js?v=20260607k"></script>
+<script src="js/globe.js?v=20260607d"></script>
+<script src="js/globe-exec.js?v=20260607c"></script>
+<script src="js/router-views.js?v=20260607m"></script>
 <script src="js/chatbot.js?v=20260607a"></script>
 
 </body>

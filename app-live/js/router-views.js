@@ -32,11 +32,11 @@
       el: document.getElementById('view-servicios'),
       init: () => { if (typeof window.loadServicios === 'function') window.loadServicios(); },
     },
-    // Mapa Global de Operaciones Polarix (globo terráqueo interactivo)
+    // Mapa de Operaciones FrioPacking (Leaflet + clustering)
     mapa: {
       el: document.getElementById('view-globe'),
-      init:   () => { if (window.PolarixGlobe) { window.PolarixGlobe.setActive(true); window.PolarixGlobe.mount(); } },
-      deinit: () => { if (window.PolarixGlobe) window.PolarixGlobe.setActive(false); },
+      init:   () => { if (window.FrioGlobe) window.FrioGlobe.enter(); },
+      deinit: () => { if (window.FrioGlobe) window.FrioGlobe.leave(); },
     },
   };
 
