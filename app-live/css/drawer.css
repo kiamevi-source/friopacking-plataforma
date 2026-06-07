@@ -1,0 +1,224 @@
+/* ════════════════════════════════════════════════════════════════════
+   drawer.css — Drawer modal "Nuevo Proyecto" + formulario + botones
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ─── Drawer container ─── */
+.drawer-bg {
+  position: fixed; inset: 0;
+  background: rgba(10,23,41,.55);
+  backdrop-filter: blur(4px);
+  z-index: 40;
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s ease;
+}
+.drawer-bg.on { opacity: 1; pointer-events: auto; }
+
+.drawer {
+  position: fixed; top: 0; right: 0;
+  height: 100vh;
+  width: 520px; max-width: 100vw;
+  background: white;
+  z-index: 9999;
+  transform: translateX(100%);
+  transition: transform .35s cubic-bezier(.4,0,.2,1);
+  display: flex; flex-direction: column;
+  box-shadow: -20px 0 50px rgba(15,30,53,.3);
+}
+.drawer.on { transform: translateX(0); }
+
+.drawer-h {
+  padding: 20px 24px 18px;
+  border-bottom: 1px solid #e7ebf2;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.drawer-h-t {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800; font-size: 20px;
+  color: #0f1e35;
+  letter-spacing: -.01em; line-height: 1.2;
+}
+.drawer-h-s { color: #64748b; font-size: 12.5px; margin-top: 4px; font-weight: 500; }
+
+.drawer-close {
+  background: #f3f5f9;
+  border: 1px solid #e7ebf2;
+  color: #64748b;
+  width: 34px; height: 34px;
+  border-radius: 9px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+  flex-shrink: 0;
+}
+.drawer-close:hover { background: white; color: #0f1e35; border-color: #cbd5e1; }
+.drawer-close .ic { width: 16px; height: 16px; stroke-width: 2.2; }
+
+.drawer-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+
+.drawer-foot {
+  padding: 14px 24px;
+  border-top: 1px solid #e7ebf2;
+  background: #f7f9fc;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.drawer-foot .hint { font-size: 11.5px; color: #94a3b8; font-weight: 500; }
+.drawer-foot-btns { display: flex; gap: 8px; }
+
+/* ─── Botones ─── */
+.btn-secondary {
+  padding: 10px 18px;
+  background: white;
+  border: 1px solid #e3e8ef;
+  color: #475569;
+  font-size: 13px; font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .2s;
+  font-family: 'Inter', sans-serif;
+}
+.btn-secondary:hover { border-color: #cbd5e1; color: #0f1e35; }
+
+.btn-primary {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #3ECBB0 0%, #2db59a 100%);
+  color: white;
+  border: none;
+  font-size: 13px; font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .2s;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 6px 14px -4px rgba(62,203,176,.45);
+  display: inline-flex; align-items: center; gap: 8px;
+  position: relative;
+  z-index: 10;
+}
+.btn-save-bulletproof {
+  min-width: 180px; min-height: 44px;
+  justify-content: center;
+  font-size: 14px; font-weight: 800;
+  letter-spacing: .01em;
+  display: block !important;
+  width: auto;
+  z-index: 50;
+}
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px -4px rgba(62,203,176,.55);
+}
+.btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+.btn-primary .ic { width: 15px; height: 15px; stroke-width: 2.5; }
+
+/* Safari/SVG click target fix: clicks en icono/texto van directo al button */
+.btn-primary > *,
+.btn-secondary > *,
+.cta-new > *,
+.cta-sala > *,
+.cta-sp > *,
+.notif-btn > *,
+.icon-btn > *,
+.drawer-close > *,
+.chip > *,
+.action-card > *,
+.tab-item > *,
+.nav-item > *,
+.panel-link > *,
+.kpi-card > * { pointer-events: none; }
+
+/* ═════════════════ FORMULARIO ═════════════════ */
+
+.form-section { margin-bottom: 18px; }
+.form-section-t {
+  font-size: 11px; font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase; letter-spacing: .06em;
+  margin-bottom: 10px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex; align-items: center; gap: 7px;
+}
+.form-section-t .ic { width: 13px; height: 13px; stroke-width: 2.2; color: #3ECBB0; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-grid.full { grid-template-columns: 1fr; }
+.form-grid > .full { grid-column: span 2; }
+
+.form-grp { display: flex; flex-direction: column; gap: 5px; }
+.form-lbl { font-size: 11.5px; font-weight: 600; color: #475569; letter-spacing: .01em; }
+.form-lbl .req { color: #ef4444; margin-left: 2px; }
+
+.form-inp, .form-sel, .form-textarea {
+  padding: 10px 12px;
+  border: 1px solid #e3e8ef;
+  border-radius: 9px;
+  background: white;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #0f1e35;
+  outline: none;
+  transition: all .15s;
+  font-weight: 500;
+}
+.form-inp:focus, .form-sel:focus, .form-textarea:focus {
+  border-color: #3ECBB0;
+  box-shadow: 0 0 0 3px rgba(62,203,176,.12);
+}
+.form-inp.err, .form-sel.err {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239,68,68,.10);
+}
+.form-inp::placeholder { color: #94a3b8; font-weight: 400; }
+.form-textarea { resize: vertical; min-height: 62px; font-family: 'Inter', sans-serif; }
+.form-err { font-size: 11px; color: #ef4444; font-weight: 600; margin-top: 2px; }
+.form-hint { font-size: 11px; color: #94a3b8; margin-top: 2px; font-weight: 500; }
+
+.input-prefix { position: relative; }
+.input-prefix .pfx {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 12.5px; font-weight: 600;
+  pointer-events: none;
+  font-family: 'JetBrains Mono', monospace;
+}
+.input-prefix .form-inp { padding-left: 30px; }
+
+/* Advanced collapsible (futuro uso) */
+.form-advanced { margin-top: 8px; }
+.form-advanced-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  background: #f7f9fc;
+  border: 1px solid #e7ebf2;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 12.5px; font-weight: 600;
+  color: #475569;
+  user-select: none;
+  transition: all .15s;
+}
+.form-advanced-toggle:hover { background: white; border-color: #cbd5e1; }
+.form-advanced-toggle .chev { transition: transform .2s; }
+.form-advanced.open .form-advanced-toggle .chev { transform: rotate(180deg); }
+.form-advanced-body { display: none; padding: 14px 0 4px; }
+.form-advanced.open .form-advanced-body { display: block; }
+
+/* ─── Carga banner (supervisor) ─── */
+.carga-banner {
+  display: none;
+  align-items: center; gap: 8px;
+  padding: 9px 12px;
+  margin-top: 7px;
+  border-radius: 9px;
+  font-size: 11.5px; font-weight: 600;
+  line-height: 1.35;
+  animation: fade-up .25s ease;
+}
+.carga-banner.on { display: flex; }
+.carga-banner.ok   { background: rgba(34,197,94,.08);  color: #15803d; border: 1px solid rgba(34,197,94,.18); }
+.carga-banner.med  { background: rgba(245,158,11,.08); color: #a16207; border: 1px solid rgba(245,158,11,.22); }
+.carga-banner.alta { background: rgba(239,68,68,.08);  color: #b91c1c; border: 1px solid rgba(239,68,68,.22); }
+.carga-banner i { flex-shrink: 0; }

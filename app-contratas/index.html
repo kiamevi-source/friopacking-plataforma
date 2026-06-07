@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Contratas · FrioPacking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#14275C; --teal:#2FBCA3; --blue:#4F8DF5;
+    --amber:#F59E2C; --amber-600:#e08a16; --amber-50:#fef6ea;
+    --ink:#0f1b34; --muted:#5b6b86; --line:#e4eaf3;
+    --bg1:#f5f8fd; --bg2:#eef3fb; --card:#ffffff;
+    --ok:#1a7d5e; --ok-bg:#e6f7f0; --warn:#a9761b; --warn-bg:#fdf3e0; --danger:#c0453b; --danger-bg:#fdecea;
+    --shadow:0 18px 50px -20px rgba(20,39,92,.28);
+    --shadow-sm:0 1px 2px rgba(15,23,42,.05),0 4px 14px -8px rgba(15,23,42,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Inter',system-ui,sans-serif;color:var(--ink);
+    background:
+      radial-gradient(1100px 600px at 12% -10%, #fff3e0 0%, transparent 55%),
+      radial-gradient(1000px 620px at 110% 10%, #e9f1ff 0%, transparent 50%),
+      linear-gradient(180deg,var(--bg1),var(--bg2));
+    display:flex;min-height:100vh;
+  }
+  .font-display{font-family:'Manrope','Inter',sans-serif}
+
+  /* ───────── SIDEBAR ───────── */
+  .sidebar{
+    width:248px;flex-shrink:0;background:#0f1e3d;color:#fff;
+    display:flex;flex-direction:column;padding:22px 16px;position:sticky;top:0;height:100vh;
+  }
+  .sb-logo{display:flex;align-items:center;gap:10px;margin-bottom:6px;padding:0 6px}
+  .sb-logo img{height:36px;width:auto}
+  .sb-eyebrow{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8aa0c8;padding:0 6px;margin-bottom:24px}
+  .nav-item{
+    display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;cursor:pointer;
+    color:#c3d0e8;font-family:inherit;font-size:14px;font-weight:600;text-align:left;
+    padding:11px 13px;border-radius:11px;margin-bottom:3px;transition:.15s;
+  }
+  .nav-item svg{width:18px;height:18px;flex-shrink:0}
+  .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav-item.active{background:linear-gradient(135deg,var(--amber),var(--amber-600));color:#fff;box-shadow:0 8px 20px -10px rgba(245,158,44,.7)}
+  .sb-foot{margin-top:auto;padding:14px 8px 4px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:11px}
+  .sb-avatar{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--amber),var(--amber-600));display:grid;place-items:center;font-weight:800;color:#fff;font-size:15px}
+  .sb-u-name{font-size:13px;font-weight:700;color:#fff;line-height:1.2}
+  .sb-u-role{font-size:11px;color:#8aa0c8}
+
+  /* ───────── MAIN ───────── */
+  .main{flex:1;min-width:0;padding:30px 38px 60px;overflow-y:auto;max-height:100vh}
+  .view{display:none;animation:fade .35s ease both}
+  .view.on{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .page-head{margin-bottom:22px}
+  .page-title{font-size:25px;font-weight:800;letter-spacing:-.02em;color:var(--navy)}
+  .page-sub{margin-top:4px;color:var(--muted);font-size:14px}
+
+  /* KPI cards */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:26px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:var(--shadow-sm)}
+  .kpi-l{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:7px}
+  .kpi-l svg{width:15px;height:15px}
+  .kpi-v{font-size:28px;font-weight:800;color:var(--navy);margin-top:8px;line-height:1}
+  .kpi-sub{font-size:12.5px;color:var(--muted);margin-top:6px}
+
+  /* Cards / panels */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:var(--shadow-sm);margin-bottom:22px}
+  .panel-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .panel-h h3{font-size:16px;font-weight:800;color:var(--navy);font-family:'Manrope',sans-serif}
+  .panel-h .count{font-size:12px;font-weight:700;color:var(--amber-600);background:var(--amber-50);padding:4px 10px;border-radius:999px}
+
+  /* Forms */
+  .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:15px}
+  .fld{display:flex;flex-direction:column}
+  .fld.full{grid-column:1/-1}
+  .fld label{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .fld input,.fld select,.fld textarea{
+    border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;font-size:14px;
+    font-family:inherit;color:var(--ink);background:#fbfdff;transition:.15s;width:100%;
+  }
+  .fld textarea{resize:vertical;min-height:78px}
+  .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--amber);background:#fff;box-shadow:0 0 0 3px rgba(245,158,44,.15)}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;border:0;cursor:pointer;border-radius:11px;
+    padding:12px 20px;font-family:'Manrope',sans-serif;font-size:14px;font-weight:700;color:#fff;
+    background:linear-gradient(135deg,var(--amber),var(--amber-600));transition:.15s;
+  }
+  .btn:hover{filter:brightness(1.04);box-shadow:0 10px 24px -10px rgba(245,158,44,.6)}
+  .btn svg{width:16px;height:16px}
+  .btn.ghost{background:#fff;color:var(--navy);border:1.5px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--navy);box-shadow:none;background:#f8fafd}
+  .form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+
+  /* Tables */
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:0 12px 10px;border-bottom:1px solid var(--line)}
+  td{padding:13px 12px;border-bottom:1px solid #f0f4fa;color:var(--ink)}
+  tr:last-child td{border-bottom:0}
+  .tag{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:999px}
+  .tag.ok{background:var(--ok-bg);color:var(--ok)}
+  .tag.warn{background:var(--warn-bg);color:var(--warn)}
+  .tag.info{background:#e8f1ff;color:#2266b0}
+  .row-act{background:none;border:0;cursor:pointer;color:var(--muted);padding:5px;border-radius:7px}
+  .row-act:hover{background:#f0f4fa;color:var(--danger)}
+  .row-act svg{width:15px;height:15px}
+  .empty{text-align:center;color:var(--muted);font-size:13.5px;padding:30px 0}
+
+  /* Timeline (informes) */
+  .tl-item{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #f0f4fa}
+  .tl-item:last-child{border-bottom:0}
+  .tl-dot{width:10px;height:10px;border-radius:50%;background:var(--amber);margin-top:5px;flex-shrink:0;box-shadow:0 0 0 4px var(--amber-50)}
+  .tl-body{flex:1;min-width:0}
+  .tl-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .tl-title{font-size:14px;font-weight:700;color:var(--navy)}
+  .tl-date{font-size:12px;color:var(--muted);white-space:nowrap}
+  .tl-meta{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .tl-obs{font-size:13px;color:var(--ink);margin-top:6px;line-height:1.5}
+
+  /* Dropzone */
+  .dropzone{
+    border:2px dashed #d6e0ef;border-radius:16px;padding:38px 24px;text-align:center;
+    background:#fafcff;cursor:pointer;transition:.18s;
+  }
+  .dropzone:hover,.dropzone.drag{border-color:var(--amber);background:var(--amber-50)}
+  .dz-ic{width:50px;height:50px;border-radius:14px;background:var(--amber-50);color:var(--amber-600);display:grid;place-items:center;margin:0 auto 14px}
+  .dz-ic svg{width:26px;height:26px}
+  .dz-t{font-size:15px;font-weight:700;color:var(--navy)}
+  .dz-s{font-size:13px;color:var(--muted);margin-top:5px}
+  .file-list{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+  .file-row{display:flex;align-items:center;gap:13px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  .file-ic{width:38px;height:38px;border-radius:10px;background:#eef3fb;color:var(--blue);display:grid;place-items:center;flex-shrink:0}
+  .file-ic svg{width:19px;height:19px}
+  .file-info{flex:1;min-width:0}
+  .file-name{font-size:13.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .file-meta{font-size:12px;color:var(--muted);margin-top:2px}
+  .file-name a{color:var(--navy);text-decoration:none}
+  .file-name a:hover{color:var(--amber-600)}
+
+  /* Toast */
+  #toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120%);
+    background:#0f1e3d;color:#fff;padding:13px 20px;border-radius:13px;box-shadow:var(--shadow);
+    display:flex;align-items:center;gap:11px;z-index:60;transition:transform .35s cubic-bezier(.2,.8,.2,1);max-width:90vw;
+  }
+  #toast.on{transform:translateX(-50%) translateY(0)}
+  #toast .t-ic{width:26px;height:26px;border-radius:8px;background:var(--amber);display:grid;place-items:center;flex-shrink:0;font-weight:800}
+  #toast .t-t{font-size:13.5px;font-weight:700}
+  #toast .t-s{font-size:12.5px;color:#aebcd6}
+
+  @media(max-width:860px){
+    body{flex-direction:column}
+    .sidebar{width:100%;height:auto;position:relative;flex-direction:row;flex-wrap:wrap;align-items:center;padding:14px}
+    .sb-eyebrow,.sb-foot{display:none}
+    .nav-item{width:auto;margin:0}
+    .main{padding:22px 18px 50px;max-height:none}
+    .form-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+  <!-- ───────── SIDEBAR ───────── -->
+  <aside class="sidebar">
+    <div class="sb-logo"><img src="assets/logo-light.png" onerror="this.src='../assets/logo-full.png'" alt="FrioPacking"></div>
+    <div class="sb-eyebrow">Portal de Contratas</div>
+
+    <button class="nav-item active" data-view="resumen"><svg data-lucide="layout-dashboard"></svg>Resumen</button>
+    <button class="nav-item" data-view="informe"><svg data-lucide="clipboard-list"></svg>Informe diario</button>
+    <button class="nav-item" data-view="factura"><svg data-lucide="receipt"></svg>Facturación</button>
+    <button class="nav-item" data-view="docs"><svg data-lucide="folder-up"></svg>Documentos</button>
+
+    <div class="sb-foot">
+      <div class="sb-avatar" id="ct-avatar">C</div>
+      <div>
+        <div class="sb-u-name" id="ct-name">Contrata</div>
+        <div class="sb-u-role">Proveedor · Campo</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ───────── MAIN ───────── -->
+  <main class="main">
+
+    <!-- RESUMEN -->
+    <section class="view on" id="v-resumen">
+      <div class="page-head">
+        <h1 class="page-title font-display">Hola, bienvenido 👷</h1>
+        <p class="page-sub">Tu portal para reportar avance diario, registrar facturación y subir documentos.</p>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-l"><svg data-lucide="clipboard-list"></svg>Informes</div><div class="kpi-v" id="k-informes">0</div><div class="kpi-sub">enviados este mes</div></div>
+        <div class="kpi"><div class="kpi-l"><svg data-lucide="receipt"></svg>Facturado</div><div class="kpi-v" id="k-facturado">$0</div><div class="kpi-sub" id="k-facturado-sub">0 facturas</div></div>
+        <div class="kpi"><div class="kpi-l"><svg data-lucide="clock"></svg>Por cobrar</div><div class="kpi-v" id="k-porcobrar">$0</div><div class="kpi-sub">pendiente de pago</div></div>
+        <div class="kpi"><div class="kpi-l"><svg data-lucide="folder"></svg>Documentos</div><div class="kpi-v" id="k-docs">0</div><div class="kpi-sub">archivos subidos</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h3>Accesos rápidos</h3></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <button class="btn" data-go="informe"><svg data-lucide="plus"></svg>Nuevo informe diario</button>
+          <button class="btn ghost" data-go="factura"><svg data-lucide="plus"></svg>Registrar factura</button>
+          <button class="btn ghost" data-go="docs"><svg data-lucide="upload"></svg>Subir documento</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- INFORME DIARIO -->
+    <section class="view" id="v-informe">
+      <div class="page-head">
+        <h1 class="page-title font-display">Informe diario</h1>
+        <p class="page-sub">Reporta el avance del día en obra.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h3>Nuevo informe</h3></div>
+        <form id="form-informe">
+          <div class="form-grid">
+            <div class="fld"><label>Fecha</label><input type="date" id="inf-fecha" required></div>
+            <div class="fld"><label>Proyecto / obra</label><input type="text" id="inf-proyecto" placeholder="Ej. AGROBERRIES" required></div>
+            <div class="fld"><label>Avance del día (%)</label><input type="number" id="inf-avance" min="0" max="100" step="0.1" placeholder="0.0"></div>
+            <div class="fld"><label>Personal en obra</label><input type="number" id="inf-personal" min="0" placeholder="0"></div>
+            <div class="fld full"><label>Actividades realizadas</label><textarea id="inf-actividad" placeholder="Describe lo ejecutado hoy…"></textarea></div>
+            <div class="fld full"><label>Observaciones / incidencias</label><textarea id="inf-obs" placeholder="Opcional"></textarea></div>
+          </div>
+          <div class="form-actions">
+            <button type="reset" class="btn ghost">Limpiar</button>
+            <button type="submit" class="btn"><svg data-lucide="send"></svg>Enviar informe</button>
+          </div>
+        </form>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h3>Informes enviados</h3><span class="count" id="inf-count">0</span></div>
+        <div id="inf-list"></div>
+      </div>
+    </section>
+
+    <!-- FACTURACIÓN -->
+    <section class="view" id="v-factura">
+      <div class="page-head">
+        <h1 class="page-title font-display">Facturación</h1>
+        <p class="page-sub">Registra y da seguimiento a tus facturas.</p>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-l"><svg data-lucide="receipt"></svg>Total facturado</div><div class="kpi-v" id="f-total">$0</div></div>
+        <div class="kpi"><div class="kpi-l"><svg data-lucide="clock"></svg>Por cobrar</div><div class="kpi-v" id="f-pend">$0</div></div>
+        <div class="kpi"><div class="kpi-l"><svg data-lucide="check-circle"></svg>Pagado</div><div class="kpi-v" id="f-paid">$0</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h3>Nueva factura</h3></div>
+        <form id="form-factura">
+          <div class="form-grid">
+            <div class="fld"><label>N° de factura</label><input type="text" id="fac-num" placeholder="F001-0001" required></div>
+            <div class="fld"><label>Proyecto / obra</label><input type="text" id="fac-proyecto" placeholder="Ej. AGROBERRIES" required></div>
+            <div class="fld"><label>Monto (USD)</label><input type="number" id="fac-monto" min="0" step="0.01" placeholder="0.00" required></div>
+            <div class="fld"><label>Fecha de emisión</label><input type="date" id="fac-fecha" required></div>
+            <div class="fld"><label>Estado</label>
+              <select id="fac-estado">
+                <option value="emitida">Emitida</option>
+                <option value="presentada">Presentada</option>
+                <option value="pagada">Pagada</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="reset" class="btn ghost">Limpiar</button>
+            <button type="submit" class="btn"><svg data-lucide="plus"></svg>Registrar factura</button>
+          </div>
+        </form>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h3>Mis facturas</h3><span class="count" id="fac-count">0</span></div>
+        <div style="overflow-x:auto">
+          <table id="fac-table">
+            <thead><tr><th>N° factura</th><th>Proyecto</th><th>Emisión</th><th>Monto</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="fac-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- DOCUMENTOS -->
+    <section class="view" id="v-docs">
+      <div class="page-head">
+        <h1 class="page-title font-display">Documentos</h1>
+        <p class="page-sub">Sube valorizaciones, contratos, fotos de obra y otros archivos.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h3>Subir archivos</h3></div>
+        <div class="dropzone" id="dropzone">
+          <div class="dz-ic"><svg data-lucide="cloud-upload"></svg></div>
+          <div class="dz-t">Arrastra archivos aquí o haz clic para seleccionar</div>
+          <div class="dz-s">PDF, imágenes, Excel, Word — hasta 25 MB por archivo</div>
+          <input type="file" id="file-input" multiple style="display:none">
+        </div>
+        <div class="file-list" id="file-list"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast -->
+  <div id="toast"><div class="t-ic">✓</div><div><div class="t-t" id="toast-t"></div><div class="t-s" id="toast-s"></div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  // ── Supabase (instancia CONTRATAS · proyecto dedicado · sesión sembrada por el shell) ──
+  var SB_URL = 'https://uijuokwcsvnlzxoyvrcj.supabase.co';
+  var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpanVva3djc3ZubHp4b3l2cmNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTUwMDgsImV4cCI6MjA5NjA5MTAwOH0.-JtaWOf3QPRB5W1Z7rLp5Rabr83xdWIqX4GngkpFeJU';
+  var BUCKET = 'contratas-docs';
+  var sb = null;
+  try { sb = window.supabase.createClient(SB_URL, SB_KEY); } catch(e){ console.warn('SB init', e); }
+
+  // ── Estado (en memoria; persistido en Supabase) ──
+  var informes = [];
+  var facturas = [];
+  var docs     = [];
+  var USER_ID  = null;
+
+  // ── Helpers ──
+  var $ = function(s){ return document.querySelector(s); };
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function money(n){ n = Number(n)||0; return '$' + n.toLocaleString('en-US',{maximumFractionDigits:0}); }
+  function money2(n){ n = Number(n)||0; return '$' + n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function fmtDate(iso){ if(!iso) return '—'; var d=new Date(iso+'T12:00:00'); var m=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']; return d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear(); }
+  function fileSize(b){ if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+  var toastTimer;
+  function toast(t,s){ $('#toast-t').textContent=t; $('#toast-s').textContent=s||''; var el=$('#toast'); el.classList.add('on'); clearTimeout(toastTimer); toastTimer=setTimeout(function(){ el.classList.remove('on'); },3200); }
+
+  // ── Navegación ──
+  function showView(name){
+    document.querySelectorAll('.view').forEach(function(v){ v.classList.toggle('on', v.id==='v-'+name); });
+    document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.toggle('active', n.dataset.view===name); });
+    window.scrollTo(0,0);
+  }
+  document.querySelectorAll('.nav-item').forEach(function(n){ n.addEventListener('click', function(){ showView(n.dataset.view); }); });
+  document.querySelectorAll('[data-go]').forEach(function(b){ b.addEventListener('click', function(){ showView(b.dataset.go); }); });
+
+  // ── Identidad ──
+  function setIdentity(name){
+    name = name || 'Contrata';
+    $('#ct-name').textContent = name;
+    $('#ct-avatar').textContent = (name.trim()[0] || 'C').toUpperCase();
+  }
+  setIdentity((function(){ try{ return localStorage.getItem('fp_ct_name'); }catch(e){ return null; } })());
+
+  // ── INFORME DIARIO ──
+  var formInf = $('#form-informe');
+  $('#inf-fecha').value = new Date().toISOString().slice(0,10);
+  async function loadInformes(){
+    if(!sb) return;
+    var res = await sb.from('contratas_informes').select('*').order('created_at',{ascending:false});
+    if(res.error){ console.warn('informes', res.error); return; }
+    informes = res.data || []; renderInformes();
+  }
+  formInf.addEventListener('submit', async function(e){
+    e.preventDefault();
+    var payload = {
+      fecha: $('#inf-fecha').value,
+      proyecto: $('#inf-proyecto').value.trim(),
+      avance: parseFloat($('#inf-avance').value)||0,
+      personal: parseInt($('#inf-personal').value,10)||0,
+      actividad: $('#inf-actividad').value.trim(),
+      obs: $('#inf-obs').value.trim()
+    };
+    if(!payload.proyecto){ toast('Falta el proyecto','Indica la obra del informe'); return; }
+    if(!sb){ toast('Sin conexión','No se pudo conectar a Supabase'); return; }
+    var btn = formInf.querySelector('[type=submit]'); btn.disabled = true;
+    var res = await sb.from('contratas_informes').insert(payload).select().single();
+    btn.disabled = false;
+    if(res.error){ toast('No se pudo guardar', res.error.message); return; }
+    informes.unshift(res.data);
+    formInf.reset(); $('#inf-fecha').value = new Date().toISOString().slice(0,10);
+    renderInformes(); renderResumen();
+    toast('Informe enviado', res.data.proyecto + ' · ' + fmtDate(res.data.fecha));
+  });
+  async function delInforme(id){
+    if(!sb) return;
+    var res = await sb.from('contratas_informes').delete().eq('id', id);
+    if(res.error){ toast('No se pudo eliminar', res.error.message); return; }
+    informes = informes.filter(function(x){ return x.id!==id; });
+    renderInformes(); renderResumen();
+  }
+  function renderInformes(){
+    $('#inf-count').textContent = informes.length;
+    var box = $('#inf-list');
+    if(!informes.length){ box.innerHTML = '<div class="empty">Aún no has enviado informes.</div>'; return; }
+    box.innerHTML = informes.map(function(r){
+      return '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
+        '<div class="tl-top"><span class="tl-title">'+esc(r.proyecto)+'</span><span class="tl-date">'+fmtDate(r.fecha)+'</span></div>'+
+        '<div class="tl-meta">'+(r.avance?('Avance '+r.avance+'%'):'')+(r.personal?(' · '+r.personal+' personas'):'')+'</div>'+
+        (r.actividad?('<div class="tl-obs">'+esc(r.actividad)+'</div>'):'')+
+        (r.obs?('<div class="tl-obs" style="color:var(--warn)">⚠ '+esc(r.obs)+'</div>'):'')+
+        '</div><button class="row-act" data-del-inf="'+r.id+'" title="Eliminar"><svg data-lucide="trash-2"></svg></button></div>';
+    }).join('');
+    box.querySelectorAll('[data-del-inf]').forEach(function(b){ b.addEventListener('click', function(){ delInforme(b.dataset.delInf); }); });
+    if(window.lucide) lucide.createIcons();
+  }
+
+  // ── FACTURACIÓN ──
+  var formFac = $('#form-factura');
+  $('#fac-fecha').value = new Date().toISOString().slice(0,10);
+  var ESTADO = { emitida:{t:'Emitida',c:'info'}, presentada:{t:'Presentada',c:'warn'}, pagada:{t:'Pagada',c:'ok'} };
+  async function loadFacturas(){
+    if(!sb) return;
+    var res = await sb.from('contratas_facturas').select('*').order('created_at',{ascending:false});
+    if(res.error){ console.warn('facturas', res.error); return; }
+    facturas = res.data || []; renderFacturas();
+  }
+  formFac.addEventListener('submit', async function(e){
+    e.preventDefault();
+    var payload = {
+      num: $('#fac-num').value.trim(),
+      proyecto: $('#fac-proyecto').value.trim(),
+      monto: parseFloat($('#fac-monto').value)||0,
+      fecha: $('#fac-fecha').value,
+      estado: $('#fac-estado').value
+    };
+    if(!payload.num || !payload.proyecto || !payload.monto){ toast('Datos incompletos','Completa N°, proyecto y monto'); return; }
+    if(!sb){ toast('Sin conexión','No se pudo conectar a Supabase'); return; }
+    var btn = formFac.querySelector('[type=submit]'); btn.disabled = true;
+    var res = await sb.from('contratas_facturas').insert(payload).select().single();
+    btn.disabled = false;
+    if(res.error){ toast('No se pudo guardar', res.error.message); return; }
+    facturas.unshift(res.data);
+    formFac.reset(); $('#fac-fecha').value = new Date().toISOString().slice(0,10);
+    renderFacturas(); renderResumen();
+    toast('Factura registrada', res.data.num + ' · ' + money2(res.data.monto));
+  });
+  async function delFactura(id){
+    if(!sb) return;
+    var res = await sb.from('contratas_facturas').delete().eq('id', id);
+    if(res.error){ toast('No se pudo eliminar', res.error.message); return; }
+    facturas = facturas.filter(function(x){ return x.id!==id; });
+    renderFacturas(); renderResumen();
+  }
+  function renderFacturas(){
+    $('#fac-count').textContent = facturas.length;
+    var body = $('#fac-body');
+    if(!facturas.length){ body.innerHTML = '<tr><td colspan="6"><div class="empty">No hay facturas registradas.</div></td></tr>'; }
+    else {
+      body.innerHTML = facturas.map(function(r){
+        var e = ESTADO[r.estado] || ESTADO.emitida;
+        return '<tr><td><b>'+esc(r.num)+'</b></td><td>'+esc(r.proyecto)+'</td><td>'+fmtDate(r.fecha)+'</td>'+
+          '<td><b>'+money2(r.monto)+'</b></td><td><span class="tag '+e.c+'">'+e.t+'</span></td>'+
+          '<td style="text-align:right"><button class="row-act" data-del-fac="'+r.id+'" title="Eliminar"><svg data-lucide="trash-2"></svg></button></td></tr>';
+      }).join('');
+    }
+    var total=0,pend=0,paid=0;
+    facturas.forEach(function(r){ var m=Number(r.monto)||0; total+=m; if(r.estado==='pagada') paid+=m; else pend+=m; });
+    $('#f-total').textContent = money(total);
+    $('#f-pend').textContent  = money(pend);
+    $('#f-paid').textContent  = money(paid);
+    body.querySelectorAll('[data-del-fac]').forEach(function(b){ b.addEventListener('click', function(){ delFactura(b.dataset.delFac); }); });
+    if(window.lucide) lucide.createIcons();
+  }
+
+  // ── DOCUMENTOS (Supabase Storage) ──
+  var MAX = 25*1024*1024;
+  var dz = $('#dropzone'), input = $('#file-input');
+  dz.addEventListener('click', function(){ input.click(); });
+  dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', function(){ dz.classList.remove('drag'); });
+  dz.addEventListener('drop', function(e){ e.preventDefault(); dz.classList.remove('drag'); addFiles(e.dataTransfer.files); });
+  input.addEventListener('change', function(){ addFiles(input.files); input.value=''; });
+  function safeName(n){ return String(n).replace(/[^a-zA-Z0-9._-]/g,'_'); }
+  async function loadDocs(){
+    if(!sb) return;
+    var res = await sb.from('contratas_documentos').select('*').order('created_at',{ascending:false});
+    if(res.error){ console.warn('docs', res.error); return; }
+    docs = res.data || []; renderDocs();
+  }
+  async function addFiles(list){
+    if(!sb || !USER_ID){ toast('Sin sesión','Ingresa desde el portal para subir'); return; }
+    var added=0;
+    var files = Array.prototype.slice.call(list);
+    for (var i=0; i<files.length; i++){
+      var f = files[i];
+      if(f.size > MAX){ toast('Archivo muy grande', f.name + ' supera 25 MB'); continue; }
+      var path = USER_ID + '/' + Date.now() + '_' + safeName(f.name);
+      var up = await sb.storage.from(BUCKET).upload(path, f, { contentType: f.type || undefined });
+      if(up.error){ toast('No se pudo subir', f.name + ' · ' + up.error.message); continue; }
+      var res = await sb.from('contratas_documentos').insert({ name:f.name, size:f.size, type:f.type, path:path }).select().single();
+      if(res.error){ toast('No se pudo registrar', res.error.message); continue; }
+      docs.unshift(res.data); added++;
+    }
+    if(added){ renderDocs(); renderResumen(); toast('Archivo(s) subido(s)', added + ' agregado(s)'); }
+  }
+  async function openDoc(path){
+    if(!sb) return;
+    var res = await sb.storage.from(BUCKET).createSignedUrl(path, 3600);
+    if(res.error){ toast('No se pudo abrir', res.error.message); return; }
+    window.open(res.data.signedUrl, '_blank', 'noopener');
+  }
+  async function delDoc(id, path){
+    if(!sb) return;
+    await sb.storage.from(BUCKET).remove([path]);
+    var res = await sb.from('contratas_documentos').delete().eq('id', id);
+    if(res.error){ toast('No se pudo eliminar', res.error.message); return; }
+    docs = docs.filter(function(x){ return x.id!==id; });
+    renderDocs(); renderResumen();
+  }
+  function renderDocs(){
+    var box = $('#file-list');
+    if(!docs.length){ box.innerHTML = '<div class="empty">No has subido documentos.</div>'; return; }
+    box.innerHTML = docs.map(function(d){
+      return '<div class="file-row"><div class="file-ic"><svg data-lucide="file"></svg></div>'+
+        '<div class="file-info"><div class="file-name"><a href="#" data-open-doc="'+esc(d.path)+'">'+esc(d.name)+'</a></div>'+
+        '<div class="file-meta">'+fileSize(d.size)+' · '+new Date(d.created_at).toLocaleDateString('es-PE')+'</div></div>'+
+        '<button class="row-act" data-del-doc="'+d.id+'" data-del-path="'+esc(d.path)+'" title="Eliminar"><svg data-lucide="trash-2"></svg></button></div>';
+    }).join('');
+    box.querySelectorAll('[data-open-doc]').forEach(function(a){ a.addEventListener('click', function(e){ e.preventDefault(); openDoc(a.dataset.openDoc); }); });
+    box.querySelectorAll('[data-del-doc]').forEach(function(b){ b.addEventListener('click', function(){ delDoc(b.dataset.delDoc, b.dataset.delPath); }); });
+    if(window.lucide) lucide.createIcons();
+  }
+
+  // ── RESUMEN ──
+  function renderResumen(){
+    var now = new Date(), m = now.getMonth(), y = now.getFullYear();
+    var infMes = informes.filter(function(r){ var d=new Date(r.fecha+'T12:00:00'); return d.getMonth()===m && d.getFullYear()===y; }).length;
+    $('#k-informes').textContent = infMes;
+    var total=0,pend=0;
+    facturas.forEach(function(r){ var mt=Number(r.monto)||0; total+=mt; if(r.estado!=='pagada') pend+=mt; });
+    $('#k-facturado').textContent = money(total);
+    $('#k-facturado-sub').textContent = facturas.length + (facturas.length===1?' factura':' facturas');
+    $('#k-porcobrar').textContent = money(pend);
+    $('#k-docs').textContent = docs.length;
+  }
+
+  // ── Init ──
+  renderInformes(); renderFacturas(); renderDocs(); renderResumen();
+  if(window.lucide) lucide.createIcons();
+
+  (async function init(){
+    if(!sb){ toast('Sin conexión','No se pudo iniciar Supabase'); return; }
+    var session = null;
+    try { var r = await sb.auth.getSession(); session = r.data.session; } catch(e){}
+    if(!session){
+      toast('Sesión no iniciada','Ingresa desde el portal de Contratas');
+      return;
+    }
+    USER_ID = session.user.id;
+    var email = session.user.email || 'Contrata';
+    try{ localStorage.setItem('fp_ct_name', email); }catch(e){}
+    setIdentity(email);
+    await Promise.all([ loadInformes(), loadFacturas(), loadDocs() ]);
+    renderResumen();
+  })();
+})();
+</script>
+</body>
+</html>

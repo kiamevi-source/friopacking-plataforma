@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Centro de Control PMO · Grupo Friopacking</title>
+<link rel="icon" type="image/png" href="logo-friopacking.png">
+
+<!-- Fuentes -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans:    ['Inter','system-ui','sans-serif'],
+          display: ['Manrope','Inter','sans-serif'],
+          mono:    ['JetBrains Mono','ui-monospace','monospace'],
+        },
+        colors: {
+          navy: { 950:'#0a1729', 900:'#0f1e35', 800:'#162640', 700:'#243a5c', 600:'#3a527b' },
+          teal: { 300:'#7ee0ce', 400:'#5fd9c1', 500:'#3ECBB0', 600:'#2db59a', 700:'#1f9a82' },
+        },
+      }
+    }
+  }
+</script>
+
+<!-- Librerías externas -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+<!-- CSS modular -->
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/drawer.css">
+</head>
+
+<body>
+
+<div class="ambient-glow"></div>
+<div class="sb-backdrop" id="sb-backdrop"></div>
+
+<!-- ═══════════════ DRAWER: NUEVO PROYECTO ═══════════════ -->
+<div class="drawer-bg" id="drawer-bg"></div>
+<aside class="drawer" id="drawer-np" role="dialog" aria-label="Nuevo Proyecto">
+  <div class="drawer-h">
+    <div class="flex-1 min-w-0">
+      <div class="drawer-h-t">Nuevo Proyecto</div>
+      <div class="drawer-h-s">Registra un proyecto. Se sincroniza con Supabase al guardar.</div>
+    </div>
+    <button class="drawer-close" id="drawer-close-btn" aria-label="Cerrar">
+      <i data-lucide="x" class="ic"></i>
+    </button>
+  </div>
+
+  <div class="drawer-body">
+    <div id="np-form-view">
+
+      <!-- Sección: Identificación -->
+      <div class="form-section">
+        <div class="form-section-t"><i data-lucide="badge" class="ic"></i>Identificación</div>
+        <div class="form-grid">
+          <div class="form-grp full">
+            <label class="form-lbl">Código del proyecto</label>
+            <div class="flex gap-2">
+              <input type="text" class="form-inp flex-1" id="np-cod" placeholder="Ej. PRY 2026-0000021" autocomplete="off" data-1p-ignore data-lpignore="true">
+              <button type="button" class="btn-secondary" id="np-cod-auto" title="Sugerir siguiente código">
+                <i data-lucide="sparkles" style="width:14px;height:14px;stroke-width:2.2;color:#3ECBB0"></i>
+              </button>
+            </div>
+            <div class="form-hint" id="np-cod-hint">Click en ✨ para auto-sugerir el siguiente código basado en tu data</div>
+          </div>
+          <div class="form-grp full">
+            <label class="form-lbl">Nombre del proyecto <span class="req">*</span></label>
+            <input type="text" class="form-inp" id="np-nombre" placeholder="Ej. FRUSAN / HUARMEY" autocomplete="off" data-1p-ignore data-lpignore="true">
+            <div class="form-hint">Generalmente el nombre del cliente (en mayúsculas). Puedes incluir ubicación o variante después de una barra.</div>
+            <div class="form-err" id="np-nombre-err" style="display:none"></div>
+          </div>
+          <div class="form-grp">
+            <label class="form-lbl">Estado inicial</label>
+            <select class="form-sel" id="np-estado">
+              <option value="Por Iniciar" selected>Por Iniciar</option>
+              <option value="En progreso">En progreso</option>
+              <option value="Suspendido">Suspendido</option>
+              <option value="Con obs">Con observaciones</option>
+            </select>
+          </div>
+          <div class="form-grp">
+            <label class="form-lbl">Categoría</label>
+            <input type="text" class="form-inp" id="np-categoria" placeholder="Frigorífico, instalación...">
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección: Equipo -->
+      <div class="form-section">
+        <div class="form-section-t"><i data-lucide="users" class="ic"></i>Equipo asignado</div>
+        <div class="form-grid">
+          <div class="form-grp full">
+            <label class="form-lbl">Supervisor</label>
+            <select class="form-sel" id="np-supervisor">
+              <option value="">— Seleccionar supervisor —</option>
+            </select>
+            <div class="carga-banner" id="np-carga-banner"></div>
+          </div>
+          <div class="form-grp">
+            <label class="form-lbl">Asistente</label>
+            <input type="text" class="form-inp" id="np-asistente" placeholder="Opcional">
+          </div>
+          <div class="form-grp">
+            <label class="form-lbl">Email supervisor</label>
+            <input type="email" class="form-inp" id="np-sup-email" placeholder="ejemplo@friopacking.com">
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección: Ubicación -->
+      <div class="form-section">
+        <div class="form-section-t"><i data-lucide="map-pin" class="ic"></i>Ubicación</div>
+        <div class="form-grid">
+          <div class="form-grp">
+            <label class="form-lbl">Zona</label>
+            <select class="form-sel" id="np-zona">
+              <option value="">— Seleccionar —</option>
+              <option value="NORTE">NORTE</option>
+              <option value="CENTRO">CENTRO</option>
+              <option value="SUR">SUR</option>
+            </select>
+          </div>
+          <div class="form-grp">
+            <label class="form-lbl">Departamento</label>
+            <select class="form-sel" id="np-depto">
+              <option value="">— Seleccionar —</option>
+              <option>ANCASH</option><option>AREQUIPA</option><option>ICA</option>
+              <option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>LIMA</option><option>PIURA</option>
+              <option>CAJAMARCA</option><option>JUNIN</option><option>CUSCO</option>
+              <option>SAN MARTIN</option><option>UCAYALI</option>
+            </select>
+          </div>
+          <div class="form-grp">
+            <label class="form-lbl">Provincia</label>
+            <input type="text" class="form-inp" id="np-provincia" placeholder="Ej. Trujillo">
+          </div>
+          <div class="form-grp">
+            <label class="form-lbl">Distrito</label>
+            <input type="text" class="form-inp" id="np-distrito" placeholder="Ej. Moche">
+          </div>
+          <div class="form-grp full">
+            <label class="form-lbl">Dirección</label>
+            <input type="text" class="form-inp" id="np-direccion" placeholder="Calle, número, referencia">
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección: Fechas -->
+      <div class="form-section">
+        <div class="form-section-t"><i data-lucide="calendar-days" class="ic"></i>Fechas contractuales</div>
+        <div class="form-grid">
+          <div class="form-grp">
+            <label class="form-lbl">Inicio contractual</label>
+            <input type="date" class="form-inp" id="np-fini">
+            <div class="form-err" id="np-fini-err" style="display:none"></div>
+          </div>
+          <div class="form-grp">
+            <label class="form-lbl">Fin contractual</label>
+            <input type="date" class="form-inp" id="np-ffin">
+            <div class="form-err" id="np-ffin-err" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección: Económico -->
+      <div class="form-section">
+        <div class="form-section-t"><i data-lucide="banknote" class="ic"></i>Económico</div>
+        <div class="form-grid">
+          <div class="form-grp full">
+            <label class="form-lbl">Valor de venta</label>
+            <div class="input-prefix">
+              <span class="pfx">$</span>
+              <input type="number" class="form-inp" id="np-venta" placeholder="0.00" step="0.01" min="0">
+            </div>
+            <div class="form-hint">Monto contractual en USD</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección: Adicional -->
+      <div class="form-section">
+        <div class="form-section-t"><i data-lucide="sliders-horizontal" class="ic"></i>Información adicional</div>
+        <div class="form-grid">
+          <div class="form-grp">
+            <label class="form-lbl">Inicio real</label>
+            <input type="date" class="form-inp" id="np-fini-real">
+          </div>
+          <div class="form-grp">
+            <label class="form-lbl">Fin real</label>
+            <input type="date" class="form-inp" id="np-ffin-real">
+          </div>
+          <div class="form-grp">
+            <label class="form-lbl">Penalidades</label>
+            <select class="form-sel" id="np-penalidades">
+              <option value="No aplica">No aplica</option>
+              <option value="Aplica">Aplica</option>
+            </select>
+          </div>
+          <div class="form-grp">
+            <label class="form-lbl">% Penalidad</label>
+            <input type="text" class="form-inp" id="np-pen-pct" placeholder="Ej. 0.1">
+          </div>
+          <div class="form-grp full">
+            <label class="form-lbl">Tipo de penalidad</label>
+            <input type="text" class="form-inp" id="np-pen-tipo" placeholder="Diaria, por hito, etc.">
+          </div>
+          <div class="form-grp full">
+            <label class="form-lbl">Ambientes</label>
+            <input type="text" class="form-inp" id="np-ambientes" placeholder="Túneles, antesalas, conservación...">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-foot">
+    <span class="hint" id="np-hint">Solo <b>Nombre</b> es obligatorio · el resto puedes completarlo después</span>
+    <div class="drawer-foot-btns" id="np-btns" style="display:flex;gap:10px;align-items:center">
+      <button type="button" onclick="window.NP && window.NP.close()" style="padding:12px 20px;background:white;border:1px solid #cbd5e1;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;color:#475569;font-family:Inter,sans-serif">Cancelar</button>
+      <button
+        type="button"
+        id="np-save-btn"
+        onclick="window.__doSaveProject(event)"
+        style="padding:12px 28px;background:#3ECBB0;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;color:white;font-family:Inter,sans-serif;min-width:200px;min-height:48px;box-shadow:0 4px 12px rgba(62,203,176,.4)"
+      >Guardar proyecto</button>
+    </div>
+  </div>
+</aside>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <div class="ic-wrap"><i data-lucide="check" class="ic"></i></div>
+  <div>
+    <div class="toast-t" id="toast-t">Listo</div>
+    <div class="toast-s" id="toast-s"></div>
+  </div>
+</div>
+
+<div class="flex min-h-screen relative">
+
+  <!-- ═══════════════ SIDEBAR ═══════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <img src="logo-friopacking.png" alt="Grupo Friopacking">
+      <div class="sidebar-logo-text">Centro de Control · PMO</div>
+    </div>
+
+    <nav class="flex-1 flex flex-col">
+      <a href="#inicio" class="nav-item active" data-section="inicio">
+        <i data-lucide="home" class="ic"></i>
+        <span>Inicio</span>
+      </a>
+      <a href="#proyectos" class="nav-item">
+        <i data-lucide="folder-kanban" class="ic"></i>
+        <span>Proyectos</span>
+      </a>
+      <a href="#gerencial" class="nav-item">
+        <i data-lucide="bar-chart-3" class="ic"></i>
+        <span>Dashboard Gerencial</span>
+      </a>
+      <a href="#mapa" class="nav-item">
+        <i data-lucide="map" class="ic"></i>
+        <span>Mapa</span>
+      </a>
+      <a href="#briefing" class="nav-item">
+        <i data-lucide="file-text" class="ic"></i>
+        <span>Briefing</span>
+      </a>
+      <a href="#reportes" class="nav-item">
+        <i data-lucide="folder" class="ic"></i>
+        <span>Reportes</span>
+      </a>
+      <a href="#equipos" class="nav-item">
+        <i data-lucide="users" class="ic"></i>
+        <span>Equipos</span>
+      </a>
+      <a href="#contratistas" class="nav-item">
+        <i data-lucide="briefcase" class="ic"></i>
+        <span>Contratistas</span>
+      </a>
+      <a href="#supervisores" class="nav-item">
+        <i data-lucide="user-check" class="ic"></i>
+        <span>Supervisores</span>
+      </a>
+      <a href="#valorizacion" class="nav-item">
+        <i data-lucide="circle-dollar-sign" class="ic"></i>
+        <span>Valorización</span>
+      </a>
+    </nav>
+
+    <div class="user-card">
+      <div class="user-avatar">DF</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-white text-[13px] font-semibold truncate">Daniel Fuentes K.</div>
+        <div class="text-slate-400 text-[11px] truncate font-medium">Gerente de Operaciones</div>
+      </div>
+      <i data-lucide="chevron-up" style="width:14px;height:14px;color:#64748b"></i>
+    </div>
+  </aside>
+
+  <!-- ═══════════════ MAIN ═══════════════ -->
+  <main class="main">
+    <div class="header-deco"></div>
+
+    <!-- Top utility bar -->
+    <div class="flex items-center justify-between mb-6 fade-up top-utility">
+      <button class="icon-btn menu-toggle" id="sidebar-toggle" aria-label="Abrir menú">
+        <i data-lucide="menu" class="ic"></i>
+      </button>
+      <button class="sidebar-collapse-btn" id="sidebar-collapse" aria-label="Plegar/desplegar menú lateral" title="Plegar menú (⌘\\)">
+        <i data-lucide="panel-left-close" class="ic"></i>
+      </button>
+      <div class="flex-1"></div>
+
+      <div class="flex items-center gap-3">
+        <span class="conn-chip">
+          <span class="live-dot"></span>
+          Supabase conectado
+        </span>
+        <button class="cta-new" id="btn-new-project">
+          <i data-lucide="plus" class="ic"></i>
+          <span>Nuevo Proyecto</span>
+        </button>
+        <button class="cta-sala" onclick="window.location.hash='gerencial'">
+          <i data-lucide="layout-grid" class="ic"></i>
+          <span>Sala de Operaciones</span>
+          <i data-lucide="chevron-right" class="arrow"></i>
+        </button>
+        <button class="notif-btn" aria-label="Notificaciones">
+          <i data-lucide="bell" class="ic"></i>
+          <span class="notif-badge" id="notif-count">9+</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════════════ VIEW: HOME (default) ═══════════════ -->
+    <div id="view-home">
+
+    <!-- ░░░░░░ HERO — Centro de control ░░░░░░ -->
+    <section class="hero fade-up delay-1">
+      <div class="hero-glow"></div>
+      <div class="hero-top">
+        <div class="hero-id">
+          <span class="hero-eyebrow"><span class="live-dot"></span>Centro de Control · PMO</span>
+          <h1 class="hero-h1">Centro de Control PMO</h1>
+          <p class="hero-sub">
+            <span>Grupo Friopacking</span>
+            <span class="dot"></span>
+            <span id="hdr-date">cargando…</span>
+            <span class="dot"></span>
+            <span class="hero-sync">Sincronizado <b id="last-sync">ahora</b></span>
+          </p>
+        </div>
+        <div class="hero-tools">
+          <div class="hero-search">
+            <i data-lucide="search" class="hs-ic"></i>
+            <input type="text" id="global-search" class="hs-input" placeholder="Buscar proyecto, supervisor, cliente…" autocomplete="off">
+            <span class="hs-kbd">⌘K</span>
+          </div>
+          <button class="hero-ghost" onclick="showToast('Próximamente','Integración con SharePoint en camino','info')">
+            <i data-lucide="zap" class="ic"></i><span>SharePoint</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="hero-stats">
+        <a href="#proyectos" class="hstat">
+          <div class="hstat-ic blue"><i data-lucide="folder-kanban" class="ic"></i></div>
+          <div class="hstat-body">
+            <div class="hstat-num" id="stat-activos"><span class="skel" style="width:30px">0</span></div>
+            <div class="hstat-lbl">Proyectos activos</div>
+          </div>
+          <i data-lucide="arrow-up-right" class="hstat-go"></i>
+        </a>
+        <a href="#alertas" class="hstat">
+          <div class="hstat-ic amber"><i data-lucide="calendar-clock" class="ic"></i></div>
+          <div class="hstat-body">
+            <div class="hstat-num" id="stat-porvencer"><span class="skel" style="width:30px">0</span></div>
+            <div class="hstat-lbl">Por vencer · 30 días</div>
+          </div>
+          <i data-lucide="arrow-up-right" class="hstat-go"></i>
+        </a>
+        <a href="#alertas" class="hstat">
+          <div class="hstat-ic red"><i data-lucide="bell-ring" class="ic"></i></div>
+          <div class="hstat-body">
+            <div class="hstat-num" id="stat-alertas"><span class="skel" style="width:30px">0</span></div>
+            <div class="hstat-lbl">Alertas activas</div>
+          </div>
+          <i data-lucide="arrow-up-right" class="hstat-go"></i>
+        </a>
+        <div class="hstat hstat-state" id="stat-estado-wrap">
+          <div class="hstat-ic green" id="stat-estado-ic"><i data-lucide="activity" class="ic"></i></div>
+          <div class="hstat-body">
+            <div class="hstat-state-val" id="stat-estado">—</div>
+            <div class="hstat-lbl">Estado operativo</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ░░░░░░ GRID PRINCIPAL ░░░░░░ -->
+    <div class="home-grid fade-up delay-3">
+
+      <!-- ───── Columna principal ───── -->
+      <div class="home-col-main">
+
+        <!-- Estado operacional (consolidado) -->
+        <section class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i data-lucide="gauge" class="ic"></i><span>Estado operacional</span></div>
+            <a href="#gerencial" class="panel-link">Dashboard gerencial →</a>
+          </div>
+          <div class="ops-grid">
+            <a href="#alertas" class="ops-cell warn">
+              <div class="ops-cell-top">
+                <span class="ops-ic warn"><i data-lucide="clipboard-list" class="ic"></i></span>
+                <span class="ops-num warn" id="kpi-sin"><span class="skel" style="width:28px">0</span></span>
+              </div>
+              <div class="ops-lbl">Sin reporte</div>
+              <div class="ops-sub">Requieren actualización</div>
+            </a>
+            <a href="#valorizacion" class="ops-cell ok">
+              <div class="ops-cell-top">
+                <span class="ops-ic ok"><i data-lucide="banknote" class="ic"></i></span>
+                <span class="ops-num ok" id="kpi-val"><span class="skel" style="width:28px">0</span></span>
+              </div>
+              <div class="ops-lbl">Valorización</div>
+              <div class="ops-sub">En proceso de revisión</div>
+            </a>
+            <a href="#alertas" class="ops-cell crit">
+              <div class="ops-cell-top">
+                <span class="ops-ic crit"><i data-lucide="calendar-x-2" class="ic"></i></span>
+                <span class="ops-num crit" id="kpi-cf"><span class="skel" style="width:28px">0</span></span>
+              </div>
+              <div class="ops-lbl">CF vencidas</div>
+              <div class="ops-sub">Acciones pendientes</div>
+            </a>
+          </div>
+        </section>
+
+        <!-- Proyectos críticos -->
+        <section class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i data-lucide="alert-triangle" class="ic crit-ttl"></i><span>Proyectos críticos</span></div>
+            <a href="#proyectos" class="panel-link">Ver proyectos →</a>
+          </div>
+          <p class="panel-desc">Requieren acción inmediata — retrasos, sin reporte y vencimientos próximos.</p>
+          <div id="crit-list">
+            <div class="crit-item">
+              <span class="crit-sev skel" style="width:4px;height:40px"></span>
+              <div class="crit-body"><div class="crit-name"><span class="skel" style="width:200px">Cargando…</span></div><div class="crit-meta"><span class="skel" style="width:120px">Cargando…</span></div></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ───── Columna lateral ───── -->
+      <div class="home-col-side">
+
+        <!-- Próximos vencimientos (timeline) -->
+        <section class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i data-lucide="calendar-clock" class="ic"></i><span>Próximos vencimientos</span></div>
+            <a href="#alertas" class="panel-link">Ver todos →</a>
+          </div>
+          <div class="timeline" id="venc-list">
+            <div class="tl-item"><span class="tl-node"></span><div class="tl-body"><div class="tl-title"><span class="skel" style="width:150px">Cargando…</span></div><div class="tl-meta"><span class="skel" style="width:90px">Cargando…</span></div></div></div>
+            <div class="tl-item"><span class="tl-node"></span><div class="tl-body"><div class="tl-title"><span class="skel" style="width:130px">Cargando…</span></div><div class="tl-meta"><span class="skel" style="width:80px">Cargando…</span></div></div></div>
+          </div>
+        </section>
+
+        <!-- Actividad reciente (timeline) -->
+        <section class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i data-lucide="history" class="ic"></i><span>Actividad reciente</span></div>
+          </div>
+          <div class="timeline act" id="act-list">
+            <div class="tl-item"><span class="tl-node"></span><div class="tl-body"><div class="tl-title"><span class="skel" style="width:160px">Cargando…</span></div><div class="tl-meta"><span class="skel" style="width:70px">Cargando…</span></div></div></div>
+          </div>
+        </section>
+
+        <!-- Cumplimiento (compacto) -->
+        <section class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i data-lucide="shield-check" class="ic"></i><span>Cumplimiento</span></div>
+            <a href="#alertas" class="panel-link">Ver →</a>
+          </div>
+          <div id="alert-list">
+            <div class="compl-item"><div class="compl-ico soft"><span class="skel" style="width:14px;height:14px"></span></div><div class="compl-content"><div class="compl-t"><span class="skel" style="width:170px">Cargando…</span></div></div></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    </div><!-- /#view-home -->
+
+    <!-- ═══════════════ VIEW: VISTA (iframe del legacy) ═══════════════ -->
+    <div id="view-vista" style="display:none">
+      <iframe
+        id="vista-frame"
+        src="about:blank"
+        title="Vista del legacy"
+        style="width:100%;height:calc(100vh - 90px);border:none;border-radius:14px;background:#f3f5f9;box-shadow:0 1px 2px rgba(15,30,53,.04),0 12px 28px -8px rgba(15,30,53,.08);display:block"
+      ></iframe>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════════ MÓDULOS JS (orden de carga importa) ═══════════════ -->
+<script src="js/config.js"></script>
+<script src="js/core.js"></script>
+<script src="js/router.js"></script>
+<script src="js/nuevo-proyecto.js"></script>
+<script src="js/views/inicio.js"></script>
+<script src="js/router-views.js?v=20260602j"></script>
+
+</body>
+</html>

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FrioPacking · Plataforma Unificada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#14275C; --navy-700:#1d3570; --teal:#2FBCA3; --teal-600:#27a691;
+    --blue:#4F8DF5; --ink:#0f1b34; --muted:#5b6b86; --line:#e4eaf3;
+    --bg1:#f5f8fd; --bg2:#eef3fb; --card:#ffffff;
+    --shadow:0 18px 50px -20px rgba(20,39,92,.28);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Inter',system-ui,sans-serif;color:var(--ink);
+    background:
+      radial-gradient(1100px 600px at 12% -10%, #e7fbf5 0%, transparent 55%),
+      radial-gradient(1000px 620px at 110% 10%, #e9f1ff 0%, transparent 50%),
+      linear-gradient(180deg,var(--bg1),var(--bg2));
+  }
+  .font-display{font-family:'Manrope','Inter',sans-serif}
+
+  /* ───────── ACCESS CHOOSER ───────── */
+  #chooser{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px}
+  .chooser-card{
+    width:100%;max-width:1040px;background:var(--card);border:1px solid var(--line);
+    border-radius:24px;box-shadow:var(--shadow);padding:42px 46px 40px;
+  }
+  .ch-head{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:30px}
+  .ch-logo{height:54px;margin-bottom:18px}
+  .ch-logo img{height:100%;width:auto;display:block}
+  .ch-eyebrow{
+    display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;
+    letter-spacing:.04em;text-transform:uppercase;color:var(--teal-600);
+    background:#e7faf4;border:1px solid #c8f0e6;padding:5px 12px;border-radius:999px;margin-bottom:16px;
+  }
+  .ch-eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 4px rgba(47,188,163,.18)}
+  .ch-title{font-size:30px;font-weight:800;letter-spacing:-.02em;color:var(--navy)}
+  .ch-sub{margin-top:9px;color:var(--muted);font-size:15px;max-width:520px}
+
+  .ch-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+  @media(max-width:760px){.ch-grid{grid-template-columns:1fr}}
+  .acc{
+    text-align:left;cursor:pointer;background:#fff;border:1.5px solid var(--line);
+    border-radius:18px;padding:24px 22px 22px;transition:.18s ease;position:relative;overflow:hidden;
+  }
+  .acc:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+  .acc .glow{position:absolute;inset:auto -40px -60px auto;width:180px;height:180px;border-radius:50%;filter:blur(48px);opacity:.5}
+  .acc.ger{border-color:#cfe0ff}
+  .acc.ger:hover{border-color:var(--blue)}
+  .acc.ger .glow{background:#bcd6ff}
+  .acc.sup{border-color:#c8f0e6}
+  .acc.sup:hover{border-color:var(--teal)}
+  .acc.sup .glow{background:#bff0e4}
+  .acc.ct{border-color:#fbe2bd}
+  .acc.ct:hover{border-color:#F59E2C}
+  .acc.ct .glow{background:#fce0b4}
+  .acc-ic{
+    width:46px;height:46px;border-radius:13px;display:grid;place-items:center;
+    color:#fff;margin-bottom:16px;position:relative;z-index:1;
+  }
+  .acc.ger .acc-ic{background:linear-gradient(135deg,var(--blue),#3a6fd8)}
+  .acc.sup .acc-ic{background:linear-gradient(135deg,var(--teal),var(--teal-600))}
+  .acc.ct .acc-ic{background:linear-gradient(135deg,#F59E2C,#e08a16)}
+  .acc-ic svg{width:24px;height:24px}
+  .acc-k{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);position:relative;z-index:1}
+  .acc-t{font-size:19px;font-weight:800;color:var(--navy);margin:3px 0 8px;position:relative;z-index:1}
+  .acc-d{font-size:13.5px;color:var(--muted);line-height:1.5;position:relative;z-index:1}
+  .acc-go{
+    margin-top:16px;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;
+    position:relative;z-index:1;
+  }
+  .acc.ger .acc-go{color:var(--blue)}
+  .acc.sup .acc-go{color:var(--teal-600)}
+  .acc.ct .acc-go{color:#e08a16}
+  .acc-go svg{width:16px;height:16px;transition:.18s}
+  .acc:hover .acc-go svg{transform:translateX(3px)}
+  .ch-foot{margin-top:26px;text-align:center;font-size:12.5px;color:var(--muted)}
+
+  /* ───────── LOGIN (unificado · mismo estilo para ambos roles) ───────── */
+  #auth-login{min-height:100vh;display:none;align-items:center;justify-content:center;padding:32px}
+  #auth-login.on{display:flex}
+  .login-card{
+    width:100%;max-width:430px;background:var(--card);border:1px solid var(--line);
+    border-radius:22px;box-shadow:var(--shadow);padding:38px 38px 32px;
+  }
+  .login-card .ch-logo{height:44px;margin:0 auto 16px}
+  .lg-badge{display:flex;justify-content:center;margin-bottom:14px}
+  .lg-badge .auth-ic{
+    width:44px;height:44px;border-radius:13px;display:grid;place-items:center;color:#fff;
+    background:linear-gradient(135deg,var(--blue),#3a6fd8);
+  }
+  .lg-badge .auth-ic svg{width:23px;height:23px}
+  .lg-role{
+    text-align:center;font-size:11px;font-weight:700;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--blue);margin-bottom:6px;
+  }
+  .login-card h2{text-align:center;font-size:22px;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+  .login-card .lg-sub{text-align:center;color:var(--muted);font-size:13.5px;margin:6px 0 24px}
+  .fld{margin-bottom:14px}
+  .fld label{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .fld input{
+    width:100%;border:1.5px solid var(--line);border-radius:11px;padding:12px 14px;font-size:14px;
+    font-family:inherit;color:var(--ink);background:#fbfdff;transition:.15s;
+  }
+  .fld input:focus{outline:none;border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px rgba(79,141,245,.13)}
+  .lg-btn{
+    width:100%;margin-top:8px;border:0;cursor:pointer;border-radius:11px;padding:13px;
+    font-family:'Manrope',sans-serif;font-size:14.5px;font-weight:700;color:#fff;
+    background:linear-gradient(135deg,var(--blue),#3a6fd8);transition:.15s;
+  }
+  .lg-btn:hover{filter:brightness(1.05);box-shadow:0 10px 24px -10px rgba(79,141,245,.6)}
+  .lg-btn:disabled{opacity:.6;cursor:default;box-shadow:none}
+  .lg-err{display:none;margin-top:12px;font-size:13px;color:#c0362c;background:#fdecea;border:1px solid #f6cfc9;padding:9px 12px;border-radius:9px}
+  .lg-err.on{display:block}
+  .lg-back{
+    display:inline-flex;align-items:center;gap:6px;margin-top:18px;cursor:pointer;
+    font-size:12.5px;font-weight:600;color:var(--muted);background:none;border:0;
+  }
+  .lg-back:hover{color:var(--navy)}
+  .lg-back svg{width:14px;height:14px}
+
+  /* ───────── APP STAGE (real apps in fullscreen frame) ───────── */
+  #stage{position:fixed;inset:0;display:none;background:#fff;z-index:20}
+  #stage.on{display:block}
+  #app-frame{width:100%;height:100%;border:0;display:block}
+  .floatbar{
+    position:fixed;top:14px;left:14px;z-index:30;display:flex;align-items:center;gap:12px;
+    background:rgba(255,255,255,.92);backdrop-filter:blur(10px);
+    border:1px solid var(--line);border-radius:14px;padding:7px 9px 7px 13px;box-shadow:var(--shadow);
+  }
+  .fb-logo{height:22px}.fb-logo img{height:100%;width:auto;display:block}
+  .fb-sep{width:1px;height:22px;background:var(--line)}
+  .fb-role{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--navy)}
+  .fb-role .dot{width:8px;height:8px;border-radius:50%}
+  .fb-role.ger .dot{background:var(--blue)}
+  .fb-role.sup .dot{background:var(--teal)}
+  .fb-role.ct .dot{background:#F59E2C}
+  .fb-btn{
+    display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--line);
+    background:#fff;color:var(--navy);font-size:12px;font-weight:700;padding:6px 11px;border-radius:9px;transition:.15s;
+  }
+  .fb-btn:hover{border-color:var(--navy);background:var(--navy);color:#fff}
+  .fb-btn svg{width:14px;height:14px}
+  .floatbar.hidden{display:none}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ ACCESS CHOOSER ═══════════════ -->
+<div id="chooser">
+  <div class="chooser-card">
+    <div class="ch-head">
+      <div class="ch-logo"><img src="assets/logo-full.png" alt="Grupo Friopacking"></div>
+      <span class="ch-eyebrow"><span class="dot"></span>Plataforma Unificada</span>
+      <h1 class="ch-title font-display">Gerencia + Supervisión, en un solo lugar</h1>
+      <p class="ch-sub">Elige tu acceso. Cada módulo abre con todas sus funciones — el mismo sistema que ya usabas, ahora integrado.</p>
+    </div>
+
+    <div class="ch-grid">
+      <button class="acc ger" data-app="app-live/index.html" data-role="ger">
+        <span class="glow"></span>
+        <div class="acc-ic" id="ic-ger"></div>
+        <div class="acc-k">Nivel gerencial · PMO</div>
+        <div class="acc-t font-display">Gerencia</div>
+        <div class="acc-d">Portafolio nacional, KPIs globales, mapa de proyectos, equipos en importación, supervisores y valorización.</div>
+        <span class="acc-go">Entrar al Centro de Control <svg data-lucide="arrow-right"></svg></span>
+      </button>
+
+      <button class="acc sup" data-app="app-sup/index.html" data-role="sup">
+        <span class="glow"></span>
+        <div class="acc-ic" id="ic-sup"></div>
+        <div class="acc-k">Nivel operativo · Campo</div>
+        <div class="acc-t font-display">Supervisor</div>
+        <div class="acc-d">Cronograma Gantt, reporte diario, personal y cuadrillas, riesgos, costos y curva S del proyecto.</div>
+        <span class="acc-go">Entrar a Supervisión <svg data-lucide="arrow-right"></svg></span>
+      </button>
+
+      <button class="acc ct" data-app="app-contratas/index.html" data-role="ct">
+        <span class="glow"></span>
+        <div class="acc-ic" id="ic-ct"></div>
+        <div class="acc-k">Nivel contratista · Externo</div>
+        <div class="acc-t font-display">Contratas</div>
+        <div class="acc-d">Informe diario de avance, facturación y cobranzas, y carga de documentos por proyecto.</div>
+        <span class="acc-go">Entrar al Portal Contratas <svg data-lucide="arrow-right"></svg></span>
+      </button>
+    </div>
+
+    <div class="ch-foot">Un mismo inicio de sesión por rol · Grupo Friopacking · Cold Packing &amp; Refrigeración</div>
+  </div>
+</div>
+
+<!-- ═══════════════ LOGIN (unificado) ═══════════════ -->
+<div id="auth-login">
+  <form class="login-card" id="auth-form" autocomplete="on">
+    <div class="ch-logo"><img src="assets/logo-full.png" alt="Grupo Friopacking"></div>
+    <div class="lg-badge"><span class="auth-ic" id="auth-ic"></span></div>
+    <div class="lg-role" id="auth-role">—</div>
+    <h2 class="font-display">Centro de Control</h2>
+    <p class="lg-sub">Ingresa con tu correo y contraseña.</p>
+
+    <div class="fld">
+      <label>Correo corporativo</label>
+      <input id="auth-email" type="email" placeholder="usuario@friopacking.com" autocomplete="username" required>
+    </div>
+    <div class="fld">
+      <label>Contraseña</label>
+      <input id="auth-pass" type="password" placeholder="••••••••" autocomplete="current-password" required>
+    </div>
+    <button class="lg-btn" id="auth-btn" type="submit">Ingresar</button>
+    <div class="lg-err" id="auth-err"></div>
+    <button class="lg-back" id="auth-back" type="button"><svg data-lucide="arrow-left"></svg>Volver a elegir acceso</button>
+  </form>
+</div>
+
+<!-- ═══════════════ APP STAGE ═══════════════ -->
+<div id="stage">
+  <iframe id="app-frame" title="Módulo FrioPacking"></iframe>
+</div>
+<div class="floatbar hidden" id="floatbar">
+  <div class="fb-logo"><img src="assets/logo-full.png" alt="FrioPacking"></div>
+  <div class="fb-sep"></div>
+  <div class="fb-role" id="fb-role"><span class="dot"></span><span id="fb-role-t">—</span></div>
+  <div class="fb-btn" id="fb-switch"><svg data-lucide="layout-grid"></svg>Cambiar acceso</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>
+(function(){
+  var chooser  = document.getElementById('chooser');
+  var authBox  = document.getElementById('auth-login');
+  var stage    = document.getElementById('stage');
+  var frame    = document.getElementById('app-frame');
+  var floatbar = document.getElementById('floatbar');
+  var fbRole   = document.getElementById('fb-role');
+  var fbRoleT  = document.getElementById('fb-role-t');
+
+  // Instancia GERENCIAL (login PMO via supabase-js)
+  var GER_URL = 'https://vsploxglutkbeokumunp.supabase.co';
+  var GER_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+  var gerAuth = window.supabase ? window.supabase.createClient(GER_URL, GER_KEY) : null;
+  // Instancia SUPERVISOR (login via /auth/v1/token; siembra sb_token para que la app entre directo)
+  var SUP_URL = 'https://iiceeajjmugtuzcfqggs.supabase.co';
+  var SUP_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpY2VlYWpqbXVndHV6Y2ZxZ2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODg5OTUsImV4cCI6MjA5NDc2NDk5NX0.xeOFlxEGoPsqO5mBLz2_o6UqMCiUw5t8Aghg0ieRqs4';
+  // Instancia CONTRATAS (proyecto dedicado · login supabase-js; siembra sesión para su app, mismo origen)
+  var CT_URL = 'https://uijuokwcsvnlzxoyvrcj.supabase.co';
+  var CT_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpanVva3djc3ZubHp4b3l2cmNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTUwMDgsImV4cCI6MjA5NjA5MTAwOH0.-JtaWOf3QPRB5W1Z7rLp5Rabr83xdWIqX4GngkpFeJU';
+  var ctAuth = window.supabase ? window.supabase.createClient(CT_URL, CT_KEY) : null;
+
+  function paintIcons(){
+    document.getElementById('ic-ger').innerHTML  = '<svg data-lucide="bar-chart-3"></svg>';
+    document.getElementById('ic-sup').innerHTML  = '<svg data-lucide="hard-hat"></svg>';
+    document.getElementById('ic-ct').innerHTML   = '<svg data-lucide="file-text"></svg>';
+    document.getElementById('auth-ic').innerHTML = '<svg data-lucide="shield-check"></svg>';
+    if(window.lucide) lucide.createIcons();
+  }
+
+  var ROLE_HASH = { ger:'gerencia', sup:'supervisor', ct:'contratas' };
+  var ROLE_TITLE = { ger:'Gerencia', sup:'Supervisor', ct:'Contratas' };
+  var ROLE_FB = { ger:'Gerencia · PMO', sup:'Supervisión · Campo', ct:'Contratas · Externo' };
+
+  function enter(app, role){
+    frame.src = app;
+    stage.classList.add('on');
+    floatbar.classList.remove('hidden');
+    fbRole.className = 'fb-role ' + role;
+    fbRoleT.textContent = ROLE_FB[role] || '—';
+    try{ history.pushState({app:app}, '', '#' + (ROLE_HASH[role]||'')); }catch(e){}
+    document.title = (ROLE_TITLE[role]||'FrioPacking') + ' · FrioPacking';
+  }
+  function back(){
+    stage.classList.remove('on');
+    floatbar.classList.add('hidden');
+    frame.src = 'about:blank';
+    try{ history.pushState({}, '', '#'); }catch(e){}
+    document.title = 'FrioPacking · Plataforma Unificada';
+  }
+
+  // ── Login unificado (mismo estilo para ambos roles) ──
+  var authForm = document.getElementById('auth-form');
+  var authBtn  = document.getElementById('auth-btn');
+  var authErr  = document.getElementById('auth-err');
+  var authRole = document.getElementById('auth-role');
+  var pendingRole = null;
+  function authError(msg){ authErr.textContent = msg; authErr.classList.add('on'); }
+
+  var ROLE_TXT = {
+    ger: { label:'Gerencia · PMO',       btn:'Ingresar al Centro de Control' },
+    sup: { label:'Supervisión · Campo',  btn:'Ingresar a Supervisión' },
+    ct:  { label:'Contratas · Externo',  btn:'Ingresar al Portal Contratas' }
+  };
+
+  function showLogin(role){
+    pendingRole = role;
+    authErr.classList.remove('on');
+    authRole.textContent = ROLE_TXT[role].label;
+    authBtn.textContent  = ROLE_TXT[role].btn;
+    chooser.style.display = 'none';
+    authBox.classList.add('on');
+    try{ history.pushState({}, '', '#' + (ROLE_HASH[role]||'')); }catch(e){}
+    setTimeout(function(){ document.getElementById('auth-email').focus(); }, 60);
+  }
+  function hideLogin(){
+    authBox.classList.remove('on');
+    chooser.style.display = '';
+    try{ history.pushState({}, '', '#'); }catch(e){}
+  }
+  function resetBtn(){ authBtn.disabled = false; authBtn.textContent = ROLE_TXT[pendingRole].btn; }
+
+  function loginGerencia(email, pass){
+    if(!gerAuth){ authError('No se pudo iniciar el cliente de autenticación.'); resetBtn(); return; }
+    gerAuth.auth.signInWithPassword({ email: email, password: pass })
+      .then(function(res){
+        if(res.error){
+          authError(res.error.message === 'Invalid login credentials'
+            ? 'Correo o contraseña incorrectos.' : res.error.message);
+          resetBtn(); return;
+        }
+        try{ localStorage.setItem('fp_ger_token', res.data.session.access_token); }catch(e){}
+        authBox.classList.remove('on'); chooser.style.display = '';
+        enter('app-live/index.html','ger');
+      })
+      .catch(function(){ authError('No se pudo conectar. Revisa tu red e inténtalo de nuevo.'); resetBtn(); });
+  }
+
+  function loginSupervisor(email, pass){
+    // Autentica contra la instancia supervisor y siembra el token que su app espera
+    // (mismo origen → localStorage compartido → su login nativo no aparece).
+    fetch(SUP_URL + '/auth/v1/token?grant_type=password', {
+      method:'POST',
+      headers:{ 'apikey':SUP_KEY, 'Content-Type':'application/json' },
+      body: JSON.stringify({ email: email, password: pass })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data.access_token){
+        try{
+          localStorage.setItem('sb_token', data.access_token);
+          if(data.refresh_token) localStorage.setItem('sb_refresh', data.refresh_token);
+        }catch(e){}
+        authBox.classList.remove('on'); chooser.style.display = '';
+        enter('app-sup/index.html','sup');
+      } else {
+        var msg = data.error_description || data.msg || data.error || '';
+        authError(/invalid|Invalid login/.test(msg) ? 'Correo o contraseña incorrectos.'
+          : (msg || 'No se pudo iniciar sesión.'));
+        resetBtn();
+      }
+    })
+    .catch(function(){ authError('No se pudo conectar. Revisa tu red e inténtalo de nuevo.'); resetBtn(); });
+  }
+
+  function loginContratas(email, pass){
+    // Proyecto dedicado de Contratas. La sesión se persiste (mismo origen)
+    // y la app la recupera automáticamente.
+    if(!ctAuth){ authError('No se pudo iniciar el cliente de autenticación.'); resetBtn(); return; }
+    ctAuth.auth.signInWithPassword({ email: email, password: pass })
+      .then(function(res){
+        if(res.error){
+          authError(res.error.message === 'Invalid login credentials'
+            ? 'Correo o contraseña incorrectos.' : res.error.message);
+          resetBtn(); return;
+        }
+        try{
+          localStorage.setItem('fp_ct_token', res.data.session.access_token);
+          localStorage.setItem('fp_ct_name', email);
+        }catch(e){}
+        authBox.classList.remove('on'); chooser.style.display = '';
+        enter('app-contratas/index.html','ct');
+      })
+      .catch(function(){ authError('No se pudo conectar. Revisa tu red e inténtalo de nuevo.'); resetBtn(); });
+  }
+
+  authForm.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    authErr.classList.remove('on');
+    var email = document.getElementById('auth-email').value.trim();
+    var pass  = document.getElementById('auth-pass').value;
+    if(!email || !pass) return;
+    authBtn.disabled = true; authBtn.textContent = 'Verificando…';
+    if(pendingRole === 'ger') loginGerencia(email, pass);
+    else if(pendingRole === 'ct') loginContratas(email, pass);
+    else loginSupervisor(email, pass);
+  });
+  document.getElementById('auth-back').addEventListener('click', hideLogin);
+
+  document.querySelectorAll('.acc').forEach(function(btn){
+    btn.addEventListener('click', function(){ showLogin(btn.dataset.role); });
+  });
+  document.getElementById('fb-switch').addEventListener('click', back);
+  window.addEventListener('popstate', function(){
+    if(!location.hash || location.hash === '#'){ authBox.classList.remove('on'); chooser.style.display=''; back(); }
+  });
+
+  // deep-link support
+  paintIcons();
+  if(location.hash === '#gerencia')        showLogin('ger');
+  else if(location.hash === '#supervisor') showLogin('sup');
+  else if(location.hash === '#contratas')  showLogin('ct');
+})();
+</script>
+</body>
+</html>
