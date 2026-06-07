@@ -2950,6 +2950,14 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
     <div class="login-foot">v2 · Supervisor Operating System</div>
   </form>
 </div>
+<script>
+  /* Anti-parpadeo: si ya hay sesión sembrada (p.ej. desde el hub), oculta el
+     login de inmediato —antes del primer pintado— para que no destelle mientras
+     se valida el token de forma asíncrona en el evento load. */
+  if (localStorage.getItem('sb_token') || localStorage.getItem('sb_user_fallback')) {
+    document.getElementById('login-screen').classList.add('hidden');
+  }
+</script>
 
 <!-- ═══ APP ═══ -->
 <div id="app" class="hidden">
@@ -4292,6 +4300,8 @@ window.addEventListener('load', async () => {
     iniciarApp();
     return;
   }
+  // Sin sesión válida → volver a mostrar el login (se ocultó síncronamente para evitar parpadeo)
+  document.getElementById('login-screen').classList.remove('hidden');
   // Enter en password
   document.getElementById('login-pass').addEventListener('keydown', e => {
     if (e.key === 'Enter') doLogin();
