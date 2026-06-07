@@ -301,30 +301,47 @@ body{
 .proj-badge.estado-pausado{background:var(--warning-bg);color:#92400e;border-color:rgba(217,119,6,.20);}
 .proj-badge.estado-cerrado{background:rgba(148,163,184,.18);color:var(--text-2);border-color:var(--border-strong);}
 
-/* ── NAV TABS ── */
+/* ── SIDEBAR (unificado · estilo PMO) ── */
 .nav-tabs{
-  position:sticky;top:64px;z-index:50;
-  background:rgba(255,255,255,.72);
-  backdrop-filter:blur(20px) saturate(170%);
-  -webkit-backdrop-filter:blur(20px) saturate(170%);
-  border-bottom:1px solid var(--border);
-  padding:0 12px;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;
+  position:fixed;left:0;top:0;bottom:0;z-index:55;
+  width:240px;height:100vh;
+  background:linear-gradient(180deg,#0f1e35 0%,#0a1729 100%);
+  border-right:1px solid rgba(255,255,255,.05);
+  display:flex;flex-direction:column;gap:2px;
+  padding:20px 14px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
 }
 .nav-tabs::-webkit-scrollbar{display:none;}
-.nav-tab{
-  position:relative;display:inline-flex;align-items:center;gap:8px;
-  padding:14px 16px;
-  font-size:12.5px;font-weight:600;color:var(--text-2);font-family:inherit;
-  background:none;border:none;cursor:pointer;white-space:nowrap;
-  border-bottom:2px solid transparent;
-  transition:color var(--d) var(--ease);
+.sb-logo{
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding:6px 6px 16px;margin-bottom:10px;
+  border-bottom:1px solid rgba(255,255,255,.06);
 }
-.nav-tab .tab-icon{display:inline-flex;align-items:center;justify-content:center;opacity:.75;transition:opacity var(--d) var(--ease);}
-.nav-tab .tab-icon svg{width:16px;height:16px;}
-.nav-tab:hover{color:var(--text);}
+.sb-logo img{height:58px;width:auto;max-width:100%;object-fit:contain;}
+.sb-logo-text{
+  font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  color:#3ECBB0;text-align:center;line-height:1.35;opacity:.92;
+}
+.nav-tab{
+  position:relative;display:flex;align-items:center;gap:12px;width:100%;
+  padding:11px 14px;border-radius:10px;
+  font-size:13.5px;font-weight:500;color:#94a3b8;font-family:inherit;
+  background:none;border:none;cursor:pointer;text-align:left;white-space:nowrap;
+  transition:all .2s cubic-bezier(.4,0,.2,1);margin-bottom:2px;
+}
+.nav-tab .tab-icon{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;opacity:.9;transition:opacity var(--d) var(--ease);}
+.nav-tab .tab-icon svg{width:18px;height:18px;stroke-width:1.7;}
+.nav-tab>span:not(.tab-icon):not(.tab-badge){flex:1;}
+.nav-tab:hover{background:rgba(255,255,255,.05);color:#e8ecf3;}
 .nav-tab:hover .tab-icon{opacity:1;}
-.nav-tab.active{color:var(--navy-800);font-weight:700;border-bottom-color:var(--teal-600);}
-.nav-tab.active .tab-icon{opacity:1;color:var(--teal-600);}
+.nav-tab.active{background:rgba(62,203,176,.12);color:#3ECBB0;font-weight:600;}
+.nav-tab.active .tab-icon{opacity:1;color:#3ECBB0;}
+.nav-tab.active::before{content:'';position:absolute;left:-14px;top:50%;transform:translateY(-50%);width:3px;height:20px;background:#3ECBB0;border-radius:2px;}
+.sb-logout{margin-top:auto;border-top:1px solid rgba(255,255,255,.06);border-radius:0 0 10px 10px;color:#f4a4a4;padding-top:14px;}
+.sb-logout:hover{background:rgba(239,68,68,.12);color:#fca5a5;}
+/* Desplazar todo el contenido a la derecha del sidebar */
+#app{padding-left:240px;}
+/* El logo y el "Salir" del header ya no hacen falta (viven en el sidebar) */
+.topbar > .hdr-logo-link,.topbar > .hdr-divider,.topbar .btn-logout{display:none;}
 
 .tab-badge{
   display:inline-flex;align-items:center;justify-content:center;
@@ -2916,8 +2933,19 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
   #proyecto-selector{padding:10px 14px;}
   #proyecto-selector select{min-width:200px;}
   .main-wrap{padding:18px 14px 60px;}
-  .nav-tab{padding:12px 10px;font-size:12px;}
-  .nav-tab span:not(.tab-icon):not(.tab-badge){display:none;}
+  /* El sidebar pasa a barra superior horizontal */
+  #app{padding-left:0;}
+  .nav-tabs{
+    position:sticky;top:0;left:auto;bottom:auto;
+    width:100%;height:auto;flex-direction:row;align-items:center;
+    gap:2px;padding:8px 10px;overflow-x:auto;
+    border-right:none;border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .sb-logo{display:none;}
+  .nav-tab{width:auto;padding:10px 12px;font-size:12px;margin-bottom:0;}
+  .nav-tab.active::before{display:none;}
+  .nav-tab>span:not(.tab-icon):not(.tab-badge){display:none;}
+  .sb-logout{margin-top:0;margin-left:auto;border-top:none;padding-top:10px;}
 }
 </style>
 </head>
@@ -3015,8 +3043,12 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
     <span class="proj-badge estado-activo hidden" id="badge-estado"></span>
   </div>
 
-  <!-- NAV TABS · Smart (icon + label + dynamic badge) -->
+  <!-- NAV · Sidebar unificado (icon + label + dynamic badge) -->
   <nav class="nav-tabs" id="nav-tabs">
+    <div class="sb-logo">
+      <img src="assets/logo-light.png" alt="Grupo Friopacking" onerror="this.src='assets/logo-color.png'">
+      <div class="sb-logo-text">Supervisor · OS</div>
+    </div>
     <button class="nav-tab active" data-tab="dashboard" onclick="showTab('dashboard')">
       <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span>
       <span>Dashboard</span>
@@ -3066,6 +3098,10 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/><line x1="9" y1="9" x2="11" y2="9"/></svg></span>
       <span>Facturas</span>
       <span class="tab-badge hidden"></span>
+    </button>
+    <button class="nav-tab sb-logout" onclick="doLogout()" title="Cerrar sesión">
+      <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
+      <span>Salir</span>
     </button>
   </nav>
 
