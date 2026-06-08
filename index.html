@@ -301,6 +301,7 @@
     authErr.classList.remove('on');
     authRole.textContent = ROLE_TXT[role].label;
     authBtn.textContent  = ROLE_TXT[role].btn;
+    authBtn.disabled     = false;   // siempre habilitado al mostrar el login (evita que quede bloqueado tras un intento previo)
     chooser.style.display = 'none';
     authBox.classList.add('on');
     try{ history.pushState({}, '', '#' + (ROLE_HASH[role]||'')); }catch(e){}
