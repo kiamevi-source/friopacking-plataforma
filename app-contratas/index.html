@@ -221,7 +221,7 @@
         <form id="form-informe">
           <div class="form-grid">
             <div class="fld"><label>Fecha</label><input type="date" id="inf-fecha" required></div>
-            <div class="fld"><label>Proyecto / obra</label><input type="text" id="inf-proyecto" placeholder="Ej. AGROBERRIES" required></div>
+            <div class="fld"><label>Proyecto / obra</label><select id="inf-proyecto" required><option value="">Cargando proyectos…</option></select></div>
             <div class="fld"><label>Avance del día (%)</label><input type="number" id="inf-avance" min="0" max="100" step="0.1" placeholder="0.0"></div>
             <div class="fld"><label>Personal en obra</label><input type="number" id="inf-personal" min="0" placeholder="0"></div>
             <div class="fld full"><label>Actividades realizadas</label><textarea id="inf-actividad" placeholder="Describe lo ejecutado hoy…"></textarea></div>
@@ -255,7 +255,7 @@
         <form id="form-factura">
           <div class="form-grid">
             <div class="fld"><label>N° de factura</label><input type="text" id="fac-num" placeholder="F001-0001" required></div>
-            <div class="fld"><label>Proyecto / obra</label><input type="text" id="fac-proyecto" placeholder="Ej. AGROBERRIES" required></div>
+            <div class="fld"><label>Proyecto / obra</label><select id="fac-proyecto" required><option value="">Cargando proyectos…</option></select></div>
             <div class="fld"><label>Monto (USD)</label><input type="number" id="fac-monto" min="0" step="0.01" placeholder="0.00" required></div>
             <div class="fld"><label>Fecha de emisión</label><input type="date" id="fac-fecha" required></div>
             <div class="fld"><label>Estado</label>
@@ -328,6 +328,12 @@
   var BUCKET = 'contratas-docs';
   var sb = null;
   try { sb = window.supabase.createClient(SB_URL, SB_KEY); } catch(e){ console.warn('SB init', e); }
+
+  // ── Cliente GERENCIAL (solo lectura anon) para poblar la lista de proyectos ──
+  var GER_URL = 'https://vsploxglutkbeokumunp.supabase.co';
+  var GER_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+  var gsb = null;
+  try { gsb = window.supabase.createClient(GER_URL, GER_KEY); } catch(e){ console.warn('GER init', e); }
 
   // ── Estado (en memoria; persistido en Supabase) ──
   var informes = [];
@@ -597,8 +603,30 @@
     $('#k-docs').textContent = docs.length;
   }
 
+  // ── Lista de proyectos (desde instancia gerencial) para los selectores ──
+  async function loadProyectos(){
+    var sels = [ $('#inf-proyecto'), $('#fac-proyecto') ];
+    if(!gsb){
+      sels.forEach(function(sel){ if(sel) sel.innerHTML = '<option value="">Sin conexión a proyectos</option>'; });
+      return;
+    }
+    try{
+      var res = await gsb.from('proyectos').select('nombre').eq('activo', true).order('nombre');
+      if(res.error){ console.warn('proyectos', res.error); return; }
+      var names = (res.data||[]).map(function(r){ return r.nombre; }).filter(Boolean);
+      sels.forEach(function(sel){
+        if(!sel) return;
+        var prev = sel.value;
+        sel.innerHTML = '<option value="">— Selecciona un proyecto —</option>' +
+          names.map(function(n){ return '<option value="'+esc(n)+'">'+esc(n)+'</option>'; }).join('');
+        if(prev) sel.value = prev;
+      });
+    }catch(e){ console.warn('loadProyectos', e); }
+  }
+
   // ── Init ──
   renderInformes(); renderFacturas(); renderDocs(); renderResumen();
+  loadProyectos();
   if(window.lucide) lucide.createIcons();
 
   (async function init(){
