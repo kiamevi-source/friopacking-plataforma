@@ -16363,6 +16363,11 @@ W.renderProjects = function(){
         <span class="loc">◉ ${(p.dist||'').toUpperCase()}${p.dist&&p.dep?', ':''}${p.dep||''}</span>
         <span class="days ${daysCls}">${daysTxt}</span>
       </div>
+
+      <div class="spc-actions">
+        <button type="button" class="spc-act" onclick="event.stopPropagation();window.fpProjModal&&fpProjModal('${safeName}')">📋 Ver datos</button>
+        <button type="button" class="spc-act spc-act--edit" onclick="event.stopPropagation();window.fpProjModal&&fpProjModal('${safeName}')">✎ Editar</button>
+      </div>
     </div>`;
   }).join('');
 
@@ -18752,6 +18757,267 @@ function renderFin(p){
 
 console.log('%c✦ Executive Control Center v1.0 — Premium Project Detail',
   'background:linear-gradient(90deg,#0b1a2c,#6366f1,#2dc4a6);color:#fff;padding:5px 14px;border-radius:6px;font-size:11px;font-weight:700');
+})(window);
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     FP · Editor de Proyectos — "Ver datos" / "Editar" → persiste en Supabase
+     · Botones en cada tarjeta (#proj-grid) abren un modal con todos los
+       campos editables (incluida la asignación de supervisor / asistentes).
+     · Guardar → UPDATE proyectos en Supabase ⇒ se refleja para todos los
+       que ingresen (el cambio NO es local).
+     · Lee la fila fresca de Supabase al abrir, para mostrar datos vigentes.
+     ═══════════════════════════════════════════════════════════════════ -->
+<style id="fp-proj-editor-css">
+.spc-actions{display:flex;gap:7px;margin-top:9px;padding-top:9px;border-top:1px solid rgba(15,23,42,.07)}
+.spc-act{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;height:30px;padding:0 10px;font:600 11.5px Inter,system-ui,sans-serif;color:#475569;background:#fff;border:1px solid rgba(15,23,42,.14);border-radius:8px;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.spc-act:hover{background:rgba(15,23,42,.05)}
+.spc-act--edit{color:#1d6fc0;border-color:rgba(46,125,209,.32);background:rgba(46,125,209,.06)}
+.spc-act--edit:hover{background:rgba(46,125,209,.13)}
+
+#fp-pm-ov{position:fixed;inset:0;z-index:99999;display:none;align-items:flex-start;justify-content:center;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);overflow-y:auto;padding:40px 16px;box-sizing:border-box}
+#fp-pm-ov.on{display:flex}
+#fp-pm{width:100%;max-width:640px;background:#fff;border-radius:16px;box-shadow:0 24px 70px -20px rgba(15,23,42,.55);font-family:Inter,system-ui,sans-serif;color:#0f1e35;overflow:hidden;animation:fpPmIn .18s ease}
+@keyframes fpPmIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#fp-pm-head{display:flex;align-items:flex-start;gap:12px;padding:18px 22px;border-bottom:1px solid rgba(15,23,42,.08);background:linear-gradient(180deg,#fff,#fafbfd)}
+#fp-pm-head .htxt{flex:1;min-width:0}
+#fp-pm-head h3{margin:0;font-size:17px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis}
+#fp-pm-head .sub{font-size:11.5px;color:#64748b;font-weight:600;margin-top:3px}
+#fp-pm-x{width:30px;height:30px;border:0;background:rgba(15,23,42,.05);border-radius:8px;font-size:16px;color:#475569;cursor:pointer;flex-shrink:0;line-height:1}
+#fp-pm-x:hover{background:rgba(15,23,42,.1)}
+#fp-pm-body{padding:18px 22px;max-height:60vh;overflow-y:auto}
+#fp-pm-loading{padding:46px;text-align:center;color:#64748b;font-size:13px;font-weight:600}
+.fp-pm-grp{margin-bottom:17px}
+.fp-pm-grp:last-child{margin-bottom:2px}
+.fp-pm-grp-t{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#94a3b8;margin:0 0 9px}
+.fp-pm-grp.assign{background:rgba(46,125,209,.05);border:1px solid rgba(46,125,209,.18);border-radius:12px;padding:13px 14px 14px}
+.fp-pm-grp.assign .fp-pm-grp-t{color:#1d6fc0}
+.fp-pm-row{display:grid;grid-template-columns:repeat(2,1fr);gap:11px 13px}
+.fp-pm-f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fp-pm-f.full{grid-column:1/-1}
+.fp-pm-f label{font-size:11px;font-weight:700;color:#475569}
+.fp-pm-f input,.fp-pm-f select{height:36px;padding:0 11px;font:600 13px Inter,system-ui,sans-serif;color:#0f1e35;background:#fff;border:1px solid rgba(15,23,42,.16);border-radius:9px;outline:none;transition:border-color .15s,box-shadow .15s;width:100%;box-sizing:border-box}
+.fp-pm-f input:focus,.fp-pm-f select:focus{border-color:#2E7DD1;box-shadow:0 0 0 3px rgba(46,125,209,.14)}
+.fp-pm-f .hint{font-size:10px;color:#94a3b8;font-weight:500}
+#fp-pm-foot{display:flex;align-items:center;gap:12px;padding:14px 22px;border-top:1px solid rgba(15,23,42,.08);background:#fafbfd}
+#fp-pm-msg{flex:1;font-size:12px;font-weight:700}
+#fp-pm-msg.ok{color:#1a7d5e}#fp-pm-msg.err{color:#c0453b}#fp-pm-msg.warn{color:#a9761b}#fp-pm-msg.info{color:#1d6fc0}
+.fp-pm-btn{height:38px;padding:0 18px;font:700 13px Inter,system-ui,sans-serif;border-radius:9px;cursor:pointer;border:1px solid transparent}
+.fp-pm-btn.ghost{background:#fff;color:#475569;border-color:rgba(15,23,42,.16)}
+.fp-pm-btn.ghost:hover{background:rgba(15,23,42,.05)}
+.fp-pm-btn.save{background:#2E7DD1;color:#fff}
+.fp-pm-btn.save:hover{background:#256bb5}
+.fp-pm-btn:disabled{opacity:.6;cursor:wait}
+@media(max-width:560px){.fp-pm-row{grid-template-columns:1fr}}
+</style>
+<script>
+(function(W){
+  'use strict';
+
+  var FIELDS=[
+    {k:'nombre',           l:'Nombre del proyecto',     t:'text',   g:'id',   full:true, hint:'Cambiar el nombre puede desvincular reportes históricos'},
+    {k:'cod_proyecto',     l:'Código',                  t:'text',   g:'id'},
+    {k:'estado',           l:'Estado',                  t:'select', g:'id',   opts:['En progreso','Por Iniciar','Con obs','Pendiente Valorización','Suspendido','Cerrado']},
+    {k:'categoria',        l:'Categoría',               t:'text',   g:'id'},
+    {k:'supervisor',       l:'👷 Supervisor',           t:'text',   g:'assign', list:true},
+    {k:'asistente',        l:'🧑‍💼 Asistente(s)',        t:'text',   g:'assign', list:true, hint:'Separa varios con coma'},
+    {k:'supervisor_email', l:'✉️ Email del supervisor',  t:'email',  g:'assign', full:true},
+    {k:'zona',             l:'Zona',                    t:'select', g:'loc',  opts:['','Norte','Centro','Sur']},
+    {k:'departamento',     l:'Departamento',            t:'text',   g:'loc'},
+    {k:'provincia',        l:'Provincia',               t:'text',   g:'loc'},
+    {k:'distrito',         l:'Distrito',                t:'text',   g:'loc'},
+    {k:'direccion',        l:'Dirección',               t:'text',   g:'loc',  full:true},
+    {k:'venta',            l:'Venta (US$)',             t:'number', g:'com'},
+    {k:'facturado',        l:'Facturado (US$)',         t:'number', g:'com'},
+    {k:'fecha_ini_contractual', l:'Inicio contractual', t:'date',  g:'fec'},
+    {k:'fecha_fin_contractual', l:'Fin contractual',    t:'date',  g:'fec'},
+    {k:'fecha_ini_real',        l:'Inicio real',        t:'date',  g:'fec'},
+    {k:'fecha_fin_real',        l:'Fin real',           t:'date',  g:'fec'}
+  ];
+  var GROUPS=[
+    {g:'id',     t:'Identificación'},
+    {g:'assign', t:'Asignación de equipo', cls:'assign'},
+    {g:'loc',    t:'Ubicación'},
+    {g:'com',    t:'Comercial'},
+    {g:'fec',    t:'Fechas'}
+  ];
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function dbClient(){ try{ return (typeof W.getSB==='function')?W.getSB():null; }catch(e){ return null; } }
+
+  // Sugerencias de supervisores/asistentes a partir de los proyectos en memoria
+  function suggestList(){
+    var s={};
+    (W.PROJECTS||[]).forEach(function(p){
+      if(p.sup) s[p.sup]=1;
+      if(p.asist) String(p.asist).split(',').forEach(function(a){a=a.trim();if(a)s[a]=1;});
+    });
+    return Object.keys(s).sort();
+  }
+
+  // Fallback: arma una "fila" a partir del objeto en memoria (si no hay Supabase)
+  function rowFromP(p){
+    return {
+      nombre:p.name, cod_proyecto:'', estado:p._dbEstado||p.estado||'', categoria:p.tipo||'',
+      supervisor:p.sup||'', asistente:p.asist||'', supervisor_email:'',
+      zona:p.zona||'', departamento:p.dep||'', provincia:p.prov||'', distrito:p.dist||'', direccion:p.direccion||'',
+      venta:p.venta||'', facturado:p.fact||'',
+      fecha_ini_contractual:p._ci||p.ci||'', fecha_fin_contractual:p._cf||p.cf||'',
+      fecha_ini_real:p.ri||'', fecha_fin_real:p.rf||''
+    };
+  }
+
+  var els={};
+  function ensureModal(){
+    if(document.getElementById('fp-pm-ov')) return;
+    var ov=document.createElement('div');
+    ov.id='fp-pm-ov';
+    ov.innerHTML=
+      '<div id="fp-pm" role="dialog" aria-modal="true">'+
+        '<div id="fp-pm-head">'+
+          '<div class="htxt"><h3 id="fp-pm-title">Proyecto</h3><div class="sub" id="fp-pm-sub"></div></div>'+
+          '<button id="fp-pm-x" type="button" title="Cerrar">✕</button>'+
+        '</div>'+
+        '<div id="fp-pm-body"></div>'+
+        '<div id="fp-pm-foot">'+
+          '<span id="fp-pm-msg"></span>'+
+          '<button class="fp-pm-btn ghost" id="fp-pm-cancel" type="button">Cancelar</button>'+
+          '<button class="fp-pm-btn save" id="fp-pm-save" type="button">💾 Guardar</button>'+
+        '</div>'+
+      '</div>'+
+      '<datalist id="fp-pm-sugs"></datalist>';
+    document.body.appendChild(ov);
+    els.ov=ov;
+    els.title=ov.querySelector('#fp-pm-title');
+    els.sub=ov.querySelector('#fp-pm-sub');
+    els.body=ov.querySelector('#fp-pm-body');
+    els.msg=ov.querySelector('#fp-pm-msg');
+    els.save=ov.querySelector('#fp-pm-save');
+    els.sugs=ov.querySelector('#fp-pm-sugs');
+    ov.querySelector('#fp-pm-x').addEventListener('click', close);
+    ov.querySelector('#fp-pm-cancel').addEventListener('click', close);
+    ov.addEventListener('click', function(e){ if(e.target===ov) close(); });
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape' && ov.classList.contains('on')) close(); });
+  }
+
+  function close(){ if(els.ov){ els.ov.classList.remove('on'); } }
+  function setMsg(txt,kind){ if(!els.msg)return; els.msg.textContent=txt||''; els.msg.className=kind||''; }
+
+  function buildForm(p, row){
+    // datalist de sugerencias
+    els.sugs.innerHTML=suggestList().map(function(s){return '<option value="'+esc(s)+'"></option>';}).join('');
+    var html='';
+    GROUPS.forEach(function(grp){
+      var fs=FIELDS.filter(function(f){return f.g===grp.g;});
+      if(!fs.length) return;
+      html+='<div class="fp-pm-grp '+(grp.cls||'')+'"><div class="fp-pm-grp-t">'+esc(grp.t)+'</div><div class="fp-pm-row">';
+      fs.forEach(function(f){
+        var val=row[f.k]; if(val==null)val='';
+        var fld;
+        if(f.t==='select'){
+          fld='<select id="fp-f-'+f.k+'">'+f.opts.map(function(o){
+            var sel=String(o)===String(val)?' selected':'';
+            return '<option value="'+esc(o)+'"'+sel+'>'+(o===''?'— Sin definir —':esc(o))+'</option>';
+          }).join('')+'</select>';
+        } else {
+          var attrs='id="fp-f-'+f.k+'" type="'+f.t+'" value="'+esc(val)+'"';
+          if(f.list) attrs+=' list="fp-pm-sugs"';
+          if(f.t==='number') attrs+=' step="any"';
+          fld='<input '+attrs+'>';
+        }
+        html+='<div class="fp-pm-f'+(f.full?' full':'')+'"><label for="fp-f-'+f.k+'">'+esc(f.l)+'</label>'+fld+(f.hint?'<span class="hint">'+esc(f.hint)+'</span>':'')+'</div>';
+      });
+      html+='</div></div>';
+    });
+    els.body.innerHTML=html;
+    els.sub.textContent='Edita los campos y guarda — los cambios se sincronizan con Supabase para todos.';
+    // (re)cablear el botón guardar con esta fila/proyecto
+    var saveBtn=els.save;
+    var fresh=saveBtn.cloneNode(true); saveBtn.parentNode.replaceChild(fresh, saveBtn); els.save=fresh;
+    els.save.addEventListener('click', function(){ doSave(p, row); });
+  }
+
+  function doSave(p, orig){
+    var db=dbClient();
+    if(!db || !p._dbId){ setMsg('Sin conexión a Supabase — no se puede guardar.','err'); return; }
+    var patch={};
+    FIELDS.forEach(function(f){
+      var el=document.getElementById('fp-f-'+f.k);
+      if(!el) return;
+      var v=el.value;
+      if(f.t==='number'){ v=(v===''||v==null)?null:parseFloat(v); if(isNaN(v))v=null; }
+      else { v=(v==null?'':v).trim(); if(v==='') v=null; }
+      var o=orig[f.k]; if(o===''||o===undefined) o=null;
+      var oCmp=o==null?'':(f.t==='number'?String(parseFloat(o)):String(o));
+      var nCmp=v==null?'':String(v);
+      if(oCmp!==nCmp) patch[f.k]=v;
+    });
+    if(Object.keys(patch).length===0){ setMsg('No hay cambios para guardar.','warn'); return; }
+
+    els.save.disabled=true; setMsg('Guardando en Supabase…','info');
+    db.from('proyectos').update(patch).eq('id', p._dbId).select().then(function(res){
+      els.save.disabled=false;
+      if(res.error){ setMsg('Error: '+(res.error.message||'no se pudo guardar'),'err'); return; }
+      applyToMemory(p, patch);
+      setMsg('✓ Guardado · sincronizado para todos','ok');
+      try{ if(typeof W.renderProjects==='function') W.renderProjects(); }catch(e){}
+      setTimeout(close, 950);
+    }, function(err){
+      els.save.disabled=false;
+      setMsg('Error: '+(err&&err.message||'no se pudo guardar'),'err');
+    });
+  }
+
+  function applyToMemory(p, patch){
+    if('nombre' in patch)        p.name=patch.nombre||p.name;
+    if('supervisor' in patch)    p.sup=patch.supervisor||'';
+    if('asistente' in patch)     p.asist=patch.asistente||'';
+    if('departamento' in patch)  p.dep=patch.departamento||'';
+    if('provincia' in patch)     p.prov=patch.provincia||'';
+    if('distrito' in patch)      p.dist=patch.distrito||'';
+    if('direccion' in patch)     p.direccion=patch.direccion||'';
+    if('zona' in patch)          p.zona=patch.zona||p.zona;
+    if('venta' in patch)         p.venta=parseFloat(patch.venta)||0;
+    if('facturado' in patch)     p.fact=parseFloat(patch.facturado)||0;
+    if('categoria' in patch)     p.tipo=(W.TIPO_FIX&&W.TIPO_FIX[patch.categoria])||patch.categoria||p.tipo;
+    if('fecha_ini_contractual' in patch){ p.ci=patch.fecha_ini_contractual||p.ci; p._ci=patch.fecha_ini_contractual||p._ci; }
+    if('fecha_fin_contractual' in patch){ p.cf=patch.fecha_fin_contractual||p.cf; p._cf=patch.fecha_fin_contractual||p._cf; }
+    if('fecha_ini_real' in patch) p.ri=patch.fecha_ini_real||p.ri;
+    if('fecha_fin_real' in patch) p.rf=patch.fecha_fin_real||p.rf;
+    if('estado' in patch){
+      p._dbEstado=patch.estado;
+      try{ p.estado=(typeof W.computeDisplayEstado==='function')?W.computeDisplayEstado(patch.estado,p.spi,p._cf,p.valp):patch.estado; }
+      catch(e){ p.estado=patch.estado; }
+    }
+    // Limpiar override local viejo (v6.1) para que Supabase sea la fuente de verdad
+    try{
+      if(typeof store!=='undefined' && store && store.proj_overrides){
+        if(store.proj_overrides[p.name]) delete store.proj_overrides[p.name];
+        if(typeof saveStore==='function') saveStore();
+      }
+    }catch(e){}
+  }
+
+  // ── API pública: abre el modal para un proyecto por nombre ──
+  W.fpProjModal=function(name){
+    var p=(W.PROJECTS||[]).find(function(x){return x.name===name;});
+    if(!p){ console.warn('[fpProjModal] proyecto no encontrado:', name); return; }
+    ensureModal();
+    els.ov.classList.add('on');
+    els.title.textContent=p.name||'Proyecto';
+    setMsg('');
+    els.body.innerHTML='<div id="fp-pm-loading">⏳ Cargando datos del proyecto…</div>';
+    els.sub.textContent='Cargando…';
+
+    var db=dbClient();
+    if(!db || !p._dbId){ buildForm(p, rowFromP(p)); return; }
+    db.from('proyectos').select('*').eq('id', p._dbId).single().then(function(res){
+      if(res.error || !res.data){ buildForm(p, rowFromP(p)); return; }
+      buildForm(p, res.data);
+    }, function(){ buildForm(p, rowFromP(p)); });
+  };
+
+  console.log('%c[fp] Editor de proyectos (Ver datos / Editar → Supabase) activo','background:#2E7DD1;color:#fff;padding:4px 8px;border-radius:4px;font-weight:700');
 })(window);
 </script>
 <!-- auto-deploy enabled via Claude Code hook -->
