@@ -3408,12 +3408,29 @@ console.log('%c[v6 extras] cargado · '+EQUIPOS_SEED.length+' equipos seed · '+
         '<span id="fp-edit-msg" style="font-size:11px;color:var(--muted)"></span>';
       meta.parentNode.insertBefore(bar, meta.nextSibling);
       const msg=document.getElementById('fp-edit-msg');
-      document.getElementById('fp-edit-save').addEventListener('click',()=>{
+      document.getElementById('fp-edit-save').addEventListener('click',async ()=>{
         const newSup = (document.getElementById('fp-edit-sup').value||'').trim();
         const newAs  = (document.getElementById('fp-edit-asist').value||'').trim();
-        store.proj_overrides = store.proj_overrides||{};
-        store.proj_overrides[p.name] = {sup:newSup, asist:newAs};
+        // ── Persistir en Supabase para que el cambio se vea en TODAS las computadoras ──
+        const _db=(window.getSB?window.getSB():null);
+        if(_db && p._dbId){
+          msg.textContent='Guardando en Supabase…'; msg.style.color='var(--muted)';
+          try{
+            const {error}=await _db.from('proyectos')
+              .update({supervisor:newSup||null,asistente:newAs||null})
+              .eq('id',p._dbId);
+            if(error) throw error;
+          }catch(e){
+            msg.textContent='Error: '+(e.message||'no se pudo guardar'); msg.style.color='#e2685f';
+            return;
+          }
+        } else {
+          msg.textContent='Sin conexión a Supabase — no se guardó.'; msg.style.color='#e2685f';
+          return;
+        }
         p.sup=newSup; p.asist=newAs;
+        // Limpiar override local viejo: Supabase es la única fuente de verdad
+        if(store.proj_overrides && store.proj_overrides[p.name]) delete store.proj_overrides[p.name];
         saveStore();
         // Refrescar cabecera meta
         const TI=window.TIPO_ICON||{},EI=window.ESTADO_ICON||{};
@@ -3422,10 +3439,11 @@ console.log('%c[v6 extras] cargado · '+EQUIPOS_SEED.length+' equipos seed · '+
           '<span>'+(TI[p.tipo]||'')+' <b>'+p.tipo+'</b></span> '+
           '<span>💰 <b>'+(window.fmtUSD?window.fmtUSD(p.venta):p.venta)+'</b></span> '+
           '<span>'+(EI[p.estado]||'')+' <b>'+p.estado+'</b></span>';
-        msg.textContent='✓ Guardado';
+        msg.textContent='✓ Guardado para todos';
         msg.style.color='var(--green,#2dc4a6)';
         setTimeout(()=>{msg.textContent='';},2500);
         // Refrescar listas/cards si hay vistas abiertas
+        if(typeof window.renderProjects==='function'){try{window.renderProjects();}catch(_){}}
         if(window.viewRenderers){
           const v=document.querySelector('.tab.active')?.dataset.v;
           if(v && window.viewRenderers[v]) try{window.viewRenderers[v]();}catch(_){}
