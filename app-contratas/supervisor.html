@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Revisión de Facturas · Supervisor · FrioPacking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#14275C; --teal:#2FBCA3; --blue:#4F8DF5;
+    --amber:#F59E2C; --amber-600:#e08a16; --amber-50:#fef6ea;
+    --ink:#0f1b34; --muted:#5b6b86; --line:#e4eaf3;
+    --bg1:#f5f8fd; --bg2:#eef3fb; --card:#ffffff;
+    --ok:#1a7d5e; --ok-bg:#e6f7f0; --warn:#a9761b; --warn-bg:#fdf3e0; --danger:#c0453b; --danger-bg:#fdecea;
+    --shadow:0 18px 50px -20px rgba(20,39,92,.28);
+    --shadow-sm:0 1px 2px rgba(15,23,42,.05),0 4px 14px -8px rgba(15,23,42,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Inter',system-ui,sans-serif;color:var(--ink);
+    background:
+      radial-gradient(1100px 600px at 12% -10%, #fff3e0 0%, transparent 55%),
+      radial-gradient(1000px 620px at 110% 10%, #e9f1ff 0%, transparent 50%),
+      linear-gradient(180deg,var(--bg1),var(--bg2));
+    min-height:100vh;
+  }
+  .font-display{font-family:'Manrope','Inter',sans-serif}
+
+  /* Topbar */
+  .top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 34px;background:linear-gradient(180deg,#0f1e35,#0a1729);color:#fff}
+  .top .brand{display:flex;align-items:center;gap:13px}
+  .top .brand img{height:38px}
+  .top .brand b{font-family:'Manrope',sans-serif;font-weight:800;font-size:15px;letter-spacing:-.01em}
+  .top .brand span{display:block;font-size:11px;color:#8aa0c8;font-weight:500}
+  .top .who{display:flex;align-items:center;gap:12px;font-size:13px;color:#cdd8ec}
+  .lnk{background:none;border:1px solid rgba(255,255,255,.18);color:#cdd8ec;border-radius:9px;padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+  .lnk:hover{background:rgba(255,255,255,.07);color:#fff}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:30px 24px 70px}
+  .page-head{margin-bottom:20px}
+  .page-title{font-size:25px;font-weight:800;letter-spacing:-.02em;color:var(--navy)}
+  .page-sub{margin-top:4px;color:var(--muted);font-size:14px}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px;margin-bottom:22px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:16px 18px;box-shadow:var(--shadow-sm)}
+  .kpi-l{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .kpi-v{font-size:26px;font-weight:800;color:var(--navy);margin-top:7px;line-height:1}
+
+  .tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+  .tab{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit}
+  .tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+  .fac{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-sm);margin-bottom:14px;overflow:hidden}
+  .fac-h{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer}
+  .fac-h:hover{background:#fafcff}
+  .fac-main{flex:1;min-width:0}
+  .fac-num{font-size:15px;font-weight:800;color:var(--navy)}
+  .fac-meta{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .fac-amt{font-size:16px;font-weight:800;color:var(--navy);white-space:nowrap}
+  .tag{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .tag.ok{background:var(--ok-bg);color:var(--ok)} .tag.warn{background:var(--warn-bg);color:var(--warn)}
+  .tag.info{background:#e8f1ff;color:#2266b0} .tag.danger{background:var(--danger-bg);color:var(--danger)}
+  .fac-body{display:none;padding:4px 20px 20px;border-top:1px solid var(--line)}
+  .fac.open .fac-body{display:block}
+  .docs-t{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px}
+  .file-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:#fff;margin-bottom:8px}
+  .file-ic{width:34px;height:34px;border-radius:9px;background:#eef3fb;color:var(--blue);display:grid;place-items:center;flex-shrink:0;font-size:13px;font-weight:800}
+  .file-info{flex:1;min-width:0}
+  .file-name{font-size:13.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .file-meta{font-size:12px;color:var(--muted);margin-top:2px}
+  .btn{display:inline-flex;align-items:center;gap:7px;border:0;cursor:pointer;border-radius:10px;padding:9px 16px;font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--amber),var(--amber-600))}
+  .btn:hover{filter:brightness(1.05)}
+  .btn.ghost{background:#fff;color:var(--navy);border:1.5px solid var(--line)}
+  .btn.ok{background:linear-gradient(135deg,#28a47c,#1a7d5e)}
+  .btn.danger{background:linear-gradient(135deg,#d8675c,#c0453b)}
+  .btn.sm{padding:7px 13px;font-size:12.5px}
+  .acts{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px;align-items:center}
+  .obs-box{background:var(--danger-bg);color:var(--danger);border-radius:10px;padding:10px 13px;font-size:13px;margin-top:12px}
+  .empty{text-align:center;color:var(--muted);font-size:14px;padding:50px 0;background:var(--card);border:1px dashed var(--line);border-radius:16px}
+
+  /* Login */
+  .login{max-width:380px;margin:8vh auto;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:34px 30px;box-shadow:var(--shadow)}
+  .login h1{font-family:'Manrope',sans-serif;font-size:21px;font-weight:800;color:var(--navy);text-align:center}
+  .login p{text-align:center;color:var(--muted);font-size:13.5px;margin:6px 0 22px}
+  .fld{display:flex;flex-direction:column;margin-bottom:14px}
+  .fld label{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .fld input{border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;font-size:14px;font-family:inherit;color:var(--ink);background:#fbfdff}
+  .fld input:focus{outline:none;border-color:var(--amber);background:#fff;box-shadow:0 0 0 3px rgba(245,158,44,.15)}
+  .login .btn{width:100%;justify-content:center;padding:12px}
+  .msg{font-size:13px;text-align:center;margin-top:12px;min-height:18px}
+  .msg.err{color:var(--danger)} .msg.ok{color:var(--ok)}
+
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120%);background:#0f1e3d;color:#fff;padding:13px 20px;border-radius:13px;box-shadow:var(--shadow);display:flex;align-items:center;gap:11px;z-index:60;transition:transform .35s cubic-bezier(.2,.8,.2,1);max-width:90vw}
+  #toast.on{transform:translateX(-50%) translateY(0)}
+  #toast .t-ic{width:26px;height:26px;border-radius:8px;background:var(--amber);display:grid;place-items:center;flex-shrink:0;font-weight:800}
+  #toast .t-t{font-size:13.5px;font-weight:700} #toast .t-s{font-size:12.5px;color:#aebcd6}
+</style>
+</head>
+<body>
+
+  <!-- LOGIN -->
+  <div id="screen-login">
+    <div class="login">
+      <h1 class="font-display">Revisión de Facturas</h1>
+      <p>Acceso para supervisores · FrioPacking</p>
+      <form id="form-login">
+        <div class="fld"><label>Correo</label><input type="email" id="lg-email" placeholder="supervisor@friopacking.pe" required></div>
+        <div class="fld"><label>Contraseña</label><input type="password" id="lg-pass" placeholder="••••••••" required></div>
+        <button type="submit" class="btn" id="lg-btn">Ingresar</button>
+        <div class="msg" id="lg-msg"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="screen-app" style="display:none">
+    <div class="top">
+      <div class="brand">
+        <img src="assets/logo-light.png" onerror="this.src='../assets/logo-full.png'" alt="FrioPacking">
+        <div><b>Revisión de Facturas</b><span>Panel del Supervisor</span></div>
+      </div>
+      <div class="who"><span id="sup-email">—</span><button class="lnk" id="btn-logout">Salir</button></div>
+    </div>
+
+    <div class="wrap">
+      <div class="page-head">
+        <h1 class="page-title font-display">Facturas de contratas</h1>
+        <p class="page-sub">Revisa los documentos de respaldo y aprueba u observa cada factura.</p>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-l">Pendientes</div><div class="kpi-v" id="k-pend">0</div></div>
+        <div class="kpi"><div class="kpi-l">Aprobadas</div><div class="kpi-v" id="k-apr">0</div></div>
+        <div class="kpi"><div class="kpi-l">Observadas</div><div class="kpi-v" id="k-obs">0</div></div>
+        <div class="kpi"><div class="kpi-l">Monto pendiente</div><div class="kpi-v" id="k-monto">$0</div></div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-f="pendiente">Pendientes</button>
+        <button class="tab" data-f="aprobada">Aprobadas</button>
+        <button class="tab" data-f="observada">Observadas</button>
+        <button class="tab" data-f="todas">Todas</button>
+      </div>
+
+      <div id="list"></div>
+    </div>
+  </div>
+
+  <div id="toast"><div class="t-ic">✓</div><div><div class="t-t" id="toast-t"></div><div class="t-s" id="toast-s"></div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  // Misma instancia Supabase que la app de Contratas (fuente única)
+  var SB_URL = 'https://uijuokwcsvnlzxoyvrcj.supabase.co';
+  var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpanVva3djc3ZubHp4b3l2cmNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTUwMDgsImV4cCI6MjA5NjA5MTAwOH0.-JtaWOf3QPRB5W1Z7rLp5Rabr83xdWIqX4GngkpFeJU';
+  var BUCKET = 'contratas-docs';
+  var sb = null;
+  try { sb = window.supabase.createClient(SB_URL, SB_KEY); } catch(e){ console.warn('SB init', e); }
+
+  var facturas = [], docs = [], FILTER = 'pendiente', EMAIL = '';
+
+  var $ = function(s){ return document.querySelector(s); };
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function money(n){ n=Number(n)||0; return '$'+n.toLocaleString('en-US',{maximumFractionDigits:0}); }
+  function money2(n){ n=Number(n)||0; return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function fmtDate(iso){ if(!iso) return '—'; var d=new Date(iso+'T12:00:00'); var m=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']; return d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear(); }
+  function fileSize(b){ b=Number(b)||0; if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+  var toastTimer;
+  function toast(t,s){ $('#toast-t').textContent=t; $('#toast-s').textContent=s||''; var el=$('#toast'); el.classList.add('on'); clearTimeout(toastTimer); toastTimer=setTimeout(function(){ el.classList.remove('on'); },3200); }
+  var REV = { pendiente:{t:'Pendiente',c:'warn'}, aprobada:{t:'Aprobada',c:'ok'}, observada:{t:'Observada',c:'danger'} };
+  var EST = { emitida:{t:'Emitida',c:'info'}, presentada:{t:'Presentada',c:'warn'}, pagada:{t:'Pagada',c:'ok'} };
+
+  // ── LOGIN ──
+  $('#form-login').addEventListener('submit', async function(e){
+    e.preventDefault();
+    if(!sb){ setMsg('Sin conexión a Supabase','err'); return; }
+    var btn=$('#lg-btn'); btn.disabled=true; setMsg('Verificando…','');
+    var em=$('#lg-email').value.trim(), pw=$('#lg-pass').value;
+    var r = await sb.auth.signInWithPassword({ email:em, password:pw });
+    if(r.error){ btn.disabled=false; setMsg(r.error.message,'err'); return; }
+    var ok = await checkSupervisor();
+    if(!ok){ await sb.auth.signOut(); btn.disabled=false; setMsg('Esta cuenta no está autorizada como supervisor.','err'); return; }
+    btn.disabled=false;
+    enterApp(r.data.user.email);
+  });
+  function setMsg(t,c){ var m=$('#lg-msg'); m.textContent=t; m.className='msg'+(c?(' '+c):''); }
+
+  async function checkSupervisor(){
+    try{ var r = await sb.rpc('is_contratas_supervisor'); return !r.error && r.data===true; }
+    catch(e){ return false; }
+  }
+
+  async function enterApp(email){
+    EMAIL = email || '';
+    $('#sup-email').textContent = EMAIL;
+    $('#screen-login').style.display='none';
+    $('#screen-app').style.display='block';
+    await loadAll();
+  }
+
+  $('#btn-logout').addEventListener('click', async function(){
+    if(sb) await sb.auth.signOut();
+    location.reload();
+  });
+
+  // ── DATA ──
+  async function loadAll(){
+    if(!sb) return;
+    var fr = await sb.from('contratas_facturas').select('*').order('created_at',{ascending:false});
+    if(fr.error){ toast('Error al cargar facturas', fr.error.message); return; }
+    facturas = fr.data || [];
+    var dr = await sb.from('contratas_documentos').select('*').order('created_at',{ascending:true});
+    docs = (dr.error? [] : (dr.data||[]));
+    renderKpis(); render();
+  }
+
+  function renderKpis(){
+    var pend=facturas.filter(function(f){return (f.estado_revision||'pendiente')==='pendiente';});
+    $('#k-pend').textContent = pend.length;
+    $('#k-apr').textContent  = facturas.filter(function(f){return f.estado_revision==='aprobada';}).length;
+    $('#k-obs').textContent  = facturas.filter(function(f){return f.estado_revision==='observada';}).length;
+    var mp=0; pend.forEach(function(f){ mp+=Number(f.monto)||0; });
+    $('#k-monto').textContent = money(mp);
+  }
+
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.addEventListener('click', function(){
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active');});
+      t.classList.add('active'); FILTER=t.dataset.f; render();
+    });
+  });
+
+  function render(){
+    var box=$('#list');
+    var rows = facturas.filter(function(f){
+      var rv=f.estado_revision||'pendiente';
+      return FILTER==='todas' ? true : rv===FILTER;
+    });
+    if(!rows.length){ box.innerHTML='<div class="empty">No hay facturas en esta categoría.</div>'; return; }
+    box.innerHTML = rows.map(function(f){
+      var rv=REV[f.estado_revision]||REV.pendiente, es=EST[f.estado]||EST.emitida;
+      var fdocs = docs.filter(function(d){ return d.factura_id===f.id; });
+      var docHtml = fdocs.length ? fdocs.map(function(d){
+        return '<div class="file-row"><div class="file-ic">'+esc((d.name.split('.').pop()||'?').slice(0,4).toUpperCase())+'</div>'+
+          '<div class="file-info"><div class="file-name">'+esc(d.name)+'</div><div class="file-meta">'+fileSize(d.size)+'</div></div>'+
+          '<button class="btn ghost sm" data-open="'+esc(d.path)+'">Abrir</button></div>';
+      }).join('') : '<div class="file-meta" style="padding:6px 0">Esta factura no tiene documentos adjuntos.</div>';
+      var obsHtml = (f.estado_revision==='observada' && f.obs_supervisor) ? '<div class="obs-box">⚠ Observación: '+esc(f.obs_supervisor)+'</div>' : '';
+      var revInfo = f.revisado_por ? '<div class="file-meta" style="margin-top:10px">Revisado por '+esc(f.revisado_por)+(f.revisado_at?(' · '+fmtDate(String(f.revisado_at).slice(0,10))):'')+'</div>' : '';
+      return '<div class="fac" data-id="'+f.id+'">'+
+        '<div class="fac-h" data-toggle="'+f.id+'">'+
+          '<div class="fac-main"><div class="fac-num">'+esc(f.num)+' · <span style="font-weight:600;color:var(--muted)">'+esc(f.contrata||'contrata')+'</span></div>'+
+          '<div class="fac-meta">'+esc(f.proyecto)+' · '+fmtDate(f.fecha)+' · <span class="tag '+es.c+'">'+es.t+'</span> · 📎 '+fdocs.length+'</div></div>'+
+          '<div class="fac-amt">'+money2(f.monto)+'</div>'+
+          '<span class="tag '+rv.c+'">'+rv.t+'</span>'+
+        '</div>'+
+        '<div class="fac-body">'+
+          '<div class="docs-t">Documentos de respaldo</div>'+docHtml+obsHtml+revInfo+
+          '<div class="acts">'+
+            '<button class="btn ok sm" data-apr="'+f.id+'">✓ Aprobar</button>'+
+            '<button class="btn danger sm" data-obs="'+f.id+'">⚠ Observar</button>'+
+            (f.estado_revision!=='pendiente'?'<button class="btn ghost sm" data-reset="'+f.id+'">↺ Volver a pendiente</button>':'')+
+          '</div>'+
+        '</div></div>';
+    }).join('');
+    box.querySelectorAll('[data-toggle]').forEach(function(h){ h.addEventListener('click', function(){ h.parentElement.classList.toggle('open'); }); });
+    box.querySelectorAll('[data-open]').forEach(function(b){ b.addEventListener('click', function(e){ e.stopPropagation(); openDoc(b.dataset.open); }); });
+    box.querySelectorAll('[data-apr]').forEach(function(b){ b.addEventListener('click', function(){ setRev(b.dataset.apr,'aprobada'); }); });
+    box.querySelectorAll('[data-obs]').forEach(function(b){ b.addEventListener('click', function(){ var o=prompt('Motivo de la observación:'); if(o!=null && o.trim()) setRev(b.dataset.obs,'observada',o.trim()); }); });
+    box.querySelectorAll('[data-reset]').forEach(function(b){ b.addEventListener('click', function(){ setRev(b.dataset.reset,'pendiente'); }); });
+  }
+
+  async function openDoc(path){
+    if(!sb) return;
+    var r = await sb.storage.from(BUCKET).createSignedUrl(path, 3600);
+    if(r.error){ toast('No se pudo abrir', r.error.message); return; }
+    window.open(r.data.signedUrl, '_blank', 'noopener');
+  }
+
+  async function setRev(id, estado, obs){
+    if(!sb) return;
+    var patch = { estado_revision:estado, revisado_por:EMAIL, revisado_at:new Date().toISOString(), obs_supervisor: estado==='observada' ? (obs||null) : null };
+    var r = await sb.from('contratas_facturas').update(patch).eq('id', id).select().single();
+    if(r.error){ toast('No se pudo actualizar', r.error.message); return; }
+    var idx = facturas.findIndex(function(f){ return f.id===id; });
+    if(idx>=0) facturas[idx] = r.data;
+    renderKpis(); render();
+    toast('Factura '+(estado==='aprobada'?'aprobada':estado==='observada'?'observada':'reabierta'), r.data.num);
+  }
+
+  // ── Sesión persistida ──
+  (async function init(){
+    if(!sb){ setMsg('No se pudo iniciar Supabase','err'); return; }
+    try{
+      var s = await sb.auth.getSession();
+      if(s.data.session){
+        var ok = await checkSupervisor();
+        if(ok){ enterApp(s.data.session.user.email); return; }
+        await sb.auth.signOut();
+      }
+    }catch(e){}
+  })();
+})();
+</script>
+</body>
+</html>

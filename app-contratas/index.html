@@ -265,6 +265,16 @@
                 <option value="pagada">Pagada</option>
               </select>
             </div>
+            <div class="fld full">
+              <label>Documentos de respaldo · se envían al supervisor</label>
+              <div class="dropzone" id="fac-dropzone" style="padding:26px 24px">
+                <div class="dz-ic"><svg data-lucide="paperclip"></svg></div>
+                <div class="dz-t">Adjunta los documentos de esta factura</div>
+                <div class="dz-s">PDF, imágenes, Excel, Word — hasta 25 MB por archivo</div>
+                <input type="file" id="fac-files" multiple style="display:none">
+              </div>
+              <div class="file-list" id="fac-file-list"></div>
+            </div>
           </div>
           <div class="form-actions">
             <button type="reset" class="btn ghost">Limpiar</button>
@@ -276,7 +286,7 @@
         <div class="panel-h"><h3>Mis facturas</h3><span class="count" id="fac-count">0</span></div>
         <div style="overflow-x:auto">
           <table id="fac-table">
-            <thead><tr><th>N° factura</th><th>Proyecto</th><th>Emisión</th><th>Monto</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>N° factura</th><th>Proyecto</th><th>Emisión</th><th>Monto</th><th>Estado</th><th>Docs</th><th>Revisión</th><th></th></tr></thead>
             <tbody id="fac-body"></tbody>
           </table>
         </div>
@@ -324,6 +334,7 @@
   var facturas = [];
   var docs     = [];
   var USER_ID  = null;
+  var USER_EMAIL = null;
 
   // ── Helpers ──
   var $ = function(s){ return document.querySelector(s); };
@@ -409,6 +420,36 @@
   var formFac = $('#form-factura');
   $('#fac-fecha').value = new Date().toISOString().slice(0,10);
   var ESTADO = { emitida:{t:'Emitida',c:'info'}, presentada:{t:'Presentada',c:'warn'}, pagada:{t:'Pagada',c:'ok'} };
+  var ESTADO_REV = { pendiente:{t:'Pendiente',c:'warn'}, aprobada:{t:'Aprobada',c:'ok'}, observada:{t:'Observada',c:'danger'} };
+
+  // ── Documentos adjuntos a la factura (pendientes de subir hasta guardar) ──
+  var facPending = [];
+  var facDz = $('#fac-dropzone'), facInput = $('#fac-files');
+  facDz.addEventListener('click', function(){ facInput.click(); });
+  facDz.addEventListener('dragover', function(e){ e.preventDefault(); facDz.classList.add('drag'); });
+  facDz.addEventListener('dragleave', function(){ facDz.classList.remove('drag'); });
+  facDz.addEventListener('drop', function(e){ e.preventDefault(); facDz.classList.remove('drag'); addFacPending(e.dataTransfer.files); });
+  facInput.addEventListener('change', function(){ addFacPending(facInput.files); facInput.value=''; });
+  function addFacPending(list){
+    Array.prototype.slice.call(list).forEach(function(f){
+      if(f.size > MAX){ toast('Archivo muy grande', f.name + ' supera 25 MB'); return; }
+      facPending.push(f);
+    });
+    renderFacPending();
+  }
+  function renderFacPending(){
+    var box = $('#fac-file-list');
+    if(!facPending.length){ box.innerHTML=''; return; }
+    box.innerHTML = facPending.map(function(f,i){
+      return '<div class="file-row"><div class="file-ic"><svg data-lucide="file"></svg></div>'+
+        '<div class="file-info"><div class="file-name">'+esc(f.name)+'</div>'+
+        '<div class="file-meta">'+fileSize(f.size)+'</div></div>'+
+        '<button type="button" class="row-act" data-rm-pend="'+i+'" title="Quitar"><svg data-lucide="x"></svg></button></div>';
+    }).join('');
+    box.querySelectorAll('[data-rm-pend]').forEach(function(b){ b.addEventListener('click', function(){ facPending.splice(+b.dataset.rmPend,1); renderFacPending(); }); });
+    if(window.lucide) lucide.createIcons();
+  }
+
   async function loadFacturas(){
     if(!sb) return;
     var res = await sb.from('contratas_facturas').select('*').order('created_at',{ascending:false});
@@ -422,18 +463,34 @@
       proyecto: $('#fac-proyecto').value.trim(),
       monto: parseFloat($('#fac-monto').value)||0,
       fecha: $('#fac-fecha').value,
-      estado: $('#fac-estado').value
+      estado: $('#fac-estado').value,
+      contrata: USER_EMAIL || null
     };
     if(!payload.num || !payload.proyecto || !payload.monto){ toast('Datos incompletos','Completa N°, proyecto y monto'); return; }
     if(!sb){ toast('Sin conexión','No se pudo conectar a Supabase'); return; }
+    if(!USER_ID){ toast('Sin sesión','Ingresa desde el portal para registrar'); return; }
     var btn = formFac.querySelector('[type=submit]'); btn.disabled = true;
+    payload.estado_revision = 'pendiente';
     var res = await sb.from('contratas_facturas').insert(payload).select().single();
+    if(res.error){ btn.disabled = false; toast('No se pudo guardar', res.error.message); return; }
+    var fac = res.data;
+    // Subir documentos de respaldo vinculados a la factura
+    var subidos = 0;
+    for (var i=0; i<facPending.length; i++){
+      var f = facPending[i];
+      var path = USER_ID + '/' + Date.now() + '_' + safeName(f.name);
+      var up = await sb.storage.from(BUCKET).upload(path, f, { contentType: f.type || undefined });
+      if(up.error){ toast('Un documento no se subió', f.name + ' · ' + up.error.message); continue; }
+      var dres = await sb.from('contratas_documentos').insert({ name:f.name, size:f.size, type:f.type, path:path, factura_id:fac.id, contrata:USER_EMAIL||null }).select().single();
+      if(dres.error){ toast('Un documento no se registró', dres.error.message); continue; }
+      docs.unshift(dres.data); subidos++;
+    }
     btn.disabled = false;
-    if(res.error){ toast('No se pudo guardar', res.error.message); return; }
-    facturas.unshift(res.data);
+    facturas.unshift(fac);
+    facPending = []; renderFacPending();
     formFac.reset(); $('#fac-fecha').value = new Date().toISOString().slice(0,10);
-    renderFacturas(); renderResumen();
-    toast('Factura registrada', res.data.num + ' · ' + money2(res.data.monto));
+    renderFacturas(); renderDocs(); renderResumen();
+    toast('Factura enviada al supervisor', fac.num + ' · ' + money2(fac.monto) + (subidos?(' · '+subidos+' doc(s)'):''));
   });
   async function delFactura(id){
     if(!sb) return;
@@ -445,12 +502,17 @@
   function renderFacturas(){
     $('#fac-count').textContent = facturas.length;
     var body = $('#fac-body');
-    if(!facturas.length){ body.innerHTML = '<tr><td colspan="6"><div class="empty">No hay facturas registradas.</div></td></tr>'; }
+    if(!facturas.length){ body.innerHTML = '<tr><td colspan="8"><div class="empty">No hay facturas registradas.</div></td></tr>'; }
     else {
       body.innerHTML = facturas.map(function(r){
         var e = ESTADO[r.estado] || ESTADO.emitida;
+        var rv = ESTADO_REV[r.estado_revision] || ESTADO_REV.pendiente;
+        var nd = docs.filter(function(d){ return d.factura_id === r.id; }).length;
+        var obs = (r.estado_revision==='observada' && r.obs_supervisor) ? ' title="'+esc(r.obs_supervisor)+'"' : '';
         return '<tr><td><b>'+esc(r.num)+'</b></td><td>'+esc(r.proyecto)+'</td><td>'+fmtDate(r.fecha)+'</td>'+
           '<td><b>'+money2(r.monto)+'</b></td><td><span class="tag '+e.c+'">'+e.t+'</span></td>'+
+          '<td>'+(nd?('<span class="tag info">📎 '+nd+'</span>'):'<span style="color:var(--muted)">—</span>')+'</td>'+
+          '<td><span class="tag '+rv.c+'"'+obs+'>'+rv.t+'</span></td>'+
           '<td style="text-align:right"><button class="row-act" data-del-fac="'+r.id+'" title="Eliminar"><svg data-lucide="trash-2"></svg></button></td></tr>';
       }).join('');
     }
@@ -488,7 +550,7 @@
       var path = USER_ID + '/' + Date.now() + '_' + safeName(f.name);
       var up = await sb.storage.from(BUCKET).upload(path, f, { contentType: f.type || undefined });
       if(up.error){ toast('No se pudo subir', f.name + ' · ' + up.error.message); continue; }
-      var res = await sb.from('contratas_documentos').insert({ name:f.name, size:f.size, type:f.type, path:path }).select().single();
+      var res = await sb.from('contratas_documentos').insert({ name:f.name, size:f.size, type:f.type, path:path, contrata:USER_EMAIL||null }).select().single();
       if(res.error){ toast('No se pudo registrar', res.error.message); continue; }
       docs.unshift(res.data); added++;
     }
@@ -549,6 +611,7 @@
     }
     USER_ID = session.user.id;
     var email = session.user.email || 'Contrata';
+    USER_EMAIL = email;
     try{ localStorage.setItem('fp_ct_name', email); }catch(e){}
     setIdentity(email);
     await Promise.all([ loadInformes(), loadFacturas(), loadDocs() ]);
