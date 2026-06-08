@@ -11991,5 +11991,23 @@ let _dashSources = null;
   filter: blur(50px);
 }
 </style>
+
+<!-- ── Asistente FrioPacking (chatbot · datos en vivo, escopado por sesión) ── -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>
+  window.FP_CHAT_CFG = {
+    sbUrl: 'https://iiceeajjmugtuzcfqggs.supabase.co',
+    sbKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpY2VlYWpqbXVndHV6Y2ZxZ2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODg5OTUsImV4cCI6MjA5NDc2NDk5NX0.xeOFlxEGoPsqO5mBLz2_o6UqMCiUw5t8Aghg0ieRqs4',
+    sbTokenKey: 'sb_token',   // usa la sesión del supervisor → RLS escopa sus datos
+    requireToken: true,       // el FAB aparece solo tras iniciar sesión
+    brand: {
+      title: 'Asistente Supervisor',
+      subtitle: 'Tus proyectos · FrioPacking',
+      greet: '¡Hola! 👋 Soy tu <b>Asistente</b>. Consulto en vivo tus proyectos, reportes diarios y contratistas.<br>¿Qué necesitas saber?'
+    },
+    caps: { financials: false, valorizacion: false, servicios: false, evalSup: false, evalCon: true, personal: true }
+  };
+</script>
+<script src="js/chatbot.js?v=20260607a"></script>
 </body>
 </html>
