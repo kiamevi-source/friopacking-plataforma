@@ -807,8 +807,8 @@ const parseD=s=>s?new Date(s+'T12:00:00'):null;
 const fmtD=d=>d?d.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'}):'—';
 const fmtDshort=d=>d?d.toLocaleDateString('es-PE',{day:'2-digit',month:'short'}):'—';
 const daysBetween=(a,b)=>Math.round((b-a)/86400000);
-const ESTADO_COLOR={'EN PLAN':'ok','LEVE ATRASO':'warn','ATRASADO':'alert','VENCIDO':'alert','ADELANTADO':'ahead','CERRADO':'grey','CERRADO CON OBS':'grey','PAUSA':'info','INICIO':'info','CON OBS':'warn','PEND VAL':'warn','ACTIVO':'ok'};
-const ESTADO_ICON={'EN PLAN':'🟢','LEVE ATRASO':'🟡','ATRASADO':'🔴','VENCIDO':'🚨','ADELANTADO':'🚀','CERRADO':'✅','CERRADO CON OBS':'✅⚠️','PAUSA':'⏸','INICIO':'🔵','CON OBS':'👁','PEND VAL':'💰','ACTIVO':'🟢'};
+const ESTADO_COLOR={'EN PLAN':'ok','LEVE ATRASO':'warn','ATRASADO':'alert','VENCIDO':'alert','ADELANTADO':'ahead','CERRADO':'grey','CERRADO CON OBS':'grey','PAUSA':'info','INICIO':'info','CON OBS':'warn','PEND VAL':'warn','ACTIVO':'ok','PUESTA':'ahead'};
+const ESTADO_ICON={'EN PLAN':'🟢','LEVE ATRASO':'🟡','ATRASADO':'🔴','VENCIDO':'🚨','ADELANTADO':'🚀','CERRADO':'✅','CERRADO CON OBS':'✅⚠️','PAUSA':'⏸','INICIO':'🔵','CON OBS':'👁','PEND VAL':'💰','ACTIVO':'🟢','PUESTA':'⚙️'};
 /* Converts Supabase estado (DB value) to a display estado for badges/filters.
    SPI-based performance is shown separately via the SPI bar & number. */
 const _DB_ESTADO_MAP={
@@ -818,7 +818,8 @@ const _DB_ESTADO_MAP={
   'Con obs':'CON OBS',
   'Pendiente Valorización':'PEND VAL',
   'Suspendido':'PAUSA',
-  'Cerrado con observaciones':'CERRADO CON OBS'
+  'Cerrado con observaciones':'CERRADO CON OBS',
+  'En Puesta en Marcha':'PUESTA'
 };
 function computeDisplayEstado(dbEstado,spiVal,cfDate,valp){
   if(!dbEstado)return 'ACTIVO';
@@ -827,6 +828,7 @@ function computeDisplayEstado(dbEstado,spiVal,cfDate,valp){
   if(up==='PAUSA'||up.includes('PAUS')||up.includes('SUSPEND'))return 'PAUSA';
   if(up==='CERRADO CON OBS'||up==='CERRADO CON OBSERVACIONES')return 'CERRADO CON OBS';
   if(up==='CERRADO'||up.includes('CERR')||up.includes('FINAL')||up.includes('ANULA'))return 'CERRADO';
+  if(up.includes('PUESTA')||up.includes('MARCHA'))return 'PUESTA';
   // Vencido: fecha contractual pasó y no está al 99%+
   if(cfDate){const cf=new Date(cfDate+'T12:00:00');if(!isNaN(cf)&&today>cf&&(valp||0)<99)return 'VENCIDO';}
   if(mapped)return mapped;
@@ -1339,8 +1341,8 @@ function openProject(name,mv){
   curProject=p;curMV=mv||'resumen';
   $('#m-name').textContent=p.name;
   // Pre-select based on _dbEstado (raw Supabase value) or fallback mapping from display estado
-  const _dbE=p._dbEstado||({'EN PLAN':'En progreso','LEVE ATRASO':'En progreso','ATRASADO':'En progreso','ADELANTADO':'En progreso','CERRADO':'Cerrado','PAUSA':'Suspendido','INICIO':'Por Iniciar','CON OBS':'Con obs','PEND VAL':'Pendiente Valorización'}[p.estado]||'En progreso');
-  const _estadoOpts=['En progreso','Por Iniciar','Con obs','Pendiente Valorización','Suspendido','Cerrado'].map(e=>`<option ${_dbE===e?'selected':''}>${e}</option>`).join('');
+  const _dbE=p._dbEstado||({'EN PLAN':'En progreso','LEVE ATRASO':'En progreso','ATRASADO':'En progreso','ADELANTADO':'En progreso','CERRADO':'Cerrado','PAUSA':'Suspendido','INICIO':'Por Iniciar','CON OBS':'Con obs','PEND VAL':'Pendiente Valorización','PUESTA':'En Puesta en Marcha'}[p.estado]||'En progreso');
+  const _estadoOpts=['En progreso','En Puesta en Marcha','Por Iniciar','Con obs','Pendiente Valorización','Suspendido','Cerrado'].map(e=>`<option ${_dbE===e?'selected':''}>${e}</option>`).join('');
   $('#m-meta').innerHTML=`<span>👷 <b>${p.sup}</b>${p.asist?' · 🧑‍💼 '+p.asist:''}</span> <span>📍 <b>${p.dist}, ${p.dep}</b></span> <span>${TIPO_ICON[p.tipo]||''} <b>${p.tipo}</b></span> <span>💰 <b>${fmtUSD(p.venta)}</b></span> <span style="display:inline-flex;align-items:center;gap:5px"><span id="m-estado-icon">${ESTADO_ICON[p.estado]||''}</span> <select id="m-estado-sel" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:inherit;font-family:inherit;cursor:pointer" onchange="updateProyectoEstado('${p.name.replace(/'/g,"\\'")}')">${_estadoOpts}</select></span>`;
   $$('.modal-tab').forEach(t=>t.classList.toggle('active',t.dataset.mv===curMV));
   $('#modal').classList.add('on');
@@ -1583,7 +1585,7 @@ window.trustScore=trustScore;
 function buildViewShell(){
   const v=$('#views');
   const views=[
-    {id:'datos',html:`<div class="view on" id="v-datos"><div class="layout"><aside class="sidebar" id="filters"></aside><div><div class="proj-toolbar"><strong id="proj-count"></strong><div class="sort-btns"><button class="pill" onclick="setSort('spi-asc')">SPI ↑</button><button class="pill" onclick="setSort('avance-desc')">Avance ↓</button><button class="pill" onclick="setSort('venta-desc')">$ ↓</button><button class="pill" onclick="setSort('dias-asc')">Días ↑</button></div></div><div class="proj-grid" id="proj-grid"></div></div></div></div>`},
+    {id:'datos',html:`<div class="view on" id="v-datos"><style>.zona-seg{display:inline-flex;gap:4px;background:var(--bg,#eef3f5);padding:3px;border-radius:8px;border:1px solid var(--line,#dde5e8)}.zona-seg .zseg{border:0;background:transparent;padding:5px 13px;border-radius:6px;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--muted,#6b8599);cursor:pointer;transition:.15s}.zona-seg .zseg:hover{color:var(--ink,#123)}.zona-seg .zseg.on{background:#2dc4a6;color:#fff;box-shadow:0 1px 3px rgba(45,196,166,.35)}</style><div class="layout"><aside class="sidebar" id="filters"></aside><div><div class="proj-toolbar"><strong id="proj-count"></strong><div class="zona-seg" id="zona-seg"><button class="zseg on" data-z="" onclick="setZonaSeg('')">Todos</button><button class="zseg" data-z="Norte" onclick="setZonaSeg('Norte')">Norte</button><button class="zseg" data-z="Centro" onclick="setZonaSeg('Centro')">Centro</button><button class="zseg" data-z="Sur" onclick="setZonaSeg('Sur')">Sur</button></div><div class="sort-btns"><button class="pill" onclick="setSort('spi-asc')">SPI ↑</button><button class="pill" onclick="setSort('avance-desc')">Avance ↓</button><button class="pill" onclick="setSort('venta-desc')">$ ↓</button><button class="pill" onclick="setSort('dias-asc')">Días ↑</button></div></div><div class="proj-grid" id="proj-grid"></div></div></div></div>`},
     {id:'mapa',html:`<div class="view" id="v-mapa">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
         <div id="map-bcr" class="map-bcr" style="flex:1;padding:6px 8px;border-radius:6px"></div>
@@ -1651,6 +1653,14 @@ function clearFilters(){app.filters={estado:[],tipo:[],zona:[],sup:[],q:''};rend
 window.clearFilters=clearFilters;
 function setSort(s){app.sort=s;renderProjects();}
 window.setSort=setSort;
+function setZonaSeg(z){
+  app.filters.zona = z ? [z] : [];
+  const seg=document.getElementById('zona-seg');
+  if(seg)seg.querySelectorAll('.zseg').forEach(b=>b.classList.toggle('on',(b.dataset.z||'')===z));
+  renderFilters();
+  renderProjects();
+}
+window.setZonaSeg=setZonaSeg;
 
 function getFiltered(){
   const f=app.filters;
@@ -18835,7 +18845,7 @@ console.log('%c✦ Executive Control Center v1.0 — Premium Project Detail',
   var FIELDS=[
     {k:'nombre',           l:'Nombre del proyecto',     t:'text',   g:'id',   full:true, hint:'Cambiar el nombre puede desvincular reportes históricos'},
     {k:'cod_proyecto',     l:'Código',                  t:'text',   g:'id'},
-    {k:'estado',           l:'Estado',                  t:'select', g:'id',   opts:['En progreso','Por Iniciar','Con obs','Pendiente Valorización','Suspendido','Cerrado']},
+    {k:'estado',           l:'Estado',                  t:'select', g:'id',   opts:['En progreso','En Puesta en Marcha','Por Iniciar','Con obs','Pendiente Valorización','Suspendido','Cerrado']},
     {k:'categoria',        l:'Categoría',               t:'text',   g:'id'},
     {k:'supervisor',       l:'👷 Supervisor',           t:'text',   g:'assign', list:true},
     {k:'asistente',        l:'🧑‍💼 Asistente(s)',        t:'text',   g:'assign', list:true, hint:'Separa varios con coma'},
