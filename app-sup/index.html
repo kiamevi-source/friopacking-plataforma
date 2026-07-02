@@ -4325,7 +4325,8 @@ window.addEventListener('load', async () => {
       });
       if (res.ok) {
         const u = await res.json();
-        currentUser = { email: u.email, nombre: u.email };
+        const nombre = u.email.split('@')[0].replace(/[._]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+        currentUser = { email: u.email, nombre };
         iniciarApp();
         return;
       }
@@ -8946,7 +8947,7 @@ async function guardarReporte(esDraft = false) {
 
   const payload = {
     fecha_reporte: fecha,
-    supervisor: currentUser?.nombre || currentProyecto?.supervisor,
+    supervisor: currentProyecto?.supervisor || currentUser?.nombre,
     nombre_proyecto: currentProyecto.nombre,
     cod_proyecto: cod,
     pct_planificado: plan,
