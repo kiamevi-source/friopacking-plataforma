@@ -4348,9 +4348,18 @@ window.addEventListener('load', async () => {
 // ═══════════════════════════════════════════════
 // PROYECTOS
 // ═══════════════════════════════════════════════
+// Correos con rol admin/PMO: ven TODOS los proyectos.
+// El resto (supervisores) solo ve los proyectos asignados a su correo.
+const ADMIN_EMAILS = ['dfuentes@friopacking.pe','ccalderon@friopacking.pe','gparedes@friopacking.pe','kmedina@friopacking.pe'];
+
 async function cargarProyectos() {
   try {
-    const rows = await sbFetch('/rest/v1/proyectos?select=id,nombre,supervisor,cod_proyecto,estado,fecha_ini_contractual,fecha_fin_contractual,zona&activo=eq.true&order=nombre');
+    const esAdmin = currentUser && ADMIN_EMAILS.includes((currentUser.email||'').toLowerCase());
+    let url = '/rest/v1/proyectos?select=id,nombre,supervisor,supervisor_email,cod_proyecto,estado,fecha_ini_contractual,fecha_fin_contractual,zona&activo=eq.true&order=nombre';
+    if (!esAdmin) {
+      url += '&supervisor_email=eq.' + encodeURIComponent((currentUser && currentUser.email) || '__none__');
+    }
+    const rows = await sbFetch(url);
     const sel = document.getElementById('sel-proyecto');
     sel.innerHTML = '<option value="">— Selecciona —</option>';
     rows.forEach(p => {
