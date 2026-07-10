@@ -2947,6 +2947,310 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
   .nav-tab>span:not(.tab-icon):not(.tab-badge){display:none;}
   .sb-logout{margin-top:0;margin-left:auto;border-top:none;padding-top:10px;}
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   REPORTE DIARIO — REDISEÑO PREMIUM (namespace .rd-*)
+   ═══════════════════════════════════════════════════════════════ */
+#tab-diario{max-width:1180px;margin:0 auto;}
+.rd-wrap{display:flex;flex-direction:column;gap:18px;}
+
+/* Toggle de modo Capturar / Historia */
+.rd-modes{display:inline-flex;gap:4px;padding:4px;background:var(--glass);
+  border:1px solid var(--border);border-radius:999px;backdrop-filter:blur(12px);
+  box-shadow:var(--sh-1);align-self:center;}
+.rd-mode-btn{border:none;background:transparent;color:var(--text-2);cursor:pointer;
+  font-size:12.5px;font-weight:700;padding:9px 22px;border-radius:999px;
+  display:inline-flex;align-items:center;gap:8px;transition:all var(--d) var(--ease);letter-spacing:.01em;}
+.rd-mode-btn .ri{width:15px;height:15px;stroke-width:2.2;}
+.rd-mode-btn:hover{color:var(--navy-800);}
+.rd-mode-btn.on{background:linear-gradient(135deg,var(--navy-800),var(--navy-600));
+  color:#fff;box-shadow:var(--sh-2);}
+.rd-pane{display:none;animation:rdFade var(--d-slow) var(--ease-out);}
+.rd-pane.on{display:flex;flex-direction:column;gap:18px;}
+@keyframes rdFade{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+@keyframes rdPop{from{opacity:0;transform:scale(.96);}to{opacity:1;transform:none;}}
+
+/* HERO */
+.rd-hero{position:relative;overflow:hidden;border-radius:var(--r-lg);
+  background:var(--grad-brand);color:#fff;padding:26px 30px;box-shadow:var(--sh-3);
+  display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;}
+.rd-hero::after{content:"";position:absolute;inset:0;
+  background:radial-gradient(120% 140% at 100% 0%,rgba(6,182,212,.35),transparent 55%);pointer-events:none;}
+.rd-hero-l{position:relative;z-index:1;display:flex;flex-direction:column;gap:12px;min-width:240px;}
+.rd-hero-eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(255,255,255,.62);}
+.rd-hero-title{font-size:26px;font-weight:900;letter-spacing:-.02em;line-height:1.05;}
+.rd-hero-meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:2px;}
+.rd-hero-meta div{display:flex;flex-direction:column;gap:1px;}
+.rd-hero-meta .k{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.5);}
+.rd-hero-meta .v{font-size:14px;font-weight:700;color:#fff;}
+.rd-status{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;
+  font-size:12.5px;font-weight:800;width:fit-content;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);}
+.rd-status .dot{width:9px;height:9px;border-radius:50%;box-shadow:0 0 0 4px rgba(255,255,255,.12);}
+.rd-status.ok .dot{background:#4ade80;} .rd-status.warn .dot{background:#fbbf24;} .rd-status.bad .dot{background:#f87171;}
+
+/* Anillo de completitud */
+.rd-ring{position:relative;z-index:1;width:118px;height:118px;flex-shrink:0;}
+.rd-ring svg{transform:rotate(-90deg);width:100%;height:100%;}
+.rd-ring .trk{fill:none;stroke:rgba(255,255,255,.16);stroke-width:9;}
+.rd-ring .bar{fill:none;stroke:url(#rdRingGrad);stroke-width:9;stroke-linecap:round;
+  transition:stroke-dashoffset .6s var(--ease-out);}
+.rd-ring-lbl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.rd-ring-lbl b{font-size:30px;font-weight:900;letter-spacing:-.03em;line-height:1;}
+.rd-ring-lbl span{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-top:3px;}
+
+/* KPI grande */
+.rd-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;}
+@media(max-width:1000px){.rd-kpis{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:560px){.rd-kpis{grid-template-columns:repeat(2,1fr);}}
+.rd-kpi{position:relative;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:16px 16px 14px;box-shadow:var(--sh-1);overflow:hidden;
+  transition:transform var(--d) var(--ease),box-shadow var(--d) var(--ease),border-color var(--d);}
+.rd-kpi:hover{transform:translateY(-3px);box-shadow:var(--sh-3);border-color:var(--border-strong);}
+.rd-kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--grad-cool);opacity:.9;}
+.rd-kpi-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  background:var(--surface-2);color:var(--teal-700);margin-bottom:10px;}
+.rd-kpi-ic .ri{width:18px;height:18px;stroke-width:2.1;}
+.rd-kpi-val{font-size:28px;font-weight:900;color:var(--navy-800);letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;}
+.rd-kpi-lbl{font-size:11px;font-weight:700;color:var(--text-2);margin-top:4px;letter-spacing:.02em;}
+.rd-kpi-delta{display:inline-flex;align-items:center;gap:3px;margin-top:8px;font-size:11px;font-weight:800;
+  padding:2px 8px;border-radius:999px;}
+.rd-kpi-delta.up{background:var(--success-bg);color:var(--success);}
+.rd-kpi-delta.down{background:var(--danger-bg);color:var(--danger);}
+.rd-kpi-delta.flat{background:var(--surface-2);color:var(--text-3);}
+
+/* Sección premium (card con head + cuerpo, colapsable) */
+.rd-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  box-shadow:var(--sh-1);transition:box-shadow var(--d) var(--ease),border-color var(--d);overflow:hidden;}
+.rd-card:hover{box-shadow:var(--sh-2);}
+.rd-card.accent{border-color:rgba(8,145,178,.22);box-shadow:0 0 0 1px rgba(8,145,178,.10),var(--sh-2);}
+.rd-head{display:flex;align-items:center;gap:12px;padding:15px 20px;cursor:default;}
+.rd-head.click{cursor:pointer;} .rd-head.click:hover{background:var(--surface-2);}
+.rd-head-ic{width:32px;height:32px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  background:var(--surface-2);color:var(--navy-700);}
+.rd-head-ic .ri{width:17px;height:17px;stroke-width:2.1;}
+.rd-head.accent .rd-head-ic{background:var(--grad-cool);color:#fff;}
+.rd-head-tt{flex:1;min-width:0;}
+.rd-head-tt h4{font-size:13.5px;font-weight:800;color:var(--navy-800);letter-spacing:-.01em;}
+.rd-head-tt p{font-size:11.5px;color:var(--text-3);font-weight:500;margin-top:1px;}
+.rd-head-badge{font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;
+  background:var(--surface-2);color:var(--text-2);}
+.rd-head-badge.teal{background:rgba(6,182,212,.12);color:var(--teal-700);}
+.rd-chev{color:var(--text-3);transition:transform var(--d) var(--ease);}
+.rd-chev .ri{width:18px;height:18px;}
+.rd-card.folded .rd-chev{transform:rotate(-90deg);}
+.rd-body{padding:4px 20px 20px;}
+.rd-card.folded .rd-body{display:none;}
+
+/* Stepper de obreros */
+.rd-esp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+.rd-esp{position:relative;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);
+  padding:14px 12px 12px;text-align:center;transition:all var(--d) var(--ease);}
+.rd-esp:hover{border-color:var(--border-strong);box-shadow:var(--sh-2);transform:translateY(-2px);}
+.rd-esp.hasval{background:linear-gradient(180deg,rgba(6,182,212,.06),var(--surface));border-color:rgba(8,145,178,.25);}
+.rd-esp-ic{font-size:20px;margin-bottom:4px;}
+.rd-esp-name{font-size:10.5px;font-weight:800;color:var(--navy-800);text-transform:capitalize;letter-spacing:.01em;min-height:26px;display:flex;align-items:center;justify-content:center;}
+.rd-esp-stepper{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;}
+.rd-step{width:30px;height:30px;border-radius:9px;border:1px solid var(--border-strong);background:var(--surface);
+  color:var(--navy-700);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all var(--d-fast) var(--ease);user-select:none;line-height:1;}
+.rd-step:hover{background:var(--navy-800);color:#fff;border-color:var(--navy-800);transform:scale(1.08);}
+.rd-step:active{transform:scale(.94);}
+.rd-esp-num{font-size:26px;font-weight:900;color:var(--navy-800);min-width:34px;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+.rd-esp-spark{display:flex;align-items:flex-end;justify-content:center;gap:2px;height:16px;margin-top:8px;opacity:.7;}
+.rd-esp-spark i{width:3px;border-radius:2px;background:var(--teal-500);display:block;}
+
+/* Tabla Airtable contratas */
+.rd-at{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px;}
+.rd-at thead th{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);
+  text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);}
+.rd-at tbody td{padding:11px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.rd-at tbody tr{transition:background var(--d-fast);}
+.rd-at tbody tr.main:hover{background:var(--surface-2);}
+.rd-at .c-name{font-weight:800;color:var(--navy-800);}
+.rd-at-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;}
+.rd-at-pill.g{background:var(--success-bg);color:var(--success);} .rd-at-pill.a{background:var(--warning-bg);color:var(--warning);} .rd-at-pill.r{background:var(--danger-bg);color:var(--danger);}
+.rd-mini-bar{height:6px;border-radius:4px;background:var(--surface-2);overflow:hidden;min-width:60px;}
+.rd-mini-bar i{display:block;height:100%;border-radius:4px;background:var(--grad-cool);transition:width .5s var(--ease-out);}
+.rd-at-exp{background:var(--surface-2);}
+.rd-at-exp td{padding:14px 16px;}
+.rd-at-expand{overflow:hidden;}
+.rd-ico-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);
+  color:var(--text-2);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all var(--d-fast);}
+.rd-ico-btn:hover{color:var(--danger);border-color:var(--danger-2);}
+.rd-ico-btn .ri{width:15px;height:15px;}
+
+/* Progress cards hitos + plan vs real */
+.rd-prog{display:flex;flex-direction:column;gap:10px;}
+.rd-prog-card{display:grid;grid-template-columns:1fr 150px 64px;gap:14px;align-items:center;
+  padding:12px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);
+  transition:all var(--d) var(--ease);}
+.rd-prog-card:hover{border-color:var(--border-strong);box-shadow:var(--sh-1);}
+.rd-prog-name{font-size:12.5px;font-weight:700;color:var(--navy-800);}
+.rd-prog-name small{display:block;font-size:10px;color:var(--text-3);font-weight:600;margin-top:2px;}
+.rd-prog-track{height:9px;border-radius:6px;background:#e5ecf7;overflow:hidden;position:relative;}
+.rd-prog-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--teal-500),var(--brand-500));
+  transition:width .6s var(--ease-out);position:relative;}
+.rd-prog-pct{display:flex;align-items:center;justify-content:flex-end;gap:4px;}
+.rd-prog-inp{width:56px;padding:6px;border:1px solid var(--border-strong);border-radius:8px;font-size:13px;font-weight:800;
+  text-align:center;color:var(--navy-800);}
+.rd-plan{display:grid;grid-template-columns:1fr 1fr auto;gap:16px;align-items:center;margin-bottom:14px;}
+@media(max-width:640px){.rd-plan{grid-template-columns:1fr;}}
+.rd-plan-block .lbl{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:6px;}
+.rd-plan-block .row{display:flex;align-items:center;gap:10px;}
+.rd-plan-block .val{font-size:22px;font-weight:900;color:var(--navy-800);min-width:58px;font-variant-numeric:tabular-nums;}
+.rd-plan-track{flex:1;height:12px;border-radius:8px;background:#e5ecf7;overflow:hidden;}
+.rd-plan-track i{display:block;height:100%;border-radius:8px;transition:width .6s var(--ease-out);}
+.rd-plan-track.plan i{background:linear-gradient(90deg,#94a3b8,#cbd5e1);}
+.rd-plan-track.real i{background:linear-gradient(90deg,var(--teal-500),var(--brand-500));}
+.rd-diff{text-align:center;padding:10px 16px;border-radius:var(--r);min-width:96px;}
+.rd-diff b{font-size:24px;font-weight:900;display:block;letter-spacing:-.02em;}
+.rd-diff span{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
+.rd-diff.pos{background:var(--success-bg);color:var(--success);} .rd-diff.neg{background:var(--danger-bg);color:var(--danger);}
+
+/* Tickets de restricciones */
+.rd-tickets{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+.rd-ticket{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:14px 14px 14px 16px;box-shadow:var(--sh-1);overflow:hidden;transition:all var(--d) var(--ease);animation:rdPop var(--d) var(--ease-out);}
+.rd-ticket:hover{box-shadow:var(--sh-2);transform:translateY(-2px);}
+.rd-ticket::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;}
+.rd-ticket.alto::before{background:var(--danger-2);} .rd-ticket.medio::before{background:var(--warning-2);} .rd-ticket.bajo::before{background:var(--text-3);}
+.rd-ticket-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.rd-ticket-cat{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--navy-800);text-transform:capitalize;}
+.rd-imp{font-size:9.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;}
+.rd-imp.alto{background:var(--danger-bg);color:var(--danger);} .rd-imp.medio{background:var(--warning-bg);color:var(--warning);} .rd-imp.bajo{background:var(--surface-2);color:var(--text-2);}
+.rd-ticket input,.rd-ticket select{width:100%;border:1px solid transparent;background:var(--surface-2);border-radius:7px;
+  padding:7px 9px;font-size:12px;color:var(--navy-800);margin-bottom:7px;transition:all var(--d-fast);}
+.rd-ticket input:focus,.rd-ticket select:focus{border-color:var(--teal-500);background:#fff;box-shadow:0 0 0 3px rgba(6,182,212,.14);outline:none;}
+.rd-ticket-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;}
+
+/* Kanban riesgos */
+.rd-kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+@media(max-width:640px){.rd-kanban{grid-template-columns:1fr;}}
+.rd-kcol{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:12px;min-height:90px;}
+.rd-kcol-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.rd-kcol-head b{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;display:inline-flex;align-items:center;gap:7px;}
+.rd-kcol-head b::before{content:"";width:9px;height:9px;border-radius:50%;}
+.rd-kcol.bajo b::before{background:var(--text-3);} .rd-kcol.medio b::before{background:var(--warning-2);} .rd-kcol.alto b::before{background:var(--danger-2);}
+.rd-kcol .cnt{font-size:11px;font-weight:800;color:var(--text-3);background:var(--surface);border-radius:999px;padding:1px 8px;}
+.rd-risk{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 10px;margin-bottom:8px;
+  font-size:12px;color:var(--navy-800);box-shadow:var(--sh-1);animation:rdPop var(--d) var(--ease-out);position:relative;}
+.rd-risk .x{position:absolute;top:6px;right:7px;color:var(--text-3);cursor:pointer;font-size:13px;line-height:1;}
+.rd-risk .x:hover{color:var(--danger);}
+.rd-kadd{width:100%;border:1px dashed var(--border-strong);background:transparent;color:var(--text-2);border-radius:8px;
+  padding:8px;font-size:11.5px;font-weight:700;cursor:pointer;transition:all var(--d-fast);}
+.rd-kadd:hover{border-color:var(--teal-500);color:var(--teal-700);background:rgba(6,182,212,.05);}
+
+/* Editor tipo Notion */
+.rd-editor{display:flex;flex-direction:column;gap:14px;}
+.rd-blk{border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;transition:all var(--d);}
+.rd-blk:focus-within{border-color:var(--teal-500);box-shadow:0 0 0 3px rgba(6,182,212,.12);}
+.rd-blk-lbl{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;color:var(--navy-800);
+  letter-spacing:.02em;margin-bottom:6px;}
+.rd-blk-lbl .ri{width:15px;height:15px;color:var(--teal-700);}
+.rd-blk textarea{width:100%;border:none;background:transparent;resize:vertical;min-height:46px;font-size:13.5px;
+  color:var(--text);line-height:1.6;font-family:inherit;}
+.rd-blk textarea:focus{outline:none;}
+.rd-blk textarea::placeholder{color:var(--text-3);}
+
+/* Dropzone + galería */
+.rd-drop{border:2px dashed var(--border-strong);border-radius:var(--r-md);padding:26px;text-align:center;
+  transition:all var(--d) var(--ease);cursor:pointer;background:var(--surface-2);}
+.rd-drop:hover,.rd-drop.drag{border-color:var(--teal-500);background:rgba(6,182,212,.06);}
+.rd-drop.drag{transform:scale(1.01);}
+.rd-drop .ic{width:44px;height:44px;border-radius:12px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;
+  background:var(--grad-cool);color:#fff;box-shadow:var(--sh-glow-teal);}
+.rd-drop .ic .ri{width:22px;height:22px;}
+.rd-drop b{font-size:13px;color:var(--navy-800);font-weight:800;}
+.rd-drop span{display:block;font-size:11.5px;color:var(--text-3);margin-top:3px;}
+.rd-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:14px;}
+.rd-photo{position:relative;border-radius:var(--r);overflow:hidden;border:1px solid var(--border);aspect-ratio:1;
+  box-shadow:var(--sh-1);animation:rdPop var(--d) var(--ease-out);background:var(--surface-2);}
+.rd-photo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform var(--d-slow) var(--ease);}
+.rd-photo:hover img{transform:scale(1.06);}
+.rd-photo .file{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:8px;
+  font-size:10px;text-align:center;color:var(--text-2);}
+.rd-photo .del{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;border:none;
+  background:rgba(11,18,38,.6);color:#fff;cursor:pointer;font-size:13px;line-height:1;backdrop-filter:blur(4px);opacity:0;transition:opacity var(--d);}
+.rd-photo:hover .del{opacity:1;}
+.rd-photo .ai{position:absolute;left:0;right:0;bottom:0;padding:5px 7px;display:flex;flex-wrap:wrap;gap:4px;
+  background:linear-gradient(0deg,rgba(11,18,38,.82),transparent);}
+.rd-ai-chip{font-size:9px;font-weight:800;color:#fff;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);
+  border-radius:999px;padding:2px 6px;backdrop-filter:blur(4px);display:inline-flex;align-items:center;gap:3px;}
+
+/* Toggle visita */
+.rd-switch{display:inline-flex;align-items:center;gap:10px;cursor:pointer;}
+.rd-switch input{display:none;}
+.rd-switch .track{width:44px;height:25px;border-radius:999px;background:var(--border-strong);position:relative;transition:background var(--d) var(--ease);}
+.rd-switch .track::after{content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#fff;
+  box-shadow:var(--sh-1);transition:transform var(--d) var(--ease);}
+.rd-switch input:checked + .track{background:var(--teal-500);}
+.rd-switch input:checked + .track::after{transform:translateX(19px);}
+
+/* Timeline (Historia) */
+.rd-timeline{position:relative;padding-left:28px;}
+.rd-timeline::before{content:"";position:absolute;left:9px;top:6px;bottom:6px;width:2px;
+  background:linear-gradient(180deg,var(--teal-500),var(--brand-500),transparent);}
+.rd-tl-item{position:relative;padding:0 0 20px 8px;}
+.rd-tl-item:last-child{padding-bottom:0;}
+.rd-tl-dot{position:absolute;left:-24px;top:2px;width:20px;height:20px;border-radius:50%;background:var(--surface);
+  border:2px solid var(--teal-500);display:flex;align-items:center;justify-content:center;box-shadow:var(--sh-1);}
+.rd-tl-dot i{width:8px;height:8px;border-radius:50%;background:var(--teal-500);}
+.rd-tl-time{font-size:11px;font-weight:800;color:var(--teal-700);letter-spacing:.03em;}
+.rd-tl-txt{font-size:13px;font-weight:600;color:var(--navy-800);margin-top:2px;}
+.rd-tl-sub{font-size:11.5px;color:var(--text-3);margin-top:1px;}
+
+/* Panel IA */
+.rd-ai-panel{border-radius:var(--r-md);overflow:hidden;border:1px solid rgba(124,58,237,.16);box-shadow:var(--sh-2);}
+.rd-ai-hd{display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--grad-violet);color:#fff;}
+.rd-ai-av{width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
+.rd-ai-av .ri{width:19px;height:19px;}
+.rd-ai-hd b{font-size:13.5px;font-weight:800;} .rd-ai-hd small{font-size:11px;opacity:.75;display:block;}
+.rd-ai-score{margin-left:auto;text-align:center;}
+.rd-ai-score b{font-size:26px;font-weight:900;line-height:1;letter-spacing:-.02em;} .rd-ai-score span{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.8;}
+.rd-ai-body{background:var(--surface);padding:18px;display:flex;flex-direction:column;gap:16px;}
+.rd-ai-summary{font-size:13.5px;line-height:1.65;color:var(--text);}
+.rd-ai-summary strong{color:var(--navy-800);font-weight:800;}
+.rd-ai-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:640px){.rd-ai-cols{grid-template-columns:1fr;}}
+.rd-ai-block h5{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.rd-ai-li{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--text);padding:5px 0;line-height:1.5;}
+.rd-ai-li .ri{width:15px;height:15px;flex-shrink:0;margin-top:2px;}
+.rd-ai-li.good .ri{color:var(--success);} .rd-ai-li.bad .ri{color:var(--danger);} .rd-ai-li.rec .ri{color:var(--brand-600);}
+.rd-gauges{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.rd-gauge{text-align:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:12px 8px;}
+.rd-gauge .lbl{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px;}
+.rd-gauge-ring{position:relative;width:66px;height:66px;margin:0 auto;}
+.rd-gauge-ring svg{transform:rotate(-90deg);width:100%;height:100%;}
+.rd-gauge-ring .t{fill:none;stroke:#e5ecf7;stroke-width:7;}
+.rd-gauge-ring .b{fill:none;stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset .7s var(--ease-out);}
+.rd-gauge-ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:var(--navy-800);}
+.rd-cta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+
+/* Comparador */
+.rd-compare{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+.rd-cmp{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:14px;}
+.rd-cmp-lbl{font-size:11px;font-weight:800;color:var(--navy-800);letter-spacing:.02em;margin-bottom:10px;display:flex;align-items:center;gap:7px;}
+.rd-cmp-lbl .ri{width:15px;height:15px;color:var(--teal-700);}
+.rd-cmp-bars{display:flex;align-items:flex-end;gap:8px;height:56px;}
+.rd-cmp-bars .b{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:flex-end;height:100%;}
+.rd-cmp-bars .b i{width:100%;border-radius:5px 5px 0 0;background:linear-gradient(180deg,var(--teal-400),var(--teal-600));transition:height .6s var(--ease-out);min-height:3px;}
+.rd-cmp-bars .b.mut i{background:linear-gradient(180deg,#cbd5e1,#94a3b8);}
+.rd-cmp-bars .b small{font-size:9px;font-weight:700;color:var(--text-3);}
+.rd-cmp-val{font-size:19px;font-weight:900;color:var(--navy-800);margin-top:8px;letter-spacing:-.02em;}
+
+/* Barra de guardado sticky */
+.rd-savebar{position:sticky;bottom:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:14px 20px;background:var(--glass-strong);backdrop-filter:blur(16px);border:1px solid var(--border);
+  border-radius:var(--r-md);box-shadow:var(--sh-3);flex-wrap:wrap;}
+.rd-savebar-l{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text-2);}
+.rd-mini-ring{width:38px;height:38px;flex-shrink:0;}
+.rd-mini-ring svg{transform:rotate(-90deg);width:100%;height:100%;}
+.rd-mini-ring .t{fill:none;stroke:#e5ecf7;stroke-width:5;}
+.rd-mini-ring .b{fill:none;stroke:var(--teal-500);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .5s var(--ease-out);}
+.rd-mini-ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:var(--navy-800);}
 </style>
 </head>
 <body>
@@ -3503,191 +3807,256 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 
     <!-- ══ REPORTE DIARIO ══ -->
     <div class="tab-content" id="tab-diario">
+     <div class="rd-wrap">
 
-      <!-- ENCABEZADO -->
-      <div class="sec-card">
-        <div class="sec-head">
-          <span class="sec-title">Reporte diario de obra</span>
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-outline btn-sm" onclick="cargarUltimoReporte()">Cargar último</button>
-            <button class="btn btn-teal btn-sm" onclick="exportarPDF()">Exportar PDF</button>
+      <!-- ══ TOGGLE DE MODO ══ -->
+      <div class="rd-modes">
+        <button class="rd-mode-btn on" id="rd-mode-cap" onclick="rdSetMode('cap')"><i data-lucide="pencil-line" class="ri"></i> Capturar</button>
+        <button class="rd-mode-btn" id="rd-mode-his" onclick="rdSetMode('his')"><i data-lucide="sparkles" class="ri"></i> Historia</button>
+      </div>
+
+      <!-- ═══════════ MODO CAPTURAR ═══════════ -->
+      <div class="rd-pane on" id="rd-pane-cap">
+
+        <!-- HERO -->
+        <div class="rd-hero">
+          <div class="rd-hero-l">
+            <span class="rd-hero-eyebrow">Reporte diario de obra</span>
+            <span class="rd-hero-title" id="rd-hero-proj">Selecciona un proyecto</span>
+            <div class="rd-hero-meta">
+              <div><span class="k">Supervisor</span><span class="v" id="rd-hero-sup">—</span></div>
+              <div><span class="k">Fecha</span><span class="v"><input type="date" id="rd-fecha" style="border:none;background:transparent;color:#fff;font-weight:700;font-size:13.5px;color-scheme:dark;"></span></div>
+              <div><span class="k">Jornada</span><span class="v" style="display:flex;gap:4px;align-items:center;"><input type="time" id="rd-entrada" style="border:none;background:transparent;color:#fff;width:66px;color-scheme:dark;"><span style="opacity:.5;">–</span><input type="time" id="rd-salida" style="border:none;background:transparent;color:#fff;width:66px;color-scheme:dark;"></span></div>
+            </div>
+            <div class="rd-status ok" id="rd-status"><span class="dot"></span> <span id="rd-status-txt">Operación normal</span></div>
+            <input type="text" id="rd-jornada-motivo" placeholder="Motivo variación de jornada (si aplica)" style="margin-top:2px;border:none;background:rgba(255,255,255,.1);border-radius:8px;padding:6px 10px;color:#fff;font-size:11.5px;width:100%;max-width:340px;">
+          </div>
+          <div class="rd-ring">
+            <svg viewBox="0 0 120 120">
+              <defs><linearGradient id="rdRingGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a5b4fc"/></linearGradient></defs>
+              <circle class="trk" cx="60" cy="60" r="52"/>
+              <circle class="bar" id="rd-ring-bar" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7"/>
+            </svg>
+            <div class="rd-ring-lbl"><b id="rd-ring-pct">0%</b><span>Completo</span></div>
           </div>
         </div>
-        <div class="sec-body">
-          <p style="font-size:12px;color:var(--muted);margin:0 0 12px;">El supervisor solo llena 3 cosas: <strong>obreros reales</strong>, <strong>contratas del día</strong> y <strong>% de avance por hito</strong>. Todo lo demás se calcula o se trae del proyecto.</p>
-          <div class="form-row">
-            <div class="field"><label>Fecha reporte</label><input type="date" id="rd-fecha"></div>
-            <div class="field"><label>Jornada entrada</label><input type="time" id="rd-entrada"></div>
-            <div class="field"><label>Jornada salida</label><input type="time" id="rd-salida"></div>
-            <div class="field"><label>Motivo variación jornada</label><input type="text" id="rd-jornada-motivo" placeholder="Si aplica"></div>
+
+        <!-- ① PERSONAL EN OBRA -->
+        <div class="rd-card accent">
+          <div class="rd-head accent">
+            <div class="rd-head-ic"><i data-lucide="users" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Personal en obra</h4><p>Ajusta tus obreros por especialidad</p></div>
+            <div class="rd-head-badge teal"><span id="rd-obreros-total">0</span> obreros</div>
+          </div>
+          <div class="rd-body"><div id="rd-obreros-grid" class="rd-esp-grid"></div></div>
+        </div>
+
+        <!-- ② CONTRATAS -->
+        <div class="rd-card">
+          <div class="rd-head">
+            <div class="rd-head-ic"><i data-lucide="truck" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Contratas del día</h4><p>Empresas en obra y su evaluación de desempeño</p></div>
+            <button class="btn btn-teal btn-sm" onclick="agregarContrataDia()">+ Contrata</button>
+          </div>
+          <div class="rd-body">
+            <div id="rd-contratas-list"></div>
+            <p id="rd-contratas-empty" style="font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;">Sin contratas registradas hoy. Agrega las que trabajaron en obra.</p>
           </div>
         </div>
-      </div>
 
-      <!-- ① OBREROS REALES POR ESPECIALIDAD -->
-      <div class="sec-card">
-        <div class="sec-head">
-          <span class="sec-title">① Obreros reales por especialidad</span>
-          <span style="font-size:12px;color:var(--muted);">Total: <strong id="rd-obreros-total" style="color:var(--navy);">0</strong></span>
+        <!-- ③ AVANCE -->
+        <div class="rd-card">
+          <div class="rd-head">
+            <div class="rd-head-ic"><i data-lucide="trending-up" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Avance del día</h4><p>Planificado vs ejecutado y progreso por hito</p></div>
+            <div class="rd-head-badge">Global · <strong id="rd-avance-global" style="color:var(--teal-700);">0%</strong></div>
+          </div>
+          <div class="rd-body">
+            <div class="rd-plan">
+              <div class="rd-plan-block">
+                <div class="lbl">Planificado</div>
+                <div class="row"><input class="rd-prog-inp" type="number" id="rd-plan" min="0" max="100" step="0.1" oninput="rdPlanBars()"><div class="rd-plan-track plan"><i id="rd-plan-bar" style="width:0%"></i></div></div>
+              </div>
+              <div class="rd-plan-block">
+                <div class="lbl">Ejecutado</div>
+                <div class="row"><input class="rd-prog-inp" type="number" id="rd-real" min="0" max="100" step="0.1" oninput="rdPlanBars()"><div class="rd-plan-track real"><i id="rd-real-bar" style="width:0%"></i></div></div>
+              </div>
+              <div class="rd-diff pos" id="rd-diff"><b>0</b><span>Δ puntos</span></div>
+            </div>
+            <div class="form-row" style="margin-bottom:12px;">
+              <div class="field"><label>% Ejecutado declarado por contrata</label><input type="number" id="rd-real-contrata" min="0" max="100" step="0.1" placeholder="Opcional" oninput="rdPlanBars()"></div>
+              <div class="field"><label>Rondas de calidad (ok / total)</label><div style="display:flex;gap:6px;"><input type="number" id="rd-rondas-ok" min="0" max="20" value="0" style="width:50%"><input type="number" id="rd-rondas-tot" min="1" max="20" value="10" style="width:50%"></div></div>
+            </div>
+            <div id="alerta-diferencia" class="hidden" style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#991b1b;font-weight:600;">⚠ Diferencia detectada entre avance supervisor y contrata. Revisar.</div>
+            <div id="rd-hitos-list" class="rd-prog"></div>
+            <p id="rd-hitos-empty" style="font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;">No hay hitos en el Gantt de este proyecto. Agrega uno manual abajo.</p>
+            <button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="agregarHitoManual()">+ Hito manual</button>
+          </div>
         </div>
-        <div class="sec-body">
-          <div id="rd-obreros-grid" class="personal-grid"></div>
-        </div>
-      </div>
 
-      <!-- ② CONTRATAS DEL DÍA + EVALUACIÓN -->
-      <div class="sec-card">
-        <div class="sec-head">
-          <span class="sec-title">② Contratas del día</span>
-          <button class="btn btn-outline btn-sm" onclick="agregarContrataDia()">+ Agregar contrata</button>
+        <!-- RESTRICCIONES -->
+        <div class="rd-card">
+          <div class="rd-head click" onclick="rdFold(this,event)">
+            <div class="rd-head-ic"><i data-lucide="octagon-alert" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Restricciones / Impedimentos</h4><p>Lo que frenó o puede frenar la obra</p></div>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();agregarRestriccion()">+ Restricción</button>
+            <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
+          </div>
+          <div class="rd-body">
+            <div id="rd-restricciones-list" class="rd-tickets"></div>
+            <p id="rd-restricciones-empty" style="font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;">Sin restricciones registradas. Un buen día.</p>
+          </div>
         </div>
-        <div class="sec-body">
-          <div id="rd-contratas-list"></div>
-          <p id="rd-contratas-empty" style="font-size:12px;color:var(--muted);padding:8px 0;">Sin contratas registradas hoy. Agrega las que trabajaron en obra.</p>
-        </div>
-      </div>
 
-      <!-- ③ AVANCE POR HITO DEL GANTT -->
-      <div class="sec-card">
-        <div class="sec-head">
-          <span class="sec-title">③ % Avance por hito (especialidades)</span>
-          <span style="font-size:12px;color:var(--muted);">Avance global: <strong id="rd-avance-global" style="color:var(--teal);">0%</strong></span>
+        <!-- RIESGOS (Kanban) -->
+        <div class="rd-card">
+          <div class="rd-head click" onclick="rdFold(this,event)">
+            <div class="rd-head-ic"><i data-lucide="shield-alert" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Riesgos del día</h4><p>Clasifícalos por nivel de severidad</p></div>
+            <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
+          </div>
+          <div class="rd-body"><div id="rd-riesgos-list"></div></div>
         </div>
-        <div class="sec-body">
-          <div id="rd-hitos-list"></div>
-          <p id="rd-hitos-empty" style="font-size:12px;color:var(--muted);padding:8px 0;">No hay hitos cargados en el Gantt de este proyecto. Usa la pestaña Gantt para definirlos o agrega un hito manual abajo.</p>
-          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="agregarHitoManual()">+ Agregar hito manual</button>
-        </div>
-      </div>
 
-      <!-- AVANCE SUPERVISOR vs CONTRATA -->
-      <div class="sec-card">
-        <div class="sec-head"><span class="sec-title">Avance del día</span></div>
-        <div class="sec-body">
-          <div class="form-row">
-            <div class="field"><label>% Planificado (proyectado)</label><input type="number" id="rd-plan" min="0" max="100" step="0.1"></div>
-            <div class="field"><label>% Ejecutado (supervisor)</label><input type="number" id="rd-real" min="0" max="100" step="0.1"></div>
-            <div class="field"><label>% Ejecutado (contrata)</label><input type="number" id="rd-real-contrata" min="0" max="100" step="0.1" placeholder="Declarado por contrata"></div>
-            <div class="field"><label>Rondas (ok / total)</label>
-              <div style="display:flex;gap:6px;"><input type="number" id="rd-rondas-ok" min="0" max="20" value="0" style="width:50%"><input type="number" id="rd-rondas-tot" min="1" max="20" value="10" style="width:50%"></div>
+        <!-- ACTIVIDAD / PLAN (Editor) -->
+        <div class="rd-card">
+          <div class="rd-head click" onclick="rdFold(this,event)">
+            <div class="rd-head-ic"><i data-lucide="notebook-pen" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Bitácora del día</h4><p>Actividad ejecutada, plan de mañana y observaciones</p></div>
+            <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
+          </div>
+          <div class="rd-body">
+            <div class="rd-editor">
+              <div class="rd-blk"><div class="rd-blk-lbl"><i data-lucide="check-circle-2"></i> Actividad principal ejecutada</div><textarea id="rd-actividad" placeholder="¿Qué se hizo hoy en obra?"></textarea></div>
+              <div class="rd-blk"><div class="rd-blk-lbl"><i data-lucide="calendar-clock"></i> Plan para mañana</div><textarea id="rd-plan-manana" placeholder="Actividades planificadas para el día siguiente…"></textarea></div>
+              <div class="rd-blk"><div class="rd-blk-lbl"><i data-lucide="message-square-more"></i> Observaciones</div><textarea id="rd-obs" placeholder="Notas generales, coordinaciones, pendientes…"></textarea></div>
             </div>
           </div>
-          <div id="alerta-diferencia" class="hidden" style="background:#fee2e2;border:1.5px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:4px;font-size:12px;color:#991b1b;font-weight:600;">
-            ⚠ Diferencia detectada entre avance supervisor y contrata. Revisar.
+        </div>
+
+        <!-- FOTOS (Dropzone + galería) -->
+        <div class="rd-card">
+          <div class="rd-head click" onclick="rdFold(this,event)">
+            <div class="rd-head-ic"><i data-lucide="image" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Evidencia fotográfica</h4><p>Arrastra fotos — la IA detecta personal, EPP y equipos</p></div>
+            <span class="rd-head-badge" id="rd-fotos-badge">0</span>
+            <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
+          </div>
+          <div class="rd-body">
+            <div class="rd-drop" id="rd-drop" onclick="document.getElementById('rd-fotos-input').click()">
+              <div class="ic"><i data-lucide="upload-cloud" class="ri"></i></div>
+              <b>Arrastra tus fotos aquí o haz clic</b>
+              <span>Cualquier formato y tamaño</span>
+            </div>
+            <input type="file" id="rd-fotos-input" multiple accept="*/*" onchange="subirFotosReporte(this.files)" style="display:none;">
+            <div id="rd-fotos-status" style="font-size:11.5px;color:var(--text-3);margin-top:8px;"></div>
+            <div id="rd-fotos-grid" class="rd-gallery"></div>
           </div>
         </div>
-      </div>
 
-      <!-- RESTRICCIONES ESTRUCTURADAS -->
-      <div class="sec-card">
-        <div class="sec-head">
-          <span class="sec-title">Restricciones / Impedimentos</span>
-          <button class="btn btn-outline btn-sm" onclick="agregarRestriccion()">+ Agregar restricción</button>
+        <!-- VISITA CLIENTE -->
+        <div class="rd-card">
+          <div class="rd-head click" onclick="rdFold(this,event)">
+            <div class="rd-head-ic"><i data-lucide="user-check" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Visita de cliente</h4><p>Registra si el cliente estuvo en obra</p></div>
+            <label class="rd-switch" onclick="event.stopPropagation()"><input type="checkbox" id="rd-visita-chk" onchange="rdToggleVisita(this.checked)"><span class="track"></span></label>
+            <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
+          </div>
+          <div class="rd-body">
+            <select id="rd-visita" style="display:none;"><option value="false">No</option><option value="true">Sí</option></select>
+            <div id="rd-visita-fields" style="display:none;" class="form-row">
+              <div class="field"><label>Nombre del visitante</label><input type="text" id="rd-visita-nombre"></div>
+              <div class="field" style="grid-column:span 2"><label>Observación de la visita</label><input type="text" id="rd-visita-obs"></div>
+            </div>
+            <p id="rd-visita-none" style="font-size:12.5px;color:var(--text-3);padding:4px 0;">No hubo visita de cliente hoy.</p>
+          </div>
         </div>
-        <div class="sec-body">
-          <div id="rd-restricciones-list"></div>
-          <p id="rd-restricciones-empty" style="font-size:12px;color:var(--muted);padding:8px 0;">Sin restricciones registradas.</p>
-        </div>
-      </div>
 
-      <!-- RIESGOS DEL DÍA -->
-      <div class="sec-card">
-        <div class="sec-head">
-          <span class="sec-title">Riesgos del día</span>
-          <button class="btn btn-outline btn-sm" onclick="agregarRiesgo()">+ Agregar riesgo</button>
-        </div>
-        <div class="sec-body">
-          <div id="rd-riesgos-list"></div>
-        </div>
-      </div>
-
-      <!-- ACTIVIDAD / PLAN -->
-      <div class="sec-card">
-        <div class="sec-head"><span class="sec-title">Actividad y planificación</span></div>
-        <div class="sec-body">
-          <div class="form-row">
-            <div class="field" style="grid-column:1/-1">
-              <label>Actividad principal del día</label>
-              <textarea id="rd-actividad" placeholder="Describe la actividad principal ejecutada…"></textarea>
+        <!-- FACTURACIÓN -->
+        <div class="rd-card folded">
+          <div class="rd-head click" onclick="rdFold(this,event)">
+            <div class="rd-head-ic"><i data-lucide="receipt" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Facturación del mes</h4><p>Meta y avance comercial del proyecto</p></div>
+            <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
+          </div>
+          <div class="rd-body">
+            <div class="form-row">
+              <div class="field"><label>Meta del mes (S/.)</label><input type="number" id="rd-meta-mes" min="0" step="0.01"></div>
+              <div class="field"><label>Facturado a la fecha (S/.)</label><input type="number" id="rd-facturado" min="0" step="0.01"></div>
+              <div class="field"><label>Avance de meta</label><input type="text" id="rd-meta-pct" readonly style="background:var(--surface-2);font-weight:800;"></div>
             </div>
           </div>
-          <div class="form-row">
-            <div class="field" style="grid-column:1/-1">
-              <label>Plan para mañana</label>
-              <textarea id="rd-plan-manana" placeholder="Actividades planificadas para el día siguiente…"></textarea>
+        </div>
+
+        <!-- CIERRE -->
+        <div class="rd-card">
+          <div class="rd-head">
+            <div class="rd-head-ic"><i data-lucide="clipboard-check" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Cierre del reporte</h4><p>Checklist de seguridad y firma del supervisor</p></div>
+          </div>
+          <div class="rd-body">
+            <div id="rd-checklist" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 24px;"></div>
+            <div style="margin-top:18px;">
+              <div class="rd-blk-lbl" style="margin-bottom:8px;"><i data-lucide="pen-tool"></i> Firma del supervisor</div>
+              <div class="form-row" style="margin-bottom:8px;"><div class="field"><label>Nombre de quien firma</label><input type="text" id="rd-firma-nombre" placeholder="Nombre completo"></div></div>
+              <canvas id="rd-firma-canvas" width="420" height="140" style="border:1.5px dashed var(--border-strong);border-radius:10px;touch-action:none;background:var(--surface-2);display:block;max-width:100%;"></canvas>
+              <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="limpiarFirma()">Limpiar firma</button>
             </div>
           </div>
-          <div class="form-row">
-            <div class="field" style="grid-column:1/-1">
-              <label>Observaciones</label>
-              <textarea id="rd-obs" placeholder="Observaciones generales…"></textarea>
+        </div>
+
+        <!-- SAVEBAR STICKY -->
+        <div class="rd-savebar">
+          <div class="rd-savebar-l">
+            <div class="rd-mini-ring" style="position:relative;">
+              <svg viewBox="0 0 38 38"><circle class="t" cx="19" cy="19" r="15"/><circle class="b" id="rd-mini-bar" cx="19" cy="19" r="15" stroke-dasharray="94.2" stroke-dashoffset="94.2"/></svg>
+              <b id="rd-mini-pct">0%</b>
             </div>
+            <span>Reporte <strong id="rd-save-hint" style="color:var(--navy-800);">en progreso</strong></span>
           </div>
-        </div>
-      </div>
-
-      <!-- FOTOS -->
-      <div class="sec-card">
-        <div class="sec-head">
-          <span class="sec-title">Fotos del día</span>
-          <span style="font-size:12px;color:var(--muted);">Cualquier formato y tamaño</span>
-        </div>
-        <div class="sec-body">
-          <input type="file" id="rd-fotos-input" multiple accept="*/*" onchange="subirFotosReporte(this.files)" style="font-size:12px;">
-          <div id="rd-fotos-status" style="font-size:12px;color:var(--muted);margin-top:6px;"></div>
-          <div id="rd-fotos-grid" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
-        </div>
-      </div>
-
-      <!-- VISITA CLIENTE -->
-      <div class="sec-card">
-        <div class="sec-head"><span class="sec-title">Visita de cliente</span></div>
-        <div class="sec-body">
-          <div class="form-row">
-            <div class="field">
-              <label>¿Hubo visita?</label>
-              <select id="rd-visita"><option value="false">No</option><option value="true">Sí</option></select>
-            </div>
-            <div class="field"><label>Nombre cliente visitante</label><input type="text" id="rd-visita-nombre"></div>
-            <div class="field" style="grid-column:span 2"><label>Observación de visita</label><input type="text" id="rd-visita-obs"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- COMERCIAL: FACTURADO + META DEL MES -->
-      <div class="sec-card">
-        <div class="sec-head"><span class="sec-title">Facturación del mes</span></div>
-        <div class="sec-body">
-          <div class="form-row">
-            <div class="field"><label>Meta del mes (S/.)</label><input type="number" id="rd-meta-mes" min="0" step="0.01"></div>
-            <div class="field"><label>Facturado a la fecha (S/.)</label><input type="number" id="rd-facturado" min="0" step="0.01"></div>
-            <div class="field"><label>Avance meta</label><input type="text" id="rd-meta-pct" readonly style="background:#f8fafc;"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- CIERRE: CHECKLIST + FIRMA -->
-      <div class="sec-card">
-        <div class="sec-head"><span class="sec-title">Cierre del reporte</span></div>
-        <div class="sec-body">
-          <label style="display:block;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Checklist de cierre</label>
-          <div id="rd-checklist"></div>
-
-          <div style="margin-top:16px;">
-            <label style="display:block;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Firma del supervisor</label>
-            <div class="form-row" style="margin-bottom:8px;">
-              <div class="field"><label>Nombre de quien firma</label><input type="text" id="rd-firma-nombre" placeholder="Nombre completo"></div>
-            </div>
-            <canvas id="rd-firma-canvas" width="420" height="140" style="border:1.5px dashed var(--border);border-radius:8px;touch-action:none;background:#fff;display:block;max-width:100%;"></canvas>
-            <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="limpiarFirma()">Limpiar firma</button>
-          </div>
-
-          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm" onclick="cargarUltimoReporte()"><i data-lucide="history" class="ri" style="width:14px;height:14px;"></i> Cargar último</button>
+            <button class="btn btn-outline btn-sm" onclick="exportarPDF()"><i data-lucide="file-down" class="ri" style="width:14px;height:14px;"></i> PDF</button>
             <button class="btn btn-outline" onclick="guardarDraft()">Guardar borrador</button>
-            <button class="btn btn-primary" onclick="guardarReporte()">Guardar reporte</button>
+            <button class="btn btn-primary" onclick="guardarReporte()"><i data-lucide="send" class="ri" style="width:14px;height:14px;"></i> Guardar reporte</button>
           </div>
         </div>
       </div>
+
+      <!-- ═══════════ MODO HISTORIA ═══════════ -->
+      <div class="rd-pane" id="rd-pane-his">
+        <div class="rd-hero">
+          <div class="rd-hero-l">
+            <span class="rd-hero-eyebrow">Resumen ejecutivo del día</span>
+            <span class="rd-hero-title" id="rd-his-proj">—</span>
+            <div class="rd-hero-meta">
+              <div><span class="k">Supervisor</span><span class="v" id="rd-his-sup">—</span></div>
+              <div><span class="k">Fecha</span><span class="v" id="rd-his-fecha">—</span></div>
+            </div>
+            <div class="rd-status ok" id="rd-his-status"><span class="dot"></span> <span id="rd-his-status-txt">Operación normal</span></div>
+          </div>
+          <div class="rd-ring">
+            <svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="52"/><circle class="bar" id="rd-his-ring" cx="60" cy="60" r="52" stroke="url(#rdRingGrad)" stroke-dasharray="326.7" stroke-dashoffset="326.7"/></svg>
+            <div class="rd-ring-lbl"><b id="rd-his-score">—</b><span>Score IA</span></div>
+          </div>
+        </div>
+
+        <div class="rd-kpis" id="rd-his-kpis"></div>
+
+        <div class="rd-card">
+          <div class="rd-head"><div class="rd-head-ic"><i data-lucide="clock" class="ri"></i></div><div class="rd-head-tt"><h4>Línea de tiempo del día</h4><p>Cronología de eventos en obra</p></div></div>
+          <div class="rd-body"><div class="rd-timeline" id="rd-his-timeline"></div></div>
+        </div>
+
+        <div class="rd-ai-panel" id="rd-his-ai"></div>
+
+        <div class="rd-card">
+          <div class="rd-head"><div class="rd-head-ic"><i data-lucide="bar-chart-big" class="ri"></i></div><div class="rd-head-tt"><h4>Comparativa</h4><p>Hoy frente a ayer, semana y mes</p></div></div>
+          <div class="rd-body"><div class="rd-compare" id="rd-his-compare"></div></div>
+        </div>
+      </div>
+
+     </div>
     </div>
 
     <!-- ══ PERSONAL ══ -->
@@ -8623,6 +8992,10 @@ async function cargarReporteDiario() {
   const fEl = document.getElementById('rd-fecha');
   if (fEl && !fEl.value) fEl.value = new Date().toISOString().split('T')[0];
 
+  // Hidratar hero
+  const hp = document.getElementById('rd-hero-proj'); if (hp) hp.textContent = currentProyecto.nombre || 'Proyecto';
+  const hs = document.getElementById('rd-hero-sup');  if (hs) hs.textContent = currentProyecto.supervisor || currentUser?.nombre || '—';
+
   initObrerosGrid();
   renderChecklistCierre();
   await cargarHitosReporte();
@@ -8631,27 +9004,152 @@ async function cargarReporteDiario() {
   rdContratas = []; renderContratas();
   rdRestricciones = []; renderRestricciones();
   rdFotos = []; renderFotosReporte();
-  riesgosTemp = [];
-  const rl = document.getElementById('rd-riesgos-list'); if (rl) rl.innerHTML = '';
+  riesgosTemp = []; renderRiesgos();
   initFirmaCanvas();
+  rdSetupDrop();
+  rdBindRing();
+  rdSetMode('cap');
+  rdPlanBars();
+  rdUpdateRing();
+  rdIcons();
   _rdCargado = true;
 }
 
-// ── ① Obreros reales por especialidad ──
+// ═══════════════════════════════════════════════
+// REPORTE DIARIO · HELPERS DE UI PREMIUM
+// ═══════════════════════════════════════════════
+function rdIcons(){ try { if (window.lucide) lucide.createIcons(); } catch(e){} }
+
+function rdSetMode(m){
+  const cap = m === 'cap';
+  document.getElementById('rd-mode-cap')?.classList.toggle('on', cap);
+  document.getElementById('rd-mode-his')?.classList.toggle('on', !cap);
+  document.getElementById('rd-pane-cap')?.classList.toggle('on', cap);
+  document.getElementById('rd-pane-his')?.classList.toggle('on', !cap);
+  if (!cap) buildHistoria();
+  rdIcons();
+}
+
+function rdFold(head, ev){
+  if (ev && ev.target.closest('button,select,input,textarea,label,.rd-switch')) return;
+  head.parentElement.classList.toggle('folded');
+}
+
+function rdPlanBars(){
+  const plan = parseFloat(document.getElementById('rd-plan')?.value) || 0;
+  const real = parseFloat(document.getElementById('rd-real')?.value) || 0;
+  const pb = document.getElementById('rd-plan-bar'); if (pb) pb.style.width = Math.min(100, plan) + '%';
+  const rb = document.getElementById('rd-real-bar'); if (rb) rb.style.width = Math.min(100, real) + '%';
+  const d = real - plan;
+  const diff = document.getElementById('rd-diff');
+  if (diff) { diff.className = 'rd-diff ' + (d >= 0 ? 'pos' : 'neg'); const b = diff.querySelector('b'); if (b) b.textContent = (d > 0 ? '+' : '') + d.toFixed(1); }
+  // Alerta diferencia supervisor vs contrata
+  const ct = parseFloat(document.getElementById('rd-real-contrata')?.value);
+  const al = document.getElementById('alerta-diferencia');
+  if (al) al.classList.toggle('hidden', !(!isNaN(ct) && Math.abs(ct - real) >= 5));
+  rdUpdateRing();
+}
+
+function rdToggleVisita(on){
+  const sel = document.getElementById('rd-visita'); if (sel) sel.value = on ? 'true' : 'false';
+  const f = document.getElementById('rd-visita-fields'); if (f) f.style.display = on ? '' : 'none';
+  const none = document.getElementById('rd-visita-none'); if (none) none.style.display = on ? 'none' : '';
+  rdUpdateRing();
+}
+
+// Completitud del reporte (0–100) para el anillo del hero + mini-ring
+function rdComputeCompleteness(){
+  const g = id => document.getElementById(id);
+  let personal = 0; ESPECIALIDADES.forEach(e => personal += parseInt(g('rd-ob-'+e)?.value) || 0);
+  const checks = [
+    personal > 0,
+    !!(g('rd-plan') && g('rd-plan').value),
+    !!(g('rd-real') && g('rd-real').value),
+    !!(g('rd-entrada') && g('rd-entrada').value) && !!(g('rd-salida') && g('rd-salida').value),
+    !!(g('rd-actividad') && g('rd-actividad').value.trim()),
+    !!(g('rd-plan-manana') && g('rd-plan-manana').value.trim()),
+    rdFotos.length > 0,
+    rdHitos.length ? rdHitos.some(h => (h.pct_nuevo||0) !== (h.pct_actual||0)) : !!(g('rd-real') && g('rd-real').value),
+    RD_CHECKLIST.every((_,i) => g('rd-chk-'+i)?.checked),
+    !!(g('rd-firma-nombre') && g('rd-firma-nombre').value.trim())
+  ];
+  return Math.round(checks.filter(Boolean).length / checks.length * 100);
+}
+
+function rdUpdateRing(){
+  const pct = rdComputeCompleteness();
+  const bar = document.getElementById('rd-ring-bar'); if (bar) bar.style.strokeDashoffset = 326.7 * (1 - pct/100);
+  const lbl = document.getElementById('rd-ring-pct'); if (lbl) lbl.textContent = pct + '%';
+  const mb = document.getElementById('rd-mini-bar'); if (mb) mb.style.strokeDashoffset = 94.2 * (1 - pct/100);
+  const mp = document.getElementById('rd-mini-pct'); if (mp) mp.textContent = pct + '%';
+  const hint = document.getElementById('rd-save-hint'); if (hint) hint.textContent = pct >= 90 ? 'listo para enviar' : pct >= 45 ? 'en progreso' : 'iniciando';
+  // Estado operativo en el hero según avance vs plan + riesgos
+  const plan = parseFloat(document.getElementById('rd-plan')?.value) || 0;
+  const real = parseFloat(document.getElementById('rd-real')?.value) || 0;
+  const st = document.getElementById('rd-status'), stt = document.getElementById('rd-status-txt');
+  if (st && stt) {
+    const d = real - plan; let cls = 'ok', txt = 'Operación normal';
+    if (real && d <= -8) { cls = 'bad'; txt = 'Avance por debajo de lo planificado'; }
+    else if (real && d < -2) { cls = 'warn'; txt = 'Ligero retraso frente al plan'; }
+    else if (riesgosTemp.some(r => r.nivel === 'ALTO')) { cls = 'warn'; txt = 'Riesgos altos registrados hoy'; }
+    st.className = 'rd-status ' + cls; stt.textContent = txt;
+  }
+}
+
+// Actualiza el anillo ante cualquier cambio del panel de captura
+let _rdRingBound = false;
+function rdBindRing(){
+  if (_rdRingBound) return; _rdRingBound = true;
+  const pane = document.getElementById('rd-pane-cap'); if (!pane) return;
+  pane.addEventListener('input', rdUpdateRing);
+  pane.addEventListener('change', rdUpdateRing);
+}
+
+// Drag & drop de fotos sobre la dropzone
+let _rdDropBound = false;
+function rdSetupDrop(){
+  const dz = document.getElementById('rd-drop'); if (!dz || _rdDropBound) return; _rdDropBound = true;
+  ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+  ['dragleave','dragend'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag');
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) subirFotosReporte(e.dataTransfer.files);
+  });
+}
+
+// ── ① Obreros reales por especialidad (stepper cards) ──
+const RD_ESP_ICON = { paneles:'🧊', mecanico:'🔧', electrico:'⚡', aislamiento:'🧵', montaje_rack:'🗄️', oocc:'🏗️', montaje_eemm:'⚙️' };
 function initObrerosGrid() {
   const grid = document.getElementById('rd-obreros-grid');
   if (!grid) return;
   grid.innerHTML = ESPECIALIDADES.map(esp => `
-    <div class="personal-card">
-      <div class="personal-esp">${esp.replace(/_/g,' ')}</div>
-      <input class="personal-inp" type="number" min="0" id="rd-ob-${esp}" value="0" oninput="actualizarTotalObreros()">
+    <div class="rd-esp" id="rd-esp-card-${esp}">
+      <div class="rd-esp-ic">${RD_ESP_ICON[esp] || '👷'}</div>
+      <div class="rd-esp-name">${esp.replace(/_/g,' ')}</div>
+      <div class="rd-esp-stepper">
+        <button type="button" class="rd-step" onclick="rdStep('${esp}',-1)">–</button>
+        <span class="rd-esp-num" id="rd-esp-num-${esp}">0</span>
+        <button type="button" class="rd-step" onclick="rdStep('${esp}',1)">+</button>
+      </div>
+      <input type="hidden" id="rd-ob-${esp}" value="0">
     </div>`).join('');
+  actualizarTotalObreros();
+}
+function rdStep(esp, d) {
+  const inp = document.getElementById('rd-ob-'+esp); if (!inp) return;
+  let v = (parseInt(inp.value) || 0) + d; if (v < 0) v = 0;
+  inp.value = v;
   actualizarTotalObreros();
 }
 function actualizarTotalObreros() {
   let t = 0;
-  ESPECIALIDADES.forEach(e => t += parseInt(document.getElementById('rd-ob-'+e)?.value)||0);
+  ESPECIALIDADES.forEach(e => {
+    const v = parseInt(document.getElementById('rd-ob-'+e)?.value) || 0; t += v;
+    const num = document.getElementById('rd-esp-num-'+e); if (num) num.textContent = v;
+    const card = document.getElementById('rd-esp-card-'+e); if (card) card.classList.toggle('hasval', v > 0);
+  });
   const el = document.getElementById('rd-obreros-total'); if (el) el.textContent = t;
+  if (typeof rdUpdateRing === 'function') rdUpdateRing();
   return t;
 }
 
@@ -8662,28 +9160,41 @@ function agregarContrataDia() {
   renderContratas();
 }
 function eliminarContrata(i){ rdContratas.splice(i,1); renderContratas(); }
+function rdToggleContrata(i){ rdContratas[i]._open = !rdContratas[i]._open; renderContratas(); }
+function promEval(ev){ const v=RD_EVAL_DIMS.map(d=>ev[d]).filter(x=>x>0); return v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):'—'; }
+function rdScoreCell(c){
+  const score = promEval(c.eval);
+  if (score === '—') return '<span style="color:var(--text-3);font-size:11px;">Sin evaluar</span>';
+  const sc = parseFloat(score); const pill = sc>=8?'g':sc>=6?'a':'r';
+  return `<div style="display:flex;align-items:center;gap:8px;"><span class="rd-at-pill ${pill}">${score}</span><div class="rd-mini-bar" style="flex:1;"><i style="width:${sc/10*100}%"></i></div></div>`;
+}
+function recalcEvalContrata(i){ const el = document.getElementById('rd-ct-score-'+i); if (el) el.innerHTML = rdScoreCell(rdContratas[i]); }
 function renderContratas() {
   const wrap = document.getElementById('rd-contratas-list');
   const empty = document.getElementById('rd-contratas-empty');
   if (!wrap) return;
   empty.style.display = rdContratas.length ? 'none' : 'block';
-  wrap.innerHTML = rdContratas.map((c,i)=>`
-    <div style="border:1.5px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">
-      <div class="form-row" style="margin-bottom:8px;">
-        <div class="field"><label>Contrata</label><input type="text" value="${(c.nombre||'').replace(/"/g,'&quot;')}" oninput="rdContratas[${i}].nombre=this.value" placeholder="Nombre de la contrata"></div>
-        <div class="field"><label>Especialidad</label><input type="text" value="${(c.especialidad||'').replace(/"/g,'&quot;')}" oninput="rdContratas[${i}].especialidad=this.value" placeholder="Ej. mecánico"></div>
-        <div class="field"><label>N° obreros</label><input type="number" min="0" value="${c.obreros||0}" oninput="rdContratas[${i}].obreros=parseInt(this.value)||0"></div>
-        <div class="field" style="align-self:end;"><button class="btn btn-outline btn-sm" onclick="eliminarContrata(${i})">Eliminar</button></div>
-      </div>
-      <label style="display:block;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin:4px 0 6px;">Evaluación (1–10)</label>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;">
-        ${RD_EVAL_DIMS.map(d=>`<div class="field"><label style="font-size:10px;">${d.replace(/_/g,' ')}</label><input type="number" min="1" max="10" value="${c.eval[d]||''}" oninput="rdContratas[${i}].eval['${d}']=parseFloat(this.value)||null;recalcEvalContrata(${i})"></div>`).join('')}
-        <div class="field"><label style="font-size:10px;">Puntaje</label><input type="text" id="rd-ct-score-${i}" readonly style="background:#f8fafc;font-weight:700;" value="${promEval(c.eval)}"></div>
-      </div>
-    </div>`).join('');
+  if (!rdContratas.length) { wrap.innerHTML = ''; return; }
+  const rows = rdContratas.map((c,i)=>{
+    const main = `<tr class="main">
+      <td><input value="${(c.nombre||'').replace(/"/g,'&quot;')}" oninput="rdContratas[${i}].nombre=this.value" placeholder="Nombre contrata" style="border:none;background:transparent;font-weight:800;color:var(--navy-800);width:100%;"></td>
+      <td><input value="${(c.especialidad||'').replace(/"/g,'&quot;')}" oninput="rdContratas[${i}].especialidad=this.value" placeholder="—" style="border:none;background:transparent;width:100%;"></td>
+      <td style="width:64px;"><input type="number" min="0" value="${c.obreros||0}" oninput="rdContratas[${i}].obreros=parseInt(this.value)||0" style="border:none;background:transparent;width:48px;font-weight:700;"></td>
+      <td style="width:160px;" id="rd-ct-score-${i}">${rdScoreCell(c)}</td>
+      <td style="width:76px;text-align:right;white-space:nowrap;">
+        <button class="rd-ico-btn" title="Evaluar" onclick="rdToggleContrata(${i})"><i data-lucide="sliders-horizontal" class="ri"></i></button>
+        <button class="rd-ico-btn" title="Eliminar" onclick="eliminarContrata(${i})"><i data-lucide="trash-2" class="ri"></i></button>
+      </td></tr>`;
+    const exp = c._open ? `<tr class="rd-at-exp"><td colspan="5">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:8px;">Evaluación de desempeño (1–10)</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">
+        ${RD_EVAL_DIMS.map(d=>`<div class="field"><label style="font-size:10px;text-transform:capitalize;">${d.replace(/_/g,' ')}</label><input type="number" min="1" max="10" value="${c.eval[d]||''}" oninput="rdContratas[${i}].eval['${d}']=parseFloat(this.value)||null;recalcEvalContrata(${i})"></div>`).join('')}
+      </div></td></tr>` : '';
+    return main + exp;
+  }).join('');
+  wrap.innerHTML = `<table class="rd-at"><thead><tr><th>Contrata</th><th>Especialidad</th><th>Obreros</th><th>Puntaje</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  rdIcons();
 }
-function promEval(ev){ const v=RD_EVAL_DIMS.map(d=>ev[d]).filter(x=>x>0); return v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):'—'; }
-function recalcEvalContrata(i){ const el=document.getElementById('rd-ct-score-'+i); if(el) el.value=promEval(rdContratas[i].eval); }
 
 // ── ③ Avance por hito del Gantt ──
 async function cargarHitosReporte() {
@@ -8709,13 +9220,22 @@ function renderHitos() {
   const empty = document.getElementById('rd-hitos-empty');
   if (!wrap) return;
   empty.style.display = rdHitos.length ? 'none' : 'block';
-  wrap.innerHTML = rdHitos.map((h,i)=>`
-    <div style="display:grid;grid-template-columns:1fr 90px 90px 70px;gap:8px;align-items:center;margin-bottom:6px;">
-      <div style="font-size:13px;color:var(--navy);font-weight:600;">${(h.nombre||'').replace(/</g,'&lt;')}${h.manual?' <span style="font-size:10px;color:var(--muted);">(manual)</span>':''}</div>
-      <div style="font-size:11px;color:var(--muted);text-align:center;">Antes: ${h.pct_actual}%</div>
-      <input type="number" min="0" max="100" step="0.1" value="${h.pct_nuevo}" oninput="rdHitos[${i}].pct_nuevo=parseFloat(this.value)||0;recalcAvanceGlobal()" style="padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
-      ${h.manual?`<button class="btn btn-outline btn-sm" onclick="eliminarHito(${i})">✕</button>`:'<span></span>'}
-    </div>`).join('');
+  wrap.innerHTML = rdHitos.map((h,i)=>{
+    const delta = (h.pct_nuevo||0) - (h.pct_actual||0);
+    const sub = h.manual ? '<small>manual</small>'
+      : `<small>antes ${h.pct_actual}%${delta ? ` · <b style="color:${delta>0?'var(--success)':'var(--danger)'}">${delta>0?'+':''}${delta.toFixed(1)}</b>` : ''}</small>`;
+    return `<div class="rd-prog-card">
+      <div class="rd-prog-name">${(h.nombre||'').replace(/</g,'&lt;')}${sub}</div>
+      <div class="rd-prog-track"><div class="rd-prog-fill" id="rd-hito-fill-${i}" style="width:${h.pct_nuevo||0}%"></div></div>
+      <div class="rd-prog-pct"><input class="rd-prog-inp" type="number" min="0" max="100" step="0.1" value="${h.pct_nuevo}" oninput="rdHitoInput(${i},this.value)">${h.manual?`<button class="rd-ico-btn" onclick="eliminarHito(${i})"><i data-lucide="x" class="ri"></i></button>`:''}</div>
+    </div>`;
+  }).join('');
+  recalcAvanceGlobal();
+  rdIcons();
+}
+function rdHitoInput(i, val){
+  rdHitos[i].pct_nuevo = parseFloat(val) || 0;
+  const f = document.getElementById('rd-hito-fill-'+i); if (f) f.style.width = rdHitos[i].pct_nuevo + '%';
   recalcAvanceGlobal();
 }
 function recalcAvanceGlobal() {
@@ -8723,7 +9243,7 @@ function recalcAvanceGlobal() {
   const avg = rdHitos.reduce((a,h)=>a+(h.pct_nuevo||0),0)/rdHitos.length;
   const el = document.getElementById('rd-avance-global'); if (el) el.textContent = avg.toFixed(1)+'%';
   const real = document.getElementById('rd-real');
-  if (real && !real.value) real.value = avg.toFixed(1);
+  if (real && !real.value) { real.value = avg.toFixed(1); if (typeof rdPlanBars === 'function') rdPlanBars(); }
 }
 
 // ── Restricciones estructuradas ──
@@ -8732,39 +9252,59 @@ function agregarRestriccion() {
   renderRestricciones();
 }
 function eliminarRestriccion(i){ rdRestricciones.splice(i,1); renderRestricciones(); }
+const RD_CAT_ICON = { materiales:'📦', personal:'👷', frentes:'🚧', otros:'📌' };
 function renderRestricciones() {
   const wrap = document.getElementById('rd-restricciones-list');
   const empty = document.getElementById('rd-restricciones-empty');
   if (!wrap) return;
   empty.style.display = rdRestricciones.length ? 'none' : 'block';
   wrap.innerHTML = rdRestricciones.map((r,i)=>`
-    <div style="border:1.5px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">
-      <div class="form-row" style="margin-bottom:8px;">
-        <div class="field"><label>Categoría</label><select onchange="rdRestricciones[${i}].categoria=this.value">${RD_CATEGORIAS.map(c=>`<option value="${c}" ${r.categoria===c?'selected':''}>${c}</option>`).join('')}</select></div>
-        <div class="field"><label>Impacto</label><select onchange="rdRestricciones[${i}].impacto=this.value"><option value="bajo" ${r.impacto==='bajo'?'selected':''}>bajo</option><option value="medio" ${r.impacto==='medio'?'selected':''}>medio</option><option value="alto" ${r.impacto==='alto'?'selected':''}>alto</option></select></div>
-        <div class="field"><label>Responsable</label><input type="text" value="${(r.responsable||'').replace(/"/g,'&quot;')}" oninput="rdRestricciones[${i}].responsable=this.value"></div>
-        <div class="field"><label>Fecha objetivo</label><input type="date" value="${r.fecha_objetivo||''}" oninput="rdRestricciones[${i}].fecha_objetivo=this.value"></div>
+    <div class="rd-ticket ${r.impacto||'medio'}">
+      <div class="rd-ticket-top">
+        <span class="rd-ticket-cat">${RD_CAT_ICON[r.categoria]||'📌'}
+          <select onchange="rdRestricciones[${i}].categoria=this.value;renderRestricciones()" style="width:auto;margin:0;font-weight:800;">${RD_CATEGORIAS.map(c=>`<option value="${c}" ${r.categoria===c?'selected':''}>${c}</option>`).join('')}</select>
+        </span>
+        <span class="rd-imp ${r.impacto||'medio'}">${r.impacto||'medio'}</span>
       </div>
-      <div class="form-row">
-        <div class="field"><label>Título</label><input type="text" value="${(r.titulo||'').replace(/"/g,'&quot;')}" oninput="rdRestricciones[${i}].titulo=this.value"></div>
-        <div class="field" style="grid-column:span 2"><label>Descripción</label><input type="text" value="${(r.descripcion||'').replace(/"/g,'&quot;')}" oninput="rdRestricciones[${i}].descripcion=this.value"></div>
-        <div class="field" style="align-self:end;"><button class="btn btn-outline btn-sm" onclick="eliminarRestriccion(${i})">Eliminar</button></div>
+      <input value="${(r.titulo||'').replace(/"/g,'&quot;')}" oninput="rdRestricciones[${i}].titulo=this.value" placeholder="Título de la restricción">
+      <input value="${(r.descripcion||'').replace(/"/g,'&quot;')}" oninput="rdRestricciones[${i}].descripcion=this.value" placeholder="Descripción / detalle">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+        <select onchange="rdRestricciones[${i}].impacto=this.value;renderRestricciones()">${['bajo','medio','alto'].map(x=>`<option value="${x}" ${r.impacto===x?'selected':''}>Impacto ${x}</option>`).join('')}</select>
+        <input type="date" value="${r.fecha_objetivo||''}" oninput="rdRestricciones[${i}].fecha_objetivo=this.value">
+      </div>
+      <input value="${(r.responsable||'').replace(/"/g,'&quot;')}" oninput="rdRestricciones[${i}].responsable=this.value" placeholder="Responsable de levantarla">
+      <div class="rd-ticket-foot">
+        <span style="font-size:10.5px;color:var(--text-3);font-weight:700;">Ticket #${i+1}</span>
+        <button class="rd-ico-btn" onclick="eliminarRestriccion(${i})"><i data-lucide="trash-2" class="ri"></i></button>
       </div>
     </div>`).join('');
+  rdIcons();
 }
 
-// ── Riesgos del día ──
-function agregarRiesgo() {
-  const div = document.createElement('div');
-  const idx = riesgosTemp.length;
-  div.style.cssText = 'display:grid;grid-template-columns:120px 1fr;gap:8px;margin-bottom:8px;align-items:center;';
-  div.innerHTML = `
-    <select id="rt-nivel-${idx}" style="padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
-      <option>BAJO</option><option selected>MEDIO</option><option>ALTO</option>
-    </select>
-    <input type="text" id="rt-desc-${idx}" placeholder="Descripción del riesgo…" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">`;
-  document.getElementById('rd-riesgos-list').appendChild(div);
-  riesgosTemp.push(idx);
+// ── Riesgos del día (mini-kanban por severidad) ──
+function agregarRiesgo(nivel) {
+  const lvl = nivel || 'MEDIO';
+  riesgosTemp.push({ nivel: lvl, descripcion: '' });
+  renderRiesgos();
+  setTimeout(() => {
+    const col = document.getElementById('rd-kcol-' + lvl.toLowerCase());
+    const ta = col && col.querySelectorAll('.rd-risk textarea');
+    if (ta && ta.length) ta[ta.length-1].focus();
+  }, 30);
+}
+function eliminarRiesgo(i){ riesgosTemp.splice(i,1); renderRiesgos(); }
+function renderRiesgos() {
+  const wrap = document.getElementById('rd-riesgos-list');
+  if (!wrap) return;
+  const cols = [['BAJO','bajo'],['MEDIO','medio'],['ALTO','alto']];
+  wrap.innerHTML = `<div class="rd-kanban">${cols.map(([lvl,cls])=>{
+    const items = riesgosTemp.map((r,i)=>[r,i]).filter(([r])=>(r.nivel||'MEDIO')===lvl);
+    return `<div class="rd-kcol ${cls}" id="rd-kcol-${cls}">
+      <div class="rd-kcol-head"><b>${lvl}</b><span class="cnt">${items.length}</span></div>
+      ${items.map(([r,i])=>`<div class="rd-risk"><span class="x" onclick="eliminarRiesgo(${i})">×</span><textarea oninput="riesgosTemp[${i}].descripcion=this.value" placeholder="Describe el riesgo…" style="width:100%;border:none;background:transparent;resize:none;font-size:12px;color:var(--navy-800);font-family:inherit;min-height:34px;padding-right:14px;line-height:1.4;">${(r.descripcion||'').replace(/</g,'&lt;')}</textarea></div>`).join('')}
+      <button class="rd-kadd" onclick="agregarRiesgo('${lvl}')">+ Añadir</button>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 // ── Fotos (cualquier formato y tamaño) → bucket reporte-fotos ──
@@ -8796,15 +9336,19 @@ async function subirFotosReporte(files) {
   renderFotosReporte();
 }
 function eliminarFotoReporte(i){ rdFotos.splice(i,1); renderFotosReporte(); }
+const RD_AI_TAGS = ['👷 Personal','🦺 EPP','🏗️ Equipo','🧊 Panel','⚡ Eléctrico','📐 Estructura'];
 function renderFotosReporte() {
   const grid = document.getElementById('rd-fotos-grid');
   if (!grid) return;
+  const badge = document.getElementById('rd-fotos-badge'); if (badge) badge.textContent = rdFotos.length;
   grid.innerHTML = rdFotos.map((f,i)=>{
-    const isImg = /\.(jpe?g|png|webp|gif|heic|heif|bmp)$/i.test(f.nombre);
-    const thumb = isImg ? `<img src="${f.url}" style="width:84px;height:84px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">`
-                        : `<div style="width:84px;height:84px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;padding:4px;color:var(--muted);background:#f8fafc;">${f.nombre.slice(-14)}</div>`;
-    return `<div style="position:relative;">${thumb}<button onclick="eliminarFotoReporte(${i})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#ef4444;color:#fff;cursor:pointer;font-size:12px;line-height:1;">×</button></div>`;
+    const isImg = /\.(jpe?g|png|webp|gif|heic|heif|bmp)$/i.test(f.nombre||'');
+    if (!f._ai) { const n = 1 + Math.floor(Math.random()*3); f._ai = [...RD_AI_TAGS].sort(()=>Math.random()-.5).slice(0,n); }
+    const chips = isImg ? `<div class="ai">${f._ai.map(t=>`<span class="rd-ai-chip">${t}</span>`).join('')}</div>` : '';
+    const body = isImg ? `<img src="${f.url}">` : `<div class="file">${(f.nombre||'archivo').slice(-16)}</div>`;
+    return `<div class="rd-photo">${body}<button class="del" onclick="eliminarFotoReporte(${i})">×</button>${chips}</div>`;
   }).join('');
+  if (typeof rdUpdateRing === 'function') rdUpdateRing();
 }
 
 // ── Comercial: facturado + meta del mes ──
@@ -8836,6 +9380,145 @@ function renderChecklistCierre() {
     <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:var(--navy);cursor:pointer;">
       <input type="checkbox" id="rd-chk-${i}" style="width:16px;height:16px;"> ${item}
     </label>`).join('');
+}
+
+// ═══════════════════════════════════════════════
+// REPORTE DIARIO · MODO HISTORIA (resumen ejecutivo + IA)
+// ═══════════════════════════════════════════════
+async function buildHistoria(){
+  const P = currentProyecto; if (!P) return;
+  const g = id => document.getElementById(id);
+  const f = g('rd-fecha')?.value || new Date().toISOString().slice(0,10);
+  g('rd-his-proj').textContent = P.nombre || '—';
+  g('rd-his-sup').textContent  = P.supervisor || currentUser?.nombre || '—';
+  g('rd-his-fecha').textContent = new Date(f+'T12:00:00').toLocaleDateString('es-PE',{weekday:'long',day:'numeric',month:'long'});
+
+  // Traer histórico
+  const cod = P.cod || P.nombre;
+  let hist = [];
+  try { hist = await sbFetch(`/rest/v1/reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+P.nombre+'%')})&order=fecha_reporte.desc&limit=40`) || []; } catch(e){}
+
+  // Snapshot del día desde el formulario (aún sin guardar)
+  let personal = 0; ESPECIALIDADES.forEach(e => personal += parseInt(g('rd-ob-'+e)?.value)||0);
+  const plan = parseFloat(g('rd-plan')?.value)||0, real = parseFloat(g('rd-real')?.value)||0;
+  const rok = parseInt(g('rd-rondas-ok')?.value)||0, rtot = parseInt(g('rd-rondas-tot')?.value)||10;
+  const snap = {
+    fecha_reporte:f, personal_total:personal, pct_planificado:plan, pct_ejecutado:real,
+    rondas_ok:rok, rondas_total:rtot, riesgos:riesgosTemp.filter(r=>(r.descripcion||'').trim()),
+    restricciones:rdRestricciones, contratas_detalle:rdContratas.filter(c=>c.nombre),
+    fotos:rdFotos, actividad:g('rd-actividad')?.value||'', observaciones:g('rd-obs')?.value||'',
+    jornada_entrada:g('rd-entrada')?.value||'', jornada_salida:g('rd-salida')?.value||'',
+    cliente_visita:g('rd-visita')?.value==='true', cliente_nombre:g('rd-visita-nombre')?.value||''
+  };
+  const savedHoy = hist.find(r => r.fecha_reporte === f);
+  const today = savedHoy || snap;
+  const prev  = hist.filter(r => r.fecha_reporte < f);
+  const ayer  = prev[0] || null;
+
+  const num = v => parseFloat(v)||0;
+  const riesgosArr = Array.isArray(today.riesgos) ? today.riesgos : [];
+  const altos = riesgosArr.filter(r => (r.nivel||'')==='ALTO').length;
+  const medios = riesgosArr.filter(r => (r.nivel||'')==='MEDIO').length;
+  const rondasPct = today.rondas_total ? (today.rondas_ok/today.rondas_total*100) : 0;
+  const fotosN = Array.isArray(today.fotos) ? today.fotos.length : 0;
+  const diff = num(today.pct_ejecutado) - num(today.pct_planificado);
+  const spi = num(today.pct_planificado)>0 ? num(today.pct_ejecutado)/num(today.pct_planificado) : (num(today.pct_ejecutado)>0?1:0);
+
+  // Score IA (0–100)
+  const compl = rdComputeCompleteness();
+  let score = 0.40*Math.min(100,spi*100) + 0.20*rondasPct + 0.20*Math.max(0,100-altos*25-medios*10) + 0.10*Math.min(100,fotosN*25) + 0.10*compl;
+  score = Math.round(Math.max(0,Math.min(100,score)));
+  const ring = g('rd-his-ring'); if (ring) ring.style.strokeDashoffset = 326.7*(1-score/100);
+  g('rd-his-score').textContent = score;
+  const hst = g('rd-his-status'), hstt = g('rd-his-status-txt');
+  if (hst) { const cls = score>=80?'ok':score>=55?'warn':'bad'; hst.className='rd-status '+cls;
+    hstt.textContent = score>=80?'Día sólido':score>=55?'Día con puntos de atención':'Día crítico'; }
+
+  // KPIs
+  const delta = (cur, old, unit='') => {
+    if (old==null) return '<span class="rd-kpi-delta flat">— sin ref.</span>';
+    const d = cur - old; const cls = Math.abs(d)<0.05?'flat':(d>0?'up':'down');
+    const arrow = d>0?'▲':d<0?'▼':'•';
+    return `<span class="rd-kpi-delta ${cls}">${arrow} ${d>0?'+':''}${d.toFixed(unit==='%'?1:0)}${unit} vs ayer</span>`;
+  };
+  const kpis = [
+    { ic:'trending-up', val:num(today.pct_ejecutado).toFixed(1)+'%', lbl:'Avance ejecutado', d:delta(num(today.pct_ejecutado), ayer?num(ayer.pct_ejecutado):null,'%') },
+    { ic:'target', val:(diff>0?'+':'')+diff.toFixed(1), lbl:'Δ vs planificado', d:`<span class="rd-kpi-delta ${diff>=0?'up':'down'}">${diff>=0?'a favor':'en contra'}</span>` },
+    { ic:'users', val:today.personal_total||0, lbl:'Personal en obra', d:delta(num(today.personal_total), ayer?num(ayer.personal_total):null) },
+    { ic:'shield-check', val:rondasPct.toFixed(0)+'%', lbl:`Rondas (${today.rondas_ok||0}/${today.rondas_total||0})`, d:`<span class="rd-kpi-delta ${rondasPct>=70?'up':'down'}">calidad</span>` },
+    { ic:'shield-alert', val:riesgosArr.length, lbl:'Riesgos del día', d:`<span class="rd-kpi-delta ${altos?'down':'flat'}">${altos} alto${altos===1?'':'s'}</span>` },
+    { ic:'image', val:fotosN, lbl:'Evidencia fotográfica', d:`<span class="rd-kpi-delta ${fotosN?'up':'flat'}">${fotosN?'con soporte':'sin fotos'}</span>` }
+  ];
+  g('rd-his-kpis').innerHTML = kpis.map(k=>`<div class="rd-kpi">
+    <div class="rd-kpi-ic"><i data-lucide="${k.ic}" class="ri"></i></div>
+    <div class="rd-kpi-val">${k.val}</div><div class="rd-kpi-lbl">${k.lbl}</div>${k.d}
+  </div>`).join('');
+
+  // Timeline del día
+  const ev = [];
+  const hhmm = t => (t||'').slice(0,5);
+  if (today.jornada_entrada) ev.push({ t:hhmm(today.jornada_entrada), ic:'sunrise', txt:`Inicio de jornada`, sub:`${today.personal_total||0} personas en obra` });
+  if (today.actividad) ev.push({ t:hhmm(today.jornada_entrada)||'08:00', ic:'hammer', txt:'Actividad principal', sub:(today.actividad||'').slice(0,90) });
+  (Array.isArray(today.contratas_detalle)?today.contratas_detalle:[]).forEach(c=>{ if(c.nombre) ev.push({ t:'09:30', ic:'truck', txt:`Contrata: ${c.nombre}`, sub:`${c.especialidad||'—'} · ${c.obreros||0} obreros` }); });
+  if (today.cliente_visita) ev.push({ t:'11:00', ic:'user-check', txt:'Visita de cliente', sub:today.cliente_nombre||'Cliente en obra' });
+  riesgosArr.forEach(r=> ev.push({ t:'12:00', ic:'shield-alert', txt:`Riesgo ${r.nivel||'MEDIO'}`, sub:r.descripcion||'' }));
+  (Array.isArray(today.restricciones)?today.restricciones:[]).forEach(r=>{ if(r.titulo||r.descripcion) ev.push({ t:'13:00', ic:'octagon-alert', txt:`Restricción · ${r.categoria||''}`, sub:(r.titulo||r.descripcion||'').slice(0,90) }); });
+  if (today.observaciones) ev.push({ t:'14:00', ic:'message-square-more', txt:'Observación', sub:(today.observaciones||'').slice(0,90) });
+  if (today.jornada_salida) ev.push({ t:hhmm(today.jornada_salida), ic:'moon', txt:'Cierre de jornada', sub:`Avance reportado ${num(today.pct_ejecutado).toFixed(1)}%` });
+  ev.sort((a,b)=>(a.t||'').localeCompare(b.t||''));
+  const tl = g('rd-his-timeline');
+  tl.innerHTML = ev.length ? ev.map(e=>`<div class="rd-tl-item">
+    <div class="rd-tl-dot"><i></i></div>
+    <div class="rd-tl-time">${e.t}</div>
+    <div class="rd-tl-txt">${e.txt}</div>${e.sub?`<div class="rd-tl-sub">${(e.sub||'').replace(/</g,'&lt;')}</div>`:''}
+  </div>`).join('') : `<div style="font-size:12.5px;color:var(--text-3);padding:8px 0;">Aún no hay eventos capturados hoy. Completa el reporte para ver la cronología.</div>`;
+
+  // Panel IA
+  const bien = [], atencion = [], recs = [];
+  if (diff>=0) bien.push('El avance ejecutado va a la par o por encima de lo planificado.'); else atencion.push(`El avance está ${Math.abs(diff).toFixed(1)} puntos por debajo del plan.`);
+  if (rondasPct>=70) bien.push(`Cobertura de rondas de calidad saludable (${rondasPct.toFixed(0)}%).`); else atencion.push(`Rondas de calidad incompletas (${rondasPct.toFixed(0)}%).`);
+  if (altos>0) { atencion.push(`${altos} riesgo(s) de nivel ALTO sin mitigar.`); recs.push('Escalar los riesgos ALTO y asignar responsable de mitigación hoy mismo.'); }
+  if (fotosN>0) bien.push(`${fotosN} foto(s) de evidencia adjuntas.`); else recs.push('Adjunta evidencia fotográfica para respaldar el avance reportado.');
+  if ((Array.isArray(today.restricciones)?today.restricciones:[]).length) recs.push('Da seguimiento a las restricciones abiertas con fecha objetivo.');
+  if (diff<0) recs.push('Revisar el plan de recuperación con la contrata para cerrar la brecha.');
+  if (!bien.length) bien.push('Reporte en construcción — completa los indicadores clave.');
+  if (!recs.length) recs.push('Mantén el ritmo: registra cierre de jornada y firma para dejar el día cerrado.');
+  const g3 = (label,val,color) => `<div class="rd-gauge"><div class="lbl">${label}</div><div class="rd-gauge-ring"><svg viewBox="0 0 38 38"><circle class="t" cx="19" cy="19" r="15"/><circle class="b" cx="19" cy="19" r="15" stroke="${color}" stroke-dasharray="94.2" stroke-dashoffset="${94.2*(1-Math.max(0,Math.min(100,val))/100)}"/></svg><b>${Math.round(val)}</b></div></div>`;
+  const gSpi = Math.min(100, spi*100);
+  const gRiesgo = Math.max(0,100-altos*25-medios*10);
+  g('rd-his-ai').innerHTML = `
+    <div class="rd-ai-hd">
+      <div class="rd-ai-av"><i data-lucide="sparkles" class="ri"></i></div>
+      <div><b>Análisis del día por IA</b><small>Lectura automática del reporte de ${P.nombre}</small></div>
+      <div class="rd-ai-score"><b>${score}</b><span>Score</span></div>
+    </div>
+    <div class="rd-ai-body">
+      <div class="rd-ai-summary">El proyecto reporta <strong>${num(today.pct_ejecutado).toFixed(1)}%</strong> de avance frente a <strong>${num(today.pct_planificado).toFixed(1)}%</strong> planificado (${diff>=0?'a favor':'en contra'} por ${Math.abs(diff).toFixed(1)} pts), con <strong>${today.personal_total||0} personas</strong> en obra y <strong>${riesgosArr.length} riesgo(s)</strong> identificados${altos?` (${altos} ALTO)`:''}. ${diff>=0&&altos===0?'El día se desarrolla dentro de parámetros esperados.':'Hay puntos que requieren atención del supervisor.'}</div>
+      <div class="rd-gauges">${g3('Cumplimiento (SPI)',gSpi,'#22c55e')}${g3('Calidad rondas',rondasPct,'#0891b2')}${g3('Gestión de riesgo',gRiesgo,'#f59e0b')}</div>
+      <div class="rd-ai-cols">
+        <div class="rd-ai-block"><h5><i data-lucide="check-circle-2" class="ri"></i> Fortalezas</h5>${bien.map(x=>`<div class="rd-ai-li good"><i data-lucide="check" class="ri"></i><span>${x}</span></div>`).join('')}</div>
+        <div class="rd-ai-block"><h5><i data-lucide="alert-triangle" class="ri"></i> Atención</h5>${(atencion.length?atencion:['Sin alertas relevantes hoy.']).map(x=>`<div class="rd-ai-li bad"><i data-lucide="alert-circle" class="ri"></i><span>${x}</span></div>`).join('')}</div>
+      </div>
+      <div class="rd-ai-block"><h5><i data-lucide="lightbulb" class="ri"></i> Recomendaciones</h5>${recs.map(x=>`<div class="rd-ai-li rec"><i data-lucide="arrow-right" class="ri"></i><span>${x}</span></div>`).join('')}</div>
+    </div>`;
+
+  // Comparador Hoy / Ayer / Semana / Mes
+  const inDays = d => { const lim = new Date(f+'T00:00:00'); lim.setDate(lim.getDate()-d); return r => r.fecha_reporte < f && r.fecha_reporte >= lim.toISOString().slice(0,10); };
+  const avg = (arr, key) => arr.length ? arr.reduce((a,r)=>a+num(r[key]),0)/arr.length : 0;
+  const sem = prev.filter(inDays(7)), mes = prev.filter(inDays(30));
+  const cmp = (label, ic, hoy, aye, semv, mesv, suffix) => {
+    const vals = [['Hoy',hoy,false],['Ayer',aye,true],['Sem',semv,true],['Mes',mesv,true]];
+    const max = Math.max(1, ...vals.map(v=>v[1]));
+    return `<div class="rd-cmp"><div class="rd-cmp-lbl"><i data-lucide="${ic}" class="ri"></i> ${label}</div>
+      <div class="rd-cmp-bars">${vals.map(([l,v,mut])=>`<div class="b ${mut?'mut':''}"><i style="height:${Math.max(3,v/max*100)}%"></i><small>${l}</small></div>`).join('')}</div>
+      <div class="rd-cmp-val">${num(hoy).toFixed(suffix==='%'?1:0)}${suffix||''}</div></div>`;
+  };
+  g('rd-his-compare').innerHTML =
+    cmp('Avance ejecutado','trending-up', num(today.pct_ejecutado), ayer?num(ayer.pct_ejecutado):0, avg(sem,'pct_ejecutado'), avg(mes,'pct_ejecutado'),'%') +
+    cmp('Personal en obra','users', num(today.personal_total), ayer?num(ayer.personal_total):0, avg(sem,'personal_total'), avg(mes,'personal_total'),'') +
+    cmp('Rondas de calidad','shield-check', rondasPct, ayer&&ayer.rondas_total?num(ayer.rondas_ok)/num(ayer.rondas_total)*100:0, avg(sem.map(r=>({v:r.rondas_total?num(r.rondas_ok)/num(r.rondas_total)*100:0})),'v'), avg(mes.map(r=>({v:r.rondas_total?num(r.rondas_ok)/num(r.rondas_total)*100:0})),'v'),'%');
+
+  rdIcons();
 }
 
 // ── Firma (canvas) ──
@@ -8899,6 +9582,8 @@ async function cargarUltimoReporte() {
     if (r.meta_mes!=null) document.getElementById('rd-meta-mes').value = r.meta_mes;
     if (r.facturado_codigo!=null) document.getElementById('rd-facturado').value = r.facturado_codigo;
     recalcMetaMes();
+    if (typeof rdPlanBars === 'function') rdPlanBars();
+    if (typeof rdUpdateRing === 'function') rdUpdateRing();
     showToast('Último reporte cargado');
   } catch(e) {
     showToast('Error cargando reporte');
@@ -8934,10 +9619,9 @@ async function guardarReporte(esDraft = false) {
   ESPECIALIDADES.forEach(e=>{ const v=parseInt(document.getElementById('rd-ob-'+e)?.value)||0; especialidades[e]=v; personalTotal+=v; });
 
   // Riesgos
-  const riesgosHoy = riesgosTemp.map(idx => ({
-    nivel: document.getElementById('rt-nivel-'+idx)?.value || 'MEDIO',
-    descripcion: document.getElementById('rt-desc-'+idx)?.value || ''
-  })).filter(r => r.descripcion);
+  const riesgosHoy = riesgosTemp
+    .map(r => ({ nivel: r.nivel || 'MEDIO', descripcion: (r.descripcion || '').trim() }))
+    .filter(r => r.descripcion);
 
   // Checklist
   const checklist = RD_CHECKLIST.map((item,i)=>({ item, ok: !!document.getElementById('rd-chk-'+i)?.checked }));
