@@ -2970,6 +2970,74 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 @keyframes rdFade{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
 @keyframes rdPop{from{opacity:0;transform:scale(.96);}to{opacity:1;transform:none;}}
 
+/* ─── Selector de TIPO de reporte (Diario / Puesta en Marcha / Levantamiento Obs) ─── */
+.rd-tipos{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+.rd-tipo-btn{flex:1;min-width:210px;max-width:360px;display:flex;align-items:center;gap:12px;
+  padding:13px 17px;border-radius:var(--r-md);background:var(--surface);
+  border:1px solid var(--border);cursor:pointer;text-align:left;
+  transition:all var(--d) var(--ease);box-shadow:var(--sh-1);}
+.rd-tipo-btn:hover{box-shadow:var(--sh-2);transform:translateY(-1px);}
+.rd-tipo-btn .ic{width:38px;height:38px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  background:var(--surface-2);color:var(--text-2);transition:all var(--d) var(--ease);}
+.rd-tipo-btn .ic .ri{width:19px;height:19px;stroke-width:2.1;}
+.rd-tipo-btn .tt{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.rd-tipo-btn .tt b{font-size:13px;font-weight:800;color:var(--navy-800);letter-spacing:-.01em;}
+.rd-tipo-btn .tt span{font-size:10.5px;color:var(--text-3);font-weight:500;}
+.rd-tipo-btn.on{border-color:transparent;background:var(--grad-brand);box-shadow:var(--sh-3);}
+.rd-tipo-btn.on .ic{background:rgba(255,255,255,.18);color:#fff;}
+.rd-tipo-btn.on .tt b{color:#fff;}
+.rd-tipo-btn.on .tt span{color:rgba(255,255,255,.82);}
+.rd-tipo-pane{display:none;}
+.rd-tipo-pane.on{display:block;animation:rdFade var(--d-slow) var(--ease-out);}
+
+/* ─── Puesta en Marcha (PEM — checklist NH₃) ─── */
+.pem-sec{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  box-shadow:var(--sh-1);overflow:hidden;}
+.pem-sec + .pem-sec{margin-top:14px;}
+.pem-sec-head{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;}
+.pem-sec-head:hover{background:var(--surface-2);}
+.pem-sec-num{width:28px;height:28px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  background:var(--grad-cool);color:#fff;font-size:12px;font-weight:800;}
+.pem-sec-head h4{flex:1;font-size:13px;font-weight:800;color:var(--navy-800);letter-spacing:-.01em;}
+.pem-sec-badge{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;
+  background:var(--surface-2);color:var(--text-3);white-space:nowrap;}
+.pem-sec-badge.done{background:rgba(6,182,212,.14);color:var(--teal-700);}
+.pem-chev{transition:transform var(--d) var(--ease);color:var(--text-3);flex-shrink:0;}
+.pem-sec.folded .pem-sec-body{display:none;}
+.pem-sec.folded .pem-chev{transform:rotate(-90deg);}
+.pem-item{display:grid;grid-template-columns:1fr auto;gap:8px 14px;align-items:center;
+  padding:11px 18px;border-top:1px solid var(--border);}
+.pem-item-l{min-width:0;}
+.pem-item-l b{font-size:12.5px;font-weight:700;color:var(--navy-800);display:block;line-height:1.35;}
+.pem-item-l .spec{font-size:10.5px;color:var(--text-3);margin-top:3px;display:inline-block;
+  background:var(--surface-2);padding:1px 8px;border-radius:6px;}
+.pem-tri{display:inline-flex;background:var(--surface-2);border-radius:999px;padding:3px;gap:2px;}
+.pem-tri button{border:none;background:transparent;cursor:pointer;font-size:11px;font-weight:800;
+  padding:5px 11px;border-radius:999px;color:var(--text-2);transition:all var(--d) var(--ease);}
+.pem-tri button.si.on{background:#10b981;color:#fff;}
+.pem-tri button.no.on{background:#ef4444;color:#fff;}
+.pem-tri button.na.on{background:var(--text-3);color:#fff;}
+.pem-obs{grid-column:1/-1;}
+.pem-obs input{width:100%;border:1px solid var(--border);border-radius:8px;padding:7px 10px;
+  font-size:11.5px;background:var(--surface-2);color:var(--text);}
+.pem-obs input:focus{outline:none;border-color:var(--teal-500);background:var(--surface);}
+.pem-coment{padding:12px 18px;border-top:1px solid var(--border);}
+.pem-coment label{font-size:10.5px;font-weight:800;color:var(--text-2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px;}
+.pem-coment textarea{width:100%;min-height:52px;border:1px solid var(--border);border-radius:8px;
+  padding:8px 11px;font-size:11.5px;background:var(--surface-2);color:var(--text);resize:vertical;font-family:inherit;}
+.pem-firmas{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;}
+.pem-firma{background:var(--surface-2);border:1px dashed var(--border);border-radius:10px;padding:14px;}
+.pem-firma h5{font-size:10.5px;font-weight:800;color:var(--text-2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;}
+.pem-firma input{width:100%;border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:11.5px;margin-bottom:7px;background:var(--surface);color:var(--text);}
+.pem-empty{text-align:center;padding:64px 24px;}
+.pem-empty .ic{width:64px;height:64px;border-radius:18px;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;
+  background:var(--grad-cool);color:#fff;box-shadow:var(--sh-2);}
+.pem-empty .ic .ri{width:30px;height:30px;stroke-width:1.8;}
+.pem-empty h3{font-size:16px;font-weight:800;color:var(--navy-800);margin-bottom:6px;}
+.pem-empty p{font-size:12.5px;color:var(--text-3);max-width:420px;margin:0 auto;line-height:1.55;}
+.pem-empty .tag{display:inline-block;margin-top:14px;font-size:11px;font-weight:800;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--teal-700);background:rgba(6,182,212,.12);padding:5px 14px;border-radius:999px;}
+
 /* HERO */
 .rd-hero{position:relative;overflow:hidden;border-radius:var(--r-lg);
   background:var(--grad-brand);color:#fff;padding:26px 30px;box-shadow:var(--sh-3);
@@ -3807,6 +3875,25 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 
     <!-- ══ REPORTE DIARIO ══ -->
     <div class="tab-content" id="tab-diario">
+
+      <!-- ── Selector de tipo de reporte ── -->
+      <div class="rd-tipos" style="margin-bottom:16px;">
+        <button class="rd-tipo-btn on" id="rd-tipo-btn-diario" onclick="rdSetTipo('diario')">
+          <span class="ic"><i data-lucide="clipboard-list" class="ri"></i></span>
+          <span class="tt"><b>Reporte Diario</b><span>Avance diario de obra</span></span>
+        </button>
+        <button class="rd-tipo-btn" id="rd-tipo-btn-pem" onclick="rdSetTipo('pem')">
+          <span class="ic"><i data-lucide="flame" class="ri"></i></span>
+          <span class="tt"><b>Reporte de Puesta en Marcha</b><span>Comisionamiento NH₃</span></span>
+        </button>
+        <button class="rd-tipo-btn" id="rd-tipo-btn-obs" onclick="rdSetTipo('obs')">
+          <span class="ic"><i data-lucide="clipboard-check" class="ri"></i></span>
+          <span class="tt"><b>Levantamiento de Observaciones</b><span>Cierre de observaciones</span></span>
+        </button>
+      </div>
+
+      <!-- ── PANE: REPORTE DIARIO ── -->
+      <div class="rd-tipo-pane on" id="rd-tipo-diario">
      <div class="rd-wrap">
 
       <!-- ══ TOGGLE DE MODO ══ -->
@@ -4057,6 +4144,20 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       </div>
 
      </div>
+      </div><!-- /rd-tipo-diario -->
+
+      <!-- ── PANE: PUESTA EN MARCHA (NH₃) ── -->
+      <div class="rd-tipo-pane" id="rd-tipo-pem"></div>
+
+      <!-- ── PANE: LEVANTAMIENTO DE OBSERVACIONES ── -->
+      <div class="rd-tipo-pane" id="rd-tipo-obs">
+        <div class="pem-empty">
+          <div class="ic"><i data-lucide="clipboard-check" class="ri"></i></div>
+          <h3>Levantamiento de Observaciones</h3>
+          <p>Este módulo permitirá registrar y dar seguimiento al cierre de observaciones levantadas en obra, con evidencia fotográfica y estado por punto.</p>
+          <span class="tag">Próximamente</span>
+        </div>
+      </div>
     </div>
 
     <!-- ══ PERSONAL ══ -->
@@ -9724,6 +9825,213 @@ async function persistirHitosYRestricciones(esDraft) {
 }
 
 function guardarDraft() { guardarReporte(true); }
+
+// ═══════════════════════════════════════════════
+// TIPO DE REPORTE (Diario / Puesta en Marcha / Levantamiento de Obs)
+// ═══════════════════════════════════════════════
+let pemRendered = false;
+function rdSetTipo(t){
+  ['diario','pem','obs'].forEach(k=>{
+    document.getElementById('rd-tipo-btn-'+k)?.classList.toggle('on', k===t);
+    document.getElementById('rd-tipo-'+k)?.classList.toggle('on', k===t);
+  });
+  if (t==='pem' && !pemRendered){ renderPEM(); pemRendered = true; }
+  rdIcons();
+}
+
+// ─── Definición del checklist de Pre-Comisionamiento NH₃ (FPK-PRT-NH3-001) ───
+const PEM_SECCIONES = [
+  { icon:'wind', titulo:'Limpieza de barrido (Flushing con N₂)', items:[
+    {t:'Troncales', spec:'3 veces'}, {t:'Derivaciones', spec:'3 veces'} ], coment:'Limpieza' },
+  { icon:'sparkles', titulo:'Limpieza manual (con Wypall)', items:[
+    {t:'Asiento de válvulas', spec:'1 vez'}, {t:'Vástagos sin viruta ni grasa', spec:'1 vez'} ] },
+  { icon:'wrench', titulo:'Armado de válvulas (con grasa o aceite)', items:[
+    {t:'Empaques', spec:'1 vez'}, {t:'O-Rings', spec:'1 vez'},
+    {t:'Arandela de presión y resorte en Check', spec:'1 vez'},
+    {t:'Asientos ateflonados', spec:'1 vez'}, {t:'Torque de pernos en bridas', spec:'1 vez'} ] },
+  { icon:'gauge', titulo:'Prueba de presurización (N₂ y espuma)', items:[
+    {t:'Regulador operativo', spec:'1 vez'},
+    {t:'Líquido / Succión H. / Gas Caliente', spec:'17.5 barg'},
+    {t:'Duración de la prueba', spec:'24 hrs · foto inicial/final'},
+    {t:'Bubble Leak Test', spec:'1 vez'}, {t:'V°B presión estable', spec:'±0.1 barg'} ], coment:'Prueba de presurización' },
+  { icon:'timer', titulo:'Prueba de vacío', items:[
+    {t:'Vacuómetro digital calibrado', spec:'1 vez'},
+    {t:'Línea líquido / succión / gas caliente', spec:'<1000 µ · foto'},
+    {t:'Duración medida', spec:'24 hrs · foto'}, {t:'V°B vacío estable', spec:'<Δ1000 µ'} ], coment:'Prueba de vacío' },
+  { icon:'zap', titulo:'Componentes eléctricos de tableros', items:[
+    {t:'Interruptores generales', spec:'1 vez'}, {t:'Guardamotores', spec:'1 vez'},
+    {t:'Relé térmicos', spec:'1 vez'}, {t:'Termostato', spec:'1 vez'},
+    {t:'Soft Starter', spec:'1 vez'}, {t:'VFD', spec:'1 vez'} ], coment:'Componentes eléctricos de tableros' },
+  { icon:'fan', titulo:'Giro de ventiladores', items:[
+    {t:'Evaporadores'}, {t:'Enfriadores'}, {t:'Compresor'}, {t:'Bomba'},
+    {t:'Condensador'}, {t:'Enfriador de cabezales'} ], coment:'Giro de ventiladores' },
+  { icon:'git-branch', titulo:'Válvulas', items:[
+    {t:'Bobina Solenoide', spec:'100% apertura'}, {t:'REG'}, {t:'ICS'}, {t:'ICF'}, {t:'OFV'},
+    {t:'ICAD', spec:'i01=1 · i02=1 · i03=2 · i26 según válvula'}, {t:'ICM'}, {t:'CVP'}, {t:'SVA'} ], coment:'Válvulas' },
+  { icon:'cpu', titulo:'Postcarga del programa de automatización', items:[
+    {t:'Sensores de temperatura / presión'}, {t:'Bobinas Líquido / Succión / Gas C.'}, {t:'ICAD'},
+    {t:'Control de nivel NH₃'}, {t:'Evaporadores'}, {t:'Enfriadores'}, {t:'Offset de sensores'},
+    {t:'Estado — Enfriando'}, {t:'Estado — Deshielo'}, {t:'Estado — Bomba NH₃'},
+    {t:'Estado — Inyección líquido TK'}, {t:'Estado — Bajo nivel'}, {t:'Estado — Alto nivel'},
+    {t:'Estado — Compresor'}, {t:'Estado — Condensador'} ], coment:'Postcarga del programa' },
+  { icon:'thermometer', titulo:'Pruebas a temperatura de seteo (vacío y con producto)', items:[
+    {t:'Túneles MP'}, {t:'Pasillo MP'}, {t:'Cámara MP'}, {t:'Sala de Procesos'},
+    {t:'Túneles PT'}, {t:'Pasillo PT'}, {t:'Cámara PT'}, {t:'Contramuestras'}, {t:'Despacho'} ], coment:'Temperatura de seteo' }
+];
+const PEM_COMENT_EXTRA = ['Cambio de aceite (200 H)', 'Limpieza de filtro (200 H)'];
+const PEM_FIRMAS = ['Friopacking', 'Contratista Frigorista', 'Friopacking — Control de Riesgos'];
+const pemState = {}; // clave `s-i` → 'si' | 'no' | 'na'
+
+function renderPEM(){
+  const cont = document.getElementById('rd-tipo-pem'); if (!cont) return;
+  const proy = (currentProyecto?.nombre) || 'Selecciona un proyecto';
+  const sup  = (currentProyecto?.supervisor) || currentUser?.nombre || '—';
+  const cli  = (currentProyecto?.cliente) || '';
+  const hoy  = new Date().toISOString().slice(0,10);
+  let total = 0; PEM_SECCIONES.forEach(s=> total += s.items.length);
+
+  let secHtml = '';
+  PEM_SECCIONES.forEach((sec, si)=>{
+    let items = '';
+    sec.items.forEach((it, ii)=>{
+      const key = si+'-'+ii;
+      items += `<div class="pem-item">
+        <div class="pem-item-l"><b>${it.t}</b>${it.spec?`<span class="spec">${it.spec}</span>`:''}</div>
+        <div class="pem-tri">
+          <button class="si" id="pem-b-${key}-si" onclick="pemSet('${key}','si')">Sí</button>
+          <button class="no" id="pem-b-${key}-no" onclick="pemSet('${key}','no')">No</button>
+          <button class="na" id="pem-b-${key}-na" onclick="pemSet('${key}','na')">N.A.</button>
+        </div>
+        <div class="pem-obs"><input type="text" id="pem-obs-${key}" placeholder="Observación / especificación…"></div>
+      </div>`;
+    });
+    const coment = sec.coment ? `<div class="pem-coment"><label>Comentarios — ${sec.coment}</label><textarea id="pem-cm-${si}" placeholder="Detallar eventos y/o acuerdos con el cliente…"></textarea></div>` : '';
+    secHtml += `<div class="pem-sec" data-sec="${si}">
+      <div class="pem-sec-head" onclick="pemFold(this)">
+        <span class="pem-sec-num">${si+1}</span>
+        <h4>${sec.titulo}</h4>
+        <span class="pem-sec-badge" id="pem-badge-${si}">0/${sec.items.length}</span>
+        <i data-lucide="chevron-down" class="ri pem-chev"></i>
+      </div>
+      <div class="pem-sec-body">${items}${coment}</div>
+    </div>`;
+  });
+
+  let extraCm = PEM_COMENT_EXTRA.map((lbl,i)=>`<div class="pem-coment"><label>${lbl}</label><textarea id="pem-cx-${i}" placeholder="Detallar eventos y/o acuerdos con el cliente…"></textarea></div>`).join('');
+  let firmasHtml = PEM_FIRMAS.map((f,i)=>`<div class="pem-firma"><h5>${f}</h5>
+     <input type="text" id="pem-firma-nom-${i}" placeholder="Nombre y apellido">
+     <input type="date" id="pem-firma-fec-${i}"></div>`).join('');
+
+  cont.innerHTML = `
+    <div class="rd-wrap">
+      <div class="rd-hero">
+        <div class="rd-hero-l">
+          <span class="rd-hero-eyebrow">Pre-comisionamiento · Sistema de amoníaco (NH₃)</span>
+          <span class="rd-hero-title" id="pem-hero-proj">${proy}</span>
+          <div class="rd-hero-meta">
+            <div><span class="k">Supervisor</span><span class="v">${sup}</span></div>
+            <div><span class="k">Cliente</span><span class="v"><input type="text" id="pem-cliente" value="${cli}" placeholder="Cliente" style="border:none;background:transparent;color:#fff;font-weight:700;font-size:13.5px;width:130px;"></span></div>
+            <div><span class="k">Fecha</span><span class="v"><input type="date" id="pem-fecha" value="${hoy}" style="border:none;background:transparent;color:#fff;font-weight:700;font-size:13.5px;color-scheme:dark;"></span></div>
+          </div>
+          <div class="rd-status ok"><span class="dot"></span> <span>FPK-PRT-NH3-001 · Rev 0</span></div>
+        </div>
+        <div class="rd-ring">
+          <svg viewBox="0 0 120 120">
+            <defs><linearGradient id="pemRingGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a5b4fc"/></linearGradient></defs>
+            <circle class="trk" cx="60" cy="60" r="52"/>
+            <circle class="bar" id="pem-ring-bar" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7" stroke="url(#pemRingGrad)"/>
+          </svg>
+          <div class="rd-ring-lbl"><b id="pem-ring-pct">0%</b><span>Verificado</span></div>
+        </div>
+      </div>
+
+      ${secHtml}
+
+      <div class="pem-sec">
+        <div class="pem-sec-head" style="cursor:default"><span class="pem-sec-num" style="background:var(--surface-2);color:var(--text-2)"><i data-lucide="message-square" class="ri" style="width:15px;height:15px"></i></span><h4>Comentarios adicionales</h4></div>
+        <div class="pem-sec-body">${extraCm}</div>
+      </div>
+
+      <div class="pem-sec">
+        <div class="pem-sec-head" style="cursor:default"><span class="pem-sec-num" style="background:var(--surface-2);color:var(--text-2)"><i data-lucide="pen-line" class="ri" style="width:15px;height:15px"></i></span><h4>Responsables y firmas</h4></div>
+        <div class="pem-sec-body" style="padding:16px 18px"><div class="pem-firmas">${firmasHtml}</div></div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <button class="btn btn-primary" onclick="guardarPEM()"><i data-lucide="save" class="ri" style="width:15px;height:15px"></i> Guardar Puesta en Marcha</button>
+      </div>
+    </div>`;
+  pemUpdateProgress();
+  rdIcons();
+}
+
+function pemSet(key, val){
+  pemState[key] = (pemState[key]===val) ? null : val; // segundo clic deselecciona
+  ['si','no','na'].forEach(v=>{
+    document.getElementById('pem-b-'+key+'-'+v)?.classList.toggle('on', pemState[key]===v);
+  });
+  pemUpdateProgress();
+}
+
+function pemUpdateProgress(){
+  let answered = 0, total = 0;
+  PEM_SECCIONES.forEach((sec, si)=>{
+    let sa = 0;
+    sec.items.forEach((it, ii)=>{ total++; if (pemState[si+'-'+ii]){ answered++; sa++; } });
+    const badge = document.getElementById('pem-badge-'+si);
+    if (badge){ badge.textContent = sa+'/'+sec.items.length; badge.classList.toggle('done', sa===sec.items.length); }
+  });
+  const pct = total ? Math.round(answered/total*100) : 0;
+  const bar = document.getElementById('pem-ring-bar');
+  if (bar) bar.style.strokeDashoffset = (326.7 * (1 - pct/100)).toFixed(1);
+  const lbl = document.getElementById('pem-ring-pct'); if (lbl) lbl.textContent = pct+'%';
+}
+
+function pemFold(head){ head.parentElement.classList.toggle('folded'); }
+
+async function guardarPEM(){
+  const cod = currentProyecto?.cod || currentProyecto?.nombre;
+  if (!cod){ showToast('Selecciona un proyecto'); return; }
+  const fecha = document.getElementById('pem-fecha')?.value;
+  if (!fecha){ showToast('Selecciona la fecha'); return; }
+
+  const secciones = PEM_SECCIONES.map((sec, si)=>({
+    titulo: sec.titulo,
+    comentario: document.getElementById('pem-cm-'+si)?.value || null,
+    items: sec.items.map((it, ii)=>({
+      item: it.t, spec: it.spec || null,
+      estado: pemState[si+'-'+ii] || null,
+      observacion: document.getElementById('pem-obs-'+(si+'-'+ii))?.value || null
+    }))
+  }));
+  const comentarios_extra = PEM_COMENT_EXTRA.map((lbl,i)=>({ etiqueta: lbl, texto: document.getElementById('pem-cx-'+i)?.value || null }));
+  const firmas = PEM_FIRMAS.map((f,i)=>({ rol: f, nombre: document.getElementById('pem-firma-nom-'+i)?.value || null, fecha: document.getElementById('pem-firma-fec-'+i)?.value || null }));
+
+  let answered = 0, total = 0;
+  PEM_SECCIONES.forEach((sec, si)=> sec.items.forEach((it, ii)=>{ total++; if (pemState[si+'-'+ii]) answered++; }));
+  const pct = total ? Math.round(answered/total*100) : 0;
+
+  const payload = {
+    fecha_reporte: fecha,
+    nombre_proyecto: currentProyecto?.nombre || null,
+    cod_proyecto: cod,
+    supervisor: currentProyecto?.supervisor || currentUser?.nombre || null,
+    cliente: document.getElementById('pem-cliente')?.value || currentProyecto?.cliente || null,
+    protocolo: 'FPK-PRT-NH3-001',
+    pct_verificado: pct,
+    secciones, comentarios_extra, firmas
+  };
+
+  setSyncStatus('syncing','Guardando…');
+  try {
+    await sbFetch('/rest/v1/reportes_pem', { method:'POST', headers:{'Prefer':'return=minimal'}, body: JSON.stringify(payload) });
+    showToast('Puesta en Marcha guardada ✓');
+    setSyncStatus('ok','Guardado ✓');
+  } catch(e){
+    setSyncStatus('error','Error');
+    showToast('Error al guardar: ' + e.message);
+  }
+}
 
 // ═══════════════════════════════════════════════
 // PERSONAL
