@@ -3038,6 +3038,88 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 .pem-empty .tag{display:inline-block;margin-top:14px;font-size:11px;font-weight:800;letter-spacing:.05em;
   text-transform:uppercase;color:var(--teal-700);background:rgba(6,182,212,.12);padding:5px 14px;border-radius:999px;}
 
+/* ═══ PLANOS ═══ */
+.pln-toolbar{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:18px;}
+.pln-field{display:flex;flex-direction:column;gap:6px;min-width:240px;flex:1;}
+.pln-lbl{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);}
+.pln-select{width:100%;padding:11px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);
+  font-size:13px;font-weight:600;color:var(--navy-800);cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.pln-select:focus{outline:none;border-color:var(--teal-500);box-shadow:0 0 0 3px rgba(6,182,212,.14);}
+.pln-upload-btn{display:inline-flex;align-items:center;gap:9px;padding:11px 20px;border-radius:12px;
+  background:var(--grad-brand);color:#fff;font-size:13px;font-weight:800;cursor:pointer;border:none;
+  box-shadow:var(--sh-2);transition:transform .15s,box-shadow .15s;white-space:nowrap;}
+.pln-upload-btn:hover{transform:translateY(-1px);box-shadow:var(--sh-3);}
+.pln-upload-btn svg{width:17px;height:17px;}
+.pln-upload-btn.disabled{opacity:.5;pointer-events:none;filter:grayscale(.4);}
+.pln-drop{border:2px dashed var(--line);border-radius:var(--r-lg);padding:34px 20px;text-align:center;
+  transition:border-color .18s,background .18s;margin-bottom:18px;background:var(--surface-2,rgba(6,182,212,.02));}
+.pln-drop.drag{border-color:var(--teal-500);background:rgba(6,182,212,.06);}
+.pln-progress{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:12px;
+  background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);margin-bottom:18px;
+  font-size:13px;font-weight:600;color:var(--teal-700);}
+.pln-spinner{width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(6,182,212,.25);
+  border-top-color:var(--teal-600);animation:plnSpin .7s linear infinite;flex-shrink:0;}
+@keyframes plnSpin{to{transform:rotate(360deg);}}
+.pln-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+.pln-card{border:1.5px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--surface);
+  box-shadow:var(--sh-1);transition:box-shadow .18s,transform .18s;display:flex;flex-direction:column;}
+.pln-card:hover{box-shadow:var(--sh-2);transform:translateY(-2px);}
+.pln-thumb{height:150px;background:var(--navy-900,#0f172a);display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;cursor:pointer;}
+.pln-thumb img{width:100%;height:100%;object-fit:cover;}
+.pln-thumb .pln-fileico{width:52px;height:52px;color:rgba(255,255,255,.55);}
+.pln-thumb .pln-ext{position:absolute;top:10px;left:10px;font-size:10px;font-weight:900;letter-spacing:.06em;
+  text-transform:uppercase;color:#fff;background:rgba(0,0,0,.45);padding:3px 9px;border-radius:999px;backdrop-filter:blur(4px);}
+.pln-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px;flex:1;}
+.pln-name{font-size:13px;font-weight:800;color:var(--navy-800);letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pln-meta{font-size:11px;color:var(--text-3);font-weight:500;}
+.pln-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.02em;
+  padding:4px 11px;border-radius:999px;align-self:flex-start;}
+.pln-status .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.pln-status.pendiente{color:#92610a;background:rgba(245,158,11,.13);} .pln-status.pendiente .dot{background:#f59e0b;}
+.pln-status.analizando{color:var(--teal-700);background:rgba(6,182,212,.13);} .pln-status.analizando .dot{background:var(--teal-500);animation:plnPulse 1s ease-in-out infinite;}
+.pln-status.listo{color:#0e7a4d;background:rgba(16,185,129,.13);} .pln-status.listo .dot{background:#10b981;}
+.pln-status.error{color:#b42318;background:rgba(239,68,68,.13);} .pln-status.error .dot{background:#ef4444;}
+@keyframes plnPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+.pln-resumen{font-size:12px;color:var(--text-2);line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.pln-actions{display:flex;gap:8px;margin-top:auto;padding-top:4px;}
+.pln-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;
+  border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;border:1.5px solid var(--line);
+  background:var(--surface);color:var(--navy-800);transition:all .15s;white-space:nowrap;}
+.pln-btn:hover{border-color:var(--teal-500);color:var(--teal-700);}
+.pln-btn.primary{background:var(--grad-brand);color:#fff;border-color:transparent;}
+.pln-btn.primary:hover{transform:translateY(-1px);box-shadow:var(--sh-2);color:#fff;}
+.pln-btn svg{width:14px;height:14px;}
+.pln-btn:disabled{opacity:.5;cursor:not-allowed;}
+.pln-empty{text-align:center;padding:56px 24px;color:var(--text-2);}
+/* Modal detalle análisis */
+.pln-modal-bd{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);z-index:9998;
+  opacity:0;pointer-events:none;transition:opacity .2s;}
+.pln-modal-bd.on{opacity:1;pointer-events:auto;}
+.pln-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-46%);z-index:9999;
+  width:min(680px,92vw);max-height:86vh;background:var(--surface);border-radius:var(--r-lg);
+  box-shadow:var(--sh-4,0 24px 60px rgba(15,23,42,.28));overflow:hidden;display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
+.pln-modal.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%);}
+.pln-modal-head{padding:20px 24px;background:var(--grad-brand);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.pln-modal-head h3{font-size:16px;font-weight:900;letter-spacing:-.01em;}
+.pln-modal-head .x{width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.16);border:none;color:#fff;
+  cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.pln-modal-head .x:hover{background:rgba(255,255,255,.28);}
+.pln-modal-body{padding:24px;overflow-y:auto;}
+.pln-analisis-sec{margin-bottom:20px;}
+.pln-analisis-sec h4{font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--teal-700);margin-bottom:8px;}
+.pln-analisis-sec p{font-size:13px;color:var(--text);line-height:1.6;}
+.pln-chips{display:flex;flex-wrap:wrap;gap:7px;}
+.pln-chip{font-size:12px;font-weight:600;color:var(--navy-800);background:rgba(6,182,212,.09);
+  border:1px solid rgba(6,182,212,.18);padding:5px 12px;border-radius:999px;}
+.pln-kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;}
+.pln-kv .item{background:var(--surface-2,rgba(6,182,212,.03));border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
+.pln-kv .item .k{font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;}
+.pln-kv .item .v{font-size:15px;font-weight:800;color:var(--navy-800);}
+
 /* HERO */
 .rd-hero{position:relative;overflow:hidden;border-radius:var(--r-lg);
   background:var(--grad-brand);color:#fff;padding:26px 30px;box-shadow:var(--sh-3);
@@ -3470,6 +3552,16 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/><line x1="9" y1="9" x2="11" y2="9"/></svg></span>
       <span>Facturas</span>
       <span class="tab-badge hidden"></span>
+    </button>
+    <button class="nav-tab" data-tab="planos" onclick="showTab('planos')">
+      <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
+      <span>Planos</span>
+      <span class="tab-badge hidden"></span>
+    </button>
+    <button class="nav-tab" data-tab="historial" onclick="openEquiposHistorial()" title="Historial de cambios de equipos">
+      <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></span>
+      <span>Historial</span>
+      <span class="tab-badge hidden" id="hist-nav-badge"></span>
     </button>
     <button class="nav-tab sb-logout" onclick="doLogout()" title="Cerrar sesión">
       <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
@@ -4491,6 +4583,58 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 
     </div>
 
+    <!-- ══ PLANOS ══ -->
+    <div class="tab-content" id="tab-planos">
+
+      <div class="sec-card">
+        <div class="sec-head">
+          <span class="sec-title">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--teal-500);box-shadow:var(--sh-glow-teal);margin-right:8px;vertical-align:middle"></span>
+            Planos del Proyecto
+          </span>
+          <span style="font-size:11px;color:var(--text-2)" id="pln-proj-label">—</span>
+        </div>
+        <div class="sec-body">
+
+          <!-- Selector de proyecto -->
+          <div class="pln-toolbar">
+            <div class="pln-field">
+              <label class="pln-lbl">Proyecto</label>
+              <select id="pln-proyecto" class="pln-select" onchange="cargarPlanos()"></select>
+            </div>
+            <label class="pln-upload-btn" for="pln-file-input" id="pln-upload-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span>Subir plano</span>
+            </label>
+            <input type="file" id="pln-file-input" accept="application/pdf,image/png,image/jpeg,image/webp" style="display:none" onchange="subirPlano(this)">
+          </div>
+
+          <!-- Zona drag & drop -->
+          <div class="pln-drop" id="pln-drop">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:38px;height:38px;color:var(--teal-500);margin-bottom:10px"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            <div style="font-weight:600;color:var(--text);font-size:14px;margin-bottom:4px">Arrastra un plano aquí o usa "Subir plano"</div>
+            <div style="font-size:12px;color:var(--text-2)">PDF, PNG, JPG o WEBP · se analiza automáticamente con IA</div>
+          </div>
+
+          <!-- Progreso de subida -->
+          <div id="pln-upload-progress" class="pln-progress hidden">
+            <div class="pln-spinner"></div>
+            <span id="pln-upload-msg">Subiendo…</span>
+          </div>
+
+          <!-- Grid de planos -->
+          <div id="pln-grid" class="pln-grid"></div>
+          <div id="pln-empty" class="pln-empty hidden">
+            <div style="font-size:42px;line-height:1;margin-bottom:12px">🗂️</div>
+            <div style="font-weight:600;color:var(--text);font-size:14px;margin-bottom:6px">Sin planos aún</div>
+            <div style="max-width:420px;margin:0 auto;font-size:12px">Sube el primer plano del proyecto. Se guardará y la IA extraerá ambientes, equipos y capacidad frigorífica.</div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
   </div><!-- /main-wrap -->
 
   <!-- ═══ MODAL DETALLE DE EQUIPO (PMO) ═══ -->
@@ -4903,7 +5047,7 @@ async function cargarDashboard() {
   try {
     // ── Carga paralela de todas las fuentes ──
     const [reportes, riesgosTbl, contratasTbl, personalTbl, ganttTbl] = await Promise.all([
-      sbFetch(`/rest/v1/reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+nombre+'%')})&order=fecha_reporte.desc&limit=30`).catch(()=>[]),
+      sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+nombre+'%')})&order=fecha_reporte.desc&limit=30`).catch(()=>[]),
       sbFetch(`/rest/v1/riesgos?cod_proyecto=eq.${encodeURIComponent(cod)}&order=created_at.desc&limit=30`).catch(()=>[]),
       sbFetch(`/rest/v1/evaluacion_contratistas?supervisor=ilike.${encodeURIComponent('%'+(currentProyecto.supervisor||'').split(' ')[0]+'%')}&order=created_at.desc&limit=20`).catch(()=>[]),
       sbFetch(`/rest/v1/ingreso_personal?or=(proyecto.ilike.${encodeURIComponent('%'+nombre+'%')},cod_proyecto_fk.eq.${encodeURIComponent(cod)})&order=fecha.desc&limit=14`).catch(()=>[]),
@@ -5699,6 +5843,8 @@ async function pmoFetchLive(force = false) {
         showToast(`📡 PMO actualizado · ${projects.length} proyectos · ${equipos.length} equipos`, 3200, 'success');
       }
     }
+    // Revisar si hay nuevos cambios de equipos → alerta full-screen
+    try { _supCheckNuevosCambios(); } catch(e){}
     _pmoState.lastFetchPrev = true;
     return _pmoState;
   } catch (e) {
@@ -5722,6 +5868,223 @@ function syncPMO(forceRefresh) {
 function pmoSubscribe(fn) {
   _pmoState.subscribers.add(fn);
   return () => _pmoState.subscribers.delete(fn);
+}
+
+/* ═══════════════════════════════════════════════
+   HISTORIAL DE CAMBIOS DE EQUIPOS (overlay + alerta full-screen)
+   Lee la tabla equipos_cambios (misma instancia Supervisor).
+   ═══════════════════════════════════════════════ */
+const EQ_HIST_LABELS={eta:'ETA (arribo)',etd:'ETD (salida)',fe:'Fecha entrega',fer:'Entrega real',so:'Status origen',st:'Status destino',mod:'Modalidad',proj:'Proyecto',proveedor:'Proveedor',nuevo:'Nuevo equipo',eliminado:'Eliminado'};
+const _histCampoLabel=c=>EQ_HIST_LABELS[c]||c;
+const _histIcon=c=>c==='nuevo'?'✨':c==='eliminado'?'🗑':/eta|etd|fe|fer/.test(c)?'📅':(c==='st'||c==='so')?'🔄':c==='proj'?'🏗':c==='proveedor'?'🏢':'✏️';
+const _histFmtDT=iso=>{try{return new Date(iso).toLocaleString('es-PE',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(e){return iso||'';}};
+let _histData=[];let _histFilter={campo:'todos',proj:'',q:''};
+function histSetCampo(c){_histFilter.campo=c;_histRender();}
+function histSetProj(v){_histFilter.proj=v;_histRender();}
+function histSearch(v){_histFilter.q=(v||'').toLowerCase();_histRender();}
+function closeEquiposHistorial(){const o=document.getElementById('eq-hist-overlay');if(o)o.remove();}
+function _histFiltered(){
+  return _histData.filter(r=>{
+    if(_histFilter.campo==='modificados'&&(r.campo==='nuevo'||r.campo==='eliminado'))return false;
+    if(_histFilter.campo!=='todos'&&_histFilter.campo!=='modificados'&&r.campo!==_histFilter.campo)return false;
+    if(_histFilter.proj&&(r.proyecto||'')!==_histFilter.proj)return false;
+    if(_histFilter.q){const hay=((r.doc||'')+' '+(r.proyecto||'')+' '+(r.tipo||'')+' '+(r.proveedor||'')+' '+(r.valor_anterior||'')+' '+(r.valor_nuevo||'')).toLowerCase();if(!hay.includes(_histFilter.q))return false;}
+    return true;
+  });
+}
+function _histRender(){
+  const body=document.getElementById('eq-hist-body');if(!body)return;
+  const rows=_histFiltered();
+  document.querySelectorAll('#eq-hist-overlay .eqh-chip').forEach(ch=>{ch.classList.toggle('on',ch.dataset.campo===_histFilter.campo);});
+  if(!rows.length){body.innerHTML='<div style="padding:40px;text-align:center;color:#94a3b8;font-size:13px">Sin cambios que coincidan con el filtro.</div>';return;}
+  const groups=new Map();
+  rows.forEach(r=>{const k=r.lote||r.fecha_cambio||'';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r);});
+  const keys=[...groups.keys()].sort((a,b)=>(b||'').localeCompare(a||''));
+  let h='';
+  keys.forEach(k=>{
+    const g=groups.get(k);
+    const nuevos=g.filter(x=>x.campo==='nuevo').length;
+    const elim=g.filter(x=>x.campo==='eliminado').length;
+    const modif=g.length-nuevos-elim;
+    h+=`<div class="eqh-group"><div class="eqh-group-head"><span class="eqh-group-date">📦 ${_histFmtDT(k)}</span><span class="eqh-group-badges">${nuevos?`<span class="eqh-b new">+${nuevos} nuevos</span>`:''}${modif?`<span class="eqh-b chg">${modif} modif.</span>`:''}${elim?`<span class="eqh-b del">${elim} elim.</span>`:''}</span></div>`;
+    g.forEach(r=>{
+      let desc;
+      if(r.campo==='nuevo')desc=`<b>Nuevo equipo</b> · ${r.tipo||'—'}`;
+      else if(r.campo==='eliminado')desc=`<b>Eliminado</b> · ${r.tipo||'—'} <span class="eqh-old">(estaba: ${r.valor_anterior||'—'})</span>`;
+      else desc=`<b>${_histCampoLabel(r.campo)}</b>: <span class="eqh-old">${r.valor_anterior||'—'}</span> <span class="eqh-arrow">→</span> <span class="eqh-new">${r.valor_nuevo||'—'}</span>`;
+      h+=`<div class="eqh-row" ondblclick="histDetalle('${(r.doc||'').replace(/'/g,"\\'")}')" title="Doble clic para ver el historial de este equipo"><span class="eqh-ico">${_histIcon(r.campo)}</span><div class="eqh-row-main"><div class="eqh-row-desc">${desc}</div><div class="eqh-row-meta">${r.proyecto||'—'} · ${r.doc||''}${r.proveedor?' · '+r.proveedor:''}</div></div></div>`;
+    });
+    h+='</div>';
+  });
+  body.innerHTML=h;
+}
+async function histDetalle(doc){
+  const dv=document.getElementById('eq-hist-detalle');if(!dv)return;
+  dv.classList.add('on');
+  dv.querySelector('.eqh-det-body').innerHTML='<div style="padding:30px;text-align:center;color:#94a3b8">Cargando…</div>';
+  dv.querySelector('.eqh-det-title').textContent='Equipo '+doc;
+  let rows=_histData.filter(r=>r.doc===doc);
+  try{const d=await sbFetch('/rest/v1/equipos_cambios?doc=eq.'+encodeURIComponent(doc)+'&select=campo,valor_anterior,valor_nuevo,fecha_cambio,proyecto,tipo,proveedor&order=fecha_cambio.desc&limit=300');if(Array.isArray(d)&&d.length)rows=d;}catch(e){}
+  if(!rows.length){dv.querySelector('.eqh-det-body').innerHTML='<div style="padding:30px;text-align:center;color:#94a3b8">Sin cambios registrados.</div>';return;}
+  const meta=rows[0];
+  let h=`<div class="eqh-det-sub">${meta.proyecto||'—'} · ${meta.tipo||''}${meta.proveedor?' · '+meta.proveedor:''}</div><div class="eqh-timeline">`;
+  rows.forEach(r=>{
+    let desc;
+    if(r.campo==='nuevo')desc='<b>Ingresó al sistema</b>';
+    else if(r.campo==='eliminado')desc='<b>Salió del listado</b>';
+    else desc=`<b>${_histCampoLabel(r.campo)}</b>: <span class="eqh-old">${r.valor_anterior||'—'}</span> → <span class="eqh-new">${r.valor_nuevo||'—'}</span>`;
+    h+=`<div class="eqh-tl-item"><span class="eqh-ico">${_histIcon(r.campo)}</span><div><div>${desc}</div><div class="eqh-row-meta">${_histFmtDT(r.fecha_cambio)}</div></div></div>`;
+  });
+  h+='</div>';
+  dv.querySelector('.eqh-det-body').innerHTML=h;
+}
+async function openEquiposHistorial(){
+  closeEquiposHistorial();
+  const ov=document.createElement('div');
+  ov.id='eq-hist-overlay';
+  ov.innerHTML=`
+    <style>
+      #eq-hist-overlay{position:fixed;inset:0;z-index:100000;background:rgba(13,36,54,.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-family:Inter,system-ui,sans-serif}
+      #eq-hist-overlay .eqh-panel{background:#fff;width:min(920px,94vw);max-height:88vh;border-radius:18px;box-shadow:0 24px 80px rgba(13,36,54,.35);display:flex;flex-direction:column;overflow:hidden}
+      #eq-hist-overlay .eqh-head{padding:18px 22px;border-bottom:1px solid #eef2f6;display:flex;align-items:center;gap:12px}
+      #eq-hist-overlay .eqh-head h3{margin:0;font-size:17px;font-weight:800;color:#0f2438}
+      #eq-hist-overlay .eqh-sub{font-size:12px;color:#8aa0b2;font-weight:500}
+      #eq-hist-overlay .eqh-x{margin-left:auto;border:none;background:#f1f5f9;width:32px;height:32px;border-radius:9px;cursor:pointer;font-size:16px;color:#64748b}
+      #eq-hist-overlay .eqh-filters{padding:12px 22px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid #eef2f6;background:#fafcfe}
+      #eq-hist-overlay .eqh-chip{border:1px solid #dbe4ec;background:#fff;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;color:#5a7286;cursor:pointer}
+      #eq-hist-overlay .eqh-chip.on{background:#0d9488;border-color:#0d9488;color:#fff}
+      #eq-hist-overlay .eqh-filters input,#eq-hist-overlay .eqh-filters select{border:1px solid #dbe4ec;border-radius:9px;padding:6px 10px;font-size:12px;color:#0f2438;outline:none}
+      #eq-hist-overlay .eqh-filters input{flex:1;min-width:140px}
+      #eq-hist-overlay .eqh-body{overflow:auto;padding:8px 14px 18px}
+      #eq-hist-overlay .eqh-group{margin-top:14px}
+      #eq-hist-overlay .eqh-group-head{display:flex;align-items:center;gap:10px;padding:6px 8px;position:sticky;top:0;background:#fff}
+      #eq-hist-overlay .eqh-group-date{font-size:13px;font-weight:800;color:#0f2438}
+      #eq-hist-overlay .eqh-b{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:4px}
+      #eq-hist-overlay .eqh-b.new{background:#eef2ff;color:#4f46e5}
+      #eq-hist-overlay .eqh-b.chg{background:#fff7ed;color:#c2660c}
+      #eq-hist-overlay .eqh-b.del{background:#fef2f2;color:#dc2626}
+      #eq-hist-overlay .eqh-row{display:flex;gap:11px;align-items:flex-start;padding:9px 10px;border-radius:11px;cursor:pointer}
+      #eq-hist-overlay .eqh-row:hover{background:#f4f8fb}
+      #eq-hist-overlay .eqh-ico{font-size:15px;line-height:1.4;flex-shrink:0}
+      #eq-hist-overlay .eqh-row-desc{font-size:13px;color:#26374a}
+      #eq-hist-overlay .eqh-row-meta{font-size:11px;color:#93a6b6;margin-top:2px}
+      #eq-hist-overlay .eqh-old{color:#94a3b8;text-decoration:line-through}
+      #eq-hist-overlay .eqh-new{color:#0d9488;font-weight:700}
+      #eq-hist-overlay .eqh-arrow{color:#cbd5e1}
+      #eq-hist-overlay .eqh-det{position:absolute;inset:0;background:rgba(13,36,54,.45);display:none;align-items:center;justify-content:center}
+      #eq-hist-overlay .eqh-det.on{display:flex}
+      #eq-hist-overlay .eqh-det-card{background:#fff;width:min(560px,92vw);max-height:80vh;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+      #eq-hist-overlay .eqh-det-head{padding:16px 20px;border-bottom:1px solid #eef2f6;display:flex;align-items:center;gap:10px}
+      #eq-hist-overlay .eqh-det-title{font-size:15px;font-weight:800;color:#0f2438}
+      #eq-hist-overlay .eqh-det-sub{font-size:12px;color:#8aa0b2;padding:12px 20px 4px}
+      #eq-hist-overlay .eqh-det-body{overflow:auto}
+      #eq-hist-overlay .eqh-timeline{padding:6px 20px 20px;display:flex;flex-direction:column;gap:2px}
+      #eq-hist-overlay .eqh-tl-item{display:flex;gap:11px;padding:9px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#26374a}
+    </style>
+    <div class="eqh-panel" onclick="event.stopPropagation()">
+      <div class="eqh-head"><h3>🕑 Historial de cambios de equipos</h3><span class="eqh-sub" id="eq-hist-count"></span><button class="eqh-x" onclick="closeEquiposHistorial()">×</button></div>
+      <div class="eqh-filters">
+        <span class="eqh-chip on" data-campo="todos" onclick="histSetCampo('todos')">Todos</span>
+        <span class="eqh-chip" data-campo="nuevo" onclick="histSetCampo('nuevo')">✨ Nuevos</span>
+        <span class="eqh-chip" data-campo="modificados" onclick="histSetCampo('modificados')">✏️ Modificados</span>
+        <span class="eqh-chip" data-campo="eta" onclick="histSetCampo('eta')">📅 ETA</span>
+        <span class="eqh-chip" data-campo="st" onclick="histSetCampo('st')">🔄 Estado</span>
+        <span class="eqh-chip" data-campo="eliminado" onclick="histSetCampo('eliminado')">🗑 Eliminados</span>
+        <select id="eq-hist-proj" onchange="histSetProj(this.value)"><option value="">Todos los proyectos</option></select>
+        <input id="eq-hist-q" placeholder="Buscar doc, equipo, valor…" oninput="histSearch(this.value)">
+      </div>
+      <div class="eqh-body" id="eq-hist-body"><div style="padding:40px;text-align:center;color:#94a3b8">Cargando historial…</div></div>
+      <div class="eqh-det" id="eq-hist-detalle" onclick="this.classList.remove('on')">
+        <div class="eqh-det-card" onclick="event.stopPropagation()">
+          <div class="eqh-det-head"><span class="eqh-det-title">Equipo</span><button class="eqh-x" style="margin-left:auto" onclick="document.getElementById('eq-hist-detalle').classList.remove('on')">×</button></div>
+          <div class="eqh-det-body"></div>
+        </div>
+      </div>
+    </div>`;
+  ov.onclick=()=>closeEquiposHistorial();
+  document.body.appendChild(ov);
+  _supMarkHistSeen();
+  try{_histData=await sbFetch('/rest/v1/equipos_cambios?select=doc,proyecto,tipo,proveedor,campo,valor_anterior,valor_nuevo,lote,fecha_cambio&order=fecha_cambio.desc&limit=1000');}catch(e){_histData=[];}
+  if(!Array.isArray(_histData))_histData=[];
+  const cnt=document.getElementById('eq-hist-count');if(cnt)cnt.textContent=_histData.length+' cambios registrados';
+  const sel=document.getElementById('eq-hist-proj');
+  if(sel){[...new Set(_histData.map(r=>r.proyecto).filter(Boolean))].sort().forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;sel.appendChild(o);});}
+  _histFilter={campo:'todos',proj:'',q:''};
+  _histRender();
+}
+
+/* ── Alerta full-screen cuando llegan cambios nuevos ── */
+function _supUpdateHistBadge(n){
+  const b=document.getElementById('hist-nav-badge');if(!b)return;
+  if(n>0){b.textContent=n;b.classList.remove('hidden');}else{b.textContent='';b.classList.add('hidden');}
+}
+function _supMarkHistSeen(){
+  if(_supLastMaxFecha)localStorage.setItem('sup_hist_last_seen',_supLastMaxFecha);
+  _supUpdateHistBadge(0);
+  const a=document.getElementById('eq-hist-alert');if(a)a.remove();
+}
+let _supLastMaxFecha='';
+async function _supCheckNuevosCambios(){
+  let rows;
+  try{rows=await sbFetch('/rest/v1/equipos_cambios?select=doc,proyecto,tipo,campo,valor_anterior,valor_nuevo,fecha_cambio,lote&order=fecha_cambio.desc&limit=300');}catch(e){return;}
+  if(!Array.isArray(rows)||!rows.length)return;
+  _supLastMaxFecha=rows[0].fecha_cambio;
+  const lastSeen=localStorage.getItem('sup_hist_last_seen')||'';
+  if(!lastSeen){localStorage.setItem('sup_hist_last_seen',_supLastMaxFecha);_supUpdateHistBadge(0);return;}
+  const nuevos=rows.filter(r=>r.fecha_cambio>lastSeen);
+  if(!nuevos.length)return;
+  _supUpdateHistBadge(nuevos.length);
+  _supShowCambiosAlert(nuevos);
+}
+function _supShowCambiosAlert(nuevos){
+  const ex=document.getElementById('eq-hist-alert');if(ex)ex.remove();
+  const nNew=nuevos.filter(x=>x.campo==='nuevo').length;
+  const nElim=nuevos.filter(x=>x.campo==='eliminado').length;
+  const nMod=nuevos.length-nNew-nElim;
+  const lote=nuevos[0].lote||nuevos[0].fecha_cambio;
+  const items=nuevos.slice(0,7).map(r=>{
+    let desc;
+    if(r.campo==='nuevo')desc=`<b>Nuevo equipo</b> · ${r.tipo||'—'}`;
+    else if(r.campo==='eliminado')desc=`<b>Eliminado</b> · ${r.tipo||'—'}`;
+    else desc=`<b>${_histCampoLabel(r.campo)}</b>: <span style="color:#94a3b8;text-decoration:line-through">${r.valor_anterior||'—'}</span> → <span style="color:#34d399;font-weight:700">${r.valor_nuevo||'—'}</span>`;
+    return `<div class="eqa-item"><span>${_histIcon(r.campo)}</span><div><div>${desc}</div><div class="eqa-meta">${r.proyecto||'—'} · ${r.doc||''}</div></div></div>`;
+  }).join('');
+  const restantes=nuevos.length>7?`<div class="eqa-more">+${nuevos.length-7} cambios más…</div>`:'';
+  const al=document.createElement('div');
+  al.id='eq-hist-alert';
+  al.innerHTML=`
+    <style>
+      #eq-hist-alert{position:fixed;inset:0;z-index:100001;background:linear-gradient(135deg,rgba(8,30,48,.92),rgba(13,80,74,.92));backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;font-family:Inter,system-ui,sans-serif;animation:eqaIn .25s ease}
+      @keyframes eqaIn{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:none}}
+      #eq-hist-alert .eqa-card{background:#fff;width:min(620px,92vw);max-height:86vh;border-radius:22px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 90px rgba(0,0,0,.5)}
+      #eq-hist-alert .eqa-top{background:linear-gradient(135deg,#0d9488,#0f766e);color:#fff;padding:22px 26px}
+      #eq-hist-alert .eqa-top .eqa-kicker{font-size:12px;font-weight:700;letter-spacing:.08em;opacity:.85;text-transform:uppercase}
+      #eq-hist-alert .eqa-top h2{margin:6px 0 0;font-size:24px;font-weight:800;display:flex;align-items:center;gap:10px}
+      #eq-hist-alert .eqa-badges{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+      #eq-hist-alert .eqa-bd{background:rgba(255,255,255,.18);border-radius:20px;padding:4px 12px;font-size:13px;font-weight:700}
+      #eq-hist-alert .eqa-list{padding:14px 26px;overflow:auto}
+      #eq-hist-alert .eqa-item{display:flex;gap:11px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #f1f5f9;font-size:14px;color:#26374a}
+      #eq-hist-alert .eqa-item span{font-size:17px}
+      #eq-hist-alert .eqa-meta{font-size:12px;color:#93a6b6;margin-top:2px}
+      #eq-hist-alert .eqa-more{padding:8px 0;color:#0d9488;font-weight:700;font-size:13px}
+      #eq-hist-alert .eqa-actions{padding:16px 26px;display:flex;gap:12px;border-top:1px solid #eef2f6}
+      #eq-hist-alert .eqa-btn{flex:1;padding:13px;border-radius:12px;border:none;font-size:15px;font-weight:800;cursor:pointer}
+      #eq-hist-alert .eqa-btn.primary{background:#0d9488;color:#fff}
+      #eq-hist-alert .eqa-btn.ghost{background:#eef2f6;color:#334155}
+    </style>
+    <div class="eqa-card">
+      <div class="eqa-top">
+        <div class="eqa-kicker">Actualización de equipos · ${_histFmtDT(lote)}</div>
+        <h2>📦 ${nuevos.length} ${nuevos.length===1?'cambio nuevo':'cambios nuevos'}</h2>
+        <div class="eqa-badges">${nNew?`<span class="eqa-bd">✨ ${nNew} nuevos</span>`:''}${nMod?`<span class="eqa-bd">✏️ ${nMod} modificados</span>`:''}${nElim?`<span class="eqa-bd">🗑 ${nElim} eliminados</span>`:''}</div>
+      </div>
+      <div class="eqa-list">${items}${restantes}</div>
+      <div class="eqa-actions">
+        <button class="eqa-btn ghost" onclick="_supMarkHistSeen()">Entendido</button>
+        <button class="eqa-btn primary" onclick="_supMarkHistSeen();openEquiposHistorial()">Ver historial completo</button>
+      </div>
+    </div>`;
+  document.body.appendChild(al);
 }
 
 // Buscar datos PMO del proyecto activo
@@ -9457,7 +9820,7 @@ async function cargarComercialReporte() {
   const cod = currentProyecto?.cod;
   // Traer último valor conocido del reporte previo, si existe
   try {
-    const rows = await sbFetch(`/rest/v1/reportes?cod_proyecto=eq.${encodeURIComponent(cod)}&order=fecha_reporte.desc&limit=1`);
+    const rows = await sbFetch(`/rest/v1/v_reportes?cod_proyecto=eq.${encodeURIComponent(cod)}&order=fecha_reporte.desc&limit=1`);
     if (rows && rows.length) {
       const r = rows[0];
       if (r.meta_mes != null) document.getElementById('rd-meta-mes').value = r.meta_mes;
@@ -9497,7 +9860,7 @@ async function buildHistoria(){
   // Traer histórico
   const cod = P.cod || P.nombre;
   let hist = [];
-  try { hist = await sbFetch(`/rest/v1/reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+P.nombre+'%')})&order=fecha_reporte.desc&limit=40`) || []; } catch(e){}
+  try { hist = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+P.nombre+'%')})&order=fecha_reporte.desc&limit=40`) || []; } catch(e){}
 
   // Snapshot del día desde el formulario (aún sin guardar)
   let personal = 0; ESPECIALIDADES.forEach(e => personal += parseInt(g('rd-ob-'+e)?.value)||0);
@@ -9662,7 +10025,7 @@ async function cargarUltimoReporte() {
   const cod = currentProyecto?.cod || currentProyecto?.nombre;
   if (!cod) return;
   try {
-    const rows = await sbFetch(`/rest/v1/reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+currentProyecto.nombre+'%')})&order=fecha_reporte.desc&limit=1`);
+    const rows = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+currentProyecto.nombre+'%')})&order=fecha_reporte.desc&limit=1`);
     if (!rows || rows.length === 0) { showToast('Sin reportes anteriores'); return; }
     const r = rows[0];
     document.getElementById('rd-plan').value = r.pct_planificado || '';
@@ -10168,7 +10531,7 @@ async function cargarRiesgos() {
     const rows = await sbFetch(`/rest/v1/riesgos?cod_proyecto=eq.${encodeURIComponent(cod)}&order=created_at.desc`);
     if (!rows || rows.length === 0) {
       // También buscar en reportes.riesgos JSONB
-      const reps = await sbFetch(`/rest/v1/reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+currentProyecto.nombre+'%')})&select=fecha_reporte,riesgos&not.riesgos.is.null&order=fecha_reporte.desc&limit=20`);
+      const reps = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+currentProyecto.nombre+'%')})&select=fecha_reporte,riesgos&not.riesgos.is.null&order=fecha_reporte.desc&limit=20`);
       const todos = [];
       (reps||[]).forEach(r => {
         if (Array.isArray(r.riesgos)) r.riesgos.forEach(rg => todos.push({...rg, fecha_reporte: r.fecha_reporte}));
@@ -10304,7 +10667,7 @@ async function exportarPDF() {
 
   // Cargar contratas del reporte
   try {
-    const rows = await sbFetch(`/rest/v1/reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+currentProyecto.nombre+'%')})&order=fecha_reporte.desc&limit=1`);
+    const rows = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+currentProyecto.nombre+'%')})&order=fecha_reporte.desc&limit=1`);
     if (rows && rows.length > 0 && rows[0].contratas_detalle) {
       const contratas = rows[0].contratas_detalle;
       document.getElementById('pdf-contratas-table').innerHTML =
