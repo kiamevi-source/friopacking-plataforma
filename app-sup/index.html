@@ -4021,27 +4021,14 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
           </div>
         </div>
 
-        <!-- ① PERSONAL EN OBRA -->
+        <!-- ①② CONTRATAS Y AVANCE POR ESPECIALIDAD -->
         <div class="rd-card accent">
           <div class="rd-head accent">
-            <div class="rd-head-ic"><i data-lucide="users" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Personal en obra</h4><p>Ajusta tus obreros por especialidad</p></div>
-            <div class="rd-head-badge teal"><span id="rd-obreros-total">0</span> obreros</div>
+            <div class="rd-head-ic"><i data-lucide="layers" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Contratas y avance por especialidad</h4><p>Cada especialidad con su contrata, personal y avance del día · se configura una vez</p></div>
+            <div class="rd-head-badge teal"><span id="rd-esp-personal">0</span> obreros · Global <strong id="rd-esp-global">0%</strong></div>
           </div>
-          <div class="rd-body"><div id="rd-obreros-grid" class="rd-esp-grid"></div></div>
-        </div>
-
-        <!-- ② CONTRATAS -->
-        <div class="rd-card">
-          <div class="rd-head">
-            <div class="rd-head-ic"><i data-lucide="truck" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Contratas del día</h4><p>Empresas en obra y su evaluación de desempeño</p></div>
-            <button class="btn btn-teal btn-sm" onclick="agregarContrataDia()">+ Contrata</button>
-          </div>
-          <div class="rd-body">
-            <div id="rd-contratas-list"></div>
-            <p id="rd-contratas-empty" style="font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;">Sin contratas registradas hoy. Agrega las que trabajaron en obra.</p>
-          </div>
+          <div class="rd-body"><div id="rd-esp-mount"></div></div>
         </div>
 
         <!-- ③ AVANCE -->
@@ -4058,13 +4045,12 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
                 <div class="row"><input class="rd-prog-inp" type="number" id="rd-plan" min="0" max="100" step="0.1" oninput="rdPlanBars()"><div class="rd-plan-track plan"><i id="rd-plan-bar" style="width:0%"></i></div></div>
               </div>
               <div class="rd-plan-block">
-                <div class="lbl">Ejecutado</div>
-                <div class="row"><input class="rd-prog-inp" type="number" id="rd-real" min="0" max="100" step="0.1" oninput="rdPlanBars()"><div class="rd-plan-track real"><i id="rd-real-bar" style="width:0%"></i></div></div>
+                <div class="lbl">Ejecutado <span style="font-weight:600;color:var(--text-3);font-size:10px;">· auto por especialidad</span></div>
+                <div class="row"><input class="rd-prog-inp" type="number" id="rd-real" min="0" max="100" step="0.1" readonly title="Se calcula solo con el promedio ponderado de las especialidades" style="background:var(--surface-2);cursor:not-allowed;"><div class="rd-plan-track real"><i id="rd-real-bar" style="width:0%"></i></div></div>
               </div>
               <div class="rd-diff pos" id="rd-diff"><b>0</b><span>Δ puntos</span></div>
             </div>
             <div class="form-row" style="margin-bottom:12px;">
-              <div class="field"><label>% Ejecutado declarado por contrata</label><input type="number" id="rd-real-contrata" min="0" max="100" step="0.1" placeholder="Opcional" oninput="rdPlanBars()"></div>
               <div class="field"><label>Rondas de calidad (ok / total)</label><div style="display:flex;gap:6px;"><input type="number" id="rd-rondas-ok" min="0" max="20" value="0" style="width:50%"><input type="number" id="rd-rondas-tot" min="1" max="20" value="10" style="width:50%"></div></div>
             </div>
             <div id="alerta-diferencia" class="hidden" style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#991b1b;font-weight:600;">⚠ Diferencia detectada entre avance supervisor y contrata. Revisar.</div>
@@ -9479,12 +9465,12 @@ async function cargarReporteDiario() {
   const hp = document.getElementById('rd-hero-proj'); if (hp) hp.textContent = currentProyecto.nombre || 'Proyecto';
   const hs = document.getElementById('rd-hero-sup');  if (hs) hs.textContent = currentProyecto.supervisor || currentUser?.nombre || '—';
 
-  initObrerosGrid();
+  await rdEspLoad(currentProyecto.cod || currentProyecto.nombre, null);
   renderChecklistCierre();
   await cargarHitosReporte();
   await cargarComercialReporte();
-  // Restaurar contratas/restricciones/fotos vacíos para el nuevo día
-  rdContratas = []; renderContratas();
+  // Restaurar restricciones/fotos vacíos para el nuevo día
+  rdContratas = [];
   rdRestricciones = []; renderRestricciones();
   rdFotos = []; renderFotosReporte();
   riesgosTemp = []; renderRiesgos();
@@ -9859,6 +9845,135 @@ function rdEnsureFotoStyles(){
   const st = document.createElement('style'); st.id='rd-foto-styles'; st.textContent = css; document.head.appendChild(st);
 }
 
+// ═══════════════════════════════════════════════
+// CONTRATAS Y AVANCE POR ESPECIALIDAD
+//  · config por proyecto (especialidad+contrata+peso) en proyecto_config_especialidades
+//  · captura diaria (personal+avance) en reportes.avance_especialidades
+//  · % ejecutado global = promedio PONDERADO por peso
+// ═══════════════════════════════════════════════
+const rdEsc2 = s => (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ESP_CAT = [
+  { key:'mecanica',         label:'Mecánica (tubería/rack)', peso:30 },
+  { key:'paneles',          label:'Paneles',                 peso:25 },
+  { key:'electrica',        label:'Eléctrica',               peso:20 },
+  { key:'eemm',             label:'Montaje EEMM',            peso:15 },
+  { key:'oocc',             label:'Obras Civiles',           peso:10 },
+  { key:'aislamiento',      label:'Aislamiento',             peso:10 },
+  { key:'tuberia_glicol',   label:'Tubería de Glicol',       peso:10 },
+  { key:'tuberia_amoniaco', label:'Tubería de Amoníaco',     peso:15 },
+];
+let rdEsp = []; // [{esp,label,contrata,peso,personal,avance}]
+function rdEspCatLabel(key){ const c=ESP_CAT.find(x=>x.key===key); return c?c.label:key; }
+function rdEspTotalPersonal(){ return rdEsp.reduce((a,r)=>a+(parseInt(r.personal)||0),0); }
+function rdEspGlobalAvance(){ let sw=0,sp=0; rdEsp.forEach(r=>{ const p=parseFloat(r.peso)||0,a=parseFloat(r.avance)||0; sw+=a*p; sp+=p; }); return sp>0?sw/sp:0; }
+
+async function rdEspLoad(cod, reportRow){
+  rdEsp = [];
+  try{
+    const cfg = await sbFetch(`/rest/v1/proyecto_config_especialidades?cod_proyecto=eq.${encodeURIComponent(cod)}&activo=eq.true&order=orden.asc,id.asc`);
+    (cfg||[]).forEach(c=> rdEsp.push({ esp:c.especialidad, label:rdEspCatLabel(c.especialidad), contrata:c.contrata||'', peso:parseFloat(c.peso)||0, personal:0, avance:0 }));
+  }catch(e){ console.warn('cfg esp', e); }
+  const av = reportRow && reportRow.avance_especialidades;
+  if (Array.isArray(av)) av.forEach(a=>{ const row=rdEsp.find(r=>r.esp===a.esp); if(row){ row.personal=parseInt(a.personal)||0; row.avance=parseFloat(a.avance)||0; } });
+  rdEspRender(); rdEspCalc();
+}
+
+function rdEspRender(){
+  const m = document.getElementById('rd-esp-mount'); if(!m) return;
+  rdEnsureEspStyles();
+  const opciones = ESP_CAT.filter(c=>!rdEsp.some(r=>r.esp===c.key));
+  let html = '';
+  if (!rdEsp.length){
+    html += `<div class="rd-esp-empty">Este proyecto aún no tiene especialidades configuradas. Agrégalas una vez (con su contrata y peso) y quedan guardadas para todos los días.</div>`;
+  } else {
+    html += `<div class="rd-esp-tblwrap"><table class="rd-esp-tbl"><thead><tr>
+      <th>Especialidad</th><th>Contrata</th><th style="width:82px;">Personal</th><th style="width:120px;">% Avance hoy</th><th style="width:74px;">Peso %</th><th style="width:30px;"></th></tr></thead><tbody>`;
+    rdEsp.forEach((r,i)=>{
+      html += `<tr>
+        <td class="rd-esp-name">${rdEsc2(r.label)}</td>
+        <td><input class="rd-esp-inp" value="${rdEsc2(r.contrata)}" placeholder="Contrata…" oninput="rdEspSet(${i},'contrata',this.value)"></td>
+        <td><input class="rd-esp-inp num" type="number" min="0" value="${r.personal||0}" oninput="rdEspSet(${i},'personal',this.value)"></td>
+        <td><div class="rd-esp-pct"><input class="rd-esp-inp num" type="number" min="0" max="100" step="0.1" value="${r.avance||0}" oninput="rdEspSet(${i},'avance',this.value)"><i class="rd-esp-bar" style="width:${Math.min(100,parseFloat(r.avance)||0)}%"></i></div></td>
+        <td><input class="rd-esp-inp num" type="number" min="0" max="100" step="1" value="${r.peso||0}" oninput="rdEspSet(${i},'peso',this.value)"></td>
+        <td><button class="rd-esp-del" title="Quitar" onclick="rdEspRemove(${i})">×</button></td>
+      </tr>`;
+    });
+    const pesoTot = rdEsp.reduce((a,r)=>a+(parseFloat(r.peso)||0),0);
+    html += `</tbody><tfoot><tr class="rd-esp-total">
+      <td><strong>GLOBAL</strong></td><td></td>
+      <td><strong id="rd-esp-tp">${rdEspTotalPersonal()}</strong></td>
+      <td><strong id="rd-esp-tg">${rdEspGlobalAvance().toFixed(1)}%</strong></td>
+      <td><strong style="color:${Math.round(pesoTot)===100?'var(--teal-700)':'#b45309'}">${pesoTot.toFixed(0)}%</strong></td><td></td></tr></tfoot></table></div>`;
+    if (Math.round(pesoTot)!==100) html += `<div class="rd-esp-warn">⚠ Los pesos suman ${pesoTot.toFixed(0)}% (no 100%). El global es un promedio ponderado igual, pero conviene que sumen 100%.</div>`;
+  }
+  html += `<div class="rd-esp-add">`;
+  if (opciones.length){
+    html += `<select id="rd-esp-pick" class="rd-esp-inp" style="max-width:240px;"><option value="">+ Agregar especialidad…</option>${opciones.map(c=>`<option value="${c.key}">${rdEsc2(c.label)}</option>`).join('')}</select>
+      <button class="btn btn-teal btn-sm" onclick="rdEspAddFromPick()">Agregar</button>`;
+  } else { html += `<span style="font-size:12px;color:var(--text-3);">Todas las especialidades del catálogo ya están agregadas.</span>`; }
+  html += `</div>`;
+  m.innerHTML = html;
+  if (window.lucide) lucide.createIcons();
+}
+
+function rdEspAddFromPick(){
+  const sel=document.getElementById('rd-esp-pick'); if(!sel||!sel.value) return;
+  const c=ESP_CAT.find(x=>x.key===sel.value); if(!c) return;
+  rdEsp.push({ esp:c.key, label:c.label, contrata:'', peso:c.peso, personal:0, avance:0 });
+  rdEspRender(); rdEspCalc(); rdEspSaveConfig();
+}
+function rdEspRemove(i){ rdEsp.splice(i,1); rdEspRender(); rdEspCalc(); rdEspSaveConfig(); }
+function rdEspSet(i,field,val){
+  if(!rdEsp[i]) return;
+  rdEsp[i][field] = (field==='contrata') ? val : (parseFloat(val)||0);
+  rdEspCalc();
+  if(field==='peso'){ rdEspRender(); }
+  if(field==='contrata'||field==='peso') rdEspSaveConfigDebounced();
+}
+function rdEspCalc(){
+  const g=rdEspGlobalAvance();
+  const b=document.getElementById('rd-esp-global'); if(b) b.textContent=g.toFixed(1)+'%';
+  const p=document.getElementById('rd-esp-personal'); if(p) p.textContent=rdEspTotalPersonal();
+  const tg=document.getElementById('rd-esp-tg'); if(tg) tg.textContent=g.toFixed(1)+'%';
+  const tp=document.getElementById('rd-esp-tp'); if(tp) tp.textContent=rdEspTotalPersonal();
+  const real=document.getElementById('rd-real'); if(real) real.value=g.toFixed(1);
+  if(typeof rdPlanBars==='function') rdPlanBars();
+  if(typeof rdUpdateRing==='function') rdUpdateRing();
+}
+let _espCfgTimer=null;
+function rdEspSaveConfigDebounced(){ clearTimeout(_espCfgTimer); _espCfgTimer=setTimeout(rdEspSaveConfig,700); }
+async function rdEspSaveConfig(){
+  const cod=currentProyecto?.cod||currentProyecto?.nombre; if(!cod) return;
+  try{
+    await sbFetch(`/rest/v1/proyecto_config_especialidades?cod_proyecto=eq.${encodeURIComponent(cod)}`, { method:'DELETE', headers:{'Prefer':'return=minimal'} });
+    if(rdEsp.length){
+      const rows=rdEsp.map((r,i)=>({ cod_proyecto:cod, nombre_proyecto:currentProyecto?.nombre||null, especialidad:r.esp, contrata:r.contrata||null, peso:parseFloat(r.peso)||0, orden:i, activo:true }));
+      await sbFetch('/rest/v1/proyecto_config_especialidades', { method:'POST', headers:{'Prefer':'return=minimal'}, body:JSON.stringify(rows) });
+    }
+  }catch(e){ console.warn('save cfg esp', e); }
+}
+let _espStyles=false;
+function rdEnsureEspStyles(){
+  if(_espStyles) return; _espStyles=true;
+  const css=`
+  #rd-esp-mount .rd-esp-empty{font-size:13px;color:var(--text-3);padding:16px;border:1px dashed var(--border-strong);border-radius:10px;text-align:center;}
+  .rd-esp-tblwrap{overflow-x:auto;}
+  .rd-esp-tbl{width:100%;border-collapse:collapse;font-size:13px;}
+  .rd-esp-tbl th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-3);padding:6px 8px;border-bottom:2px solid var(--border);}
+  .rd-esp-tbl td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  .rd-esp-name{font-weight:700;color:var(--navy-800);}
+  .rd-esp-inp{border:1px solid var(--border-strong);border-radius:7px;padding:6px 8px;font-size:13px;color:var(--text-1);background:var(--surface-1);width:100%;}
+  .rd-esp-inp.num{text-align:center;font-weight:700;}
+  .rd-esp-inp:focus{outline:none;border-color:var(--teal-700,#0e7490);}
+  .rd-esp-pct{position:relative;} .rd-esp-pct .rd-esp-bar{position:absolute;left:0;bottom:-1px;height:3px;background:var(--teal-700,#0e7490);border-radius:2px;pointer-events:none;transition:width .2s;}
+  .rd-esp-total td{border-top:2px solid var(--border-strong);border-bottom:none;padding-top:9px;font-size:14px;}
+  .rd-esp-del{width:24px;height:24px;border:none;border-radius:6px;background:var(--surface-2);color:var(--text-3);font-size:15px;line-height:1;cursor:pointer;}
+  .rd-esp-del:hover{background:#fee2e2;color:#b91c1c;}
+  .rd-esp-warn{margin-top:8px;font-size:11.5px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:7px 10px;}
+  .rd-esp-add{display:flex;gap:8px;align-items:center;margin-top:12px;}`;
+  const st=document.createElement('style'); st.id='rd-esp-styles'; st.textContent=css; document.head.appendChild(st);
+}
+
 // ── Comercial: facturado + meta del mes ──
 async function cargarComercialReporte() {
   const cod = currentProyecto?.cod;
@@ -10137,19 +10252,28 @@ function rvRenderReporte(r){
       ${kv('Variación de jornada', rvEsc(r.jornada_motivo||'Sin variación'))}
     </div>`);
 
-  // Personal por especialidad
-  html += card('users','Personal por especialidad', `${personal} personas en obra`,
-    espItems.length
-      ? `<div class="rv-chips">${espItems.map(k=>`<span class="rv-chip">${rvEspLabel(k)} <b>${rvNum(esp[k])}</b></span>`).join('')}</div>`
-      : `<p class="rv-none">No se registró personal por especialidad.</p>`);
-
-  // Contratas
-  html += card('truck','Contratas en obra', `${contratas.length} contrata(s)`,
-    contratas.length
-      ? `<div class="rv-table-wrap"><table class="rv-table"><thead><tr><th>Empresa</th><th>Especialidad</th><th>Obreros</th></tr></thead><tbody>
-          ${contratas.map(c=>`<tr><td>${rvEsc(c.nombre||c.empresa||'—')}</td><td>${rvEsc(c.especialidad||'—')}</td><td>${rvNum(c.obreros||c.personal||0)}</td></tr>`).join('')}
-        </tbody></table></div>`
-      : `<p class="rv-none">Sin contratas registradas hoy.</p>`);
+  // Contratas y avance por especialidad (modelo nuevo); fallback a lo viejo si el reporte no lo trae
+  const avEsp = rvArr(r.avance_especialidades).filter(x=>x && (x.label||x.esp));
+  if (avEsp.length){
+    let sw=0,sp=0; avEsp.forEach(a=>{ sw+=rvNum(a.avance)*rvNum(a.peso); sp+=rvNum(a.peso); });
+    const glob = sp>0?sw/sp:0, tp = avEsp.reduce((a,x)=>a+rvNum(x.personal),0);
+    html += card('layers','Contratas y avance por especialidad', `${tp} obreros · Global ${glob.toFixed(1)}%`,
+      `<div class="rv-table-wrap"><table class="rv-table"><thead><tr><th>Especialidad</th><th>Contrata</th><th>Personal</th><th>% Avance</th><th>Peso</th></tr></thead><tbody>
+        ${avEsp.map(a=>`<tr><td><strong>${rvEsc(a.label||a.esp)}</strong></td><td>${rvEsc(a.contrata||'—')}</td><td>${rvNum(a.personal)}</td><td>${rvNum(a.avance).toFixed(1)}%</td><td>${rvNum(a.peso)}%</td></tr>`).join('')}
+        <tr style="border-top:2px solid var(--border-strong);font-weight:800;"><td>GLOBAL</td><td></td><td>${tp}</td><td>${glob.toFixed(1)}%</td><td></td></tr>
+      </tbody></table></div>`);
+  } else {
+    html += card('users','Personal por especialidad', `${personal} personas en obra`,
+      espItems.length
+        ? `<div class="rv-chips">${espItems.map(k=>`<span class="rv-chip">${rvEspLabel(k)} <b>${rvNum(esp[k])}</b></span>`).join('')}</div>`
+        : `<p class="rv-none">No se registró personal por especialidad.</p>`);
+    html += card('truck','Contratas en obra', `${contratas.length} contrata(s)`,
+      contratas.length
+        ? `<div class="rv-table-wrap"><table class="rv-table"><thead><tr><th>Empresa</th><th>Especialidad</th><th>Obreros</th></tr></thead><tbody>
+            ${contratas.map(c=>`<tr><td>${rvEsc(c.nombre||c.empresa||'—')}</td><td>${rvEsc(c.especialidad||'—')}</td><td>${rvNum(c.obreros||c.personal||0)}</td></tr>`).join('')}
+          </tbody></table></div>`
+        : `<p class="rv-none">Sin contratas registradas hoy.</p>`);
+  }
 
   // Riesgos
   html += card('shield-alert','Riesgos del día', `${riesgos.length} identificado(s)`,
@@ -10335,7 +10459,6 @@ async function cargarUltimoReporte() {
     const r = rows[0];
     document.getElementById('rd-plan').value = r.pct_planificado || '';
     document.getElementById('rd-real').value = r.pct_ejecutado || '';
-    document.getElementById('rd-real-contrata').value = r.pct_ejecutado_contrata || '';
     document.getElementById('rd-rondas-ok').value = r.rondas_ok || 0;
     document.getElementById('rd-rondas-tot').value = r.rondas_total || 10;
     document.getElementById('rd-actividad').value = r.actividad || '';
@@ -10343,11 +10466,8 @@ async function cargarUltimoReporte() {
     document.getElementById('rd-plan-manana').value = (typeof r.plan_manana==='string'? r.plan_manana : (r.plan_manana?.texto||'')) || '';
     if (r.jornada_entrada) document.getElementById('rd-entrada').value = r.jornada_entrada;
     if (r.jornada_salida)  document.getElementById('rd-salida').value  = r.jornada_salida;
-    // Obreros por especialidad
-    if (r.especialidades && typeof r.especialidades==='object') {
-      ESPECIALIDADES.forEach(e=>{ const el=document.getElementById('rd-ob-'+e); if(el && r.especialidades[e]!=null) el.value=r.especialidades[e]; });
-      actualizarTotalObreros();
-    }
+    // Especialidades: config del proyecto + personal/avance del último reporte
+    await rdEspLoad(cod, r);
     if (r.meta_mes!=null) document.getElementById('rd-meta-mes').value = r.meta_mes;
     if (r.facturado_codigo!=null) document.getElementById('rd-facturado').value = r.facturado_codigo;
     recalcMetaMes();
@@ -10363,7 +10483,7 @@ async function cargarUltimoReporte() {
 document.addEventListener('input', (e) => {
   if (['rd-real','rd-real-contrata'].includes(e.target.id)) {
     const sup = parseFloat(document.getElementById('rd-real').value)||0;
-    const ct  = parseFloat(document.getElementById('rd-real-contrata').value)||0;
+    const ct  = parseFloat(document.getElementById('rd-real-contrata')?.value)||0;
     const alerta = document.getElementById('alerta-diferencia');
     if (ct > 0 && Math.abs(sup - ct) > 2) alerta.classList.remove('hidden');
     else alerta.classList.add('hidden');
@@ -10379,13 +10499,14 @@ async function guardarReporte(esDraft = false) {
   if (!fecha) { showToast('Selecciona la fecha del reporte'); return; }
 
   const plan  = parseFloat(document.getElementById('rd-plan').value)||0;
-  const real  = parseFloat(document.getElementById('rd-real').value)||0;
-  const realCt = parseFloat(document.getElementById('rd-real-contrata').value)||0;
+  const real  = +rdEspGlobalAvance().toFixed(1);   // ejecutado = promedio ponderado por peso
+  const realCt = parseFloat(document.getElementById('rd-real-contrata')?.value)||0;
   const spi   = plan > 0 ? (real/plan).toFixed(2) : '0';
 
-  // Obreros por especialidad
+  // Avance + personal por especialidad (bloque nuevo)
+  const avanceEsp = rdEsp.map(r=>({ esp:r.esp, label:r.label, contrata:(r.contrata||'').trim(), peso:parseFloat(r.peso)||0, personal:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
   const especialidades = {}; let personalTotal = 0;
-  ESPECIALIDADES.forEach(e=>{ const v=parseInt(document.getElementById('rd-ob-'+e)?.value)||0; especialidades[e]=v; personalTotal+=v; });
+  rdEsp.forEach(r=>{ especialidades[r.esp]=parseInt(r.personal)||0; personalTotal+=parseInt(r.personal)||0; });
 
   // Riesgos
   const riesgosHoy = riesgosTemp
@@ -10396,8 +10517,9 @@ async function guardarReporte(esDraft = false) {
   const checklist = RD_CHECKLIST.map((item,i)=>({ item, ok: !!document.getElementById('rd-chk-'+i)?.checked }));
   const checklistOk = checklist.filter(c=>c.ok).length;
 
-  // Contratas válidas
-  const contratas = rdContratas.filter(c=>c.nombre && c.nombre.trim());
+  // Contratas: derivadas del bloque de especialidades (personal va dentro de la contrata)
+  const contratas = rdEsp.filter(r=>r.contrata && r.contrata.trim())
+    .map(r=>({ nombre:r.contrata.trim(), especialidad:r.label, obreros:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
 
   setSyncStatus('syncing','Guardando…');
   // Firma
@@ -10420,6 +10542,7 @@ async function guardarReporte(esDraft = false) {
     rondas_total: parseInt(document.getElementById('rd-rondas-tot').value)||10,
     personal_total: personalTotal,
     especialidades,
+    avance_especialidades: avanceEsp,
     actividad: document.getElementById('rd-actividad').value,
     observaciones: document.getElementById('rd-obs').value,
     plan_manana: { texto: document.getElementById('rd-plan-manana').value },
