@@ -5424,6 +5424,19 @@ async function guardarTareaGantt() {
   }
 }
 
+async function setTaskPctInline(id, val){
+  if(!id) { showToast('Esta tarea no se puede editar aquí'); return; }
+  const pct = Math.max(0, Math.min(100, parseFloat(val)||0));
+  const t = (_ganttState.tasks||[]).find(x=>String(x.id)===String(id));
+  if(t){ t.pct_avance = pct; if(pct>=100){ t.cumplido = true; } else if(t.cumplido && pct<100){ t.cumplido = false; } }
+  setSyncStatus('syncing','Guardando…');
+  try{
+    await sbFetch(`/rest/v1/tareas_gantt?id=eq.${encodeURIComponent(id)}`, { method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify({ pct_avance: pct, cumplido: pct>=100 }) });
+    setSyncStatus('ok','Guardado ✓');
+  }catch(e){ setSyncStatus('error','Error'); showToast('Error al guardar el avance'); }
+  if(typeof renderGanttBoard==='function') renderGanttBoard();
+}
+
 async function toggleCumplimiento(id, nuevoValor) {
   if (!id) return;
   setSyncStatus('syncing','Guardando…');
@@ -9094,9 +9107,7 @@ function renderGanttBoard() {
       ? `<span class="h-pill h-${a.salud}" title="${a.status}"></span>`
       : '';
     const chips = [];
-    if (isHito) chips.push('<span class="chip hito">◆ HITO</span>');
-    if (isCrit) chips.push('<span class="chip crit">CRIT</span>');
-    if (isLate) chips.push('<span class="chip late">ATRASO</span>');
+    if (isHito) chips.push('<span class="chip hito">◆</span>');
 
     // Sub-display según tipo de medición
     const tm = t.tipo_medicion || 'pct_manual';
@@ -9126,12 +9137,11 @@ function renderGanttBoard() {
       ${bgfill}
       <div class="gid">${t.orden || i+1}</div>
       <div class="gname">
-        ${healthPill}${tmBadge}
+        ${healthPill}
         <span class="nm-main">${chips.join('')}${(t.nombre_tarea||'').replace(/</g,'&lt;')}</span>
-        ${inlineMeta}
       </div>
       <div class="gdur">${t.duracion_dias!=null?t.duracion_dias+'d':'—'}</div>
-      <div class="gpct">${pct.toFixed(0)}%</div>
+      <div class="gpct">${lvl===1?`${pct.toFixed(0)}%`:`<input class="gpct-inp" type="number" min="0" max="100" value="${pct.toFixed(0)}" onclick="event.stopPropagation()" onchange="setTaskPctInline('${t.id||''}',this.value)" title="Escribe el % de avance (100 = cumplido)" style="width:48px;text-align:right;border:1px solid var(--border-strong);border-radius:6px;padding:2px 5px;font-size:11px;font-weight:800;color:var(--navy-800);background:var(--surface-1);">`}</div>
     </div>`;
   }).join('');
 
