@@ -4162,6 +4162,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
               <div class="field"><label>Facturado a la fecha (S/.)</label><input type="number" id="rd-facturado" min="0" step="0.01"></div>
               <div class="field"><label>Avance de meta</label><input type="text" id="rd-meta-pct" readonly style="background:var(--surface-2);font-weight:800;"></div>
             </div>
+            <div id="rd-val-mount" style="margin-top:18px;"></div>
           </div>
         </div>
 
@@ -10074,6 +10075,110 @@ function rdEnsureRondasStyles(){
   const st=document.createElement('style'); st.id='rd-rq-styles'; st.textContent=css; document.head.appendChild(st);
 }
 
+// ═══════════════════════════════════════════════
+// PROYECCIÓN DE VALORIZACIONES (versionada: cumplió sí/no + historial de replanteo)
+// ═══════════════════════════════════════════════
+let rval = [];
+function rvalMoney(v){ const n=parseFloat(v); return isNaN(n)?'—':'S/ '+n.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function rvalMesLabel(p){ if(!p) return '—'; const [y,m]=String(p).split('-'); const mm=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return (mm[parseInt(m)-1]||m)+' '+y; }
+const RVAL_EST = {cumplido:'Cumplió', no_cumplido:'No cumplió', replanteado:'Replanteado', vigente:'Vigente'};
+
+async function rvalLoad(cod){
+  rval = [];
+  if(!cod) { rvalRender(); return; }
+  try{ rval = await sbFetch(`/rest/v1/proyecto_valorizaciones?cod_proyecto=eq.${encodeURIComponent(cod)}&order=periodo.desc,version.desc,id.desc`) || []; }
+  catch(e){ console.warn('val load', e); }
+  rvalRender();
+}
+function rvalRender(){
+  const m=document.getElementById('rd-val-mount'); if(!m) return;
+  rvalEnsureStyles();
+  const periodos={}; rval.forEach(r=>{ (periodos[r.periodo]=periodos[r.periodo]||[]).push(r); });
+  const keys=Object.keys(periodos).sort().reverse();
+  const hoyMes=new Date().toISOString().slice(0,7);
+  let html=`<div class="rval-hd"><i data-lucide="trending-up" class="ri"></i><span>Proyección de valorizaciones</span></div>
+    <div class="rval-form">
+      <input type="month" id="rval-periodo" class="rval-inp" value="${hoyMes}">
+      <input type="number" id="rval-monto" class="rval-inp" min="0" step="0.01" placeholder="Monto proyectado (S/)">
+      <button class="btn btn-teal btn-sm" onclick="rvalGuardar()">Guardar proyección</button>
+    </div>`;
+  if(!keys.length){ html+=`<div class="rval-empty">Aún no hay proyecciones. Registra la valorización que proyectas para el mes.</div>`; }
+  keys.forEach(p=>{
+    const vs=periodos[p].slice().sort((a,b)=>b.version-a.version);
+    const cur=vs[0];
+    const estCls=cur.estado==='cumplido'?'ok':(cur.estado==='no_cumplido'?'no':(cur.estado==='replanteado'?'rep':'vig'));
+    html+=`<div class="rval-card">
+      <div class="rval-row">
+        <div class="rval-per">${rvalMesLabel(p)}${cur.version>1?` · v${cur.version}`:''}</div>
+        <div class="rval-monto">${rvalMoney(cur.monto_proyectado)}</div>
+        <span class="rval-badge ${estCls}">${RVAL_EST[cur.estado]||cur.estado}</span>
+      </div>`;
+    if(cur.estado==='vigente'){
+      html+=`<div class="rval-actions">
+        <button class="btn btn-outline btn-sm rval-ok" onclick="rvalMarcar(${cur.id},'cumplido')">✓ Cumplió</button>
+        <button class="btn btn-outline btn-sm rval-no" onclick="rvalMarcar(${cur.id},'no_cumplido')">✗ No cumplió</button></div>`;
+    } else if(cur.estado==='no_cumplido'){
+      html+=`<div class="rval-actions">
+        <button class="btn btn-teal btn-sm" onclick="rvalReplantear('${p}')">+ Replantear</button>
+        <button class="btn btn-outline btn-sm" onclick="rvalToggleHist('${p}')">Ver historial de replanteo</button></div>`;
+    }
+    if(cur.monto_real!=null) html+=`<div class="rval-real">Valorizado real: <strong>${rvalMoney(cur.monto_real)}</strong></div>`;
+    if(vs.length>1){
+      html+=`<div class="rval-hist" id="rval-hist-${p}" style="display:none;">`;
+      vs.forEach(v=>{ html+=`<div class="rval-hist-row"><span>v${v.version} · ${rvalMoney(v.monto_proyectado)}</span><span class="rval-badge sm ${v.estado==='cumplido'?'ok':(v.estado==='no_cumplido'?'no':(v.estado==='replanteado'?'rep':'vig'))}">${RVAL_EST[v.estado]||v.estado}</span><span>${v.fecha_proyeccion||''}</span></div>`; });
+      html+=`</div>`;
+    }
+    html+=`</div>`;
+  });
+  m.innerHTML=html;
+  if(window.lucide) lucide.createIcons();
+}
+function rvalToggleHist(p){ const el=document.getElementById('rval-hist-'+p); if(el) el.style.display = (el.style.display==='none'?'block':'none'); }
+async function rvalGuardar(){
+  const cod=currentProyecto?.cod||currentProyecto?.nombre; if(!cod){ showToast('Selecciona un proyecto'); return; }
+  const per=document.getElementById('rval-periodo')?.value;
+  const monto=parseFloat(document.getElementById('rval-monto')?.value);
+  if(!per||isNaN(monto)){ showToast('Ingresa periodo y monto proyectado'); return; }
+  const mismos=rval.filter(r=>r.periodo===per);
+  const ver=mismos.length?Math.max(...mismos.map(r=>r.version))+1:1;
+  const vigentePrev=mismos.find(r=>r.estado==='vigente');
+  try{
+    if(vigentePrev) await sbFetch(`/rest/v1/proyecto_valorizaciones?id=eq.${vigentePrev.id}`,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({estado:'replanteado'})});
+    await sbFetch('/rest/v1/proyecto_valorizaciones',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({ cod_proyecto:cod, nombre_proyecto:currentProyecto?.nombre||null, periodo:per, monto_proyectado:monto, version:ver, estado:'vigente', supervisor:currentProyecto?.supervisor||currentUser?.nombre||null })});
+    const mo=document.getElementById('rval-monto'); if(mo) mo.value='';
+    showToast(ver>1?'Replanteo guardado ✓':'Proyección guardada ✓');
+    await rvalLoad(cod);
+  }catch(e){ showToast('Error al guardar proyección'); }
+}
+async function rvalMarcar(id, estado){
+  const cod=currentProyecto?.cod||currentProyecto?.nombre;
+  try{ await sbFetch(`/rest/v1/proyecto_valorizaciones?id=eq.${id}`,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({estado})}); await rvalLoad(cod); }
+  catch(e){ showToast('Error'); }
+}
+function rvalReplantear(p){ const el=document.getElementById('rval-periodo'); if(el) el.value=p; const mo=document.getElementById('rval-monto'); if(mo) mo.focus(); showToast('Ingresa el nuevo monto y Guardar proyección'); }
+let _rvalStyles=false;
+function rvalEnsureStyles(){
+  if(_rvalStyles) return; _rvalStyles=true;
+  const css=`
+  .rval-hd{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--teal-700,#0e7490);margin-bottom:10px;} .rval-hd i{width:15px;height:15px;}
+  .rval-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+  .rval-inp{border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;font-size:13px;background:var(--surface-1);color:var(--text-1);}
+  .rval-empty{font-size:12.5px;color:var(--text-3);font-style:italic;padding:6px 0;}
+  .rval-card{border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:9px;background:var(--surface-1);}
+  .rval-row{display:flex;align-items:center;gap:12px;}
+  .rval-per{font-weight:800;color:var(--navy-800);font-size:13.5px;min-width:90px;}
+  .rval-monto{font-weight:800;color:var(--text-1);font-size:15px;flex:1;}
+  .rval-badge{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;letter-spacing:.02em;}
+  .rval-badge.vig{background:#e0f2fe;color:#0369a1;} .rval-badge.ok{background:#dcfce7;color:#15803d;} .rval-badge.no{background:#fee2e2;color:#b91c1c;} .rval-badge.rep{background:#f3e8ff;color:#7e22ce;}
+  .rval-badge.sm{font-size:9.5px;padding:2px 7px;}
+  .rval-actions{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;}
+  .rval-ok{color:#15803d;border-color:#86efac !important;} .rval-no{color:#b91c1c;border-color:#fca5a5 !important;}
+  .rval-real{margin-top:8px;font-size:12.5px;color:var(--text-2);}
+  .rval-hist{margin-top:9px;border-top:1px dashed var(--border-strong);padding-top:8px;}
+  .rval-hist-row{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--text-2);padding:4px 0;}`;
+  const st=document.createElement('style'); st.id='rval-styles'; st.textContent=css; document.head.appendChild(st);
+}
+
 // ── Comercial: facturado + meta del mes ──
 async function cargarComercialReporte() {
   const cod = currentProyecto?.cod;
@@ -10087,6 +10192,7 @@ async function cargarComercialReporte() {
     }
   } catch(e){}
   recalcMetaMes();
+  await rvalLoad(currentProyecto?.cod || currentProyecto?.nombre);
 }
 function recalcMetaMes() {
   const meta = parseFloat(document.getElementById('rd-meta-mes')?.value)||0;
