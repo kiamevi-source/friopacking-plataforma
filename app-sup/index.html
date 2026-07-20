@@ -1038,7 +1038,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 
 /* ── Gantt Board (lista + timeline) ── */
 .gantt-board{
-  display:grid;grid-template-columns:minmax(280px,38%) 1fr;gap:0;
+  display:grid;grid-template-columns:minmax(340px,48%) 1fr;gap:0;
   border-top:1px solid var(--border);
   max-height:640px;overflow:hidden;
   position:relative;
@@ -1069,7 +1069,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
   height:42px;
 }
 .gantt-list-head{
-  display:grid;grid-template-columns:36px 1fr 64px 56px;align-items:center;gap:0;
+  display:grid;grid-template-columns:30px 1fr 48px 122px;align-items:center;gap:0;
   padding:0 8px 0 0;border-bottom:1px solid rgba(255,255,255,.10);
 }
 .gantt-list-head .col{padding:0 10px;}
@@ -1091,7 +1091,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 
 /* List rows */
 .gantt-row{
-  display:grid;grid-template-columns:36px 1fr 64px 56px;align-items:center;
+  display:grid;grid-template-columns:30px 1fr 48px 122px;align-items:center;
   height:34px;border-bottom:1px solid var(--border);
   font-size:12px;color:var(--text);
   transition:background var(--d) var(--ease);
@@ -1118,6 +1118,10 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
   padding:0 10px;text-align:right;
   font-size:10.5px;font-weight:800;color:var(--text-2);font-variant-numeric:tabular-nums;
 }
+.gpct-inp{width:42px;text-align:right;border:1px solid var(--border-strong);border-radius:6px;padding:2px 5px;font-size:11px;font-weight:800;color:var(--navy-800);background:var(--surface-1);}
+.gpct-listo{border:1px solid var(--border-strong);border-radius:6px;padding:3px 9px;font-size:10.5px;font-weight:800;cursor:pointer;white-space:nowrap;background:var(--surface-2);color:var(--teal-700,#0e7490);transition:background .12s,color .12s;}
+.gpct-listo:hover{background:var(--teal-50,#ecfeff);}
+.gpct-listo.done{background:#16a34a;color:#fff;border-color:#16a34a;}
 .gantt-row.lvl-1 .gname{font-weight:800;color:var(--navy-800);text-transform:uppercase;font-size:11px;letter-spacing:.04em;}
 .gantt-row.lvl-2 .gname{font-weight:700;color:var(--navy-700);padding-left:22px;}
 .gantt-row.lvl-3 .gname{padding-left:34px;color:var(--text-2);}
@@ -5427,14 +5431,23 @@ async function guardarTareaGantt() {
 async function setTaskPctInline(id, val){
   if(!id) { showToast('Esta tarea no se puede editar aquí'); return; }
   const pct = Math.max(0, Math.min(100, parseFloat(val)||0));
+  const done = pct >= 100;
   const t = (_ganttState.tasks||[]).find(x=>String(x.id)===String(id));
-  if(t){ t.pct_avance = pct; if(pct>=100){ t.cumplido = true; } else if(t.cumplido && pct<100){ t.cumplido = false; } }
+  if(t){ t.pct_avance = pct; t.cumplido = done; }
+  // Actualización EN SITIO de esa fila (sin re-render → instantáneo, no pierde scroll)
+  const row = document.querySelector(`.gantt-row[data-id="${id}"]`);
+  if(row){
+    const inp = row.querySelector('.gpct-inp'); if(inp) inp.value = pct.toFixed(0);
+    const btn = row.querySelector('.gpct-listo'); if(btn){ btn.classList.toggle('done', done); btn.textContent = done ? '✓ Listo' : 'Listo'; }
+    const bg = row.querySelector('.row-bgfill'); if(bg) bg.style.width = Math.max(0,Math.min(100,pct)) + '%';
+    row.classList.toggle('row-done', done);
+  }
+  // Guardar en segundo plano
   setSyncStatus('syncing','Guardando…');
   try{
-    await sbFetch(`/rest/v1/tareas_gantt?id=eq.${encodeURIComponent(id)}`, { method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify({ pct_avance: pct, cumplido: pct>=100 }) });
+    await sbFetch(`/rest/v1/tareas_gantt?id=eq.${encodeURIComponent(id)}`, { method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify({ pct_avance: pct, cumplido: done }) });
     setSyncStatus('ok','Guardado ✓');
   }catch(e){ setSyncStatus('error','Error'); showToast('Error al guardar el avance'); }
-  if(typeof renderGanttBoard==='function') renderGanttBoard();
 }
 
 async function toggleCumplimiento(id, nuevoValor) {
@@ -9141,7 +9154,7 @@ function renderGanttBoard() {
         <span class="nm-main">${chips.join('')}${(t.nombre_tarea||'').replace(/</g,'&lt;')}</span>
       </div>
       <div class="gdur">${t.duracion_dias!=null?t.duracion_dias+'d':'—'}</div>
-      <div class="gpct" style="${lvl===1?'':'display:flex;align-items:center;gap:5px;justify-content:flex-end;'}">${lvl===1?`${pct.toFixed(0)}%`:`<input class="gpct-inp" type="number" min="0" max="100" value="${pct.toFixed(0)}" onclick="event.stopPropagation()" onchange="setTaskPctInline('${t.id||''}',this.value)" title="Escribe el % de avance (100 = cumplido)" style="width:44px;text-align:right;border:1px solid var(--border-strong);border-radius:6px;padding:2px 5px;font-size:11px;font-weight:800;color:var(--navy-800);background:var(--surface-1);"><button onclick="event.stopPropagation();setTaskPctInline('${t.id||''}',100)" title="Marcar como listo (100%)" style="border:none;border-radius:6px;padding:3px 9px;font-size:10.5px;font-weight:800;cursor:pointer;white-space:nowrap;${pct>=100?'background:#16a34a;color:#fff;':'background:var(--surface-2);color:var(--teal-700,#0e7490);border:1px solid var(--border-strong);'}">${pct>=100?'✓ Listo':'Listo'}</button>`}</div>
+      <div class="gpct" style="${lvl===1?'':'display:flex;align-items:center;gap:6px;justify-content:flex-end;'}">${lvl===1?`${pct.toFixed(0)}%`:`<input class="gpct-inp" type="number" min="0" max="100" value="${pct.toFixed(0)}" onclick="event.stopPropagation()" onchange="setTaskPctInline('${t.id||''}',this.value)" title="Escribe el % de avance (100 = cumplido)"><button class="gpct-listo ${pct>=100?'done':''}" onclick="event.stopPropagation();setTaskPctInline('${t.id||''}',100)" title="Marcar como listo (100%)">${pct>=100?'✓ Listo':'Listo'}</button>`}</div>
     </div>`;
   }).join('');
 
