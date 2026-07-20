@@ -3862,13 +3862,14 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
             <div class="title">Importar cronograma</div>
             <div class="sub">Arrastra tu archivo aquí o haz clic para seleccionar. Detección automática de hitos, fases y fechas.</div>
             <div class="formats">
-              <span class="fmt pdf">PDF (MS Project export)</span>
+              <span class="fmt pdf">MS Project (.xml)</span>
+              <span class="fmt pdf">PDF (MS Project)</span>
               <span class="fmt xlsx">Excel (.xlsx, .xls)</span>
               <span class="fmt csv">CSV / TSV</span>
             </div>
           </div>
           <span class="cta">Seleccionar archivo</span>
-          <input type="file" id="gantt-file-input" accept=".csv,.tsv,.txt,.xlsx,.xls,.pdf" onchange="importarGantt(this)">
+          <input type="file" id="gantt-file-input" accept=".xml,.csv,.tsv,.txt,.xlsx,.xls,.pdf" onchange="importarGantt(this)">
         </label>
 
         <!-- ── Import progress (hidden por defecto) ── -->
@@ -5765,6 +5766,41 @@ async function parseGanttCSV(file) {
   }).filter(Boolean);
 }
 
+// ── MS Project XML parser (.xml — "Guardar como XML" de MS Project) ──
+async function parseGanttXML(file) {
+  const text = await file.text();
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error('El XML no se pudo leer (archivo dañado o no es XML válido).');
+  const esProject = /schemas\.microsoft\.com\/project/i.test(text) || (doc.documentElement && /project/i.test(doc.documentElement.localName||''));
+  const tasks = Array.from(doc.getElementsByTagNameNS('*','Task'));
+  if (!tasks.length) throw new Error(esProject ? 'El XML de MS Project no tiene tareas <Task>.' : 'No parece un XML de MS Project. Guárdalo en Project como “XML” (Guardar como → tipo XML).');
+  // texto de un hijo directo por nombre local (ignora namespace)
+  const ct = (el,name)=>{ for (const c of el.children){ if (c.localName===name) return (c.textContent||'').trim(); } return ''; };
+  const out = [];
+  tasks.forEach((t,idx)=>{
+    const name = ct(t,'Name');
+    const outline = parseInt(ct(t,'OutlineLevel'))||0;
+    if (!name || outline===0) return;                 // salta la tarea-resumen del proyecto
+    const ini = ct(t,'Start') ? new Date(ct(t,'Start')) : null;
+    const fin = ct(t,'Finish') ? new Date(ct(t,'Finish')) : null;
+    let pct = parseFloat(ct(t,'PercentComplete')); if (isNaN(pct)) pct = 0;
+    const milestone = /^(1|true|yes)$/i.test(ct(t,'Milestone'));
+    const critical  = /^(1|true|yes)$/i.test(ct(t,'Critical'));
+    const nivel = Math.min(3, Math.max(1, outline||3));
+    const iniOk = ini && !isNaN(ini), finOk = fin && !isNaN(fin);
+    let dur = (iniOk && finOk) ? Math.max(0, Math.ceil((fin-ini)/86400000)) : null;
+    out.push({
+      id_orig: parseInt(ct(t,'ID'))||idx+1, nombre: name, nivel,
+      es_hito: milestone || dur===0, es_critico: critical,
+      pct_avance: Math.min(100, Math.max(0, pct)),
+      fecha_ini: iniOk?toISO(ini):null, fecha_fin: finOk?toISO(fin):null,
+      duracion_dias: dur, responsable: ''
+    });
+  });
+  if (!out.length) throw new Error('Se leyó el XML pero no se detectaron tareas con nombre.');
+  return out;
+}
+
 // ── Drag & drop handlers ────────────────────
 function ganttDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag'); }
 function ganttDragLeave(e) { e.currentTarget.classList.remove('drag'); }
@@ -7534,10 +7570,13 @@ async function importarGanttSmart(file) {
     } else if (ext === 'csv' || ext === 'tsv' || ext === 'txt') {
       setImportProgress(`Leyendo CSV…`, 'info');
       parsed = await parseGanttCSV(file);
+    } else if (ext === 'xml') {
+      setImportProgress(`Leyendo XML de MS Project · detectando tareas…`, 'info');
+      parsed = await parseGanttXML(file);
     } else if (ext === 'mpp') {
-      throw new Error('Para .mpp expórtalo desde MS Project como PDF o Excel primero.');
+      throw new Error('El .mpp es binario y no se puede leer en el navegador. En MS Project usa “Guardar como → XML” y sube ese .xml aquí.');
     } else {
-      throw new Error('Formato no soportado: .' + ext + '. Usa PDF, Excel o CSV.');
+      throw new Error('Formato no soportado: .' + ext + '. Usa MS Project XML, PDF, Excel o CSV.');
     }
 
     if (!parsed.length) throw new Error('No se detectaron tareas en el archivo.');
@@ -8916,7 +8955,7 @@ function renderGanttBoard() {
     board.innerHTML = `<div class="gantt-empty-board" style="grid-column:1/-1">
       <div class="ic">📋</div>
       <b>Sin cronograma en este proyecto</b>
-      Arrastra un PDF de MS Project, un Excel (.xlsx) o un CSV en la zona de carga.
+      Arrastra el XML de MS Project (Guardar como → XML), un PDF de MS Project, un Excel (.xlsx) o un CSV en la zona de carga.
     </div>`;
     updateGanttStats(all);
     renderGanttAlerts();
