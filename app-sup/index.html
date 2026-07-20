@@ -3991,7 +3991,8 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       <!-- ══ TOGGLE DE MODO ══ -->
       <div class="rd-modes">
         <button class="rd-mode-btn on" id="rd-mode-cap" onclick="rdSetMode('cap')"><i data-lucide="pencil-line" class="ri"></i> Capturar</button>
-        <button class="rd-mode-btn" id="rd-mode-his" onclick="rdSetMode('his')"><i data-lucide="sparkles" class="ri"></i> Historia</button>
+        <button class="rd-mode-btn" id="rd-mode-ver" onclick="rdSetMode('ver')"><i data-lucide="file-text" class="ri"></i> Ver reporte</button>
+        <button class="rd-mode-btn" id="rd-mode-his" onclick="rdSetMode('his')"><i data-lucide="sparkles" class="ri"></i> Análisis</button>
       </div>
 
       <!-- ═══════════ MODO CAPTURAR ═══════════ -->
@@ -4233,6 +4234,23 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
           <div class="rd-head"><div class="rd-head-ic"><i data-lucide="bar-chart-big" class="ri"></i></div><div class="rd-head-tt"><h4>Comparativa</h4><p>Hoy frente a ayer, semana y mes</p></div></div>
           <div class="rd-body"><div class="rd-compare" id="rd-his-compare"></div></div>
         </div>
+      </div>
+
+      <!-- ═══════════ MODO VER REPORTE (fiel, tiempo real) ═══════════ -->
+      <div class="rd-pane" id="rd-pane-ver">
+        <div class="rv-toolbar">
+          <div class="rv-tb-left">
+            <label class="rv-date-lbl">Fecha del reporte
+              <input type="date" id="rv-fecha" onchange="verReporteCompleto()">
+            </label>
+            <span class="rv-live" id="rv-live" title="Se actualiza solo mientras miras el reporte"><span class="dot"></span> En vivo</span>
+          </div>
+          <div class="rv-tb-right">
+            <button class="btn btn-outline btn-sm" onclick="verReporteCompleto()" title="Refrescar ahora"><i data-lucide="refresh-cw" class="ri" style="width:14px;height:14px;"></i> Refrescar</button>
+            <button class="btn btn-primary btn-sm" onclick="exportarReporteCompleto()"><i data-lucide="download" class="ri" style="width:14px;height:14px;"></i> Exportar PDF</button>
+          </div>
+        </div>
+        <div id="rv-body"><div class="rv-empty"><span class="spinner"></span> Selecciona una fecha para ver el reporte.</div></div>
       </div>
 
      </div>
@@ -9486,12 +9504,15 @@ async function cargarReporteDiario() {
 function rdIcons(){ try { if (window.lucide) lucide.createIcons(); } catch(e){} }
 
 function rdSetMode(m){
-  const cap = m === 'cap';
-  document.getElementById('rd-mode-cap')?.classList.toggle('on', cap);
-  document.getElementById('rd-mode-his')?.classList.toggle('on', !cap);
-  document.getElementById('rd-pane-cap')?.classList.toggle('on', cap);
-  document.getElementById('rd-pane-his')?.classList.toggle('on', !cap);
-  if (!cap) buildHistoria();
+  if (!['cap','ver','his'].includes(m)) m = 'cap';
+  ['cap','ver','his'].forEach(k=>{
+    document.getElementById('rd-mode-'+k)?.classList.toggle('on', k===m);
+    document.getElementById('rd-pane-'+k)?.classList.toggle('on', k===m);
+  });
+  // Auto-refresco (tiempo real) solo mientras se mira "Ver reporte"
+  rvStopLive();
+  if (m === 'ver') { verReporteCompleto(); rvStartLive(); }
+  else if (m === 'his') { buildHistoria(); }
   rdIcons();
 }
 
@@ -9984,6 +10005,268 @@ async function buildHistoria(){
     cmp('Rondas de calidad','shield-check', rondasPct, ayer&&ayer.rondas_total?num(ayer.rondas_ok)/num(ayer.rondas_total)*100:0, avg(sem.map(r=>({v:r.rondas_total?num(r.rondas_ok)/num(r.rondas_total)*100:0})),'v'), avg(mes.map(r=>({v:r.rondas_total?num(r.rondas_ok)/num(r.rondas_total)*100:0})),'v'),'%');
 
   rdIcons();
+}
+
+// ═══════════════════════════════════════════════
+// VER REPORTE COMPLETO (fiel + tiempo real + export)
+// ═══════════════════════════════════════════════
+const rvEsc = s => (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const rvNum = v => { const n=parseFloat(v); return isNaN(n)?0:n; };
+const rvArr = v => Array.isArray(v) ? v : (v && typeof v==='object' ? Object.values(v) : []);
+function rvMoney(v){ const n=parseFloat(v); if(isNaN(n)||n===0) return '—'; return 'S/ '+n.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function rvFechaLarga(f){ try{ return new Date(f+'T12:00:00').toLocaleDateString('es-PE',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }catch(e){ return f||'—'; } }
+function rvEspLabel(k){ return String(k).replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()); }
+
+let rvLiveTimer = null;
+function rvStartLive(){ rvStopLive(); rvLiveTimer = setInterval(()=>{
+  if (document.getElementById('rd-pane-ver')?.classList.contains('on')) verReporteCompleto(true);
+  else rvStopLive();
+}, 15000); }
+function rvStopLive(){ if (rvLiveTimer){ clearInterval(rvLiveTimer); rvLiveTimer=null; } }
+function rvUpdateLiveBadge(ok){ const el=document.getElementById('rv-live'); if(!el) return; el.classList.toggle('off', !ok); }
+
+async function verReporteCompleto(silent){
+  const P = currentProyecto;
+  const body = document.getElementById('rv-body');
+  if (!body) return;
+  if (!P){ body.innerHTML = '<div class="rv-empty">Selecciona un proyecto primero.</div>'; return; }
+  const cod = P.cod || P.nombre;
+  const fechaEl = document.getElementById('rv-fecha');
+  let fecha = fechaEl?.value;
+  const matcher = `or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(P.nombre)})`;
+  if (!fecha){
+    try{
+      const last = await sbFetch(`/rest/v1/v_reportes?${matcher}&select=fecha_reporte&order=fecha_reporte.desc&limit=1`);
+      fecha = (last && last[0] && last[0].fecha_reporte) || new Date().toISOString().slice(0,10);
+    }catch(e){ fecha = new Date().toISOString().slice(0,10); }
+    if (fechaEl) fechaEl.value = fecha;
+  }
+  if (!silent) body.innerHTML = '<div class="rv-empty"><span class="spinner"></span> Cargando reporte…</div>';
+  let rows=[];
+  try{
+    rows = await sbFetch(`/rest/v1/v_reportes?${matcher}&fecha_reporte=eq.${fecha}&order=created_at.desc&limit=1`) || [];
+  }catch(e){ body.innerHTML = '<div class="rv-empty">Error al cargar el reporte.</div>'; rvUpdateLiveBadge(false); return; }
+  if (!rows.length){
+    body.innerHTML = `<div class="rv-empty"><i data-lucide="calendar-x" class="ri"></i><p>No hay reporte de <strong>${rvEsc(P.nombre)}</strong> para el ${rvFechaLarga(fecha)}.</p></div>`;
+    rvUpdateLiveBadge(false); rdIcons(); return;
+  }
+  rvRenderReporte(rows[0]);
+  rvUpdateLiveBadge(true);
+  rdIcons();
+}
+
+function rvRenderReporte(r){
+  const body = document.getElementById('rv-body');
+  const plan = rvNum(r.pct_planificado), real = rvNum(r.pct_ejecutado);
+  const diff = real - plan;
+  const spi = r.spi!=null && r.spi!=='' ? rvNum(r.spi) : (plan>0 ? real/plan : 0);
+  const esDraft = r.es_draft === true && r.enviado !== true;
+  const esp = (r.especialidades && typeof r.especialidades==='object') ? r.especialidades : {};
+  const espItems = Object.keys(esp).filter(k=>rvNum(esp[k])>0);
+  const personal = r.personal_total!=null ? r.personal_total : Object.values(esp).reduce((a,v)=>a+rvNum(v),0);
+  const contratas = rvArr(r.contratas_detalle).filter(c=>c && (c.nombre||c.empresa));
+  const riesgos = rvArr(r.riesgos).filter(x=>x && (x.descripcion||x.nivel));
+  const restr = rvArr(r.restricciones).filter(x=>x && (x.titulo||x.descripcion));
+  const fotos = rvArr(r.fotos).filter(f=>f && (f.url||typeof f==='string'));
+  const checklist = rvArr(r.checklist_cierre).filter(c=>c && c.item);
+  const planMan = r.plan_manana && typeof r.plan_manana==='object' ? (r.plan_manana.texto||'') : (r.plan_manana||'');
+  const metaMes = rvNum(r.meta_mes), fact = rvNum(r.facturado_codigo);
+  const metaPct = metaMes>0 ? (fact/metaMes*100) : 0;
+
+  const card = (icon,title,sub,inner)=>`<section class="rv-card">
+    <div class="rv-card-hd"><span class="rv-ic"><i data-lucide="${icon}" class="ri"></i></span><div><h4>${title}</h4>${sub?`<p>${sub}</p>`:''}</div></div>
+    <div class="rv-card-bd">${inner}</div></section>`;
+  const kv = (k,v)=>`<div class="rv-kv"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  const stat = (val,lbl,cls='')=>`<div class="rv-stat ${cls}"><b>${val}</b><span>${lbl}</span></div>`;
+
+  let html = `<div id="rv-report" class="rv-report">`;
+
+  // Encabezado documento
+  html += `<header class="rv-doc-hd">
+    <div class="rv-doc-hd-l">
+      <div class="rv-doc-eyebrow">Reporte Diario de Obra</div>
+      <h2>${rvEsc(r.nombre_proyecto||'—')}</h2>
+      <div class="rv-doc-meta">
+        <span><i data-lucide="hash" class="ri"></i> ${rvEsc(r.cod_proyecto||'—')}</span>
+        <span><i data-lucide="user" class="ri"></i> ${rvEsc(r.supervisor||'—')}</span>
+        <span><i data-lucide="calendar" class="ri"></i> ${rvFechaLarga(r.fecha_reporte)}</span>
+      </div>
+    </div>
+    <div class="rv-doc-hd-r">
+      <span class="rv-badge ${esDraft?'draft':'ok'}">${esDraft?'BORRADOR':'ENVIADO'}</span>
+      ${r.firmado?'<span class="rv-badge sign"><i data-lucide="pen-tool" class="ri"></i> Firmado</span>':''}
+    </div>
+  </header>`;
+
+  // Resumen KPIs
+  html += `<div class="rv-stats">
+    ${stat(real.toFixed(1)+'%','Avance ejecutado')}
+    ${stat(plan.toFixed(1)+'%','Planificado')}
+    ${stat((diff>=0?'+':'')+diff.toFixed(1),'Δ vs plan', diff>=0?'pos':'neg')}
+    ${stat(spi.toFixed(2),'SPI', spi>=1?'pos':(spi>=0.9?'':'neg'))}
+    ${stat(personal,'Personal en obra')}
+    ${stat((r.rondas_ok||0)+'/'+(r.rondas_total||0),'Rondas de calidad')}
+  </div>`;
+
+  // Jornada
+  html += card('clock','Jornada','',
+    `<div class="rv-kv-grid">
+      ${kv('Entrada', rvEsc((r.jornada_entrada||'—').slice(0,5)))}
+      ${kv('Salida', rvEsc((r.jornada_salida||'—').slice(0,5)))}
+      ${kv('Variación de jornada', rvEsc(r.jornada_motivo||'Sin variación'))}
+    </div>`);
+
+  // Personal por especialidad
+  html += card('users','Personal por especialidad', `${personal} personas en obra`,
+    espItems.length
+      ? `<div class="rv-chips">${espItems.map(k=>`<span class="rv-chip">${rvEspLabel(k)} <b>${rvNum(esp[k])}</b></span>`).join('')}</div>`
+      : `<p class="rv-none">No se registró personal por especialidad.</p>`);
+
+  // Contratas
+  html += card('truck','Contratas en obra', `${contratas.length} contrata(s)`,
+    contratas.length
+      ? `<div class="rv-table-wrap"><table class="rv-table"><thead><tr><th>Empresa</th><th>Especialidad</th><th>Obreros</th></tr></thead><tbody>
+          ${contratas.map(c=>`<tr><td>${rvEsc(c.nombre||c.empresa||'—')}</td><td>${rvEsc(c.especialidad||'—')}</td><td>${rvNum(c.obreros||c.personal||0)}</td></tr>`).join('')}
+        </tbody></table></div>`
+      : `<p class="rv-none">Sin contratas registradas hoy.</p>`);
+
+  // Riesgos
+  html += card('shield-alert','Riesgos del día', `${riesgos.length} identificado(s)`,
+    riesgos.length
+      ? `<div class="rv-list">${riesgos.map(x=>`<div class="rv-li"><span class="rv-tag ${(x.nivel||'').toLowerCase()==='alto'?'alto':(x.nivel||'').toLowerCase()==='medio'?'medio':'bajo'}">${rvEsc(x.nivel||'MEDIO')}</span><span>${rvEsc(x.descripcion||'')}</span></div>`).join('')}</div>`
+      : `<p class="rv-none">Sin riesgos registrados. Buen día.</p>`);
+
+  // Restricciones
+  html += card('octagon-alert','Restricciones', `${restr.length} abierta(s)`,
+    restr.length
+      ? `<div class="rv-list">${restr.map(x=>`<div class="rv-li col">
+          <div class="rv-li-hd"><strong>${rvEsc(x.titulo||x.categoria||'Restricción')}</strong>${x.impacto?`<span class="rv-tag imp">${rvEsc(x.impacto)}</span>`:''}</div>
+          ${x.descripcion?`<p>${rvEsc(x.descripcion)}</p>`:''}
+          <div class="rv-li-ft">${x.categoria?`<span>${rvEsc(x.categoria)}</span>`:''}${x.responsable?`<span><i data-lucide="user" class="ri"></i> ${rvEsc(x.responsable)}</span>`:''}${x.fecha_objetivo?`<span><i data-lucide="flag" class="ri"></i> ${rvEsc(x.fecha_objetivo)}</span>`:''}</div>
+        </div>`).join('')}</div>`
+      : `<p class="rv-none">Sin restricciones registradas.</p>`);
+
+  // Narrativa (completa, sin cortes)
+  html += card('file-text','Bitácora del día','',
+    `<div class="rv-narr">
+      <div class="rv-narr-blk"><h5><i data-lucide="check-circle-2" class="ri"></i> Actividad principal ejecutada</h5><p>${rvEsc(r.actividad)||'<span class="rv-none">Sin registro.</span>'}</p></div>
+      <div class="rv-narr-blk"><h5><i data-lucide="calendar-clock" class="ri"></i> Plan para mañana</h5><p>${rvEsc(planMan)||'<span class="rv-none">Sin registro.</span>'}</p></div>
+      <div class="rv-narr-blk"><h5><i data-lucide="message-square-more" class="ri"></i> Observaciones</h5><p>${rvEsc(r.observaciones)||'<span class="rv-none">Sin registro.</span>'}</p></div>
+    </div>`);
+
+  // Cliente
+  if (r.cliente_visita){
+    html += card('user-check','Visita de cliente','',
+      `<div class="rv-kv-grid">${kv('Visitante', rvEsc(r.cliente_nombre||'—'))}${kv('Observación', rvEsc(r.cliente_obs||'—'))}</div>`);
+  }
+
+  // Económico
+  html += card('wallet','Económico del mes','',
+    `<div class="rv-kv-grid">
+      ${kv('Meta del mes', rvMoney(metaMes))}
+      ${kv('Facturado a la fecha', rvMoney(fact))}
+      ${kv('Avance de meta', metaMes>0?`${metaPct.toFixed(1)}%`:'—')}
+    </div>`);
+
+  // Checklist de cierre
+  if (checklist.length){
+    html += card('list-checks','Checklist de cierre', `${checklist.filter(c=>c.ok).length}/${checklist.length} completos`,
+      `<div class="rv-check">${checklist.map(c=>`<div class="rv-check-i ${c.ok?'on':''}"><i data-lucide="${c.ok?'check-circle-2':'circle'}" class="ri"></i> ${rvEsc(c.item)}</div>`).join('')}</div>`);
+  }
+
+  // Fotos (cualquier formato/tamaño)
+  html += card('image','Evidencia fotográfica', `${fotos.length} archivo(s)`,
+    fotos.length
+      ? `<div class="rv-gallery">${fotos.map(f=>{ const url=f.url||f; const nm=f.nombre||f.ambiente||''; const amb=f.ambiente||''; return `<figure class="rv-photo"><a href="${rvEsc(url)}" target="_blank" rel="noopener"><img src="${rvEsc(url)}" loading="lazy" crossorigin="anonymous" alt="${rvEsc(nm)}"></a>${(amb||nm)?`<figcaption>${rvEsc(amb||nm)}</figcaption>`:''}</figure>`; }).join('')}</div>`
+      : `<p class="rv-none">Sin evidencia fotográfica adjunta.</p>`);
+
+  // Firma
+  if (r.firma_url){
+    html += card('pen-tool','Firma de conformidad','',
+      `<div class="rv-firma"><img src="${rvEsc(r.firma_url)}" crossorigin="anonymous" alt="Firma"><span>${rvEsc(r.firma_nombre||'')}</span></div>`);
+  }
+
+  html += `</div>`;
+  rvEnsureStyles();
+  body.innerHTML = html;
+}
+
+async function exportarReporteCompleto(){
+  const el = document.getElementById('rv-report');
+  if (!el){ showToast('Primero carga un reporte'); return; }
+  if (!window.jspdf || !window.html2canvas){ showToast('Motor PDF no disponible'); return; }
+  showToast('Generando PDF…');
+  try{
+    const canvas = await html2canvas(el, { scale:2, useCORS:true, backgroundColor:'#ffffff', windowWidth: el.scrollWidth });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
+    const imgW = pw, imgH = canvas.height * imgW / canvas.width;
+    const img = canvas.toDataURL('image/jpeg', 0.92);
+    let hLeft = imgH, pos = 0;
+    pdf.addImage(img,'JPEG',0,pos,imgW,imgH);
+    hLeft -= ph;
+    while (hLeft > 0){ pos = hLeft - imgH; pdf.addPage(); pdf.addImage(img,'JPEG',0,pos,imgW,imgH); hLeft -= ph; }
+    const nom = (currentProyecto?.nombre||'reporte').replace(/\s+/g,'_');
+    const fch = document.getElementById('rv-fecha')?.value || '';
+    pdf.save(`Reporte_${nom}_${fch}.pdf`);
+    showToast('PDF generado ✓');
+  }catch(e){ showToast('Error al exportar (posible bloqueo de imágenes): '+e.message); }
+}
+
+let _rvStylesDone = false;
+function rvEnsureStyles(){
+  if (_rvStylesDone) return; _rvStylesDone = true;
+  const css = `
+  .rv-toolbar{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+  .rv-tb-left{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .rv-date-lbl{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.04em;}
+  .rv-date-lbl input{border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;font-size:13px;font-weight:700;color:var(--text-1);background:var(--surface-1);}
+  .rv-live{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:#059669;background:rgba(5,150,105,.10);padding:6px 11px;border-radius:999px;}
+  .rv-live .dot{width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 0 0 rgba(16,185,129,.5);animation:rvpulse 1.8s infinite;}
+  .rv-live.off{color:var(--text-3);background:var(--surface-2);} .rv-live.off .dot{background:var(--text-3);animation:none;}
+  @keyframes rvpulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.5);}70%{box-shadow:0 0 0 7px rgba(16,185,129,0);}100%{box-shadow:0 0 0 0 rgba(16,185,129,0);}}
+  .rv-tb-right{display:flex;gap:8px;}
+  .rv-empty{padding:48px 20px;text-align:center;color:var(--text-3);font-size:13.5px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+  .rv-empty i{width:34px;height:34px;opacity:.5;}
+  .rv-report{background:var(--surface-1);border-radius:14px;}
+  .rv-doc-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:22px 24px;border-radius:14px;background:linear-gradient(135deg,#0f2942,#12405f);color:#fff;flex-wrap:wrap;}
+  .rv-doc-eyebrow{font-size:11px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;opacity:.75;}
+  .rv-doc-hd h2{margin:6px 0 10px;font-size:23px;font-weight:800;line-height:1.15;}
+  .rv-doc-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;opacity:.92;}
+  .rv-doc-meta span{display:inline-flex;align-items:center;gap:6px;} .rv-doc-meta i{width:14px;height:14px;}
+  .rv-doc-hd-r{display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
+  .rv-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;letter-spacing:.04em;padding:5px 11px;border-radius:999px;}
+  .rv-badge.ok{background:#10b981;color:#04231a;} .rv-badge.draft{background:#f59e0b;color:#3d2600;}
+  .rv-badge.sign{background:rgba(255,255,255,.16);color:#fff;} .rv-badge i{width:13px;height:13px;}
+  .rv-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:16px 0;}
+  .rv-stat{background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:13px 14px;text-align:center;}
+  .rv-stat b{display:block;font-size:22px;font-weight:800;color:var(--text-1);line-height:1;}
+  .rv-stat span{display:block;margin-top:5px;font-size:10.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.03em;}
+  .rv-stat.pos b{color:#059669;} .rv-stat.neg b{color:#dc2626;}
+  .rv-card{border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;background:var(--surface-1);break-inside:avoid;}
+  .rv-card-hd{display:flex;align-items:center;gap:11px;padding:13px 16px;border-bottom:1px solid var(--border);background:var(--surface-2);}
+  .rv-ic{width:32px;height:32px;border-radius:9px;background:var(--brand-50,rgba(8,145,178,.10));color:var(--brand-700,#0e7490);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .rv-ic i{width:17px;height:17px;}
+  .rv-card-hd h4{margin:0;font-size:14px;font-weight:800;color:var(--text-1);} .rv-card-hd p{margin:2px 0 0;font-size:11.5px;color:var(--text-3);}
+  .rv-card-bd{padding:15px 16px;}
+  .rv-kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+  .rv-kv{display:flex;flex-direction:column;gap:3px;} .rv-kv .k{font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.03em;} .rv-kv .v{font-size:14px;font-weight:700;color:var(--text-1);}
+  .rv-chips{display:flex;flex-wrap:wrap;gap:8px;} .rv-chip{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 11px;font-size:12.5px;font-weight:600;color:var(--text-2);} .rv-chip b{color:var(--brand-700,#0e7490);margin-left:3px;}
+  .rv-table-wrap{overflow-x:auto;} .rv-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .rv-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-3);padding:8px 10px;border-bottom:2px solid var(--border);}
+  .rv-table td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text-1);}
+  .rv-list{display:flex;flex-direction:column;gap:9px;} .rv-li{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text-1);} .rv-li.col{flex-direction:column;gap:5px;border:1px solid var(--border);border-radius:9px;padding:11px;}
+  .rv-li-hd{display:flex;gap:8px;align-items:center;justify-content:space-between;width:100%;} .rv-li p{margin:0;font-size:12.5px;color:var(--text-2);} .rv-li-ft{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--text-3);} .rv-li-ft i{width:12px;height:12px;vertical-align:-1px;}
+  .rv-tag{font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;letter-spacing:.03em;white-space:nowrap;}
+  .rv-tag.alto{background:#fee2e2;color:#b91c1c;} .rv-tag.medio{background:#fef3c7;color:#b45309;} .rv-tag.bajo{background:#dcfce7;color:#15803d;} .rv-tag.imp{background:#e0e7ff;color:#4338ca;}
+  .rv-narr{display:flex;flex-direction:column;gap:14px;} .rv-narr-blk h5{margin:0 0 5px;font-size:12px;font-weight:800;color:var(--text-2);display:flex;align-items:center;gap:6px;} .rv-narr-blk h5 i{width:14px;height:14px;} .rv-narr-blk p{margin:0;font-size:13.5px;line-height:1.55;color:var(--text-1);white-space:pre-wrap;}
+  .rv-check{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;} .rv-check-i{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-3);} .rv-check-i.on{color:var(--text-1);font-weight:600;} .rv-check-i i{width:16px;height:16px;} .rv-check-i.on i{color:#059669;}
+  .rv-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;} .rv-photo{margin:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface-2);} .rv-photo img{width:100%;height:130px;object-fit:cover;display:block;} .rv-photo figcaption{padding:7px 9px;font-size:11px;color:var(--text-2);font-weight:600;border-top:1px solid var(--border);}
+  .rv-firma{display:flex;flex-direction:column;gap:6px;align-items:flex-start;} .rv-firma img{max-width:280px;border:1px solid var(--border);border-radius:9px;background:#fff;} .rv-firma span{font-size:12.5px;font-weight:700;color:var(--text-1);}
+  .rv-none{margin:0;font-size:12.5px;color:var(--text-3);font-style:italic;}
+  @media(max-width:640px){ .rv-doc-hd h2{font-size:19px;} .rv-stat b{font-size:18px;} }`;
+  const st = document.createElement('style'); st.id='rv-styles'; st.textContent = css; document.head.appendChild(st);
 }
 
 // ── Firma (canvas) ──
