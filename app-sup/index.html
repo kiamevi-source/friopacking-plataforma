@@ -10013,29 +10013,40 @@ const RONDAS_CAT = [
   ]},
 ];
 const RONDAS_ITEMS = RONDAS_CAT.flatMap(g=>g.items.map(i=>({...i, grupo:g.grupo})));
-let rdRondas = {}; // {k:'ok'|'no'|'na', k__obs:'…'}
-
-function rdRondasReset(){ rdRondas = {}; RONDAS_ITEMS.forEach(i=>rdRondas[i.k]='ok'); rdRondasRender(); rdRondasCalc(); }
+const RONDAS_N = 3;
+let rdRondas = [];        // [{hora, est:{k:estado}, obs:{k:txt}}] × 3
+let rdRondaActiva = 0;
+function rdRondaBlank(){ const est={}; RONDAS_ITEMS.forEach(i=>est[i.k]='ok'); return {hora:'', est, obs:{}}; }
+function rdRondasReset(){ rdRondas=[]; for(let i=0;i<RONDAS_N;i++) rdRondas.push(rdRondaBlank()); rdRondaActiva=0; rdRondasRender(); rdRondasCalc(); }
+function rdRondaCompliance(r){ let ok=0,apl=0; RONDAS_ITEMS.forEach(i=>{ const v=r.est[i.k]||'ok'; if(v!=='na'){apl++; if(v==='ok')ok++;} }); return {ok,apl,pct:apl?Math.round(ok/apl*100):0}; }
 function rdRondasCalc(){
-  let ok=0, apl=0;
-  RONDAS_ITEMS.forEach(i=>{ const v=rdRondas[i.k]||'ok'; if(v!=='na'){ apl++; if(v==='ok') ok++; } });
-  const pct = apl? Math.round(ok/apl*100):0;
-  const okEl=document.getElementById('rd-rondas-ok'); if(okEl) okEl.value=ok;
-  const totEl=document.getElementById('rd-rondas-tot'); if(totEl) totEl.value=apl;
+  let hechas=0, okT=0, aplT=0;
+  rdRondas.forEach(r=>{ if(r.hora) hechas++; const c=rdRondaCompliance(r); okT+=c.ok; aplT+=c.apl; });
+  const pct=aplT?Math.round(okT/aplT*100):0;
+  const okEl=document.getElementById('rd-rondas-ok'); if(okEl) okEl.value=hechas;
+  const totEl=document.getElementById('rd-rondas-tot'); if(totEl) totEl.value=RONDAS_N;
   const p=document.getElementById('rd-rondas-pct'); if(p) p.textContent=pct+'%';
-  const r=document.getElementById('rd-rondas-res'); if(r) r.textContent=ok+'/'+apl;
+  const res=document.getElementById('rd-rondas-res'); if(res) res.textContent=hechas+'/'+RONDAS_N+' rondas';
   if(typeof rdUpdateRing==='function') rdUpdateRing();
 }
-function rdRondasSet(k,val){ rdRondas[k]=val; rdRondasRender(); rdRondasCalc(); }
-function rdRondasObs(k,val){ rdRondas[k+'__obs']=val; }
+function rdRondaTab(i){ rdRondaActiva=i; rdRondasRender(); }
+function rdRondaSetHora(val){ rdRondas[rdRondaActiva].hora=val; rdRondasCalc(); rdRondasRenderTabs(); }
+function rdRondasSet(k,val){ rdRondas[rdRondaActiva].est[k]=val; rdRondasRender(); rdRondasCalc(); }
+function rdRondasObs(k,val){ rdRondas[rdRondaActiva].obs[k]=val; }
+function rdRondasRenderTabs(){
+  const tb=document.getElementById('rd-rondas-tabs'); if(!tb) return;
+  tb.innerHTML=rdRondas.map((r,i)=>{ const c=rdRondaCompliance(r); return `<button class="rd-rq-tab ${i===rdRondaActiva?'on':''} ${r.hora?'done':''}" onclick="rdRondaTab(${i})">Ronda ${i+1}${r.hora?` · ${r.hora}`:''}</button>`; }).join('');
+}
 function rdRondasRender(){
   const m=document.getElementById('rd-rondas-mount'); if(!m) return;
   rdEnsureRondasStyles();
-  let html='';
+  if(!rdRondas.length) rdRondasReset();
+  const r=rdRondas[rdRondaActiva]||rdRondaBlank();
+  let html=`<div class="rd-rq-tabs" id="rd-rondas-tabs"></div>
+    <div class="rd-rq-hora"><label>Hora de la Ronda ${rdRondaActiva+1}</label><input type="time" value="${r.hora||''}" onchange="rdRondaSetHora(this.value)"></div>`;
   RONDAS_CAT.forEach(g=>{
     html+=`<div class="rd-rq-grp"><div class="rd-rq-gt">${g.grupo}</div>`;
-    g.items.forEach(it=>{
-      const v=rdRondas[it.k]||'ok';
+    g.items.forEach(it=>{ const v=r.est[it.k]||'ok';
       html+=`<div class="rd-rq-item">
         <div class="rd-rq-txt">${rdEsc2(it.t)}</div>
         <div class="rd-rq-seg">
@@ -10043,27 +10054,42 @@ function rdRondasRender(){
           <button class="rd-rq-b no ${v==='no'?'on':''}" onclick="rdRondasSet('${it.k}','no')">No</button>
           <button class="rd-rq-b na ${v==='na'?'on':''}" onclick="rdRondasSet('${it.k}','na')">N.A.</button>
         </div>
-        ${v==='no'?`<input class="rd-rq-obs" placeholder="¿Qué se observó? (opcional)" value="${rdEsc2(rdRondas[it.k+'__obs']||'')}" oninput="rdRondasObs('${it.k}',this.value)">`:''}
+        ${v==='no'?`<input class="rd-rq-obs" placeholder="¿Qué se observó? (opcional)" value="${rdEsc2(r.obs[it.k]||'')}" oninput="rdRondasObs('${it.k}',this.value)">`:''}
       </div>`;
     });
     html+=`</div>`;
   });
   m.innerHTML=html;
+  rdRondasRenderTabs();
   if(window.lucide) lucide.createIcons();
 }
 function rdRondasLoad(reportRow){
-  const cl = reportRow && reportRow.rondas_checklist;
-  rdRondas = {}; RONDAS_ITEMS.forEach(i=>rdRondas[i.k]='ok');
-  if(Array.isArray(cl)) cl.forEach(c=>{ if(c && c.k){ rdRondas[c.k]=c.estado||'ok'; if(c.obs) rdRondas[c.k+'__obs']=c.obs; } });
+  rdRondasReset();
+  const cl=reportRow && reportRow.rondas_checklist;
+  if(Array.isArray(cl) && cl.length){
+    if(cl[0] && (cl[0].items || cl[0].hora!==undefined)){
+      // formato nuevo: array de rondas
+      cl.slice(0,RONDAS_N).forEach((rd,i)=>{ if(!rdRondas[i]) rdRondas[i]=rdRondaBlank(); rdRondas[i].hora=rd.hora||''; (rd.items||[]).forEach(it=>{ if(it&&it.k){ rdRondas[i].est[it.k]=it.estado||'ok'; if(it.obs) rdRondas[i].obs[it.k]=it.obs; } }); });
+    } else {
+      // formato viejo (array plano de ítems) → cae a Ronda 1
+      cl.forEach(it=>{ if(it&&it.k){ rdRondas[0].est[it.k]=it.estado||'ok'; if(it.obs) rdRondas[0].obs[it.k]=it.obs; } });
+    }
+  }
   rdRondasRender(); rdRondasCalc();
 }
 function rdRondasPayload(){
-  return RONDAS_ITEMS.map(i=>({ k:i.k, grupo:i.grupo, texto:i.t, estado:rdRondas[i.k]||'ok', obs:rdRondas[i.k+'__obs']||null }));
+  return rdRondas.map((r,i)=>({ ronda:i+1, hora:r.hora||null, items:RONDAS_ITEMS.map(it=>({k:it.k,grupo:it.grupo,texto:it.t,estado:r.est[it.k]||'ok',obs:r.obs[it.k]||null})) }));
 }
 let _rqStyles=false;
 function rdEnsureRondasStyles(){
   if(_rqStyles) return; _rqStyles=true;
   const css=`
+  .rd-rq-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+  .rd-rq-tab{border:1px solid var(--border-strong);border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:700;color:var(--text-2);background:var(--surface-1);cursor:pointer;}
+  .rd-rq-tab.on{background:var(--navy-800,#0f2942);color:#fff;border-color:var(--navy-800,#0f2942);}
+  .rd-rq-tab.done:not(.on){border-color:#86efac;color:#15803d;}
+  .rd-rq-hora{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:9px 12px;background:var(--surface-2);border-radius:9px;}
+  .rd-rq-hora label{font-size:12px;font-weight:700;color:var(--text-2);} .rd-rq-hora input{border:1px solid var(--border-strong);border-radius:7px;padding:6px 9px;font-size:13px;font-weight:700;}
   .rd-rq-grp{margin-bottom:14px;} .rd-rq-gt{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--teal-700,#0e7490);margin:0 0 7px;}
   .rd-rq-item{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--border);}
   .rd-rq-txt{flex:1;min-width:180px;font-size:13px;color:var(--text-1);}
@@ -10481,13 +10507,30 @@ function rvRenderReporte(r){
         : `<p class="rv-none">Sin contratas registradas hoy.</p>`);
   }
 
-  // Rondas de calidad (checklist)
-  const rondasCl = rvArr(r.rondas_checklist).filter(x=>x && x.k);
-  if (rondasCl.length){
-    const rok = rondasCl.filter(c=>c.estado==='ok').length, rapl = rondasCl.filter(c=>c.estado!=='na').length;
-    const rpct = rapl?Math.round(rok/rapl*100):0;
-    html += card('clipboard-check','Rondas de calidad', `${rok}/${rapl} cumplen · ${rpct}%`,
-      `<div class="rv-list">${rondasCl.map(c=>`<div class="rv-li"><span class="rv-tag ${c.estado==='ok'?'bajo':(c.estado==='no'?'alto':'')}">${c.estado==='ok'?'Cumple':(c.estado==='no'?'No cumple':'N.A.')}</span><span>${rvEsc(c.texto||c.k)}${c.obs?` — <em>${rvEsc(c.obs)}</em>`:''}</span></div>`).join('')}</div>`);
+  // Rondas de calidad (3 rondas con hora; fallback a formato viejo)
+  const rondasRaw = rvArr(r.rondas_checklist);
+  const rondasNuevo = rondasRaw.length && rondasRaw[0] && (rondasRaw[0].items || rondasRaw[0].hora!==undefined);
+  if (rondasNuevo){
+    let okT=0, aplT=0; rondasRaw.forEach(rd=>(rd.items||[]).forEach(it=>{ if(it.estado!=='na'){aplT++; if(it.estado==='ok')okT++;} }));
+    const pctT = aplT?Math.round(okT/aplT*100):0;
+    const hechas = rondasRaw.filter(rd=>rd.hora).length;
+    html += card('clipboard-check','Rondas de calidad', `${hechas}/${rondasRaw.length} rondas · ${pctT}% cumplimiento`,
+      rondasRaw.map((rd,i)=>{
+        const items=(rd.items||[]); const apl=items.filter(it=>it.estado!=='na'); const okc=apl.filter(it=>it.estado==='ok').length;
+        const pct=apl.length?Math.round(okc/apl.length*100):0; const noItems=items.filter(it=>it.estado==='no');
+        return `<div style="border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:9px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><strong>Ronda ${rd.ronda||i+1}</strong><span style="font-size:12.5px;color:var(--text-2);">${rd.hora?('🕒 '+rvEsc(rd.hora)):'sin registrar'}</span><span class="rv-tag ${pct>=80?'bajo':(pct>=50?'medio':'alto')}" style="margin-left:auto;">${pct}%</span></div>
+          ${noItems.length?`<div class="rv-list">${noItems.map(it=>`<div class="rv-li"><span class="rv-tag alto">No cumple</span><span>${rvEsc(it.texto||it.k)}${it.obs?` — <em>${rvEsc(it.obs)}</em>`:''}</span></div>`).join('')}</div>`:`<p class="rv-none">Todo conforme en esta ronda.</p>`}
+        </div>`;
+      }).join(''));
+  } else {
+    const rondasCl = rondasRaw.filter(x=>x && x.k);
+    if (rondasCl.length){
+      const rok = rondasCl.filter(c=>c.estado==='ok').length, rapl = rondasCl.filter(c=>c.estado!=='na').length;
+      const rpct = rapl?Math.round(rok/rapl*100):0;
+      html += card('clipboard-check','Rondas de calidad', `${rok}/${rapl} cumplen · ${rpct}%`,
+        `<div class="rv-list">${rondasCl.map(c=>`<div class="rv-li"><span class="rv-tag ${c.estado==='ok'?'bajo':(c.estado==='no'?'alto':'')}">${c.estado==='ok'?'Cumple':(c.estado==='no'?'No cumple':'N.A.')}</span><span>${rvEsc(c.texto||c.k)}${c.obs?` — <em>${rvEsc(c.obs)}</em>`:''}</span></div>`).join('')}</div>`);
+    }
   }
 
   // Riesgos
