@@ -9503,6 +9503,7 @@ async function guardarHistograma() {
 let _rdCargado = false;
 async function cargarReporteDiario() {
   if (!currentProyecto) return;
+  _autosaveReady = false;
   // Fecha por defecto = hoy
   const fEl = document.getElementById('rd-fecha');
   if (fEl && !fEl.value) fEl.value = new Date().toISOString().split('T')[0];
@@ -9521,6 +9522,7 @@ async function cargarReporteDiario() {
   rdRestricciones = []; renderRestricciones();
   rdFotos = []; renderFotosReporte();
   riesgosTemp = []; renderRiesgos();
+  await cargarReporteDeHoy();   // multi-dispositivo: retoma el borrador de hoy si ya existe
   initFirmaCanvas();
   rdSetupDrop();
   rdBindRing();
@@ -9529,6 +9531,7 @@ async function cargarReporteDiario() {
   rdUpdateRing();
   rdIcons();
   _rdCargado = true;
+  _autosaveReady = true;
 }
 
 // ═══════════════════════════════════════════════
@@ -9921,7 +9924,11 @@ async function rdEspLoad(cod, reportRow){
     (cfg||[]).forEach(c=> rdEsp.push({ esp:c.especialidad, label:rdEspCatLabel(c.especialidad), contrata:c.contrata||'', peso:parseFloat(c.peso)||0, personal:0, avance:0 }));
   }catch(e){ console.warn('cfg esp', e); }
   const av = reportRow && reportRow.avance_especialidades;
-  if (Array.isArray(av)) av.forEach(a=>{ const row=rdEsp.find(r=>r.esp===a.esp); if(row){ row.personal=parseInt(a.personal)||0; row.avance=parseFloat(a.avance)||0; } });
+  if (Array.isArray(av)) av.forEach(a=>{
+    const row=rdEsp.find(r=>r.esp===a.esp);
+    if(row){ row.personal=parseInt(a.personal)||0; row.avance=parseFloat(a.avance)||0; if(a.contrata&&!row.contrata) row.contrata=a.contrata; if(a.peso!=null&&!row.peso) row.peso=parseFloat(a.peso)||0; }
+    else rdEsp.push({ esp:a.esp, label:a.label||rdEspCatLabel(a.esp), contrata:a.contrata||'', peso:parseFloat(a.peso)||0, personal:parseInt(a.personal)||0, avance:parseFloat(a.avance)||0 });
+  });
   rdEspRender(); rdEspCalc();
 }
 
@@ -10065,7 +10072,7 @@ function rdRondasCalc(){
 }
 function rdRondaTab(i){ rdRondaActiva=i; rdRondasRender(); }
 function rdRondaSetHora(val){ rdRondas[rdRondaActiva].hora=val; rdRondasCalc(); rdRondasRenderTabs(); }
-function rdRondasSet(k,val){ rdRondas[rdRondaActiva].est[k]=val; rdRondasRender(); rdRondasCalc(); }
+function rdRondasSet(k,val){ rdRondas[rdRondaActiva].est[k]=val; rdRondasRender(); rdRondasCalc(); if(typeof scheduleAutosave==='function') scheduleAutosave(); }
 function rdRondasObs(k,val){ rdRondas[rdRondaActiva].obs[k]=val; }
 function rdRondasRenderTabs(){
   const tb=document.getElementById('rd-rondas-tabs'); if(!tb) return;
@@ -10160,6 +10167,7 @@ function rvalRender(){
     <div class="rval-form">
       <input type="month" id="rval-periodo" class="rval-inp" value="${hoyMes}">
       <input type="number" id="rval-monto" class="rval-inp" min="0" step="0.01" placeholder="Monto proyectado (S/)">
+      <input type="number" id="rval-pct" class="rval-inp" min="0" max="100" step="0.1" placeholder="% proyectado">
       <button class="btn btn-teal btn-sm" onclick="rvalGuardar()">Guardar proyección</button>
     </div>`;
   if(!keys.length){ html+=`<div class="rval-empty">Aún no hay proyecciones. Registra la valorización que proyectas para el mes.</div>`; }
@@ -10170,7 +10178,7 @@ function rvalRender(){
     html+=`<div class="rval-card">
       <div class="rval-row">
         <div class="rval-per">${rvalMesLabel(p)}${cur.version>1?` · v${cur.version}`:''}</div>
-        <div class="rval-monto">${rvalMoney(cur.monto_proyectado)}</div>
+        <div class="rval-monto">${rvalMoney(cur.monto_proyectado)}${cur.pct!=null&&cur.pct!==''?` · ${(+cur.pct).toFixed(1)}%`:''}</div>
         <span class="rval-badge ${estCls}">${RVAL_EST[cur.estado]||cur.estado}</span>
       </div>`;
     if(cur.estado==='vigente'){
@@ -10198,14 +10206,16 @@ async function rvalGuardar(){
   const cod=currentProyecto?.cod||currentProyecto?.nombre; if(!cod){ showToast('Selecciona un proyecto'); return; }
   const per=document.getElementById('rval-periodo')?.value;
   const monto=parseFloat(document.getElementById('rval-monto')?.value);
+  const pctV=parseFloat(document.getElementById('rval-pct')?.value);
   if(!per||isNaN(monto)){ showToast('Ingresa periodo y monto proyectado'); return; }
   const mismos=rval.filter(r=>r.periodo===per);
   const ver=mismos.length?Math.max(...mismos.map(r=>r.version))+1:1;
   const vigentePrev=mismos.find(r=>r.estado==='vigente');
   try{
     if(vigentePrev) await sbFetch(`/rest/v1/proyecto_valorizaciones?id=eq.${vigentePrev.id}`,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({estado:'replanteado'})});
-    await sbFetch('/rest/v1/proyecto_valorizaciones',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({ cod_proyecto:cod, nombre_proyecto:currentProyecto?.nombre||null, periodo:per, monto_proyectado:monto, version:ver, estado:'vigente', supervisor:currentProyecto?.supervisor||currentUser?.nombre||null })});
+    await sbFetch('/rest/v1/proyecto_valorizaciones',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({ cod_proyecto:cod, nombre_proyecto:currentProyecto?.nombre||null, periodo:per, monto_proyectado:monto, pct:isNaN(pctV)?null:pctV, version:ver, estado:'vigente', supervisor:currentProyecto?.supervisor||currentUser?.nombre||null })});
     const mo=document.getElementById('rval-monto'); if(mo) mo.value='';
+    const pc=document.getElementById('rval-pct'); if(pc) pc.value='';
     showToast(ver>1?'Replanteo guardado ✓':'Proyección guardada ✓');
     await rvalLoad(cod);
   }catch(e){ showToast('Error al guardar proyección'); }
@@ -10856,34 +10866,55 @@ async function subirFirma() {
 }
 
 // ── Cargar último reporte (rellenar form) ──
+// Rellena el formulario con un reporte guardado (usado por "cargar último", "de hoy" y multi-dispositivo)
+async function hidratarReporte(r, cod){
+  const g = id => document.getElementById(id);
+  if (g('rd-plan')) g('rd-plan').value = r.pct_planificado || '';
+  if (g('rd-real')) g('rd-real').value = r.pct_ejecutado || '';
+  if (g('rd-actividad')) g('rd-actividad').value = r.actividad || '';
+  if (g('rd-obs')) g('rd-obs').value = r.observaciones || '';
+  if (g('rd-plan-manana')) g('rd-plan-manana').value = (typeof r.plan_manana==='string'? r.plan_manana : (r.plan_manana?.texto||'')) || '';
+  if (r.jornada_entrada && g('rd-entrada')) g('rd-entrada').value = r.jornada_entrada;
+  if (r.jornada_salida && g('rd-salida')) g('rd-salida').value = r.jornada_salida;
+  if (r.jornada_motivo && g('rd-jornada-motivo')) g('rd-jornada-motivo').value = r.jornada_motivo;
+  await rdEspLoad(cod, r);
+  rdRondasLoad(r);
+  if (Array.isArray(r.fotos)) { rdFotos = r.fotos; renderFotosReporte(); }
+  if (Array.isArray(r.restricciones)) { rdRestricciones = r.restricciones; if (typeof renderRestricciones==='function') renderRestricciones(); }
+  if (Array.isArray(r.riesgos)) { riesgosTemp = r.riesgos; if (typeof renderRiesgos==='function') renderRiesgos(); }
+  if (g('rd-visita')) g('rd-visita').value = r.cliente_visita ? 'true' : 'false';
+  if (r.cliente_nombre && g('rd-visita-nombre')) g('rd-visita-nombre').value = r.cliente_nombre;
+  if (r.cliente_obs && g('rd-visita-obs')) g('rd-visita-obs').value = r.cliente_obs;
+  if (typeof rdToggleVisita==='function') rdToggleVisita(!!r.cliente_visita);
+  if (Array.isArray(r.checklist_cierre)) r.checklist_cierre.forEach((c,i)=>{ const el=g('rd-chk-'+i); if (el) el.checked = !!c.ok; });
+  if (r.meta_mes!=null && g('rd-meta-mes')) g('rd-meta-mes').value = r.meta_mes;
+  if (r.facturado_codigo!=null && g('rd-facturado')) g('rd-facturado').value = r.facturado_codigo;
+  recalcMetaMes();
+  if (typeof rdPlanBars==='function') rdPlanBars();
+  if (typeof rdUpdateRing==='function') rdUpdateRing();
+}
+
 async function cargarUltimoReporte() {
   const cod = currentProyecto?.cod || currentProyecto?.nombre;
   if (!cod) return;
   try {
     const rows = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(currentProyecto.nombre)})&order=fecha_reporte.desc&limit=1`);
     if (!rows || rows.length === 0) { showToast('Sin reportes anteriores'); return; }
-    const r = rows[0];
-    document.getElementById('rd-plan').value = r.pct_planificado || '';
-    document.getElementById('rd-real').value = r.pct_ejecutado || '';
-    document.getElementById('rd-rondas-ok').value = r.rondas_ok || 0;
-    document.getElementById('rd-rondas-tot').value = r.rondas_total || 10;
-    document.getElementById('rd-actividad').value = r.actividad || '';
-    document.getElementById('rd-obs').value = r.observaciones || '';
-    document.getElementById('rd-plan-manana').value = (typeof r.plan_manana==='string'? r.plan_manana : (r.plan_manana?.texto||'')) || '';
-    if (r.jornada_entrada) document.getElementById('rd-entrada').value = r.jornada_entrada;
-    if (r.jornada_salida)  document.getElementById('rd-salida').value  = r.jornada_salida;
-    // Especialidades: config del proyecto + personal/avance del último reporte
-    await rdEspLoad(cod, r);
-    rdRondasLoad(r);
-    if (r.meta_mes!=null) document.getElementById('rd-meta-mes').value = r.meta_mes;
-    if (r.facturado_codigo!=null) document.getElementById('rd-facturado').value = r.facturado_codigo;
-    recalcMetaMes();
-    if (typeof rdPlanBars === 'function') rdPlanBars();
-    if (typeof rdUpdateRing === 'function') rdUpdateRing();
+    await hidratarReporte(rows[0], cod);
     showToast('Último reporte cargado');
-  } catch(e) {
-    showToast('Error cargando reporte');
-  }
+  } catch(e) { showToast('Error cargando reporte'); }
+}
+
+// Multi-dispositivo: al abrir el proyecto, retoma el borrador/reporte de HOY si ya existe
+async function cargarReporteDeHoy() {
+  const cod = currentProyecto?.cod || currentProyecto?.nombre;
+  const fecha = document.getElementById('rd-fecha')?.value || new Date().toISOString().slice(0,10);
+  if (!cod) return false;
+  try {
+    const rows = await sbFetch(`/rest/v1/reportes?cod_proyecto=eq.${encodeURIComponent(cod)}&fecha_reporte=eq.${fecha}&order=id.desc&limit=1`);
+    if (rows && rows.length) { await hidratarReporte(rows[0], cod); return true; }
+  } catch(e) {}
+  return false;
 }
 
 // Alerta diferencia supervisor vs contrata + recalculo meta
@@ -10899,11 +10930,11 @@ document.addEventListener('input', (e) => {
 });
 
 // ── Guardar reporte ──
-async function guardarReporte(esDraft = false) {
+async function guardarReporte(esDraft = false, silent = false) {
   const cod = currentProyecto?.cod || currentProyecto?.nombre;
-  if (!cod) { showToast('Selecciona un proyecto'); return; }
+  if (!cod) { if(!silent) showToast('Selecciona un proyecto'); return; }
   const fecha = document.getElementById('rd-fecha').value;
-  if (!fecha) { showToast('Selecciona la fecha del reporte'); return; }
+  if (!fecha) { if(!silent) showToast('Selecciona la fecha del reporte'); return; }
 
   const plan  = parseFloat(document.getElementById('rd-plan').value)||0;
   const real  = +rdEspGlobalAvance().toFixed(1);   // ejecutado = promedio ponderado por peso
@@ -10987,14 +11018,27 @@ async function guardarReporte(esDraft = false) {
     });
     // Persistir avance por hito al Gantt (solo hitos reales) y restricciones a su tabla
     await persistirHitosYRestricciones(esDraft);
-    showToast(esDraft ? 'Borrador guardado ✓' : 'Reporte guardado ✓');
-    setSyncStatus('ok','Guardado ✓');
-    await cargarDashboard();
+    if(!silent) showToast(esDraft ? 'Borrador guardado ✓' : 'Reporte guardado ✓');
+    setSyncStatus('ok', silent ? 'Autoguardado ✓' : 'Guardado ✓');
+    if(!silent) await cargarDashboard();
   } catch(e) {
     setSyncStatus('error','Error');
-    showToast('Error al guardar: ' + e.message);
+    if(!silent) showToast('Error al guardar: ' + e.message);
   }
 }
+
+// ── Auto-guardado (multi-dispositivo): guarda borrador solo mientras se captura ──
+let _autosaveReady = false, _autosaveTimer = null;
+function scheduleAutosave(){
+  if (!_autosaveReady || !currentProyecto) return;
+  if (!document.getElementById('rd-pane-cap')?.classList.contains('on')) return;      // solo modo Capturar
+  if (!document.getElementById('rd-tipo-diario')?.classList.contains('on')) return;   // solo Reporte Diario
+  clearTimeout(_autosaveTimer);
+  setSyncStatus('syncing','Guardando…');
+  _autosaveTimer = setTimeout(()=>{ guardarReporte(true, true); }, 6000);
+}
+document.addEventListener('input',  (e)=>{ if (e.target.closest && e.target.closest('#rd-tipo-diario')) scheduleAutosave(); });
+document.addEventListener('change', (e)=>{ if (e.target.closest && e.target.closest('#rd-tipo-diario')) scheduleAutosave(); });
 
 async function persistirHitosYRestricciones(esDraft) {
   // Actualizar pct_avance de hitos reales del Gantt
