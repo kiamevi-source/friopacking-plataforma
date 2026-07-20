@@ -4105,8 +4105,8 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
           </div>
           <div class="rd-body">
             <div class="rd-editor">
-              <div class="rd-blk"><div class="rd-blk-lbl"><i data-lucide="check-circle-2"></i> Actividad principal ejecutada</div><textarea id="rd-actividad" placeholder="¿Qué se hizo hoy en obra?"></textarea></div>
-              <div class="rd-blk"><div class="rd-blk-lbl"><i data-lucide="calendar-clock"></i> Plan para mañana</div><textarea id="rd-plan-manana" placeholder="Actividades planificadas para el día siguiente…"></textarea></div>
+              <div class="rd-blk"><div class="rd-blk-lbl"><i data-lucide="check-circle-2"></i> Actividad de hoy · nota manual (opcional)</div><textarea id="rd-actividad" placeholder="Lo hecho hoy se marca en los hitos del Gantt (arriba). Aquí solo lo que no esté en el Gantt."></textarea></div>
+              <div class="rd-blk"><div class="rd-blk-lbl"><i data-lucide="calendar-clock"></i> Plan de mañana · nota manual (opcional)</div><textarea id="rd-plan-manana" placeholder="El plan de mañana se marca en los hitos (→ Mañana). Aquí solo lo adicional."></textarea></div>
               <div class="rd-blk"><div class="rd-blk-lbl"><i data-lucide="message-square-more"></i> Observaciones</div><textarea id="rd-obs" placeholder="Notas generales, coordinaciones, pendientes…"></textarea></div>
             </div>
           </div>
@@ -9725,7 +9725,7 @@ async function cargarHitosReporte() {
   if (cod) {
     try {
       const rows = await sbFetch(`/rest/v1/tareas_gantt?cod_proyecto=eq.${encodeURIComponent(cod)}&es_hito=eq.true&select=id,nombre_tarea,pct_avance&order=fecha_inicio_base`);
-      (rows||[]).forEach(r => rdHitos.push({ id:r.id, nombre:r.nombre_tarea, pct_actual:Number(r.pct_avance)||0, pct_nuevo:Number(r.pct_avance)||0, manual:false }));
+      (rows||[]).forEach(r => rdHitos.push({ id:r.id, nombre:r.nombre_tarea, pct_actual:Number(r.pct_avance)||0, pct_nuevo:Number(r.pct_avance)||0, manual:false, hoy:false, manana:false }));
     } catch(e){ /* sin gantt */ }
   }
   renderHitos();
@@ -9733,7 +9733,7 @@ async function cargarHitosReporte() {
 function agregarHitoManual() {
   const nombre = prompt('Nombre del hito / especialidad:');
   if (!nombre) return;
-  rdHitos.push({ id:null, nombre, pct_actual:0, pct_nuevo:0, manual:true });
+  rdHitos.push({ id:null, nombre, pct_actual:0, pct_nuevo:0, manual:true, hoy:false, manana:false });
   renderHitos();
 }
 function eliminarHito(i){ if(rdHitos[i].manual) rdHitos.splice(i,1); renderHitos(); }
@@ -9747,13 +9747,30 @@ function renderHitos() {
     const sub = h.manual ? '<small>manual</small>'
       : `<small>antes ${h.pct_actual}%${delta ? ` · <b style="color:${delta>0?'var(--success)':'var(--danger)'}">${delta>0?'+':''}${delta.toFixed(1)}</b>` : ''}</small>`;
     return `<div class="rd-prog-card">
-      <div class="rd-prog-name">${(h.nombre||'').replace(/</g,'&lt;')}${sub}</div>
+      <div class="rd-prog-name">${(h.nombre||'').replace(/</g,'&lt;')}${sub}
+        <div class="rd-hito-tog">
+          <button class="rd-hito-b hoy ${h.hoy?'on':''}" onclick="rdHitoToggle(${i},'hoy')">✓ Hoy</button>
+          <button class="rd-hito-b man ${h.manana?'on':''}" onclick="rdHitoToggle(${i},'manana')">→ Mañana</button>
+        </div>
+      </div>
       <div class="rd-prog-track"><div class="rd-prog-fill" id="rd-hito-fill-${i}" style="width:${h.pct_nuevo||0}%"></div></div>
       <div class="rd-prog-pct"><input class="rd-prog-inp" type="number" min="0" max="100" step="0.1" value="${h.pct_nuevo}" oninput="rdHitoInput(${i},this.value)">${h.manual?`<button class="rd-ico-btn" onclick="eliminarHito(${i})"><i data-lucide="x" class="ri"></i></button>`:''}</div>
     </div>`;
   }).join('');
+  rdEnsureHitoTogStyles();
   recalcAvanceGlobal();
   rdIcons();
+}
+function rdHitoToggle(i, field){ if(!rdHitos[i]) return; rdHitos[i][field]=!rdHitos[i][field]; renderHitos(); if(typeof scheduleAutosave==='function') scheduleAutosave(); }
+let _hitoTogStyles=false;
+function rdEnsureHitoTogStyles(){
+  if(_hitoTogStyles) return; _hitoTogStyles=true;
+  const css=`
+  .rd-hito-tog{display:inline-flex;gap:6px;margin-left:8px;}
+  .rd-hito-b{border:1px solid var(--border-strong);border-radius:7px;padding:3px 9px;font-size:11px;font-weight:700;color:var(--text-3);background:var(--surface-1);cursor:pointer;}
+  .rd-hito-b.hoy.on{background:#059669;color:#fff;border-color:#059669;}
+  .rd-hito-b.man.on{background:#0369a1;color:#fff;border-color:#0369a1;}`;
+  const st=document.createElement('style'); st.id='rd-hito-tog-styles'; st.textContent=css; document.head.appendChild(st);
 }
 function rdHitoInput(i, val){
   rdHitos[i].pct_nuevo = parseFloat(val) || 0;
@@ -10707,8 +10724,17 @@ function rvRenderReporte(r){
         </div>`).join('')}</div>`
       : `<p class="rv-none">Sin restricciones registradas.</p>`);
 
+  // Hitos del Gantt (hechos hoy / para mañana)
+  const hitosDia = rvArr(r.hitos_dia).filter(h=>h && (h.hoy||h.manana));
+  if (hitosDia.length){
+    const hHoy=hitosDia.filter(h=>h.hoy), hMan=hitosDia.filter(h=>h.manana);
+    html += card('flag','Hitos del Gantt', `${hHoy.length} hoy · ${hMan.length} mañana`,
+      `${hHoy.length?`<div class="rv-narr-blk"><h5><i data-lucide="check-circle-2" class="ri"></i> Hechos hoy</h5><div class="rv-list">${hHoy.map(h=>`<div class="rv-li"><span class="rv-tag bajo">${rvNum(h.pct)}%</span><span>${rvEsc(h.nombre)}</span></div>`).join('')}</div></div>`:''}
+       ${hMan.length?`<div class="rv-narr-blk" style="margin-top:12px;"><h5><i data-lucide="calendar-clock" class="ri"></i> Para mañana</h5><div class="rv-list">${hMan.map(h=>`<div class="rv-li"><span>${rvEsc(h.nombre)}</span></div>`).join('')}</div></div>`:''}`);
+  }
+
   // Narrativa (completa, sin cortes)
-  html += card('file-text','Bitácora del día','',
+  html += card('file-text','Bitácora del día · notas manuales','',
     `<div class="rv-narr">
       <div class="rv-narr-blk"><h5><i data-lucide="check-circle-2" class="ri"></i> Actividad principal ejecutada</h5><p>${rvEsc(r.actividad)||'<span class="rv-none">Sin registro.</span>'}</p></div>
       <div class="rv-narr-blk"><h5><i data-lucide="calendar-clock" class="ri"></i> Plan para mañana</h5><p>${rvEsc(planMan)||'<span class="rv-none">Sin registro.</span>'}</p></div>
@@ -10879,6 +10905,10 @@ async function hidratarReporte(r, cod){
   if (r.jornada_motivo && g('rd-jornada-motivo')) g('rd-jornada-motivo').value = r.jornada_motivo;
   await rdEspLoad(cod, r);
   rdRondasLoad(r);
+  if (Array.isArray(r.hitos_dia)) {
+    r.hitos_dia.forEach(hd=>{ const h=rdHitos.find(x=>x.nombre===hd.nombre); if(h){ h.hoy=!!hd.hoy; h.manana=!!hd.manana; if(hd.pct!=null) h.pct_nuevo=hd.pct; } });
+    if (typeof renderHitos==='function') renderHitos();
+  }
   if (Array.isArray(r.fotos)) { rdFotos = r.fotos; renderFotosReporte(); }
   if (Array.isArray(r.restricciones)) { rdRestricciones = r.restricciones; if (typeof renderRestricciones==='function') renderRestricciones(); }
   if (Array.isArray(r.riesgos)) { riesgosTemp = r.riesgos; if (typeof renderRiesgos==='function') renderRiesgos(); }
@@ -10982,6 +11012,7 @@ async function guardarReporte(esDraft = false, silent = false) {
     personal_total: personalTotal,
     especialidades,
     avance_especialidades: avanceEsp,
+    hitos_dia: rdHitos.map(h=>({ nombre:h.nombre, pct:h.pct_nuevo, hoy:!!h.hoy, manana:!!h.manana, manual:!!h.manual })),
     actividad: document.getElementById('rd-actividad').value,
     observaciones: document.getElementById('rd-obs').value,
     plan_manana: { texto: document.getElementById('rd-plan-manana').value },
