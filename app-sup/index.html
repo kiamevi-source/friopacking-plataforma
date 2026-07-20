@@ -4260,12 +4260,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 
       <!-- ── PANE: LEVANTAMIENTO DE OBSERVACIONES ── -->
       <div class="rd-tipo-pane" id="rd-tipo-obs">
-        <div class="pem-empty">
-          <div class="ic"><i data-lucide="clipboard-check" class="ri"></i></div>
-          <h3>Levantamiento de Observaciones</h3>
-          <p>Este módulo permitirá registrar y dar seguimiento al cierre de observaciones levantadas en obra, con evidencia fotográfica y estado por punto.</p>
-          <span class="tag">Próximamente</span>
-        </div>
+        <div id="rd-pend-mount"></div>
       </div>
     </div>
 
@@ -10244,6 +10239,120 @@ function rvalEnsureStyles(){
   const st=document.createElement('style'); st.id='rval-styles'; st.textContent=css; document.head.appendChild(st);
 }
 
+// ═══════════════════════════════════════════════
+// PENDIENTES UNIFICADOS (restricción / punch / observación en una sola tabla)
+// ═══════════════════════════════════════════════
+const PEND_TIPOS=[{k:'restriccion',t:'Restricción'},{k:'punch',t:'Punch list'},{k:'observacion',t:'Observación'}];
+function rdPendTipoLabel(k){ const x=PEND_TIPOS.find(t=>t.k===k); return x?x.t:k; }
+let rdPendList=[], rdPendFTipo='todos', rdPendFEstado='abiertas';
+async function rdPendLoad(){
+  const cod=currentProyecto?.cod||currentProyecto?.nombre;
+  const m=document.getElementById('rd-pend-mount');
+  if(!cod){ if(m){ rdPendEnsureStyles(); m.innerHTML='<div class="rd-pend-empty">Selecciona un proyecto para ver sus pendientes.</div>'; } return; }
+  try{ rdPendList=await sbFetch(`/rest/v1/pendientes?cod_proyecto=eq.${encodeURIComponent(cod)}&order=estado.asc,created_at.desc`)||[]; }
+  catch(e){ rdPendList=[]; }
+  rdPendRender();
+}
+function rdPendFiltrada(){
+  return rdPendList.filter(p=>{
+    if(rdPendFTipo!=='todos' && p.tipo!==rdPendFTipo) return false;
+    if(rdPendFEstado==='abiertas' && p.estado==='cerrada') return false;
+    return true;
+  });
+}
+function rdPendRender(){
+  const m=document.getElementById('rd-pend-mount'); if(!m) return;
+  rdPendEnsureStyles();
+  const abiertas=rdPendList.filter(p=>p.estado!=='cerrada').length;
+  let html=`<div class="rd-pend-hd"><div><h3>Pendientes de obra</h3><p>Restricciones, punch list y observaciones en una sola lista, con seguimiento a cierre.</p></div><span class="rd-pend-count">${abiertas} abiertos</span></div>`;
+  html+=`<div class="rd-pend-form">
+    <div class="row">
+      <select id="pend-tipo" class="pend-inp">${PEND_TIPOS.map(t=>`<option value="${t.k}">${t.t}</option>`).join('')}</select>
+      <select id="pend-impacto" class="pend-inp"><option value="alto">Impacto alto</option><option value="medio" selected>Impacto medio</option><option value="bajo">Impacto bajo</option></select>
+      <input id="pend-titulo" class="pend-inp grow" placeholder="Título del pendiente">
+    </div>
+    <div class="row">
+      <input id="pend-cat" class="pend-inp" placeholder="Categoría (ej: Materiales)">
+      <input id="pend-resp" class="pend-inp" placeholder="Responsable">
+      <input id="pend-fecha" type="date" class="pend-inp">
+      <button class="btn btn-teal btn-sm" onclick="rdPendAdd()">+ Agregar</button>
+    </div>
+    <textarea id="pend-desc" class="pend-inp" rows="2" placeholder="Descripción / detalle (opcional)"></textarea>
+  </div>`;
+  html+=`<div class="rd-pend-filtros">
+    <div class="seg">${['todos'].concat(PEND_TIPOS.map(t=>t.k)).map(k=>`<button class="pend-fb ${rdPendFTipo===k?'on':''}" onclick="rdPendSetTipo('${k}')">${k==='todos'?'Todos':rdPendTipoLabel(k)}</button>`).join('')}</div>
+    <div class="seg"><button class="pend-fb ${rdPendFEstado==='abiertas'?'on':''}" onclick="rdPendSetEstado('abiertas')">Abiertas</button><button class="pend-fb ${rdPendFEstado==='todas'?'on':''}" onclick="rdPendSetEstado('todas')">Todas</button></div>
+  </div>`;
+  const lista=rdPendFiltrada();
+  html+= lista.length ? lista.map(rdPendCard).join('') : `<div class="rd-pend-empty">Sin pendientes para este filtro.</div>`;
+  m.innerHTML=html;
+  if(window.lucide) lucide.createIcons();
+}
+function rdPendCard(p){
+  const impCls=p.impacto==='alto'?'alto':(p.impacto==='bajo'?'bajo':'medio');
+  const estCls=p.estado==='cerrada'?'cer':(p.estado==='en_proceso'?'proc':'ab');
+  const estTxt={cerrada:'Cerrada',en_proceso:'En proceso',abierta:'Abierta'}[p.estado]||p.estado;
+  let acc;
+  if(p.estado==='abierta') acc=`<button class="btn btn-outline btn-sm" onclick="rdPendEstado(${p.id},'en_proceso')">En proceso</button><button class="btn btn-teal btn-sm" onclick="rdPendEstado(${p.id},'cerrada')">Cerrar</button>`;
+  else if(p.estado==='en_proceso') acc=`<button class="btn btn-teal btn-sm" onclick="rdPendEstado(${p.id},'cerrada')">Cerrar</button><button class="btn btn-outline btn-sm" onclick="rdPendEstado(${p.id},'abierta')">Reabrir</button>`;
+  else acc=`<button class="btn btn-outline btn-sm" onclick="rdPendEstado(${p.id},'abierta')">Reabrir</button>`;
+  return `<div class="rd-pend-card ${estCls}">
+    <div class="rd-pend-top"><span class="pend-tag t-${p.tipo}">${rdPendTipoLabel(p.tipo)}</span><strong>${rdEsc2(p.titulo)}</strong><span class="pend-tag imp ${impCls}">${rdEsc2(p.impacto||'medio')}</span><span class="pend-est ${estCls}">${estTxt}</span></div>
+    ${p.descripcion?`<p class="rd-pend-desc">${rdEsc2(p.descripcion)}</p>`:''}
+    <div class="rd-pend-meta">${p.categoria?`<span>${rdEsc2(p.categoria)}</span>`:''}${p.responsable?`<span>👤 ${rdEsc2(p.responsable)}</span>`:''}${p.fecha_objetivo?`<span>🎯 ${rdEsc2(p.fecha_objetivo)}</span>`:''}</div>
+    <div class="rd-pend-acc">${acc}</div>
+  </div>`;
+}
+function rdPendSetTipo(k){ rdPendFTipo=k; rdPendRender(); }
+function rdPendSetEstado(k){ rdPendFEstado=k; rdPendRender(); }
+async function rdPendAdd(){
+  const cod=currentProyecto?.cod||currentProyecto?.nombre; if(!cod){ showToast('Selecciona un proyecto'); return; }
+  const titulo=(document.getElementById('pend-titulo')?.value||'').trim();
+  if(!titulo){ showToast('Escribe un título'); return; }
+  const row={ cod_proyecto:cod, nombre_proyecto:currentProyecto?.nombre||null,
+    tipo:document.getElementById('pend-tipo')?.value||'restriccion',
+    impacto:document.getElementById('pend-impacto')?.value||'medio', titulo,
+    categoria:(document.getElementById('pend-cat')?.value||'').trim()||null,
+    responsable:(document.getElementById('pend-resp')?.value||'').trim()||null,
+    fecha_objetivo:document.getElementById('pend-fecha')?.value||null,
+    descripcion:(document.getElementById('pend-desc')?.value||'').trim()||null,
+    estado:'abierta', origen:'manual', supervisor:currentProyecto?.supervisor||currentUser?.nombre||null };
+  try{ await sbFetch('/rest/v1/pendientes',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)}); showToast('Pendiente agregado ✓'); await rdPendLoad(); }
+  catch(e){ showToast('Error al agregar'); }
+}
+async function rdPendEstado(id, estado){
+  const patch={ estado }; patch.fecha_cierre = (estado==='cerrada') ? new Date().toISOString() : null;
+  try{ await sbFetch(`/rest/v1/pendientes?id=eq.${id}`,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(patch)}); await rdPendLoad(); }
+  catch(e){ showToast('Error'); }
+}
+let _pendStyles=false;
+function rdPendEnsureStyles(){
+  if(_pendStyles) return; _pendStyles=true;
+  const css=`
+  .rd-pend-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;}
+  .rd-pend-hd h3{margin:0;font-size:17px;font-weight:800;color:var(--navy-800);} .rd-pend-hd p{margin:3px 0 0;font-size:12.5px;color:var(--text-3);}
+  .rd-pend-count{background:#e0f2fe;color:#0369a1;font-size:12px;font-weight:800;padding:5px 11px;border-radius:999px;white-space:nowrap;}
+  .rd-pend-form{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:14px;}
+  .rd-pend-form .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .pend-inp{border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;font-size:13px;background:var(--surface-1);color:var(--text-1);} .pend-inp.grow{flex:1;min-width:160px;} textarea.pend-inp{width:100%;resize:vertical;}
+  .rd-pend-filtros{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  .rd-pend-filtros .seg{display:inline-flex;gap:6px;flex-wrap:wrap;}
+  .pend-fb{border:1px solid var(--border-strong);border-radius:8px;padding:6px 12px;font-size:12.5px;font-weight:700;color:var(--text-2);background:var(--surface-1);cursor:pointer;}
+  .pend-fb.on{background:var(--navy-800,#0f2942);color:#fff;border-color:var(--navy-800,#0f2942);}
+  .rd-pend-empty{font-size:13px;color:var(--text-3);text-align:center;padding:26px;border:1px dashed var(--border-strong);border-radius:10px;}
+  .rd-pend-card{border:1px solid var(--border);border-radius:11px;padding:12px 14px;margin-bottom:10px;background:var(--surface-1);}
+  .rd-pend-card.cer{opacity:.6;}
+  .rd-pend-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;} .rd-pend-top strong{font-size:14px;color:var(--navy-800);flex:1;min-width:120px;}
+  .pend-tag{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:6px;letter-spacing:.02em;}
+  .pend-tag.t-restriccion{background:#fef3c7;color:#b45309;} .pend-tag.t-punch{background:#e0e7ff;color:#4338ca;} .pend-tag.t-observacion{background:#dcfce7;color:#15803d;}
+  .pend-tag.imp.alto{background:#fee2e2;color:#b91c1c;} .pend-tag.imp.medio{background:#fef9c3;color:#a16207;} .pend-tag.imp.bajo{background:#f1f5f9;color:#475569;}
+  .pend-est{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;} .pend-est.ab{background:#e0f2fe;color:#0369a1;} .pend-est.proc{background:#fef3c7;color:#b45309;} .pend-est.cer{background:#dcfce7;color:#15803d;}
+  .rd-pend-desc{margin:8px 0 0;font-size:12.5px;color:var(--text-2);}
+  .rd-pend-meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11.5px;color:var(--text-3);}
+  .rd-pend-acc{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}`;
+  const st=document.createElement('style'); st.id='rd-pend-styles'; st.textContent=css; document.head.appendChild(st);
+}
+
 // ── Comercial: facturado + meta del mes ──
 async function cargarComercialReporte() {
   const cod = currentProyecto?.cod;
@@ -10926,6 +11035,7 @@ function rdSetTipo(t){
     document.getElementById('rd-tipo-'+k)?.classList.toggle('on', k===t);
   });
   if (t==='pem' && !pemRendered){ renderPEM(); pemRendered = true; }
+  if (t==='obs'){ rdPendLoad(); }
   rdIcons();
 }
 
