@@ -1111,7 +1111,12 @@ async function initFromSupabase(){
       const planPct=_esCerrado?100:(_lastOk&&last.plan>0?last.plan:(_sp&&_sp.plan>0?_sp.plan:valp)||valp);
       const spiVal=_lastOk&&last.spi?last.spi:(planPct>0?Math.round(valp/planPct*100)/100:1.0);
       const tipo=TIPO_FIX[p.categoria]||p.categoria||'Refrigeración';
-      const zona=p.zona||(p.departamento&&['LAMBAYEQUE','LA LIBERTAD','PIURA','ANCASH','TUMBES','CAJAMARCA'].includes(p.departamento)?'Norte':p.departamento&&['LIMA','JUNIN'].includes(p.departamento)?'Centro':'Sur')||'Norte';
+      const _zonaRaw=p.zona||(p.departamento&&['LAMBAYEQUE','LA LIBERTAD','PIURA','ANCASH','TUMBES','CAJAMARCA'].includes(p.departamento)?'Norte':p.departamento&&['LIMA','JUNIN'].includes(p.departamento)?'Centro':'Sur')||'Norte';
+      // Normalizar a la forma canónica (Norte/Centro/Sur): Supabase guarda la zona
+      // en MAYÚSCULAS y el filtro/mapa/agregados la comparan capitalizada. Sin esto
+      // los botones Norte/Centro/Sur vacían la grilla (nunca hay match).
+      const _zc=String(_zonaRaw).trim().toUpperCase();
+      const zona=_zc==='NORTE'?'Norte':_zc==='CENTRO'?'Centro':_zc==='SUR'?'Sur':_zonaRaw;
       const _cfForEstado=(_sp?_sp.cf:'')||p.fecha_fin_contractual||'';
       const displayEstado=computeDisplayEstado(p.estado,spiVal,_cfForEstado,valp);
       const lastRep=reps[reps.length-1];
@@ -17681,7 +17686,10 @@ console.log('%c⚡ COC AutoSync · 5min interval · polling activo','background:
 [data-theme="dark"] .modal-body{background:#0a1521 !important}
 
 /* ─── Executive view shell ─── */
-.exc{display:flex;flex-direction:column;gap:44px}
+/* .mview.on{display:block} gana en especificidad a un .exc suelto, así que el
+   contenedor quedaba en block y el gap se ignoraba. Igualamos especificidad
+   (.mview.exc) y por orden de fuente esta regla gana → flex + gap sí aplican. */
+.mview.exc{display:flex;flex-direction:column;gap:28px}
 
 /* Hero status strip */
 .exc-hero{
