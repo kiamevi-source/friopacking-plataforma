@@ -989,10 +989,15 @@ async function initFromSupabase(){
 
     /* ─── agrupar reportes por proyecto ─── */
     const repByProj={};
+    /* Fecha del último reporte REALMENTE recibido por proyecto, al margen del dedup.
+       Un día sin avance (lluvia, espera de materiales) es un reporte legítimo: se
+       excluye de la curva S por plano, pero NO debe contar como "sin reporte hoy". */
+    const lastFechaByProj={};
     let _dedupSkipped=0;
     reportes.forEach(r=>{
       const k=r.nombre_proyecto;
       if(!repByProj[k])repByProj[k]=[];
+      if(r.fecha_reporte&&(!lastFechaByProj[k]||r.fecha_reporte>lastFechaByProj[k]))lastFechaByProj[k]=r.fecha_reporte;
       const av=parseFloat(r.pct_ejecutado)||0;
       const prev=repByProj[k][repByProj[k].length-1];
       /* Dedup defensivo: si el avance NO creció vs el reporte anterior del mismo
@@ -1076,10 +1081,11 @@ async function initFromSupabase(){
       // Buscar reportes: primero nombre exacto, luego normalizado (ej: "TALSA PTO. MORIN" ↔ "TALSA PUERTO MORIN")
       const _normK=s=>s.toUpperCase().replace(/\bPTO\.?\b/g,'PUERTO').replace(/\bSTA\.?\b/g,'SANTA').replace(/[^A-Z0-9]/g,'');
       let reps=repByProj[p.nombre];
+      let _repKey=p.nombre;
       if(!reps||!reps.length){
         const pNorm=_normK(p.nombre);
         const altKey=Object.keys(repByProj).find(k=>_normK(k)===pNorm);
-        if(altKey)reps=repByProj[altKey];
+        if(altKey){reps=repByProj[altKey];_repKey=altKey;}
       }
       reps=reps||[];
       const last=reps[reps.length-1];
@@ -1109,7 +1115,8 @@ async function initFromSupabase(){
       const _cfForEstado=(_sp?_sp.cf:'')||p.fecha_fin_contractual||'';
       const displayEstado=computeDisplayEstado(p.estado,spiVal,_cfForEstado,valp);
       const lastRep=reps[reps.length-1];
-      const lastRepFecha=lastRep?lastRep.fecha:'';
+      // Fecha real recibida (incluye días planos que el dedup excluyó de la curva)
+      const lastRepFecha=lastFechaByProj[_repKey]||(lastRep?lastRep.fecha:'');
       const reportedToday=lastRepFecha===todayStr;
       const lastPers=lastRep?lastRep.pers||0:0;
       const lastContratas=lastRep?lastRep.contratas||0:0;
@@ -1466,10 +1473,10 @@ function renderKPIs(){
   const kpis=[
     {l:'Venta total',v:fmtUSD(totalVenta),sub:`${psEjec.length} proyectos activos`,cls:'money',arrow:'up',arrowV:''},
     {l:'Avance real promedio',v:fmtPct(avgReal),sub:`Plan ${fmtPct(avgPlan)} · brecha ${(avgReal-avgPlan).toFixed(1)}pts`,cls:avgReal<avgPlan-3?'warn':'ok',arrow:avgReal>avgPlan?'up':'down',arrowV:`${avgReal>avgPlan?'+':''}${(avgReal-avgPlan).toFixed(1)}`},
-    {l:'SPI cartera',v:avgSPI.toFixed(2),sub:'Schedule Performance Index',cls:avgSPI<0.95?'warn':avgSPI<0.85?'alert':'ok',arrow:avgSPI>=1?'up':'down',arrowV:avgSPI.toFixed(2)},
+    {l:'SPI cartera',v:avgSPI.toFixed(2),sub:'Schedule Performance Index',cls:avgSPI<0.85?'alert':avgSPI<0.95?'warn':'ok',arrow:avgSPI>=1?'up':'down',arrowV:avgSPI.toFixed(2)},
     {l:'Personal activo',v:totalPersonal||'—',sub:totalPersonal>0?`${totalContratas} contratas · ${psConPers.length} con datos`:`${psEjec.length} proyectos activos · sin dato personal`,cls:totalPersonal>0?'ok':'grey',arrow:'flat',arrowV:''},
     {l:'Sin reporte hoy',v:sinReporteHoy,sub:`al ${todayStr2}`,cls:sinReporteHoy>3?'alert':sinReporteHoy>0?'warn':'ok',arrow:sinReporteHoy>0?'down':'up',arrowV:sinReporteHoy>0?'⚠':'✓',onclick:sinReporteHoy>0?"showView('alertas')":'' },
-    {l:'Facturado',v:fmtUSD(totalFact),sub:`${(totalFact/totalVenta*100).toFixed(0)}% de venta`,cls:'money',arrow:'up',arrowV:'+5%'}
+    {l:'Facturado',v:fmtUSD(totalFact),sub:`${totalVenta>0?(totalFact/totalVenta*100).toFixed(0):0}% de venta`,cls:'money',arrow:'up',arrowV:''}
   ];
   $('#kpis').innerHTML=kpis.map(k=>`<div class="kpi ${k.cls}" style="cursor:${k.onclick?'pointer':''}" onclick="${k.onclick||''}"><div class="accent"></div><div class="label">${k.l}</div><div class="value tnum">${k.v}</div><div class="sub">${k.sub}</div>${k.arrowV?`<div class="arrow ${k.arrow}">${k.arrow==='up'?'↑':k.arrow==='down'?'↓':'•'} ${k.arrowV}</div>`:''}</div>`).join('');
 
@@ -8643,6 +8650,7 @@ function renderEquiposPremium(){
       </div>
       <input type="file" id="eq-import-input" accept=".csv,.xlsx,.xls,.pdf,application/pdf" style="display:none" onchange="W.onEquiposImport&&W.onEquiposImport(event)">
       <button class="eqv2-btn primary" onclick="document.getElementById('eq-import-input').click()">📂 Importar</button>
+      <button class="eqv2-btn" onclick="W.openEquiposHistorial&&W.openEquiposHistorial()" title="Historial de cambios">🕑 Historial</button>
       <button class="eqv2-btn icon-only" onclick="W.renderEquipos&&W.renderEquipos()" title="Refrescar">🔄</button>
     </div>
   </div>`;
@@ -8950,6 +8958,261 @@ function renderEquiposPremium(){
     },100);
   };
 
+  /* ═══ PUENTE: EQUIPOS gerencia → módulo SUPERVISORES ═══
+     Los equipos importados viven en W.IMPORTACIONES_DATA (navegador de gerencia).
+     app-sup los lee de la tabla equipos_pmo en la instancia Supabase "Supervisor".
+     Este puente hace upsert (on_conflict=doc) de los equipos a esa tabla para que
+     aparezcan en el módulo de supervisores. Se dispara solo tras cada importación. */
+  const SUP_SB_URL='https://iiceeajjmugtuzcfqggs.supabase.co';
+  const SUP_SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpY2VlYWpqbXVndHV6Y2ZxZ2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODg5OTUsImV4cCI6MjA5NDc2NDk5NX0.xeOFlxEGoPsqO5mBLz2_o6UqMCiUw5t8Aghg0ieRqs4';
+  const _eqToPmoRow=r=>({
+    doc:(r.doc||'').toString().trim(),
+    fecha:(r.fecha||'').toString().trim()||null,
+    proveedor:(r.proveedor||'').toString().trim()||null,
+    proj:(r.proyecto||'').toString().trim()||null,
+    proj_csv:(r.proyecto||'').toString().trim()||null,
+    tipo:(r.tipo||'').toString().trim()||null,
+    origen:(r.origen||'').toString().trim()||null,
+    fe:(r.f_entrega||'').toString().trim()||null,
+    fer:(r.f_real||'').toString().trim()||null,
+    so:(r.status_orig||'').toString().trim()||null,
+    etd:(r.etd||'').toString().trim()||null,
+    eta:(r.eta||'').toString().trim()||null,
+    mod:(r.modalidad||'').toString().trim()||null,
+    ref:(r.ref||'').toString().trim()||null,
+    st:(r.status_dest||'').toString().trim()||null,
+    updated_at:new Date().toISOString()
+  });
+  // Campos cuyo cambio queremos registrar en el historial (clave pmo → etiqueta legible)
+  const EQ_TRACK={eta:'ETA (arribo)',etd:'ETD (salida)',fe:'Fecha entrega',fer:'Entrega real',so:'Status origen',st:'Status destino',mod:'Modalidad',proj:'Proyecto',proveedor:'Proveedor'};
+  const _sbHeaders=extra=>Object.assign({apikey:SUP_SB_KEY,Authorization:'Bearer '+SUP_SB_KEY,'Content-Type':'application/json'},extra||{});
+  const _nz=v=>(v==null?'':v.toString().trim());
+  // Detecta cambios de los equipos importados vs el estado actual en equipos_pmo y los registra.
+  async function logEquiposChanges(payload){
+    // 1) Traer estado actual (solo columnas relevantes)
+    let current=[];
+    try{
+      const res=await fetch(SUP_SB_URL+'/rest/v1/equipos_pmo?select=doc,proj,proj_csv,tipo,proveedor,eta,etd,fe,fer,so,st,mod&limit=2000',{headers:_sbHeaders()});
+      if(res.ok)current=await res.json();
+    }catch(e){console.warn('[historial] no se pudo leer estado actual:',e);return {logged:0,resumen:null};}
+    const curMap=new Map();current.forEach(c=>{if(c.doc)curMap.set(c.doc,c);});
+    const lote=new Date().toISOString();
+    const newDocs=new Set(payload.map(p=>p.doc));
+    const cambios=[];
+    const base=p=>({doc:p.doc,proyecto:p.proj,proj_csv:p.proj_csv,tipo:p.tipo,proveedor:p.proveedor,lote,origen:'gerencia',fecha_cambio:lote});
+    // 2) Nuevos y modificados
+    payload.forEach(p=>{
+      const cur=curMap.get(p.doc);
+      if(!cur){cambios.push(Object.assign(base(p),{campo:'nuevo',valor_anterior:null,valor_nuevo:_nz(p.proj)||_nz(p.tipo)||p.doc}));return;}
+      Object.keys(EQ_TRACK).forEach(f=>{
+        if(_nz(cur[f])!==_nz(p[f]))cambios.push(Object.assign(base(p),{campo:f,valor_anterior:_nz(cur[f])||null,valor_nuevo:_nz(p[f])||null}));
+      });
+    });
+    // 3) Eliminados (estaban y ya no vienen en el import)
+    curMap.forEach((cur,doc)=>{
+      if(!newDocs.has(doc))cambios.push({doc,proyecto:cur.proj,proj_csv:cur.proj_csv,tipo:cur.tipo,proveedor:cur.proveedor,lote,origen:'gerencia',fecha_cambio:lote,campo:'eliminado',valor_anterior:_nz(cur.st)||null,valor_nuevo:null});
+    });
+    if(!cambios.length)return {logged:0,resumen:{nuevos:0,modificados:0,eliminados:0}};
+    // 4) Insertar en el log (por lotes)
+    for(let i=0;i<cambios.length;i+=200){
+      const chunk=cambios.slice(i,i+200);
+      const res=await fetch(SUP_SB_URL+'/rest/v1/equipos_cambios',{method:'POST',headers:_sbHeaders({Prefer:'return=minimal'}),body:JSON.stringify(chunk)});
+      if(!res.ok){const txt=await res.text().catch(()=>'');console.warn('[historial] insert falló:',res.status,txt.slice(0,200));}
+    }
+    const resumen={
+      nuevos:cambios.filter(c=>c.campo==='nuevo').length,
+      eliminados:cambios.filter(c=>c.campo==='eliminado').length,
+      modificados:cambios.filter(c=>c.campo!=='nuevo'&&c.campo!=='eliminado').length
+    };
+    return {logged:cambios.length,resumen};
+  }
+  W.syncEquiposToSupervisor=async rows=>{
+    const payload=(rows||[]).filter(r=>r&&(r.doc||'').toString().trim()).map(_eqToPmoRow);
+    if(!payload.length)return {ok:false,count:0,reason:'sin equipos con documento'};
+    // Registrar el historial ANTES del upsert (para comparar contra el estado previo)
+    let hist={logged:0,resumen:null};
+    try{hist=await logEquiposChanges(payload);}catch(e){console.warn('[historial] error registrando cambios:',e);}
+    const url=SUP_SB_URL+'/rest/v1/equipos_pmo?on_conflict=doc';
+    const headers=_sbHeaders({Prefer:'resolution=merge-duplicates,return=minimal'});
+    let synced=0;
+    for(let i=0;i<payload.length;i+=200){
+      const chunk=payload.slice(i,i+200);
+      const res=await fetch(url,{method:'POST',headers,body:JSON.stringify(chunk)});
+      if(!res.ok){const txt=await res.text().catch(()=>'');throw new Error('HTTP '+res.status+' '+txt.slice(0,200));}
+      synced+=chunk.length;
+    }
+    return {ok:true,count:synced,cambios:hist.logged,resumen:hist.resumen};
+  };
+
+  /* ═══ HISTORIAL DE CAMBIOS DE EQUIPOS (overlay global + doble clic al detalle) ═══ */
+  const _histCampoLabel=c=>(Object.assign({nuevo:'Nuevo equipo',eliminado:'Eliminado'},EQ_TRACK)[c]||c);
+  const _histIcon=c=>c==='nuevo'?'✨':c==='eliminado'?'🗑':/eta|etd|fe|fer/.test(c)?'📅':c==='st'||c==='so'?'🔄':c==='proj'?'🏗':c==='proveedor'?'🏢':'✏️';
+  const _histFmtDT=iso=>{try{return new Date(iso).toLocaleString('es-PE',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(e){return iso||'';}};
+  const _histFmtDate=iso=>{try{return new Date(iso).toLocaleDateString('es-PE',{day:'2-digit',month:'long',year:'numeric'});}catch(e){return iso||'';}};
+  let _histData=[];let _histFilter={campo:'todos',proj:'',q:''};
+  W._eqHistSetCampo=c=>{_histFilter.campo=c;_histRender();};
+  W._eqHistSetProj=v=>{_histFilter.proj=v;_histRender();};
+  W._eqHistSearch=v=>{_histFilter.q=(v||'').toLowerCase();_histRender();};
+  W.closeEquiposHistorial=()=>{const o=document.getElementById('eq-hist-overlay');if(o)o.remove();};
+  function _histFiltered(){
+    return _histData.filter(r=>{
+      if(_histFilter.campo==='modificados'&&(r.campo==='nuevo'||r.campo==='eliminado'))return false;
+      if(_histFilter.campo!=='todos'&&_histFilter.campo!=='modificados'&&r.campo!==_histFilter.campo)return false;
+      if(_histFilter.proj&&(r.proyecto||'')!==_histFilter.proj)return false;
+      if(_histFilter.q){const hay=((r.doc||'')+' '+(r.proyecto||'')+' '+(r.tipo||'')+' '+(r.proveedor||'')+' '+(r.valor_anterior||'')+' '+(r.valor_nuevo||'')).toLowerCase();if(!hay.includes(_histFilter.q))return false;}
+      return true;
+    });
+  }
+  function _histRender(){
+    const body=document.getElementById('eq-hist-body');if(!body)return;
+    const rows=_histFiltered();
+    // Actualizar chips activos
+    document.querySelectorAll('#eq-hist-overlay .eqh-chip').forEach(ch=>{ch.classList.toggle('on',ch.dataset.campo===_histFilter.campo);});
+    if(!rows.length){body.innerHTML='<div style="padding:40px;text-align:center;color:#94a3b8;font-size:13px">Sin cambios que coincidan con el filtro.</div>';return;}
+    // Agrupar por lote (importación), desc
+    const groups=new Map();
+    rows.forEach(r=>{const k=r.lote||r.fecha_cambio||'';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r);});
+    const keys=[...groups.keys()].sort((a,b)=>(b||'').localeCompare(a||''));
+    let h='';
+    keys.forEach(k=>{
+      const g=groups.get(k);
+      const nuevos=g.filter(x=>x.campo==='nuevo').length;
+      const elim=g.filter(x=>x.campo==='eliminado').length;
+      const modif=g.length-nuevos-elim;
+      h+=`<div class="eqh-group">
+        <div class="eqh-group-head">
+          <span class="eqh-group-date">📦 ${_histFmtDT(k)}</span>
+          <span class="eqh-group-badges">
+            ${nuevos?`<span class="eqh-b new">+${nuevos} nuevos</span>`:''}
+            ${modif?`<span class="eqh-b chg">${modif} modif.</span>`:''}
+            ${elim?`<span class="eqh-b del">${elim} elim.</span>`:''}
+          </span>
+        </div>`;
+      g.forEach(r=>{
+        let desc;
+        if(r.campo==='nuevo')desc=`<b>Nuevo equipo</b> · ${r.tipo||'—'}`;
+        else if(r.campo==='eliminado')desc=`<b>Eliminado</b> · ${r.tipo||'—'} <span class="eqh-old">(estaba: ${r.valor_anterior||'—'})</span>`;
+        else desc=`<b>${_histCampoLabel(r.campo)}</b>: <span class="eqh-old">${r.valor_anterior||'—'}</span> <span class="eqh-arrow">→</span> <span class="eqh-new">${r.valor_nuevo||'—'}</span>`;
+        h+=`<div class="eqh-row" ondblclick="W._eqHistDetalle&&W._eqHistDetalle('${(r.doc||'').replace(/'/g,"\\'")}')" title="Doble clic para ver el historial de este equipo">
+          <span class="eqh-ico">${_histIcon(r.campo)}</span>
+          <div class="eqh-row-main">
+            <div class="eqh-row-desc">${desc}</div>
+            <div class="eqh-row-meta">${r.proyecto||'—'} · ${r.doc||''}${r.proveedor?' · '+r.proveedor:''}</div>
+          </div>
+        </div>`;
+      });
+      h+='</div>';
+    });
+    body.innerHTML=h;
+  }
+  W._eqHistDetalle=async doc=>{
+    const dv=document.getElementById('eq-hist-detalle');if(!dv)return;
+    dv.classList.add('on');
+    dv.querySelector('.eqh-det-body').innerHTML='<div style="padding:30px;text-align:center;color:#94a3b8">Cargando…</div>';
+    dv.querySelector('.eqh-det-title').textContent='Equipo '+doc;
+    let rows=_histData.filter(r=>r.doc===doc);
+    // Completar desde la BD por si el detalle tiene más de lo cargado
+    try{
+      const res=await fetch(SUP_SB_URL+'/rest/v1/equipos_cambios?doc=eq.'+encodeURIComponent(doc)+'&select=campo,valor_anterior,valor_nuevo,fecha_cambio,proyecto,tipo,proveedor&order=fecha_cambio.desc&limit=300',{headers:_sbHeaders()});
+      if(res.ok){const d=await res.json();if(Array.isArray(d)&&d.length)rows=d;}
+    }catch(e){}
+    if(!rows.length){dv.querySelector('.eqh-det-body').innerHTML='<div style="padding:30px;text-align:center;color:#94a3b8">Sin cambios registrados.</div>';return;}
+    const meta=rows[0];
+    let h=`<div class="eqh-det-sub">${meta.proyecto||'—'} · ${meta.tipo||''}${meta.proveedor?' · '+meta.proveedor:''}</div><div class="eqh-timeline">`;
+    rows.forEach(r=>{
+      let desc;
+      if(r.campo==='nuevo')desc='<b>Ingresó al sistema</b>';
+      else if(r.campo==='eliminado')desc='<b>Salió del listado</b>';
+      else desc=`<b>${_histCampoLabel(r.campo)}</b>: <span class="eqh-old">${r.valor_anterior||'—'}</span> → <span class="eqh-new">${r.valor_nuevo||'—'}</span>`;
+      h+=`<div class="eqh-tl-item"><span class="eqh-ico">${_histIcon(r.campo)}</span><div><div>${desc}</div><div class="eqh-row-meta">${_histFmtDT(r.fecha_cambio)}</div></div></div>`;
+    });
+    h+='</div>';
+    dv.querySelector('.eqh-det-body').innerHTML=h;
+  };
+  W.openEquiposHistorial=async()=>{
+    W.closeEquiposHistorial();
+    const ov=document.createElement('div');
+    ov.id='eq-hist-overlay';
+    ov.innerHTML=`
+      <style>
+        #eq-hist-overlay{position:fixed;inset:0;z-index:100000;background:rgba(13,36,54,.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-family:Inter,system-ui,sans-serif;animation:eqhIn .2s ease}
+        @keyframes eqhIn{from{opacity:0}to{opacity:1}}
+        #eq-hist-overlay .eqh-panel{background:#fff;width:min(920px,94vw);max-height:88vh;border-radius:18px;box-shadow:0 24px 80px rgba(13,36,54,.35);display:flex;flex-direction:column;overflow:hidden}
+        #eq-hist-overlay .eqh-head{padding:18px 22px;border-bottom:1px solid #eef2f6;display:flex;align-items:center;gap:12px}
+        #eq-hist-overlay .eqh-head h3{margin:0;font-size:17px;font-weight:800;color:#0f2438}
+        #eq-hist-overlay .eqh-head .eqh-sub{font-size:12px;color:#8aa0b2;font-weight:500}
+        #eq-hist-overlay .eqh-x{margin-left:auto;border:none;background:#f1f5f9;width:32px;height:32px;border-radius:9px;cursor:pointer;font-size:16px;color:#64748b}
+        #eq-hist-overlay .eqh-filters{padding:12px 22px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid #eef2f6;background:#fafcfe}
+        #eq-hist-overlay .eqh-chip{border:1px solid #dbe4ec;background:#fff;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;color:#5a7286;cursor:pointer}
+        #eq-hist-overlay .eqh-chip.on{background:#0d9488;border-color:#0d9488;color:#fff}
+        #eq-hist-overlay .eqh-filters input,#eq-hist-overlay .eqh-filters select{border:1px solid #dbe4ec;border-radius:9px;padding:6px 10px;font-size:12px;color:#0f2438;outline:none}
+        #eq-hist-overlay .eqh-filters input{flex:1;min-width:140px}
+        #eq-hist-overlay .eqh-body{overflow:auto;padding:8px 14px 18px}
+        #eq-hist-overlay .eqh-group{margin-top:14px}
+        #eq-hist-overlay .eqh-group-head{display:flex;align-items:center;gap:10px;padding:6px 8px;position:sticky;top:0;background:#fff}
+        #eq-hist-overlay .eqh-group-date{font-size:13px;font-weight:800;color:#0f2438}
+        #eq-hist-overlay .eqh-b{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:4px}
+        #eq-hist-overlay .eqh-b.new{background:#eef2ff;color:#4f46e5}
+        #eq-hist-overlay .eqh-b.chg{background:#fff7ed;color:#c2660c}
+        #eq-hist-overlay .eqh-b.del{background:#fef2f2;color:#dc2626}
+        #eq-hist-overlay .eqh-row{display:flex;gap:11px;align-items:flex-start;padding:9px 10px;border-radius:11px;cursor:pointer;transition:background .12s}
+        #eq-hist-overlay .eqh-row:hover{background:#f4f8fb}
+        #eq-hist-overlay .eqh-ico{font-size:15px;line-height:1.4;flex-shrink:0}
+        #eq-hist-overlay .eqh-row-desc{font-size:13px;color:#26374a}
+        #eq-hist-overlay .eqh-row-meta{font-size:11px;color:#93a6b6;margin-top:2px}
+        #eq-hist-overlay .eqh-old{color:#94a3b8;text-decoration:line-through}
+        #eq-hist-overlay .eqh-new{color:#0d9488;font-weight:700}
+        #eq-hist-overlay .eqh-arrow{color:#cbd5e1}
+        #eq-hist-overlay .eqh-det{position:absolute;inset:0;background:rgba(13,36,54,.45);display:none;align-items:center;justify-content:center}
+        #eq-hist-overlay .eqh-det.on{display:flex}
+        #eq-hist-overlay .eqh-det-card{background:#fff;width:min(560px,92vw);max-height:80vh;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+        #eq-hist-overlay .eqh-det-head{padding:16px 20px;border-bottom:1px solid #eef2f6;display:flex;align-items:center;gap:10px}
+        #eq-hist-overlay .eqh-det-title{font-size:15px;font-weight:800;color:#0f2438}
+        #eq-hist-overlay .eqh-det-sub{font-size:12px;color:#8aa0b2;padding:12px 20px 4px}
+        #eq-hist-overlay .eqh-det-body{overflow:auto}
+        #eq-hist-overlay .eqh-timeline{padding:6px 20px 20px;display:flex;flex-direction:column;gap:2px}
+        #eq-hist-overlay .eqh-tl-item{display:flex;gap:11px;padding:9px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#26374a}
+      </style>
+      <div class="eqh-panel" onclick="event.stopPropagation()">
+        <div class="eqh-head">
+          <h3>🕑 Historial de cambios de equipos</h3>
+          <span class="eqh-sub" id="eq-hist-count"></span>
+          <button class="eqh-x" onclick="W.closeEquiposHistorial()">×</button>
+        </div>
+        <div class="eqh-filters">
+          <span class="eqh-chip on" data-campo="todos" onclick="W._eqHistSetCampo('todos')">Todos</span>
+          <span class="eqh-chip" data-campo="nuevo" onclick="W._eqHistSetCampo('nuevo')">✨ Nuevos</span>
+          <span class="eqh-chip" data-campo="modificados" onclick="W._eqHistSetCampo('modificados')">✏️ Modificados</span>
+          <span class="eqh-chip" data-campo="eta" onclick="W._eqHistSetCampo('eta')">📅 ETA</span>
+          <span class="eqh-chip" data-campo="st" onclick="W._eqHistSetCampo('st')">🔄 Estado</span>
+          <span class="eqh-chip" data-campo="eliminado" onclick="W._eqHistSetCampo('eliminado')">🗑 Eliminados</span>
+          <select id="eq-hist-proj" onchange="W._eqHistSetProj(this.value)"><option value="">Todos los proyectos</option></select>
+          <input id="eq-hist-q" placeholder="Buscar doc, equipo, valor…" oninput="W._eqHistSearch(this.value)">
+        </div>
+        <div class="eqh-body" id="eq-hist-body"><div style="padding:40px;text-align:center;color:#94a3b8">Cargando historial…</div></div>
+        <div class="eqh-det" id="eq-hist-detalle" onclick="this.classList.remove('on')">
+          <div class="eqh-det-card" onclick="event.stopPropagation()">
+            <div class="eqh-det-head"><span class="eqh-det-title">Equipo</span><button class="eqh-x" style="margin-left:auto" onclick="document.getElementById('eq-hist-detalle').classList.remove('on')">×</button></div>
+            <div class="eqh-det-body"></div>
+          </div>
+        </div>
+      </div>`;
+    ov.onclick=()=>W.closeEquiposHistorial();
+    document.body.appendChild(ov);
+    // Cargar datos
+    try{
+      const res=await fetch(SUP_SB_URL+'/rest/v1/equipos_cambios?select=doc,proyecto,tipo,proveedor,campo,valor_anterior,valor_nuevo,lote,fecha_cambio&order=fecha_cambio.desc&limit=1000',{headers:_sbHeaders()});
+      _histData=res.ok?await res.json():[];
+    }catch(e){_histData=[];}
+    if(!Array.isArray(_histData))_histData=[];
+    const cnt=document.getElementById('eq-hist-count');if(cnt)cnt.textContent=_histData.length+' cambios registrados';
+    // Poblar select de proyectos
+    const sel=document.getElementById('eq-hist-proj');
+    if(sel){const projs=[...new Set(_histData.map(r=>r.proyecto).filter(Boolean))].sort();projs.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;sel.appendChild(o);});}
+    _histFilter={campo:'todos',proj:'',q:''};
+    _histRender();
+  };
+
   // ── Import cinematográfico ──
   W.onEquiposImport=async event=>{
     const file=event.target.files[0];if(!file)return;
@@ -9170,6 +9433,24 @@ function renderEquiposPremium(){
     // Close cinematic, open summary
     if(ov)ov.classList.remove('on');
     renderEquiposPremium();
+
+    // Sincronizar automáticamente con el módulo de supervisores (instancia Supervisor)
+    (async()=>{
+      try{
+        if(typeof showToast==='function')showToast('📡 Sincronizando equipos con supervisores…','info',3000);
+        const rsync=await W.syncEquiposToSupervisor(parsed);
+        if(rsync.ok){
+          const rs=rsync.resumen;
+          const detalle=rs?` · ${rsync.cambios} cambios (${rs.nuevos} nuevos, ${rs.modificados} modif., ${rs.eliminados} elim.)`:'';
+          if(typeof showToast==='function')showToast(`✅ ${rsync.count} equipos sincronizados con supervisores${detalle}`,'success',5500);
+        }else if(typeof showToast==='function'){
+          showToast('⚠️ No se sincronizó con supervisores: '+(rsync.reason||''),'warn',5000);
+        }
+      }catch(e){
+        console.error('[sync equipos→sup] error:',e);
+        if(typeof showToast==='function')showToast('⚠️ Error al sincronizar con supervisores: '+(e.message||e),'alert',6000);
+      }
+    })();
     setTimeout(()=>{
       const sm=document.getElementById('eqv2-summary');
       const card=document.getElementById('eqv2-summary-card');
@@ -9777,8 +10058,10 @@ document.addEventListener('click',function(e){
     const sb=W.getSB?W.getSB():null;if(!sb)return;
     try{
       _pulse();_setTxt('Actualizando reportes…');
-      const today=new Date();
-      const todayStr=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+      /* Misma fecha de referencia que la carga inicial (regla 6pm). Antes usaba la
+         fecha de calendario cruda y sobrescribía _reportedToday con otro criterio,
+         así que el KPI "Sin reporte hoy" saltaba solo 5s después de cargar. */
+      const todayStr=W.fechaReporteLocal?W.fechaReporteLocal():W._refDateStr;
       const {data:reps,error}=await sb.from('reportes')
         .select('nombre_proyecto,fecha_reporte')
         .eq('fecha_reporte',todayStr);
@@ -16209,7 +16492,7 @@ function spcInsight(p, status, planW, realW){
 function spcSparkline(name){
   const reps = (W.store && W.store.reportes && W.store.reportes[name]) || [];
   if(reps.length < 2) return '';
-  const pts = reps.slice(-7).map(r => Number(r.valp||r.real||0)).filter(x=>!isNaN(x));
+  const pts = reps.slice(-7).map(r => Number(r.av||0)).filter(x=>!isNaN(x));
   if(pts.length < 2) return '';
   const w=54,h=14,pad=1;
   const min=Math.min(...pts), max=Math.max(...pts), rng=(max-min)||1;
@@ -17398,7 +17681,7 @@ console.log('%c⚡ COC AutoSync · 5min interval · polling activo','background:
 [data-theme="dark"] .modal-body{background:#0a1521 !important}
 
 /* ─── Executive view shell ─── */
-.exc{display:flex;flex-direction:column;gap:18px}
+.exc{display:flex;flex-direction:column;gap:32px}
 
 /* Hero status strip */
 .exc-hero{
@@ -17474,7 +17757,7 @@ console.log('%c⚡ COC AutoSync · 5min interval · polling activo','background:
 
 /* ─── KPI Pulse Grid ─── */
 .exc-kpis{
-  display:grid;grid-template-columns:repeat(6,1fr);gap:12px;
+  display:grid;grid-template-columns:repeat(6,1fr);gap:18px;
 }
 @media(max-width:980px){.exc-kpis{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:580px){.exc-kpis{grid-template-columns:repeat(2,1fr)}}
@@ -17485,7 +17768,7 @@ console.log('%c⚡ COC AutoSync · 5min interval · polling activo','background:
   backdrop-filter:blur(20px);
   border:1px solid rgba(255,255,255,.5);
   border-radius:14px;
-  padding:14px 14px 12px;
+  padding:18px 16px 16px;
   overflow:hidden;
   transition:transform .3s cubic-bezier(.2,.7,.2,1), box-shadow .3s;
   box-shadow:0 6px 18px rgba(13,36,54,.05);
@@ -17650,7 +17933,7 @@ console.log('%c⚡ COC AutoSync · 5min interval · polling activo','background:
 .exc-ai-item b{color:#fff;font-weight:700}
 
 /* ─── Risk Heat ─── */
-.exc-grid-2{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}
+.exc-grid-2{display:grid;grid-template-columns:1.2fr .8fr;gap:20px}
 @media(max-width:860px){.exc-grid-2{grid-template-columns:1fr}}
 
 .exc-risk{
@@ -18236,7 +18519,9 @@ function _renderExecutiveFull(p){
   const recentReps = ((W.store && W.store.reportes && W.store.reportes[p.name]) || []).slice(-3).reverse();
   recentReps.forEach(r => {
     const d = new Date((r.fecha||'')+'T12:00:00');
-    const v = Number(r.valp||r.real||0);
+    // El avance vive en r.av / r.avance en store.reportes (NO en valp/real, que no existen
+    // en esos objetos). Sin este orden el timeline mostraba siempre "0.0% real".
+    const v = Number(r.av != null ? r.av : (r.avance != null ? r.avance : (r.valp || r.real || 0)));
     const pl = Number(r.plan||0);
     const lvl = pl-v > 5 ? 'warn' : v-pl > 3 ? 'ok' : 'info';
     tlItems.push({
@@ -18331,23 +18616,6 @@ function _renderExecutiveFull(p){
         <div class="exc-curve-stat"><span class="l">Ritmo</span><span class="v">${vel.toFixed(2)} <span style="font-size:11px;color:#94a3b8;font-weight:600">pts/día</span></span></div>
         <div class="exc-curve-stat"><span class="l">Restante</span><span class="v">${remaining.toFixed(1)} pts</span></div>
         <div class="exc-curve-stat"><span class="l">ETA IA</span><span class="v">${etaDate?_fmtD(etaDate):'—'}</span></div>
-      </div>
-    </div>
-
-    <!-- AI INSIGHTS -->
-    <div class="exc-ai">
-      <div class="exc-ai-head">
-        <span class="ic">AI</span>
-        Project Health Engine · análisis contextual
-        <span class="tag">Realtime</span>
-      </div>
-      <div class="exc-ai-list">
-        ${insights.slice(0,5).map(i => `
-          <div class="exc-ai-item ${i.t}">
-            <span class="dot">${i.t==='alert'?'!':i.t==='warn'?'⚠':i.t==='ok'?'✓':'i'}</span>
-            <span>${i.txt}</span>
-          </div>
-        `).join('')}
       </div>
     </div>
 

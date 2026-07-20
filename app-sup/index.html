@@ -5047,7 +5047,7 @@ async function cargarDashboard() {
   try {
     // ── Carga paralela de todas las fuentes ──
     const [reportes, riesgosTbl, contratasTbl, personalTbl, ganttTbl] = await Promise.all([
-      sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+nombre+'%')})&order=fecha_reporte.desc&limit=30`).catch(()=>[]),
+      sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(nombre)})&order=fecha_reporte.desc&limit=30`).catch(()=>[]),
       sbFetch(`/rest/v1/riesgos?cod_proyecto=eq.${encodeURIComponent(cod)}&order=created_at.desc&limit=30`).catch(()=>[]),
       sbFetch(`/rest/v1/evaluacion_contratistas?supervisor=ilike.${encodeURIComponent('%'+(currentProyecto.supervisor||'').split(' ')[0]+'%')}&order=created_at.desc&limit=20`).catch(()=>[]),
       sbFetch(`/rest/v1/ingreso_personal?or=(proyecto.ilike.${encodeURIComponent('%'+nombre+'%')},cod_proyecto_fk.eq.${encodeURIComponent(cod)})&order=fecha.desc&limit=14`).catch(()=>[]),
@@ -5062,6 +5062,7 @@ async function cargarDashboard() {
       _dashCtx = { supervisor: firstName(currentUser), proyectoNombre: nombre, prioritiesCount: 0,
         spi:null, avance:0, plan:0, deltaAvance:null, riesgosAltos:0, contratasBajas:0, ganttAtrasadas:0,
         diasSinReporte:0, rondasOk:0, rondasTot:10, rondasPct:null };
+      renderKPIs(_dashCtx);
       poblarBriefing();
       renderPrioridades(_dashCtx);
       renderTimeline(_dashCtx, _dashSources);
@@ -9860,7 +9861,7 @@ async function buildHistoria(){
   // Traer histórico
   const cod = P.cod || P.nombre;
   let hist = [];
-  try { hist = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+P.nombre+'%')})&order=fecha_reporte.desc&limit=40`) || []; } catch(e){}
+  try { hist = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(P.nombre)})&order=fecha_reporte.desc&limit=40`) || []; } catch(e){}
 
   // Snapshot del día desde el formulario (aún sin guardar)
   let personal = 0; ESPECIALIDADES.forEach(e => personal += parseInt(g('rd-ob-'+e)?.value)||0);
@@ -10025,7 +10026,7 @@ async function cargarUltimoReporte() {
   const cod = currentProyecto?.cod || currentProyecto?.nombre;
   if (!cod) return;
   try {
-    const rows = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+currentProyecto.nombre+'%')})&order=fecha_reporte.desc&limit=1`);
+    const rows = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(currentProyecto.nombre)})&order=fecha_reporte.desc&limit=1`);
     if (!rows || rows.length === 0) { showToast('Sin reportes anteriores'); return; }
     const r = rows[0];
     document.getElementById('rd-plan').value = r.pct_planificado || '';
@@ -10144,9 +10145,9 @@ async function guardarReporte(esDraft = false) {
   };
 
   try {
-    await sbFetch('/rest/v1/reportes', {
+    await sbFetch('/rest/v1/reportes?on_conflict=cod_proyecto,fecha_reporte', {
       method:'POST',
-      headers:{'Prefer':'return=minimal'},
+      headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
       body: JSON.stringify(payload)
     });
     // Persistir avance por hito al Gantt (solo hitos reales) y restricciones a su tabla
@@ -10531,7 +10532,7 @@ async function cargarRiesgos() {
     const rows = await sbFetch(`/rest/v1/riesgos?cod_proyecto=eq.${encodeURIComponent(cod)}&order=created_at.desc`);
     if (!rows || rows.length === 0) {
       // También buscar en reportes.riesgos JSONB
-      const reps = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+currentProyecto.nombre+'%')})&select=fecha_reporte,riesgos&not.riesgos.is.null&order=fecha_reporte.desc&limit=20`);
+      const reps = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(currentProyecto.nombre)})&select=fecha_reporte,riesgos&not.riesgos.is.null&order=fecha_reporte.desc&limit=20`);
       const todos = [];
       (reps||[]).forEach(r => {
         if (Array.isArray(r.riesgos)) r.riesgos.forEach(rg => todos.push({...rg, fecha_reporte: r.fecha_reporte}));
@@ -10667,7 +10668,7 @@ async function exportarPDF() {
 
   // Cargar contratas del reporte
   try {
-    const rows = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.ilike.${encodeURIComponent('%'+currentProyecto.nombre+'%')})&order=fecha_reporte.desc&limit=1`);
+    const rows = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(currentProyecto.nombre)})&order=fecha_reporte.desc&limit=1`);
     if (rows && rows.length > 0 && rows[0].contratas_detalle) {
       const contratas = rows[0].contratas_detalle;
       document.getElementById('pdf-contratas-table').innerHTML =

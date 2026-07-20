@@ -390,7 +390,7 @@
       </div>
 
       <div class="hero-stats">
-        <a href="#proyectos" class="hstat">
+        <a href="#proyectos" class="hstat" data-kpi="activos">
           <div class="hstat-ic blue"><i data-lucide="folder-kanban" class="ic"></i></div>
           <div class="hstat-body">
             <div class="hstat-num" id="stat-activos"><span class="skel" style="width:30px">0</span></div>
@@ -398,7 +398,7 @@
           </div>
           <i data-lucide="arrow-up-right" class="hstat-go"></i>
         </a>
-        <a href="#alertas" class="hstat">
+        <a href="#alertas" class="hstat" data-kpi="porvencer">
           <div class="hstat-ic amber"><i data-lucide="calendar-clock" class="ic"></i></div>
           <div class="hstat-body">
             <div class="hstat-num" id="stat-porvencer"><span class="skel" style="width:30px">0</span></div>
@@ -406,7 +406,7 @@
           </div>
           <i data-lucide="arrow-up-right" class="hstat-go"></i>
         </a>
-        <a href="#alertas" class="hstat">
+        <a href="#alertas" class="hstat" data-kpi="alertas">
           <div class="hstat-ic red"><i data-lucide="bell-ring" class="ic"></i></div>
           <div class="hstat-body">
             <div class="hstat-num" id="stat-alertas"><span class="skel" style="width:30px">0</span></div>
@@ -430,6 +430,18 @@
       <!-- ───── Columna principal ───── -->
       <div class="home-col-main">
 
+        <!-- Cartera activa por estado (desglose) -->
+        <section class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i data-lucide="layers" class="ic"></i><span>Cartera activa por estado</span></div>
+            <a href="#proyectos" class="panel-link">Ver proyectos →</a>
+          </div>
+          <p class="panel-desc">Desglose de los <b id="split-total">0</b> proyectos activos según su estado — cada estado es un indicador independiente.</p>
+          <div class="estado-split" id="estado-split">
+            <div class="est-chip"><span class="est-num"><span class="skel" style="width:24px">0</span></span><span class="est-lbl"><span class="skel" style="width:70px">Cargando…</span></span></div>
+          </div>
+        </section>
+
         <!-- Estado operacional (consolidado) -->
         <section class="panel">
           <div class="panel-header">
@@ -437,7 +449,7 @@
             <a href="#gerencial" class="panel-link">Dashboard gerencial →</a>
           </div>
           <div class="ops-grid">
-            <a href="#reportes" class="ops-cell warn">
+            <a href="#reportes" class="ops-cell warn" data-kpi="sin">
               <div class="ops-cell-top">
                 <span class="ops-ic warn"><i data-lucide="clipboard-list" class="ic"></i></span>
                 <span class="ops-num warn" id="kpi-sin"><span class="skel" style="width:28px">0</span></span>
@@ -445,7 +457,7 @@
               <div class="ops-lbl">Sin reporte</div>
               <div class="ops-sub">Requieren actualización</div>
             </a>
-            <a href="#valorizacion" class="ops-cell ok">
+            <a href="#valorizacion" class="ops-cell ok" data-kpi="val">
               <div class="ops-cell-top">
                 <span class="ops-ic ok"><i data-lucide="banknote" class="ic"></i></span>
                 <span class="ops-num ok" id="kpi-val"><span class="skel" style="width:28px">0</span></span>
@@ -453,7 +465,7 @@
               <div class="ops-lbl">Valorización</div>
               <div class="ops-sub">En proceso de revisión</div>
             </a>
-            <a href="#valorizacion" class="ops-cell crit">
+            <a href="#valorizacion" class="ops-cell crit" data-kpi="cf">
               <div class="ops-cell-top">
                 <span class="ops-ic crit"><i data-lucide="calendar-x-2" class="ic"></i></span>
                 <span class="ops-num crit" id="kpi-cf"><span class="skel" style="width:28px">0</span></span>
