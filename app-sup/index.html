@@ -4051,13 +4051,24 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
               <div class="rd-diff pos" id="rd-diff"><b>0</b><span>Δ puntos</span></div>
             </div>
             <div class="form-row" style="margin-bottom:12px;">
-              <div class="field"><label>Rondas de calidad (ok / total)</label><div style="display:flex;gap:6px;"><input type="number" id="rd-rondas-ok" min="0" max="20" value="0" style="width:50%"><input type="number" id="rd-rondas-tot" min="1" max="20" value="10" style="width:50%"></div></div>
+              <div class="field"><label>Rondas de calidad · del checklist</label><div style="display:flex;gap:6px;"><input type="number" id="rd-rondas-ok" readonly value="0" style="width:50%;background:var(--surface-2);" title="Ítems que cumplen"><input type="number" id="rd-rondas-tot" readonly value="0" style="width:50%;background:var(--surface-2);" title="Ítems aplicables"></div></div>
             </div>
             <div id="alerta-diferencia" class="hidden" style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#991b1b;font-weight:600;">⚠ Diferencia detectada entre avance supervisor y contrata. Revisar.</div>
             <div id="rd-hitos-list" class="rd-prog"></div>
             <p id="rd-hitos-empty" style="font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;">No hay hitos en el Gantt de este proyecto. Agrega uno manual abajo.</p>
             <button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="agregarHitoManual()">+ Hito manual</button>
           </div>
+        </div>
+
+        <!-- RONDAS DE CALIDAD (CHECKLIST) -->
+        <div class="rd-card">
+          <div class="rd-head click" onclick="rdFold(this,event)">
+            <div class="rd-head-ic"><i data-lucide="clipboard-check" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Rondas de calidad</h4><p>Checklist por frente · seguridad, calidad, cumplimiento y gestión</p></div>
+            <span class="rd-head-badge teal"><strong id="rd-rondas-pct">0%</strong> · <span id="rd-rondas-res">0/0</span></span>
+            <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
+          </div>
+          <div class="rd-body"><div id="rd-rondas-mount"></div></div>
         </div>
 
         <!-- RESTRICCIONES -->
@@ -9466,6 +9477,7 @@ async function cargarReporteDiario() {
   const hs = document.getElementById('rd-hero-sup');  if (hs) hs.textContent = currentProyecto.supervisor || currentUser?.nombre || '—';
 
   await rdEspLoad(currentProyecto.cod || currentProyecto.nombre, null);
+  rdRondasReset();
   renderChecklistCierre();
   await cargarHitosReporte();
   await cargarComercialReporte();
@@ -9974,6 +9986,94 @@ function rdEnsureEspStyles(){
   const st=document.createElement('style'); st.id='rd-esp-styles'; st.textContent=css; document.head.appendChild(st);
 }
 
+// ═══════════════════════════════════════════════
+// RONDAS DE CALIDAD — checklist (rúbrica derivada de evaluacion_contratistas)
+// ═══════════════════════════════════════════════
+const RONDAS_CAT = [
+  { grupo:'Seguridad', items:[
+    {k:'epp', t:'Personal con EPP completo'},
+    {k:'permisos', t:'Permisos vigentes para trabajos de alto riesgo (altura, caliente, eléctrico)'},
+    {k:'frente', t:'Frente delimitado y señalizado'},
+    {k:'orden', t:'Orden y limpieza del área'},
+  ]},
+  { grupo:'Calidad', items:[
+    {k:'plano', t:'Ejecución conforme a plano y especificación vigente'},
+    {k:'materiales', t:'Materiales y equipos correctos, sin sustituciones no aprobadas'},
+    {k:'obs_prev', t:'Observaciones anteriores levantadas'},
+  ]},
+  { grupo:'Cumplimiento', items:[
+    {k:'personal_comp', t:'Personal en obra corresponde al comprometido'},
+    {k:'horario', t:'Cumple el horario de jornada'},
+    {k:'sup_contrata', t:'Presencia del supervisor de la contrata'},
+  ]},
+  { grupo:'Gestión', items:[
+    {k:'herramientas', t:'Herramientas adecuadas y operativas'},
+    {k:'materiales_dia', t:'Dispone de los materiales para el frente del día'},
+  ]},
+];
+const RONDAS_ITEMS = RONDAS_CAT.flatMap(g=>g.items.map(i=>({...i, grupo:g.grupo})));
+let rdRondas = {}; // {k:'ok'|'no'|'na', k__obs:'…'}
+
+function rdRondasReset(){ rdRondas = {}; RONDAS_ITEMS.forEach(i=>rdRondas[i.k]='ok'); rdRondasRender(); rdRondasCalc(); }
+function rdRondasCalc(){
+  let ok=0, apl=0;
+  RONDAS_ITEMS.forEach(i=>{ const v=rdRondas[i.k]||'ok'; if(v!=='na'){ apl++; if(v==='ok') ok++; } });
+  const pct = apl? Math.round(ok/apl*100):0;
+  const okEl=document.getElementById('rd-rondas-ok'); if(okEl) okEl.value=ok;
+  const totEl=document.getElementById('rd-rondas-tot'); if(totEl) totEl.value=apl;
+  const p=document.getElementById('rd-rondas-pct'); if(p) p.textContent=pct+'%';
+  const r=document.getElementById('rd-rondas-res'); if(r) r.textContent=ok+'/'+apl;
+  if(typeof rdUpdateRing==='function') rdUpdateRing();
+}
+function rdRondasSet(k,val){ rdRondas[k]=val; rdRondasRender(); rdRondasCalc(); }
+function rdRondasObs(k,val){ rdRondas[k+'__obs']=val; }
+function rdRondasRender(){
+  const m=document.getElementById('rd-rondas-mount'); if(!m) return;
+  rdEnsureRondasStyles();
+  let html='';
+  RONDAS_CAT.forEach(g=>{
+    html+=`<div class="rd-rq-grp"><div class="rd-rq-gt">${g.grupo}</div>`;
+    g.items.forEach(it=>{
+      const v=rdRondas[it.k]||'ok';
+      html+=`<div class="rd-rq-item">
+        <div class="rd-rq-txt">${rdEsc2(it.t)}</div>
+        <div class="rd-rq-seg">
+          <button class="rd-rq-b ok ${v==='ok'?'on':''}" onclick="rdRondasSet('${it.k}','ok')">Cumple</button>
+          <button class="rd-rq-b no ${v==='no'?'on':''}" onclick="rdRondasSet('${it.k}','no')">No</button>
+          <button class="rd-rq-b na ${v==='na'?'on':''}" onclick="rdRondasSet('${it.k}','na')">N.A.</button>
+        </div>
+        ${v==='no'?`<input class="rd-rq-obs" placeholder="¿Qué se observó? (opcional)" value="${rdEsc2(rdRondas[it.k+'__obs']||'')}" oninput="rdRondasObs('${it.k}',this.value)">`:''}
+      </div>`;
+    });
+    html+=`</div>`;
+  });
+  m.innerHTML=html;
+  if(window.lucide) lucide.createIcons();
+}
+function rdRondasLoad(reportRow){
+  const cl = reportRow && reportRow.rondas_checklist;
+  rdRondas = {}; RONDAS_ITEMS.forEach(i=>rdRondas[i.k]='ok');
+  if(Array.isArray(cl)) cl.forEach(c=>{ if(c && c.k){ rdRondas[c.k]=c.estado||'ok'; if(c.obs) rdRondas[c.k+'__obs']=c.obs; } });
+  rdRondasRender(); rdRondasCalc();
+}
+function rdRondasPayload(){
+  return RONDAS_ITEMS.map(i=>({ k:i.k, grupo:i.grupo, texto:i.t, estado:rdRondas[i.k]||'ok', obs:rdRondas[i.k+'__obs']||null }));
+}
+let _rqStyles=false;
+function rdEnsureRondasStyles(){
+  if(_rqStyles) return; _rqStyles=true;
+  const css=`
+  .rd-rq-grp{margin-bottom:14px;} .rd-rq-gt{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--teal-700,#0e7490);margin:0 0 7px;}
+  .rd-rq-item{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--border);}
+  .rd-rq-txt{flex:1;min-width:180px;font-size:13px;color:var(--text-1);}
+  .rd-rq-seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;}
+  .rd-rq-b{border:none;background:var(--surface-1);padding:6px 11px;font-size:12px;font-weight:700;color:var(--text-3);cursor:pointer;border-left:1px solid var(--border);}
+  .rd-rq-b:first-child{border-left:none;}
+  .rd-rq-b.ok.on{background:#059669;color:#fff;} .rd-rq-b.no.on{background:#dc2626;color:#fff;} .rd-rq-b.na.on{background:var(--surface-2);color:var(--text-2);}
+  .rd-rq-obs{flex-basis:100%;border:1px solid #fca5a5;border-radius:7px;padding:6px 9px;font-size:12px;background:#fff5f5;}`;
+  const st=document.createElement('style'); st.id='rd-rq-styles'; st.textContent=css; document.head.appendChild(st);
+}
+
 // ── Comercial: facturado + meta del mes ──
 async function cargarComercialReporte() {
   const cod = currentProyecto?.cod;
@@ -10275,6 +10375,15 @@ function rvRenderReporte(r){
         : `<p class="rv-none">Sin contratas registradas hoy.</p>`);
   }
 
+  // Rondas de calidad (checklist)
+  const rondasCl = rvArr(r.rondas_checklist).filter(x=>x && x.k);
+  if (rondasCl.length){
+    const rok = rondasCl.filter(c=>c.estado==='ok').length, rapl = rondasCl.filter(c=>c.estado!=='na').length;
+    const rpct = rapl?Math.round(rok/rapl*100):0;
+    html += card('clipboard-check','Rondas de calidad', `${rok}/${rapl} cumplen · ${rpct}%`,
+      `<div class="rv-list">${rondasCl.map(c=>`<div class="rv-li"><span class="rv-tag ${c.estado==='ok'?'bajo':(c.estado==='no'?'alto':'')}">${c.estado==='ok'?'Cumple':(c.estado==='no'?'No cumple':'N.A.')}</span><span>${rvEsc(c.texto||c.k)}${c.obs?` — <em>${rvEsc(c.obs)}</em>`:''}</span></div>`).join('')}</div>`);
+  }
+
   // Riesgos
   html += card('shield-alert','Riesgos del día', `${riesgos.length} identificado(s)`,
     riesgos.length
@@ -10468,6 +10577,7 @@ async function cargarUltimoReporte() {
     if (r.jornada_salida)  document.getElementById('rd-salida').value  = r.jornada_salida;
     // Especialidades: config del proyecto + personal/avance del último reporte
     await rdEspLoad(cod, r);
+    rdRondasLoad(r);
     if (r.meta_mes!=null) document.getElementById('rd-meta-mes').value = r.meta_mes;
     if (r.facturado_codigo!=null) document.getElementById('rd-facturado').value = r.facturado_codigo;
     recalcMetaMes();
@@ -10539,7 +10649,8 @@ async function guardarReporte(esDraft = false) {
     pct_ejecutado_contrata: realCt || null,
     spi: spi,
     rondas_ok: parseInt(document.getElementById('rd-rondas-ok').value)||0,
-    rondas_total: parseInt(document.getElementById('rd-rondas-tot').value)||10,
+    rondas_total: parseInt(document.getElementById('rd-rondas-tot').value)||0,
+    rondas_checklist: rdRondasPayload(),
     personal_total: personalTotal,
     especialidades,
     avance_especialidades: avanceEsp,
