@@ -266,7 +266,8 @@
   var ROLE_FB = { ger:'Gerencia · PMO', sup:'Supervisión · Campo', ct:'Contratas · Externo' };
 
   function enter(app, role){
-    frame.src = app;
+    // Rompe-caché: fuerza al iframe a cargar siempre la última versión desplegada
+    frame.src = app + (app.indexOf('?') < 0 ? '?' : '&') + 'v=' + Date.now();
     stage.classList.add('on');
     floatbar.classList.remove('hidden');
     fbRole.className = 'fb-role ' + role;
