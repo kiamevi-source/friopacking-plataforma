@@ -4118,7 +4118,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
         <div class="rd-card">
           <div class="rd-head click" onclick="rdFold(this,event)">
             <div class="rd-head-ic"><i data-lucide="image" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Evidencia fotográfica</h4><p>Arrastra fotos — la IA detecta personal, EPP y equipos</p></div>
+            <div class="rd-head-tt"><h4>Evidencia fotográfica</h4><p>Cualquier formato y tamaño · indica el ambiente y la actividad de cada foto</p></div>
             <span class="rd-head-badge" id="rd-fotos-badge">0</span>
             <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
           </div>
@@ -9811,7 +9811,7 @@ async function subirFotosReporte(files) {
       });
       if (!res.ok) throw new Error(await res.text());
       const url = `${SB_URL}/storage/v1/object/public/reporte-fotos/${path}`;
-      rdFotos.push({ url, nombre:file.name });
+      rdFotos.push({ url, nombre:file.name, tipo:file.type||'', ambiente:'', actividad:'' });
     } catch(e) {
       showToast('Error subiendo '+file.name);
       console.error(e);
@@ -9822,19 +9822,41 @@ async function subirFotosReporte(files) {
   renderFotosReporte();
 }
 function eliminarFotoReporte(i){ rdFotos.splice(i,1); renderFotosReporte(); }
-const RD_AI_TAGS = ['👷 Personal','🦺 EPP','🏗️ Equipo','🧊 Panel','⚡ Eléctrico','📐 Estructura'];
+function rdSetFotoMeta(i, field, val){ if (rdFotos[i]) rdFotos[i][field] = val; if (typeof rdUpdateRing==='function') rdUpdateRing(); }
 function renderFotosReporte() {
   const grid = document.getElementById('rd-fotos-grid');
   if (!grid) return;
+  rdEnsureFotoStyles();
   const badge = document.getElementById('rd-fotos-badge'); if (badge) badge.textContent = rdFotos.length;
+  const attr = s => (s==null?'':String(s)).replace(/"/g,'&quot;');
   grid.innerHTML = rdFotos.map((f,i)=>{
-    const isImg = /\.(jpe?g|png|webp|gif|heic|heif|bmp)$/i.test(f.nombre||'');
-    if (!f._ai) { const n = 1 + Math.floor(Math.random()*3); f._ai = [...RD_AI_TAGS].sort(()=>Math.random()-.5).slice(0,n); }
-    const chips = isImg ? `<div class="ai">${f._ai.map(t=>`<span class="rd-ai-chip">${t}</span>`).join('')}</div>` : '';
-    const body = isImg ? `<img src="${f.url}">` : `<div class="file">${(f.nombre||'archivo').slice(-16)}</div>`;
-    return `<div class="rd-photo">${body}<button class="del" onclick="eliminarFotoReporte(${i})">×</button>${chips}</div>`;
+    const isImg = /^image\//.test(f.tipo||'') || /\.(jpe?g|png|webp|gif|heic|heif|bmp)$/i.test(f.nombre||'');
+    const body = isImg ? `<img src="${f.url}" alt="">` : `<div class="file"><i data-lucide="file" class="ri"></i><span>${(f.nombre||'archivo').slice(-18)}</span></div>`;
+    return `<div class="rd-photo-card">
+      <div class="rd-photo-thumb">${body}<button class="del" title="Quitar" onclick="eliminarFotoReporte(${i})">×</button></div>
+      <div class="rd-photo-meta">
+        <input class="rd-photo-inp" placeholder="Ambiente (ej: Cámara 3, Sala de máquinas)" value="${attr(f.ambiente)}" oninput="rdSetFotoMeta(${i},'ambiente',this.value)">
+        <input class="rd-photo-inp" placeholder="¿Qué actividad se hizo?" value="${attr(f.actividad)}" oninput="rdSetFotoMeta(${i},'actividad',this.value)">
+      </div>
+    </div>`;
   }).join('');
+  if (window.lucide) lucide.createIcons();
   if (typeof rdUpdateRing === 'function') rdUpdateRing();
+}
+let _rdFotoStylesDone = false;
+function rdEnsureFotoStyles(){
+  if (_rdFotoStylesDone) return; _rdFotoStylesDone = true;
+  const css = `
+  #rd-fotos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+  .rd-photo-card{border:1px solid var(--border);border-radius:11px;overflow:hidden;background:var(--surface-1);}
+  .rd-photo-thumb{position:relative;background:var(--surface-2);} .rd-photo-thumb img{width:100%;height:130px;object-fit:cover;display:block;}
+  .rd-photo-thumb .file{height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--text-3);font-size:11.5px;padding:8px;text-align:center;} .rd-photo-thumb .file i{width:22px;height:22px;}
+  .rd-photo-thumb .del{position:absolute;top:6px;right:6px;width:24px;height:24px;border:none;border-radius:6px;background:rgba(15,23,42,.6);color:#fff;font-size:15px;line-height:1;cursor:pointer;}
+  .rd-photo-meta{display:flex;flex-direction:column;gap:6px;padding:9px;}
+  .rd-photo-inp{border:1px solid var(--border-strong);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text-1);background:var(--surface-2);width:100%;}
+  .rd-photo-inp:focus{outline:none;border-color:var(--brand-500,#0891b2);background:var(--surface-1);}
+  .rd-photo-inp::placeholder{color:var(--text-3);}`;
+  const st = document.createElement('style'); st.id='rd-foto-styles'; st.textContent = css; document.head.appendChild(st);
 }
 
 // ── Comercial: facturado + meta del mes ──
@@ -10104,7 +10126,6 @@ function rvRenderReporte(r){
     ${stat(plan.toFixed(1)+'%','Planificado')}
     ${stat((diff>=0?'+':'')+diff.toFixed(1),'Δ vs plan', diff>=0?'pos':'neg')}
     ${stat(spi.toFixed(2),'SPI', spi>=1?'pos':(spi>=0.9?'':'neg'))}
-    ${stat(personal,'Personal en obra')}
     ${stat((r.rondas_ok||0)+'/'+(r.rondas_total||0),'Rondas de calidad')}
   </div>`;
 
@@ -10177,7 +10198,7 @@ function rvRenderReporte(r){
   // Fotos (cualquier formato/tamaño)
   html += card('image','Evidencia fotográfica', `${fotos.length} archivo(s)`,
     fotos.length
-      ? `<div class="rv-gallery">${fotos.map(f=>{ const url=f.url||f; const nm=f.nombre||f.ambiente||''; const amb=f.ambiente||''; return `<figure class="rv-photo"><a href="${rvEsc(url)}" target="_blank" rel="noopener"><img src="${rvEsc(url)}" loading="lazy" crossorigin="anonymous" alt="${rvEsc(nm)}"></a>${(amb||nm)?`<figcaption>${rvEsc(amb||nm)}</figcaption>`:''}</figure>`; }).join('')}</div>`
+      ? `<div class="rv-gallery">${fotos.map(f=>{ const url=f.url||f; const amb=f.ambiente||''; const act=f.actividad||''; const nm=f.nombre||''; const cap=(amb||act)?`${amb?`<strong>${rvEsc(amb)}</strong>`:''}${act?`<span>${rvEsc(act)}</span>`:''}`:(nm?`<span>${rvEsc(nm)}</span>`:''); return `<figure class="rv-photo"><a href="${rvEsc(url)}" target="_blank" rel="noopener"><img src="${rvEsc(url)}" loading="lazy" crossorigin="anonymous" alt="${rvEsc(amb||nm)}"></a>${cap?`<figcaption>${cap}</figcaption>`:''}</figure>`; }).join('')}</div>`
       : `<p class="rv-none">Sin evidencia fotográfica adjunta.</p>`);
 
   // Firma
@@ -10262,7 +10283,7 @@ function rvEnsureStyles(){
   .rv-tag.alto{background:#fee2e2;color:#b91c1c;} .rv-tag.medio{background:#fef3c7;color:#b45309;} .rv-tag.bajo{background:#dcfce7;color:#15803d;} .rv-tag.imp{background:#e0e7ff;color:#4338ca;}
   .rv-narr{display:flex;flex-direction:column;gap:14px;} .rv-narr-blk h5{margin:0 0 5px;font-size:12px;font-weight:800;color:var(--text-2);display:flex;align-items:center;gap:6px;} .rv-narr-blk h5 i{width:14px;height:14px;} .rv-narr-blk p{margin:0;font-size:13.5px;line-height:1.55;color:var(--text-1);white-space:pre-wrap;}
   .rv-check{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;} .rv-check-i{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-3);} .rv-check-i.on{color:var(--text-1);font-weight:600;} .rv-check-i i{width:16px;height:16px;} .rv-check-i.on i{color:#059669;}
-  .rv-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;} .rv-photo{margin:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface-2);} .rv-photo img{width:100%;height:130px;object-fit:cover;display:block;} .rv-photo figcaption{padding:7px 9px;font-size:11px;color:var(--text-2);font-weight:600;border-top:1px solid var(--border);}
+  .rv-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;} .rv-photo{margin:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface-2);} .rv-photo img{width:100%;height:130px;object-fit:cover;display:block;} .rv-photo figcaption{display:flex;flex-direction:column;gap:2px;padding:7px 9px;font-size:11px;color:var(--text-2);border-top:1px solid var(--border);} .rv-photo figcaption strong{color:var(--text-1);font-size:11.5px;} .rv-photo figcaption span{color:var(--text-2);}
   .rv-firma{display:flex;flex-direction:column;gap:6px;align-items:flex-start;} .rv-firma img{max-width:280px;border:1px solid var(--border);border-radius:9px;background:#fff;} .rv-firma span{font-size:12.5px;font-weight:700;color:var(--text-1);}
   .rv-none{margin:0;font-size:12.5px;color:var(--text-3);font-style:italic;}
   @media(max-width:640px){ .rv-doc-hd h2{font-size:19px;} .rv-stat b{font-size:18px;} }`;
