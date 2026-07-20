@@ -4036,7 +4036,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
         <div class="rd-card">
           <div class="rd-head">
             <div class="rd-head-ic"><i data-lucide="trending-up" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Avance del día</h4><p>Planificado vs ejecutado y progreso por hito</p></div>
+            <div class="rd-head-tt"><h4>Avance del día</h4><p>Marca las tareas del Gantt hechas hoy / para mañana y su % de avance</p></div>
             <div class="rd-head-badge">Global · <strong id="rd-avance-global" style="color:var(--teal-700);">0%</strong></div>
           </div>
           <div class="rd-body">
@@ -4055,8 +4055,9 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
               <div class="field"><label>Rondas de calidad · del checklist</label><div style="display:flex;gap:6px;"><input type="number" id="rd-rondas-ok" readonly value="0" style="width:50%;background:var(--surface-2);" title="Ítems que cumplen"><input type="number" id="rd-rondas-tot" readonly value="0" style="width:50%;background:var(--surface-2);" title="Ítems aplicables"></div></div>
             </div>
             <div id="alerta-diferencia" class="hidden" style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#991b1b;font-weight:600;">⚠ Diferencia detectada entre avance supervisor y contrata. Revisar.</div>
+            <input id="rd-hito-search" type="search" placeholder="Buscar tarea del Gantt para marcar Hoy / Mañana…" oninput="rdHitoFilter(this.value)" style="width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:8px 11px;font-size:13px;margin-bottom:10px;background:var(--surface-1);color:var(--text-1);">
             <div id="rd-hitos-list" class="rd-prog"></div>
-            <p id="rd-hitos-empty" style="font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;">No hay hitos en el Gantt de este proyecto. Agrega uno manual abajo.</p>
+            <p id="rd-hitos-empty" style="font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;">No hay tareas del Gantt en este proyecto. Importa el cronograma en el tab Gantt, o agrega una tarea manual abajo.</p>
             <button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="agregarHitoManual()">+ Hito manual</button>
           </div>
         </div>
@@ -9720,12 +9721,13 @@ function renderContratas() {
 
 // ── ③ Avance por hito del Gantt ──
 async function cargarHitosReporte() {
-  const cod = currentProyecto?.cod;
+  const cod = currentProyecto?.cod || currentProyecto?.nombre;
   rdHitos = [];
   if (cod) {
     try {
-      const rows = await sbFetch(`/rest/v1/tareas_gantt?cod_proyecto=eq.${encodeURIComponent(cod)}&es_hito=eq.true&select=id,nombre_tarea,pct_avance&order=fecha_inicio_base`);
-      (rows||[]).forEach(r => rdHitos.push({ id:r.id, nombre:r.nombre_tarea, pct_actual:Number(r.pct_avance)||0, pct_nuevo:Number(r.pct_avance)||0, manual:false, hoy:false, manana:false }));
+      // Trae las TAREAS del cronograma (no solo milestones): hitos primero, luego actividades, ordenadas por fecha
+      const rows = await sbFetch(`/rest/v1/tareas_gantt?cod_proyecto=eq.${encodeURIComponent(cod)}&select=id,nombre_tarea,pct_avance,es_hito,nivel,fecha_inicio_base&order=es_hito.desc,fecha_inicio_base.asc&limit=400`);
+      (rows||[]).forEach(r => rdHitos.push({ id:r.id, nombre:r.nombre_tarea, pct_actual:Number(r.pct_avance)||0, pct_nuevo:Number(r.pct_avance)||0, manual:false, es_hito:!!r.es_hito, nivel:Number(r.nivel)||3, hoy:false, manana:false }));
     } catch(e){ /* sin gantt */ }
   }
   renderHitos();
@@ -9737,12 +9739,26 @@ function agregarHitoManual() {
   renderHitos();
 }
 function eliminarHito(i){ if(rdHitos[i].manual) rdHitos.splice(i,1); renderHitos(); }
+let _hitoFilter = '';
+function rdHitoFilter(v){ _hitoFilter = v||''; renderHitos(); }
 function renderHitos() {
   const wrap = document.getElementById('rd-hitos-list');
   const empty = document.getElementById('rd-hitos-empty');
   if (!wrap) return;
-  empty.style.display = rdHitos.length ? 'none' : 'block';
-  wrap.innerHTML = rdHitos.map((h,i)=>{
+  const q = (_hitoFilter||'').trim().toLowerCase();
+  const total = rdHitos.length;
+  // Visibles: las marcadas (Hoy/Mañana) siempre + las que coincidan con la búsqueda (o todas si son pocas)
+  const visibles = rdHitos.map((h,i)=>({h,i})).filter(({h})=>
+    h.hoy || h.manana || (q ? (h.nombre||'').toLowerCase().includes(q) : total<=15)
+  ).slice(0, 80);
+  if (empty){
+    if (!total){ empty.style.display='block'; }
+    else if (!visibles.length){
+      empty.style.display='block';
+      empty.textContent = q ? 'Ninguna tarea coincide con la búsqueda.' : `Busca una tarea del Gantt para marcarla como Hoy / Mañana (${total} tareas).`;
+    } else empty.style.display='none';
+  }
+  wrap.innerHTML = visibles.map(({h,i})=>{
     const delta = (h.pct_nuevo||0) - (h.pct_actual||0);
     const sub = h.manual ? '<small>manual</small>'
       : `<small>antes ${h.pct_actual}%${delta ? ` · <b style="color:${delta>0?'var(--success)':'var(--danger)'}">${delta>0?'+':''}${delta.toFixed(1)}</b>` : ''}</small>`;
