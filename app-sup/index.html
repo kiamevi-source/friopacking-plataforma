@@ -9141,7 +9141,7 @@ function renderGanttBoard() {
         <span class="nm-main">${chips.join('')}${(t.nombre_tarea||'').replace(/</g,'&lt;')}</span>
       </div>
       <div class="gdur">${t.duracion_dias!=null?t.duracion_dias+'d':'—'}</div>
-      <div class="gpct">${lvl===1?`${pct.toFixed(0)}%`:`<input class="gpct-inp" type="number" min="0" max="100" value="${pct.toFixed(0)}" onclick="event.stopPropagation()" onchange="setTaskPctInline('${t.id||''}',this.value)" title="Escribe el % de avance (100 = cumplido)" style="width:48px;text-align:right;border:1px solid var(--border-strong);border-radius:6px;padding:2px 5px;font-size:11px;font-weight:800;color:var(--navy-800);background:var(--surface-1);">`}</div>
+      <div class="gpct" style="${lvl===1?'':'display:flex;align-items:center;gap:5px;justify-content:flex-end;'}">${lvl===1?`${pct.toFixed(0)}%`:`<input class="gpct-inp" type="number" min="0" max="100" value="${pct.toFixed(0)}" onclick="event.stopPropagation()" onchange="setTaskPctInline('${t.id||''}',this.value)" title="Escribe el % de avance (100 = cumplido)" style="width:44px;text-align:right;border:1px solid var(--border-strong);border-radius:6px;padding:2px 5px;font-size:11px;font-weight:800;color:var(--navy-800);background:var(--surface-1);"><button onclick="event.stopPropagation();setTaskPctInline('${t.id||''}',100)" title="Marcar como listo (100%)" style="border:none;border-radius:6px;padding:3px 9px;font-size:10.5px;font-weight:800;cursor:pointer;white-space:nowrap;${pct>=100?'background:#16a34a;color:#fff;':'background:var(--surface-2);color:var(--teal-700,#0e7490);border:1px solid var(--border-strong);'}">${pct>=100?'✓ Listo':'Listo'}</button>`}</div>
     </div>`;
   }).join('');
 
