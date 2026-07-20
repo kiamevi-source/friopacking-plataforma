@@ -4744,8 +4744,9 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       <div class="info">
         <b>Modo:</b>
         <select id="mp-mode-sel" style="height:28px;padding:0 8px;font-size:11.5px;font-family:inherit;background:#fff;border:1px solid var(--border-strong);border-radius:7px;margin-left:6px;cursor:pointer;outline:none;">
-          <option value="append">Agregar al cronograma existente</option>
-          <option value="replace">Reemplazar todo el cronograma del proyecto</option>
+          <option value="merge">Actualizar · reemplaza las que ya están y agrega las nuevas (recomendado)</option>
+          <option value="replace">Reemplazar TODO el cronograma del proyecto</option>
+          <option value="append">Agregar sin revisar (puede duplicar)</option>
         </select>
       </div>
       <button class="btn btn-outline" onclick="closeImportPreview()">Cancelar</button>
@@ -7473,32 +7474,40 @@ async function commitImportPreview() {
 
   setSyncStatus('syncing','Importando…');
   try {
-    // Reemplazo total: DELETE primero
-    if (mode === 'replace') {
-      await sbFetch(`/rest/v1/tareas_gantt?cod_proyecto=eq.${encodeURIComponent(cod)}`, {
-        method:'DELETE', headers:{'Prefer':'return=minimal'}
-      });
-    }
+    const toRow = (r, idx, pctOverride) => ({
+      cod_proyecto: cod, nombre_tarea: r.nombre, nivel: r.nivel, fase: r.categoria,
+      categoria: r.categoria, tipo_medicion: r.tipo_medicion, unidad: r.unidad || null,
+      cantidad_total: r.cantidad_total ? parseFloat(r.cantidad_total) : null, cantidad_ejecutada: 0,
+      fecha_inicio_base: r.fecha_ini || null, fecha_fin_base: r.fecha_fin || null,
+      duracion_dias: r.dur, pct_avance: (pctOverride!=null ? pctOverride : r.pct),
+      es_hito: r.es_hito, es_critico: r.es_critico, responsable: r.responsable || '', orden: idx + 1
+    });
 
-    const payload = selected.map((r, idx) => ({
-      cod_proyecto: cod,
-      nombre_tarea: r.nombre,
-      nivel: r.nivel,
-      fase: r.categoria,
-      categoria: r.categoria,
-      tipo_medicion: r.tipo_medicion,
-      unidad: r.unidad || null,
-      cantidad_total: r.cantidad_total ? parseFloat(r.cantidad_total) : null,
-      cantidad_ejecutada: 0,
-      fecha_inicio_base: r.fecha_ini || null,
-      fecha_fin_base: r.fecha_fin || null,
-      duracion_dias: r.dur,
-      pct_avance: r.pct,
-      es_hito: r.es_hito,
-      es_critico: r.es_critico,
-      responsable: r.responsable || '',
-      orden: idx + 1
-    }));
+    let payload, nActualizadas = 0, nNuevas = selected.length;
+    if (mode === 'replace') {
+      await sbFetch(`/rest/v1/tareas_gantt?cod_proyecto=eq.${encodeURIComponent(cod)}`, { method:'DELETE', headers:{'Prefer':'return=minimal'} });
+      payload = selected.map((r, idx) => toRow(r, idx));
+    } else if (mode === 'merge') {
+      // Actualiza las que ya están (por nombre + fecha inicio), agrega las nuevas; conserva el avance reportado
+      let existentes = [];
+      try { existentes = await sbFetch(`/rest/v1/tareas_gantt?cod_proyecto=eq.${encodeURIComponent(cod)}&select=id,nombre_tarea,fecha_inicio_base,pct_avance`) || []; } catch(e){}
+      const kf = (n,f)=> String(n||'').trim().toLowerCase()+'|'+(f||'');
+      const exIdx = {}; existentes.forEach(e=>{ exIdx[kf(e.nombre_tarea, e.fecha_inicio_base)] = e; });
+      const idsReemplazar = [];
+      payload = selected.map((r, idx) => {
+        const ex = exIdx[kf(r.nombre, r.fecha_ini)];
+        let pct = Number(r.pct)||0;
+        if (ex){ idsReemplazar.push(ex.id); const exPct = Number(ex.pct_avance)||0; if (exPct > pct) pct = exPct; }
+        return toRow(r, idx, pct);
+      });
+      nActualizadas = idsReemplazar.length; nNuevas = selected.length - nActualizadas;
+      for (let i=0; i<idsReemplazar.length; i+=100){
+        const lote = idsReemplazar.slice(i, i+100);
+        await sbFetch(`/rest/v1/tareas_gantt?id=in.(${lote.join(',')})`, { method:'DELETE', headers:{'Prefer':'return=minimal'} });
+      }
+    } else { // append
+      payload = selected.map((r, idx) => toRow(r, idx));
+    }
 
     await sbFetch('/rest/v1/tareas_gantt', {
       method:'POST', headers:{'Prefer':'return=minimal'},
@@ -7506,7 +7515,7 @@ async function commitImportPreview() {
     });
 
     closeImportPreview();
-    showToast(`${selected.length} tareas importadas ✓`, 3200, 'success');
+    showToast(mode==='merge' ? `${nActualizadas} actualizadas · ${nNuevas} nuevas ✓` : `${selected.length} tareas importadas ✓`, 3200, 'success');
     setSyncStatus('ok','Importado ✓');
     setImportProgress(`<b>${selected.length} tareas</b> importadas con categorías y tipo de medición ✓`, 'success');
     setTimeout(clearImportProgress, 4500);
