@@ -226,6 +226,21 @@ const NP = {
     // STEP 4: INSERT
     setBtn('⏳ Guardando en Supabase...', true);
     try {
+      // Guarda anti-duplicado: no crear un proyecto si su código ya existe.
+      // Sin esto, dos altas con el mismo cod_proyecto generaban filas duplicadas
+      // con nombres distintos (p.ej. "AGROBERRIES II" vs "AGROBERRIES VIRÚ").
+      const _cod = (d.cod_proyecto || '').trim();
+      if (_cod) {
+        const { data: existe } = await window.sb
+          .from('proyectos').select('nombre').eq('cod_proyecto', _cod).limit(1);
+        if (existe && existe.length) {
+          window.showToast('Código ya existe',
+            `Ya hay un proyecto con el código ${_cod} ("${existe[0].nombre}"). Usa otro código o edita el existente.`,
+            'err', 7000);
+          setBtn(originalLabel, false);
+          return;
+        }
+      }
       const { data, error } = await window.sb.from('proyectos').insert([d]).select();
       if (error) throw error;
       const created = (data && data[0]) || d;
