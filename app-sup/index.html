@@ -5437,6 +5437,7 @@ async function setTaskPctInline(id, val){
   const pct = Math.max(0, Math.min(100, parseFloat(val)||0));
   const done = pct >= 100;
   const t = (_ganttState.tasks||[]).find(x=>String(x.id)===String(id));
+  const prevPct = t ? (parseFloat(t.pct_avance)||0) : 0;   // % anterior, para el delta de la bitácora
   if(t){ t.pct_avance = pct; t.cumplido = done; }
   // Actualización EN SITIO de esa fila (sin re-render → instantáneo, no pierde scroll)
   const row = document.querySelector(`.gantt-row[data-id="${id}"]`);
@@ -5449,7 +5450,27 @@ async function setTaskPctInline(id, val){
   // Guardar en segundo plano
   setSyncStatus('syncing','Guardando…');
   try{
-    await sbFetch(`/rest/v1/tareas_gantt?id=eq.${encodeURIComponent(id)}`, { method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify({ pct_avance: pct, cumplido: done }) });
+    const nowIso = new Date().toISOString();
+    // Escribimos updated_at (y fecha_cumplido) para que la detección de "sin movimiento" y el feed
+    // reconozcan la edición — antes el % inline/"Listo" no dejaba rastro y se marcaba como bloqueada.
+    await sbFetch(`/rest/v1/tareas_gantt?id=eq.${encodeURIComponent(id)}`, { method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify({ pct_avance: pct, cumplido: done, updated_at: nowIso, fecha_cumplido: done ? nowIso.slice(0,10) : null }) });
+    // Bitácora de avance (mismo patrón que toggleCumplimiento) — solo si el % cambió
+    if (pct !== prevPct) {
+      await sbFetch('/rest/v1/avance_log', {
+        method:'POST', headers:{'Prefer':'return=minimal'},
+        body: JSON.stringify({
+          tarea_id: id,
+          cod_proyecto: currentProyecto?.cod || currentProyecto?.nombre,
+          fecha: nowIso.slice(0,10),
+          estado_cumplimiento: done,
+          pct_resultante: pct,
+          pct_delta: pct - prevPct,
+          nota: done ? 'Marcado como Listo' : 'Avance actualizado',
+          supervisor: currentUser?.nombre,
+          supervisor_email: currentUser?.email
+        })
+      }).catch(()=>{});
+    }
     setSyncStatus('ok','Guardado ✓');
   }catch(e){ setSyncStatus('error','Error'); showToast('Error al guardar el avance'); }
 }
