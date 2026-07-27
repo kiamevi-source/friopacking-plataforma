@@ -5067,6 +5067,9 @@ async function cargarDashboard() {
     const [reportes, riesgosTbl, contratasTbl, personalTbl, ganttTbl] = await Promise.all([
       sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(nombre)})&order=fecha_reporte.desc&limit=30`).catch(()=>[]),
       sbFetch(`/rest/v1/riesgos?cod_proyecto=eq.${encodeURIComponent(cod)}&order=created_at.desc&limit=30`).catch(()=>[]),
+      // NOTA: hoy filtra por supervisor porque evaluacion_contratistas NO tiene cod_proyecto poblado
+      // (0/56 filas). Cuando el formulario de evaluación empiece a estampar cod_proyecto, cambiar a
+      // `cod_proyecto=eq.${cod}` para que sea POR OBRA y no por supervisor (evita mostrar otras obras).
       sbFetch(`/rest/v1/evaluacion_contratistas?supervisor=ilike.${encodeURIComponent('%'+(currentProyecto.supervisor||'').split(' ')[0]+'%')}&order=created_at.desc&limit=20`).catch(()=>[]),
       sbFetch(`/rest/v1/ingreso_personal?or=(proyecto.ilike.${encodeURIComponent('%'+nombre+'%')},cod_proyecto_fk.eq.${encodeURIComponent(cod)})&order=fecha.desc&limit=14`).catch(()=>[]),
       sbFetch(`/rest/v1/tareas_gantt?cod_proyecto=eq.${encodeURIComponent(cod)}&order=fecha_fin_base.asc&limit=200`).catch(()=>[])
@@ -5094,7 +5097,7 @@ async function cargarDashboard() {
     const ultimo = reportes[0];
     const avance = parseFloat(ultimo.pct_ejecutado) || 0;
     const plan   = parseFloat(ultimo.pct_planificado) || 0;
-    const spi    = parseFloat(ultimo.spi) || (plan > 0 ? avance/plan : 0);
+    const spi    = parseFloat(ultimo.spi) > 0 ? parseFloat(ultimo.spi) : (plan > 0 ? avance/plan : null); // null = sin plan cargado (no es SPI 0)
     const rondasOk = parseInt(ultimo.rondas_ok)||0;
     const rondasTot = parseInt(ultimo.rondas_total)||10;
     const rondasPct = rondasTot ? (rondasOk/rondasTot)*100 : 0;
@@ -5102,12 +5105,12 @@ async function cargarDashboard() {
     const delta = avance - plan;
 
     // ── Eval. contratas promedio (del último reporte si tiene, sino global recientes) ──
-    let evalCt = 0;
+    let evalCt = null; // null = sin evaluaciones (se muestra "—", no "0.0")
     if (ultimo.contratas_detalle && Array.isArray(ultimo.contratas_detalle) && ultimo.contratas_detalle.length) {
       const proms = ultimo.contratas_detalle.map(c => parseFloat(c.eval_promedio||c.promedio||0)).filter(v=>v>0);
       if (proms.length) evalCt = proms.reduce((a,b)=>a+b,0)/proms.length;
     }
-    if (!evalCt && (contratasTbl||[]).length) {
+    if (evalCt == null && (contratasTbl||[]).length) {
       const recent = (contratasTbl||[]).slice(0,5).map(c=>parseFloat(c.puntaje_final||0)).filter(v=>v>0);
       if (recent.length) evalCt = recent.reduce((a,b)=>a+b,0)/recent.length;
     }
@@ -5116,7 +5119,7 @@ async function cargarDashboard() {
     const prev = reportes[1] || null;
     const deltaAvance = prev ? (avance - parseFloat(prev.pct_ejecutado||0)) : null;
     const deltaPlan   = prev ? (plan   - parseFloat(prev.pct_planificado||0)) : null;
-    const deltaSpi    = prev ? (spi    - (parseFloat(prev.spi||0) || (parseFloat(prev.pct_planificado||0)>0 ? parseFloat(prev.pct_ejecutado||0)/parseFloat(prev.pct_planificado||0) : 0))) : null;
+    const deltaSpi    = (prev && spi!=null) ? (spi    - (parseFloat(prev.spi||0) || (parseFloat(prev.pct_planificado||0)>0 ? parseFloat(prev.pct_ejecutado||0)/parseFloat(prev.pct_planificado||0) : 0))) : null;
     const deltaRondas = prev ? (rondasPct - ((parseInt(prev.rondas_ok)||0)/(parseInt(prev.rondas_total)||10))*100) : null;
     const deltaPersonal = prev ? (personal - (parseInt(prev.personal_total)||0)) : null;
     const deltaEval = null; // sin histórico fácil; queda para refinar
@@ -5135,7 +5138,7 @@ async function cargarDashboard() {
 
     // ── Estados por KPI ──
     const stateAvance = delta >= -2 ? 'good' : delta >= -8 ? 'warn' : 'bad';
-    const stateSpi    = spi >= 0.96 ? 'good' : spi >= 0.85 ? 'warn' : 'bad';
+    const stateSpi    = spi==null ? 'neutral' : spi >= 0.96 ? 'good' : spi >= 0.85 ? 'warn' : 'bad';
     const stateEval   = evalCt >= 8 ? 'good' : evalCt >= 6 ? 'warn' : evalCt > 0 ? 'bad' : 'neutral';
     const stateRondas = rondasPct >= 80 ? 'good' : rondasPct >= 50 ? 'warn' : 'bad';
 
@@ -5148,7 +5151,8 @@ async function cargarDashboard() {
     }
 
     // ── Project Health (topbar) ──
-    if (stateSpi === 'good' && stateAvance === 'good') setProjectHealth('good','En plan · SPI '+spi.toFixed(2));
+    if (spi == null) setProjectHealth('idle','Sin plan cargado');
+    else if (stateSpi === 'good' && stateAvance === 'good') setProjectHealth('good','En plan · SPI '+spi.toFixed(2));
     else if (stateSpi === 'good' || stateSpi === 'warn') setProjectHealth('warn','Atención · SPI '+spi.toFixed(2));
     else setProjectHealth('bad','Crítico · SPI '+spi.toFixed(2));
 
@@ -11479,6 +11483,7 @@ async function cargarContratast() {
 
   // Historial desde evaluacion_contratistas
   try {
+    // NOTA: filtra por supervisor mientras evaluacion_contratistas no tenga cod_proyecto poblado (ver cargarDashboard).
     const rows = await sbFetch(`/rest/v1/evaluacion_contratistas?supervisor=ilike.${encodeURIComponent('%'+currentProyecto.supervisor?.split(' ')[0]+'%')}&order=created_at.desc&limit=20`);
     const hoy = document.getElementById('contratas-hoy');
     const hist = document.getElementById('contratas-hist');
