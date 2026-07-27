@@ -4131,7 +4131,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
               <b>Arrastra tus fotos aquí o haz clic</b>
               <span>Cualquier formato y tamaño</span>
             </div>
-            <input type="file" id="rd-fotos-input" multiple accept="*/*" onchange="subirFotosReporte(this.files)" style="display:none;">
+            <input type="file" id="rd-fotos-input" multiple accept="image/*" onchange="subirFotosReporte(this.files)" style="display:none;">
             <div id="rd-fotos-status" style="font-size:11.5px;color:var(--text-3);margin-top:8px;"></div>
             <div id="rd-fotos-grid" class="rd-gallery"></div>
           </div>
@@ -9895,24 +9895,52 @@ function renderRiesgos() {
 }
 
 // ── Fotos (cualquier formato y tamaño) → bucket reporte-fotos ──
+// Comprime/redimensiona una imagen en el navegador antes de subirla (ahorra datos móviles
+// y tiempo). Si no es imagen o el navegador no la puede decodificar (p.ej. HEIC en Android),
+// devuelve el archivo original sin tocar.
+async function _comprimirImagen(file, maxDim = 1600, quality = 0.8){
+  if (!/^image\//.test(file.type || '')) return { blob:file, type:file.type||'application/octet-stream', name:file.name };
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image();
+      const url = URL.createObjectURL(file);
+      el.onload  = () => { URL.revokeObjectURL(url); resolve(el); };
+      el.onerror = () => { URL.revokeObjectURL(url); reject(new Error('no-decode')); };
+      el.src = url;
+    });
+    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+    const cw = Math.round(img.width * scale), ch = Math.round(img.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = cw; canvas.height = ch;
+    canvas.getContext('2d').drawImage(img, 0, 0, cw, ch);
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+    if (blob && blob.size < file.size) {
+      const name = file.name.replace(/\.(png|jpe?g|webp|heic|heif|bmp|gif)$/i, '') + '.jpg';
+      return { blob, type:'image/jpeg', name };
+    }
+  } catch(e) { /* no se pudo decodificar → subir original */ }
+  return { blob:file, type:file.type||'application/octet-stream', name:file.name };
+}
 async function subirFotosReporte(files) {
   if (!files || !files.length) return;
   const cod = (currentProyecto?.cod || 'sin-cod').replace(/[^a-zA-Z0-9._-]/g,'_');
   const status = document.getElementById('rd-fotos-status');
   for (const file of files) {
-    status.textContent = `Subiendo ${file.name}…`;
-    const safe = file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    status.textContent = `Procesando ${file.name}…`;
+    const c = await _comprimirImagen(file);
+    status.textContent = `Subiendo ${c.name}…`;
+    const safe = c.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     const path = `${cod}/${Date.now()}_${safe}`;
     try {
       const token = localStorage.getItem('sb_token');
       const res = await fetch(`${SB_URL}/storage/v1/object/reporte-fotos/${path}`, {
         method:'POST',
-        headers:{ 'apikey':SB_KEY, 'Authorization':'Bearer '+(token||SB_KEY), 'Content-Type': file.type||'application/octet-stream', 'x-upsert':'true' },
-        body: file
+        headers:{ 'apikey':SB_KEY, 'Authorization':'Bearer '+(token||SB_KEY), 'Content-Type': c.type||'application/octet-stream', 'x-upsert':'true' },
+        body: c.blob
       });
       if (!res.ok) throw new Error(await res.text());
       const url = `${SB_URL}/storage/v1/object/public/reporte-fotos/${path}`;
-      rdFotos.push({ url, nombre:file.name, tipo:file.type||'', ambiente:'', actividad:'' });
+      rdFotos.push({ url, nombre:c.name, tipo:c.type||'', ambiente:'', actividad:'', captura_ts: new Date().toISOString() });
     } catch(e) {
       showToast('Error subiendo '+file.name);
       console.error(e);
@@ -11037,10 +11065,23 @@ async function guardarReporte(esDraft = false, silent = false) {
   const contratas = rdEsp.filter(r=>r.contrata && r.contrata.trim())
     .map(r=>({ nombre:r.contrata.trim(), especialidad:r.label, obreros:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
 
+  // ── Firma real: un ENVÍO final (no borrador ni autoguardado) exige firma dibujada.
+  //    Antes se marcaba "Firmado" siempre, aunque el recuadro estuviera vacío. ──
+  if (!esDraft && !silent && !_firmaDirty) {
+    showToast('Falta la firma para enviar el reporte. Firma en el recuadro y vuelve a enviar.');
+    const cv = document.getElementById('rd-firma-canvas'); if (cv) cv.scrollIntoView({ behavior:'smooth', block:'center' });
+    return;
+  }
   setSyncStatus('syncing','Guardando…');
   // Firma
   let firmaUrl = null;
   try { firmaUrl = await subirFirma(); } catch(e){}
+  // Se dibujó la firma pero la subida falló → no guardar como "firmado" en silencio (antes se perdía).
+  if (!esDraft && !silent && _firmaDirty && !firmaUrl) {
+    showToast('No se pudo subir la firma (revisa tu conexión). El reporte NO se envió; intenta de nuevo.');
+    setSyncStatus('error','Firma no subió');
+    return;
+  }
 
   const metaMes = parseFloat(document.getElementById('rd-meta-mes').value)||null;
   const facturado = parseFloat(document.getElementById('rd-facturado').value)||null;
@@ -11085,7 +11126,7 @@ async function guardarReporte(esDraft = false, silent = false) {
     checklist_cierre: checklist,
     checklist_ok: checklistOk,
     es_draft: esDraft,
-    firmado: !esDraft,
+    firmado: !esDraft && !!firmaUrl,
     enviado: !esDraft
   };
 
