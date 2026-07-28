@@ -401,7 +401,7 @@ table.dt td{font-size:12px;color:var(--ink);padding:9px 12px;vertical-align:midd
     <div class="msub" id="ms-sub">Asigna una persona a un proyecto existente</div>
     <div class="fgrid">
       <div class="fld full"><label>Proyecto *</label><select id="ms-proj"><option value="">&#8212; Selecciona &#8212;</option></select></div>
-      <div class="fld full"><label>Nombre completo *</label><input id="ms-name" type="text" placeholder="Apellidos Nombres"></div>
+      <div class="fld full"><label>Nombre completo *</label><input id="ms-name" type="text" list="tl-roster" placeholder="Apellidos Nombres"><datalist id="tl-roster"></datalist></div>
       <div class="fld"><label>Cargo</label><select id="ms-cargo"><option>Supervisor de Proyecto</option><option>Asistente de Proyecto</option><option>Gerente de Proyecto</option><option>Supervisor EEMM</option><option>Supervisor El&#233;ctrico</option><option>Supervisor Civil</option><option>Asistente Log&#237;stico</option><option>Calidad</option><option>Supervisor</option></select></div>
       <div class="fld"><label style="color:var(--red)">&#128274; Sueldo USD (solo t&#250; lo ves)</label><input id="ms-sal" type="number" placeholder="0" step="100" min="0"><div class="fnote">No aparece en PDF</div></div>
       <div class="fld"><label>Fecha inicio *</label><input id="ms-st" type="date"></div>
@@ -925,6 +925,9 @@ function delPer(id){const nm=DATA.find(d=>d.id===id)?.name||'';if(!confirm('¿Qu
 // INIT
 loadAll();
 checkApiKey();
+/* Fuente única de personas: sugerencias desde supervisores_equipo (roster) */
+fetch(SB_URL+'/rest/v1/supervisores_equipo?select=n&order=n.asc',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+  .then(r=>r.ok?r.json():[]).then(rows=>{const dl=document.getElementById('tl-roster');rows.forEach(x=>{const o=document.createElement('option');o.value=x.n;dl.appendChild(o);});}).catch(()=>{});
 </script>
 </body>
 </html>

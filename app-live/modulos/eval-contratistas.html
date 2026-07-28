@@ -226,7 +226,7 @@ header::after{content:"";position:absolute;bottom:0;left:0;right:0;height:3px;ba
         </div>
         <input type="text" id="contratista_custom" placeholder="Razón social..." style="display:none;margin-top:8px;"/>
       </div>
-      <div class="field"><label>Supervisor Evaluador</label><input type="text" id="supervisor" placeholder="Nombres y apellidos completos"/></div>
+      <div class="field"><label>Supervisor Evaluador</label><input type="text" id="supervisor" list="sup-roster" placeholder="Nombres y apellidos completos"/><datalist id="sup-roster"></datalist></div>
       <div class="field"><label>Fecha de Evaluación</label><input type="text" id="fecha" readonly/></div>
       <div class="field"><label>Período evaluado</label><input type="month" id="f-periodo" onchange="updatePeriodoLabel()"/></div>
     </div>
@@ -390,6 +390,9 @@ function updatePeriodoLabel(){const cap=periodoLbl();const pv=document.querySele
   document.getElementById('fecha').value=d.toLocaleDateString('es-PE',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   document.getElementById('f-periodo').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
   updatePeriodoLabel();
+  /* Fuente única de supervisores: sugerencias desde supervisores_equipo (roster) */
+  fetch(SB_URL+'/rest/v1/supervisores_equipo?select=n&order=n.asc',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+    .then(r=>r.ok?r.json():[]).then(rows=>{const dl=document.getElementById('sup-roster');rows.forEach(x=>{const o=document.createElement('option');o.value=x.n;dl.appendChild(o);});}).catch(()=>{});
 })();
 function checkCustom(s){const c=document.getElementById('contratista_custom');c.style.display=s.value==='__otro__'?'block':'none';if(s.value!=='__otro__')c.value='';}
 function getContratista(){const s=document.getElementById('contratista');return s.value==='__otro__'?document.getElementById('contratista_custom').value.trim():s.value;}

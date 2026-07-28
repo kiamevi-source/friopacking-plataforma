@@ -112,7 +112,11 @@ let scores={};  // item -> 1..5 | 'nc'
   const aSel=document.getElementById('f-area');
   Object.keys(AREAS).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=AREAS[k].lbl;aSel.appendChild(o);});
   const sSel=document.getElementById('f-sup');
-  SUPS.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sSel.appendChild(o);});
+  /* Fuente única de supervisores: tabla supervisores_equipo (roster). Fallback a SUPS si falla. */
+  const addSups=names=>names.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sSel.appendChild(o);});
+  fetch(SB_URL+'/rest/v1/supervisores_equipo?select=n&order=n.asc',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+    .then(r=>r.ok?r.json():[]).then(rows=>addSups(rows.length?rows.map(x=>x.n):SUPS))
+    .catch(()=>addSups(SUPS));
 })();
 
 function renderItems(){
