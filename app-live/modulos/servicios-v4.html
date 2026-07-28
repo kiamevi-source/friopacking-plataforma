@@ -1,0 +1,1956 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FRIOPACKING — PMO Enterprise v3</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+--bg:#f4f6f9;--surface:#ffffff;--surface2:#f8fafc;--surface3:#f1f5f9;--border:#e5e7eb;--border2:#d1d5db;
+--t1:#0f172a;--t2:#475569;--t3:#94a3b8;--t4:#cbd5e1;
+--brand:#0ea5a4;--brand-l:#ccfbf1;--brand-m:#99f6e4;--brand-d:#0d9488;
+--blue:#3b82f6;--blue-l:#dbeafe;--blue-d:#1e40af;
+--amber:#f59e0b;--amber-l:#fef3c7;--amber-d:#b45309;
+--green:#10b981;--green-l:#d1fae5;--green-d:#047857;
+--red:#ef4444;--red-l:#fee2e2;--red-d:#b91c1c;
+--purple:#8b5cf6;--purple-l:#ede9fe;--purple-d:#6d28d9;
+--orange:#f97316;--orange-l:#fed7aa;
+--pink:#ec4899;--pink-l:#fce7f3;
+--gray:#64748b;--gray-l:#f1f5f9;
+--shadow:0 1px 2px rgba(15,23,42,.06),0 1px 1px rgba(15,23,42,.04);
+--shadow-md:0 4px 12px -2px rgba(15,23,42,.08),0 2px 4px -1px rgba(15,23,42,.04);
+--shadow-lg:0 10px 24px -6px rgba(15,23,42,.10),0 4px 8px -2px rgba(15,23,42,.05);
+}
+body{background:var(--bg);color:var(--t1);font-family:'Manrope',system-ui,-apple-system,sans-serif;font-size:13px;min-height:100vh;-webkit-font-smoothing:antialiased}
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:60px;flex-shrink:0;box-shadow:var(--shadow)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:38px;height:38px;background:linear-gradient(135deg,var(--brand) 0%,var(--brand-d) 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;letter-spacing:.5px;box-shadow:0 4px 8px rgba(13,148,136,.25)}
+.brand-name{font-size:15.5px;font-weight:700;color:var(--t1);letter-spacing:-.2px}
+.brand-sub{font-size:11px;color:var(--t3);margin-top:1px;font-weight:500}
+.topbar-meta{display:flex;align-items:center;gap:12px}
+.live-pill{display:flex;align-items:center;gap:6px;background:var(--green-l);border:1px solid #6ee7b7;padding:5px 11px;border-radius:20px;font-size:11px;color:#065f46;font-weight:600}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.date-chip{font-size:11.5px;color:var(--t2);background:var(--surface2);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-weight:500}
+
+/* LAYOUT */
+.layout{display:flex;flex:1;overflow:hidden}
+.sidebar{width:224px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.nav-group{padding:18px 14px 6px;font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1.2px}
+.nav-item{display:flex;align-items:center;gap:11px;padding:9px 14px;cursor:pointer;color:var(--t2);border-radius:9px;margin:1px 10px;transition:.15s;font-size:13px;font-weight:500}
+.nav-item:hover{background:var(--surface2);color:var(--t1)}
+.nav-item.active{background:linear-gradient(135deg,var(--brand-l),#e0f7f6);color:var(--brand-d);font-weight:600}
+.nav-item.active i{color:var(--brand-d)}
+.nav-item i{font-size:17px;width:18px;flex-shrink:0;color:var(--t3)}
+.nav-badge{margin-left:auto;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--red-l);color:var(--red-d)}
+.nav-badge.blue{background:var(--blue-l);color:var(--blue-d)}
+.nav-badge.brand{background:var(--brand-l);color:var(--brand-d)}
+.sidebar-footer{margin-top:auto;padding:14px;border-top:1px solid var(--border)}
+.sidebar-footer p{font-size:10px;color:var(--t3);font-weight:500}
+.main{flex:1;overflow-y:auto;background:var(--bg)}
+.page{display:none;padding:22px 24px}
+.page.active{display:block}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:16px;flex-wrap:wrap}
+.ph-title{font-size:22px;font-weight:700;color:var(--t1);letter-spacing:-.4px}
+.ph-sub{font-size:13px;color:var(--t2);margin-top:4px;font-weight:500}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s;border:1px solid var(--border);background:var(--surface);color:var(--t2)}
+.btn:hover{background:var(--surface2);border-color:var(--border2);color:var(--t1)}
+.btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+.btn.primary:hover{background:var(--brand-d);border-color:var(--brand-d)}
+.btn i{font-size:14px}
+
+/* TABS */
+.tabs{display:inline-flex;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px;box-shadow:var(--shadow)}
+.tab{padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;transition:.15s;display:flex;align-items:center;gap:6px}
+.tab:hover{color:var(--t1)}
+.tab.active{background:var(--brand);color:#fff;box-shadow:0 2px 4px rgba(13,148,136,.25)}
+.tab i{font-size:14px}
+
+/* SECTION TITLES (uppercase tiny labels) */
+.sec-label{font-size:10.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1.4px;margin:18px 0 12px;display:flex;align-items:center;gap:8px}
+.sec-label::after{content:"";flex:1;height:1px;background:var(--border)}
+
+/* KPI CARDS — corporate style */
+.kpi-grid-10{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:8px}
+@media(max-width:1500px){.kpi-grid-10{grid-template-columns:repeat(5,1fr)}}
+@media(max-width:1200px){.kpi-grid-10{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.kpi-grid-10{grid-template-columns:repeat(2,1fr)}}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi-c{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:.18s}
+.kpi-c:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-color:var(--border2)}
+.kpi-top-line{position:absolute;top:0;left:0;right:0;height:3px;border-radius:14px 14px 0 0}
+.kpi-ico-sq{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px}
+.kpi-badge{position:absolute;top:13px;right:13px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.3px}
+.kpi-num{font-size:32px;font-weight:800;line-height:1;letter-spacing:-1px}
+.kpi-num.md{font-size:26px}
+.kpi-lbl{font-size:10.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-top:9px}
+.kpi-sub{font-size:11.5px;color:var(--t2);margin-top:6px;font-weight:500}
+.kpi-bar{margin-top:10px;height:5px;border-radius:5px;background:var(--gray-l);overflow:hidden}
+.kpi-bar-fill{height:100%;border-radius:5px;transition:.5s}
+
+/* ============ HERO KPIs (Gerencial / Alto Impacto) ============ */
+.hero-grid{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:1200px){.hero-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:760px){.hero-grid{grid-template-columns:1fr;}}
+.hero-c{position:relative;border-radius:18px;padding:22px 24px;overflow:hidden;box-shadow:0 4px 14px -4px rgba(15,23,42,.10),0 2px 4px -2px rgba(15,23,42,.06);min-height:200px;display:flex;flex-direction:column}
+.hero-c.h-brand{background:linear-gradient(135deg,#0f766e 0%,#14b8a6 60%,#2dd4bf 100%);color:#fff}
+.hero-c.h-success{background:linear-gradient(135deg,#065f46 0%,#10b981 100%);color:#fff}
+.hero-c.h-danger{background:linear-gradient(135deg,#991b1b 0%,#ef4444 100%);color:#fff}
+.hero-c.h-warn{background:linear-gradient(135deg,#92400e 0%,#f59e0b 100%);color:#fff}
+.hero-c.h-dark{background:linear-gradient(135deg,#0f172a 0%,#334155 100%);color:#fff}
+.hero-c::before{content:"";position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none}
+.hero-c::after{content:"";position:absolute;bottom:-60px;left:-60px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none}
+.hero-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;position:relative;z-index:1}
+.hero-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;opacity:.92}
+.hero-ico{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.18);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.hero-num{font-size:64px;font-weight:800;line-height:1;letter-spacing:-2.5px;position:relative;z-index:1;margin-top:6px;font-variant-numeric:tabular-nums}
+.hero-num.smaller{font-size:52px;letter-spacing:-2px}
+.hero-sub{font-size:13.5px;margin-top:8px;opacity:.92;font-weight:500;line-height:1.45;position:relative;z-index:1}
+.hero-foot{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.20);display:flex;gap:18px;position:relative;z-index:1}
+.hero-foot-item{flex:1;min-width:0}
+.hf-num{font-size:21px;font-weight:800;line-height:1;letter-spacing:-.6px;font-variant-numeric:tabular-nums}
+.hf-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;opacity:.85;margin-top:4px}
+/* Stacked bar inside hero */
+.hero-stack{margin-top:14px;height:8px;border-radius:8px;background:rgba(255,255,255,.22);overflow:hidden;display:flex;position:relative;z-index:1}
+.hero-stack-seg{height:100%;transition:.4s}
+.hero-stack-leg{display:flex;gap:14px;margin-top:8px;font-size:11px;font-weight:600;position:relative;z-index:1}
+.hero-stack-leg .dot-s{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px}
+.hero-pulse{animation:hero-pulse 1.6s ease-in-out infinite}
+@keyframes hero-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.78;transform:scale(1.04)}}
+
+/* Strip KPIs (smaller, after heroes) */
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:10px}
+@media(max-width:1300px){.kpi-strip{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.kpi-strip{grid-template-columns:repeat(2,1fr)}}
+.kpi-strip-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+@media(max-width:1100px){.kpi-strip-4{grid-template-columns:repeat(2,1fr)}}
+
+/* Urgentes badges/cards */
+.urg-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:.15s;display:flex;align-items:center;gap:12px;border-left:4px solid var(--gray)}
+.urg-card.urg-crit{border-left-color:var(--red);background:linear-gradient(90deg,#fef2f2 0%,#fff 60%)}
+.urg-card.urg-high{border-left-color:var(--amber);background:linear-gradient(90deg,#fffbeb 0%,#fff 60%)}
+.urg-card.urg-med{border-left-color:var(--orange)}
+.urg-card.urg-low{border-left-color:var(--gray)}
+.urg-card:hover{transform:translateX(2px);box-shadow:var(--shadow-md)}
+.urg-days{flex-shrink:0;text-align:center;min-width:64px;padding:6px 10px;border-radius:10px;background:var(--surface2);border:1px solid var(--border)}
+.urg-days.d-crit{background:var(--red-l);border-color:#fecaca;color:var(--red-d)}
+.urg-days.d-high{background:var(--amber-l);border-color:#fde68a;color:var(--amber-d)}
+.urg-days.d-med{background:var(--orange-l);border-color:#fdba74;color:#9a3412}
+.urg-days .ud-n{font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.urg-days .ud-l{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-top:2px;opacity:.85}
+.urg-info{flex:1;min-width:0}
+.urg-cli{font-size:14px;font-weight:700;color:var(--t1);letter-spacing:-.2px}
+.urg-meta{font-size:11.5px;color:var(--t2);margin-top:3px;font-weight:500;display:flex;flex-wrap:wrap;gap:9px}
+.urg-meta span{display:inline-flex;align-items:center;gap:4px}
+.urg-meta i{font-size:13px;color:var(--t3)}
+.urg-right{flex-shrink:0;text-align:right;min-width:120px}
+.urg-status{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:4px 10px;border-radius:14px;display:inline-block}
+.urg-status.s-licit{background:var(--purple-l);color:var(--purple-d)}
+.urg-status.s-pend{background:#fce7f3;color:#9d174d}
+.urg-status.s-vencido{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5}
+.urg-prop{font-size:11px;color:var(--t3);margin-top:4px;font-weight:500}
+.urg-prop strong{color:var(--t2);font-weight:600}
+
+/* SECTIONS */
+.section{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+.sec-head{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sec-title{font-size:13.5px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:9px;letter-spacing:-.1px}
+.sec-title i{font-size:16px;color:var(--brand)}
+.sec-extra{font-size:11.5px;color:var(--t3);font-weight:500}
+.sec-body{padding:18px 20px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g23{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:14px}
+@media(max-width:1100px){.g2,.g3,.g23{grid-template-columns:1fr}}
+
+/* TAGS / CHIPS */
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.t-proceso{background:var(--blue-l);color:var(--blue-d)}
+.t-cierre{background:var(--amber-l);color:var(--amber-d)}
+.t-concluido{background:var(--green-l);color:var(--green-d)}
+.t-porinicia{background:#f1f5f9;color:var(--t2)}
+.t-licitacion{background:var(--purple-l);color:var(--purple-d)}
+.t-pendiente{background:#fce7f3;color:#9d174d}
+.t-contratado{background:var(--green-l);color:var(--green-d)}
+.t-ocupada{background:var(--red-l);color:var(--red-d)}
+.t-disponible{background:var(--green-l);color:var(--green-d)}
+.t-asignada{background:var(--amber-l);color:var(--amber-d)}
+.t-comprometida{background:var(--purple-l);color:var(--purple-d)}
+.t-sinuso{background:#f1f5f9;color:var(--t2)}
+
+.risk{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
+.r0{background:var(--green-l);color:var(--green-d)}
+.r1{background:var(--amber-l);color:var(--amber-d)}
+.r2{background:var(--red-l);color:var(--red-d)}
+
+/* TABLES */
+table{width:100%;border-collapse:collapse}
+thead th{font-size:10.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;padding:11px 14px;text-align:left;background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--t2);font-size:12.5px;vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#fafbfc}
+td.bold{color:var(--t1);font-weight:600}
+
+/* BARS */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bar-lbl{width:130px;font-size:12px;color:var(--t1);font-weight:500;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;background:#f1f5f9;border-radius:20px;height:10px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:20px;transition:.5s;position:relative}
+.bar-fill-num{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;color:#fff;line-height:1}
+.bar-pct{width:42px;text-align:right;font-size:12px;font-weight:700;color:var(--t1)}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block}
+.d-green{background:var(--green)}
+.d-amber{background:var(--amber)}
+.d-red{background:var(--red)}
+.d-blue{background:var(--blue)}
+.d-purple{background:var(--purple)}
+.d-gray{background:var(--gray)}
+.d-orange{background:var(--orange)}
+.d-pink{background:var(--pink)}
+
+/* ALERTS */
+.alert-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.alert-row:last-child{border-bottom:none}
+.alert-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.a-red{background:var(--red-l);color:var(--red-d)}
+.a-amber{background:var(--amber-l);color:var(--amber-d)}
+.a-blue{background:var(--blue-l);color:var(--blue-d)}
+.alert-title{font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:3px}
+.alert-desc{font-size:11.5px;color:var(--t2);line-height:1.45}
+
+/* FORM */
+input[type=text],input[type=date],select{background:var(--surface);border:1px solid var(--border2);border-radius:8px;color:var(--t1);padding:8px 12px;font-size:12.5px;outline:none;transition:.15s;font-family:inherit}
+input:focus,select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(14,165,164,.12)}
+.frow{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.frow select{min-width:160px}
+.frow input{min-width:200px}
+
+/* GANTT */
+.gantt-bar{position:absolute;top:50%;transform:translateY(-50%);height:22px;border-radius:6px;font-size:10px;font-weight:600;color:#fff;padding:0 8px;display:flex;align-items:center;white-space:nowrap;overflow:hidden;cursor:pointer;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.gantt-bar:hover{filter:brightness(1.08);transform:translateY(-50%) scale(1.01);box-shadow:0 4px 12px rgba(0,0,0,.18);z-index:3}
+.gantt-bar.pending{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.25) 0,rgba(255,255,255,.25) 4px,transparent 4px,transparent 8px) !important;border:1.5px dashed rgba(255,255,255,.85)}
+.gantt-bar.urgent{box-shadow:0 0 0 2px var(--red),0 0 8px rgba(239,68,68,.55) !important;animation:pulseUrgent 2s ease-in-out infinite}
+@keyframes pulseUrgent{0%,100%{box-shadow:0 0 0 2px var(--red),0 0 8px rgba(239,68,68,.45)}50%{box-shadow:0 0 0 2px var(--red),0 0 14px rgba(239,68,68,.85)}}
+.today-line{position:absolute;top:0;bottom:0;width:2px;background:var(--red);opacity:.6;z-index:5;pointer-events:none}
+.today-label{position:absolute;top:2px;font-size:9px;font-weight:700;color:#fff;background:var(--red);padding:2px 5px;border-radius:3px;transform:translateX(-50%);white-space:nowrap;z-index:6}
+.multi-badge{background:linear-gradient(135deg,var(--amber),var(--orange));color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:.3px}
+
+/* GANTT legend */
+.gantt-legend{display:flex;gap:14px;margin-bottom:12px;font-size:11.5px;color:var(--t2);flex-wrap:wrap;align-items:center;padding:11px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow)}
+.gantt-legend-item{display:flex;align-items:center;gap:6px;font-weight:500}
+.gantt-legend-sw{width:18px;height:9px;border-radius:3px;display:inline-block}
+.gantt-legend-sw.striped{background-image:repeating-linear-gradient(135deg,#94a3b8 0,#94a3b8 3px,transparent 3px,transparent 6px),linear-gradient(#cbd5e1,#cbd5e1);border:1px dashed #94a3b8}
+.gantt-legend-sw.urgent-sw{background:var(--red);box-shadow:0 0 0 1.5px #fff,0 0 0 3px var(--red)}
+
+/* MATRIX */
+.mx-table{border-collapse:collapse;min-width:700px;width:100%}
+.mx-table th{font-size:10.5px;font-weight:700;color:var(--t2);padding:10px 12px;border:1px solid var(--border);background:var(--surface2);text-align:center;white-space:nowrap}
+.mx-table th.rh{text-align:left;min-width:140px}
+.mx-table td{padding:8px 10px;border:1px solid var(--border);text-align:center;font-size:11.5px;vertical-align:middle}
+.mx-table tr:hover td{background:#fafbfc}
+
+/* AVAIL CARDS */
+.avail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.avail-c{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+.avail-c-title{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.avail-c ul{list-style:none;max-height:280px;overflow-y:auto}
+.avail-c li{padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--t2);display:flex;align-items:center;gap:7px}
+.avail-c li:last-child{border-bottom:none}
+.avail-c li small{color:var(--t3);font-size:10.5px;margin-left:auto}
+
+/* CHAT */
+.chat-outer{display:flex;flex-direction:column;height:480px}
+.chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:82%}
+.msg.bot{align-self:flex-start}
+.msg.user{align-self:flex-end}
+.msg-bubble{padding:11px 15px;border-radius:12px;font-size:12.5px;line-height:1.55}
+.msg.bot .msg-bubble{background:var(--surface2);color:var(--t1);border:1px solid var(--border);border-bottom-left-radius:3px}
+.msg.user .msg-bubble{background:var(--brand);color:#fff;border-bottom-right-radius:3px}
+.msg-ts{font-size:10px;color:var(--t3);margin-top:3px;padding:0 3px}
+.chat-quick{padding:8px 14px 2px;display:flex;flex-wrap:wrap;gap:6px}
+.quick-btn{background:var(--surface);border:1px solid var(--border2);color:var(--t2);padding:6px 11px;border-radius:20px;font-size:11px;cursor:pointer;transition:.15s;font-weight:500}
+.quick-btn:hover{background:var(--brand-l);border-color:var(--brand);color:var(--brand-d)}
+.chat-inp-row{padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px}
+.chat-inp{flex:1;background:var(--surface);border:1px solid var(--border2);border-radius:8px;color:var(--t1);padding:9px 14px;font-size:13px;outline:none}
+.chat-inp:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(14,165,164,.12)}
+.send-btn{background:var(--brand);color:#fff;border:none;border-radius:8px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px}
+.send-btn:hover{background:var(--brand-d)}
+
+/* CODE */
+pre{font-family:'Cascadia Code','Consolas',monospace;font-size:11.5px;line-height:1.6;color:#0c4a6e;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:12px;overflow-x:auto;margin:0}
+.dax-block{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
+.dax-name{font-size:12px;font-weight:700;color:var(--t1);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+
+/* CENTER LABEL ON DONUT */
+.donut-wrap{position:relative;height:200px}
+.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.donut-center-num{font-size:24px;font-weight:800;color:var(--t1);line-height:1}
+.donut-center-lbl{font-size:9.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+
+/* PILL counters */
+.pill-stat{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;background:var(--surface2);border:1px solid var(--border);color:var(--t1)}
+.pill-stat strong{font-size:14px;font-weight:800}
+
+/* small list */
+.mini-list{display:flex;flex-direction:column;gap:8px}
+.mini-list-item{display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);font-size:12px}
+.mini-list-item .name{flex:1;color:var(--t1);font-weight:500}
+.mini-list-item .bar-mini{flex:1.2;background:#e5e7eb;border-radius:10px;height:18px;overflow:hidden;position:relative}
+.mini-list-item .bar-mini-fill{height:100%;border-radius:10px;display:flex;align-items:center;padding-left:7px;color:#fff;font-size:10.5px;font-weight:700}
+.mini-list-item .num{font-weight:700;color:var(--t1);width:24px;text-align:right}
+
+/* ── GANTT v2 frozen cols ─────────────────────────────── */
+.gantt-wrap-inner{min-width:1400px}
+.gantt-row{display:grid;align-items:stretch}
+.gantt-row.cols-2{grid-template-columns:260px 1fr}
+.gantt-col-left{position:sticky;left:0;z-index:8;background:var(--surface);border-right:2px solid var(--border2);min-width:260px;padding:8px 12px}
+.gantt-col-left.header-left{background:var(--surface2);z-index:12;border-bottom:2px solid var(--border2)}
+.gantt-col-right{position:relative;min-height:40px}
+.gantt-header-row{position:sticky;top:0;z-index:11;display:grid;grid-template-columns:260px 1fr;background:var(--surface2);border-bottom:2px solid var(--border2)}
+.gantt-group-header{position:sticky;top:44px;z-index:9;display:grid;grid-template-columns:260px 1fr;border-bottom:1px solid var(--border)}
+.gantt-detail-row{display:grid;grid-template-columns:260px 1fr;border-bottom:1px solid #f1f5f9}
+.gantt-detail-row:hover{background:#f8fafc}
+/* Esp color pills */
+.esp-pill{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;flex-shrink:0}
+/* Sit overlay on bar */
+.gantt-bar.sit-pend{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.3) 0,rgba(255,255,255,.3) 5px,transparent 5px,transparent 10px)!important;border:2px dashed rgba(255,255,255,.9)!important;opacity:.85}
+.gantt-bar.sit-licit{background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.12) 0,rgba(0,0,0,.12) 4px,transparent 4px,transparent 8px)!important;border:2px dotted rgba(255,255,255,.8)!important}
+/* Timeline view */
+.tl-row{display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid #f1f5f9;align-items:stretch}
+.tl-row:hover .tl-left{background:#f0fdfa}
+.tl-left{position:sticky;left:0;z-index:8;background:var(--surface);border-right:2px solid var(--border2);padding:10px 12px;min-width:200px}
+.tl-right{position:relative;min-height:46px}
+.tl-header{position:sticky;top:0;z-index:11;display:grid;grid-template-columns:200px 1fr;background:var(--surface2);border-bottom:2px solid var(--border2)}
+
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">FP</div>
+    <div><div class="brand-name">FRIOPACKING</div><div class="brand-sub">PMO Enterprise · Control de Servicios & Contratistas v3.0</div></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:5px;flex:1;justify-content:center;flex-wrap:wrap">
+    <button onclick="toggleGlobalEst(this,'Proceso')" data-est="Proceso" class="g-chip active" style="padding:4px 11px;border-radius:20px;border:1.5px solid #2563eb;background:#dbeafe;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s">● Proceso</button>
+    <button onclick="toggleGlobalEst(this,'Cierre')" data-est="Cierre" class="g-chip active" style="padding:4px 11px;border-radius:20px;border:1.5px solid #d97706;background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s">● Cierre</button>
+    <button onclick="toggleGlobalEst(this,'Por Iniciar')" data-est="Por Iniciar" class="g-chip active" style="padding:4px 11px;border-radius:20px;border:1.5px solid #64748b;background:#f1f5f9;color:#475569;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s">● Por Iniciar</button>
+    <button onclick="toggleGlobalEst(this,'Concluido')" data-est="Concluido" class="g-chip" style="padding:4px 11px;border-radius:20px;border:1.5px solid #d1d5db;background:#f9fafb;color:#9ca3af;font-size:11px;font-weight:600;cursor:pointer;opacity:.5;transition:all .15s">● Concluido</button>
+  </div>
+  <div class="topbar-meta">
+    <div class="live-pill"><span class="live-dot"></span>Sistema Activo</div>
+    <div class="date-chip" id="dateChip"></div>
+  </div>
+</div>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="nav-group">Principal</div>
+  <div class="nav-item active" onclick="nav('ejecutiva',this)"><i class="ti ti-layout-dashboard"></i>Vista Ejecutiva</div>
+  <div class="nav-item" onclick="nav('pmo',this)"><i class="ti ti-chart-dots-3"></i>Vista PMO</div>
+  <div class="nav-group">Análisis</div>
+  <div class="nav-item" onclick="nav('matriz',this)"><i class="ti ti-layout-grid"></i>Matriz Operativa</div>
+  <div class="nav-item" onclick="nav('gantt',this)"><i class="ti ti-timeline"></i>Gantt Gerencial</div>
+  <div class="nav-group">Inteligencia</div>
+  <div class="nav-item" onclick="nav('urgentes',this)"><i class="ti ti-clock-exclamation"></i>Próximos sin Contratar <span class="nav-badge" id="nb-urgentes">0</span></div>
+  <div class="nav-item" onclick="nav('disponibilidad',this)"><i class="ti ti-calendar-check"></i>Disponibilidad</div>
+  <div class="nav-item" onclick="nav('bot',this)"><i class="ti ti-robot"></i>IA Asistente</div>
+  <div class="nav-group">Referencia</div>
+  <div class="nav-item" onclick="nav('modelo',this)"><i class="ti ti-database"></i>Modelo &amp; DAX</div>
+  <div class="nav-item" onclick="nav('universo',this)"><i class="ti ti-users"></i>Universo Contratistas <span class="nav-badge brand" id="nb-total"></span></div>
+  <div class="sidebar-footer"><p>FRIOPACKING PMO v3.0<br>Premium Enterprise Edition</p></div>
+</div>
+
+<!-- MAIN -->
+
+<div class="main">
+
+<!-- EJECUTIVA -->
+<div class="page active" id="page-ejecutiva">
+  <div class="ph">
+    <div>
+      <div class="ph-title">Vista Ejecutiva</div>
+      <div class="ph-sub">Resumen gerencial corporativo · KPIs críticos del portafolio de servicios</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button id="btnToggleConcluido" onclick="toggleEjecutivaConcluido()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);font-size:12px;font-weight:600;color:var(--t2);cursor:pointer">
+        <i class="ti ti-eye-off" id="iconToggleConcluido"></i><span id="lblToggleConcluido">Ocultar Concluidos</span>
+      </button>
+      <button class="btn primary" onclick="initEjecutiva()"><i class="ti ti-refresh"></i>Actualizar</button>
+    </div>
+  </div>
+
+  <div class="sec-label"><i class="ti ti-stars"></i>Indicadores Clave del Portafolio</div>
+  <div class="hero-grid" id="kpi-hero"></div>
+
+  <div class="sec-label"><i class="ti ti-activity"></i>Estado Operacional</div>
+  <div class="kpi-strip" id="kpi-op"></div>
+
+  <div class="sec-label"><i class="ti ti-users-group"></i>Recursos &amp; Cobertura</div>
+  <div class="kpi-strip-4" id="kpi-rec"></div>
+
+  <div class="sec-label"><i class="ti ti-chart-pie"></i>Distribución Operativa</div>
+  <div class="g3">
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-chart-donut-3"></i>Estado de Servicios</div></div>
+      <div class="sec-body">
+        <div class="donut-wrap">
+          <canvas id="chEstados" role="img" aria-label="Estado de servicios"></canvas>
+          <div class="donut-center"><div class="donut-center-num" id="dEstNum">0</div><div class="donut-center-lbl">Total</div></div>
+        </div>
+        <div id="legEstados" style="display:flex;flex-direction:column;gap:6px;margin-top:14px"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-file-check"></i>Situación Contractual</div></div>
+      <div class="sec-body">
+        <div class="donut-wrap">
+          <canvas id="chContrat" role="img" aria-label="Situación contractual"></canvas>
+          <div class="donut-center"><div class="donut-center-num" id="dContPct">0%</div><div class="donut-center-lbl">Contrat.</div></div>
+        </div>
+        <div id="legContrat" style="display:flex;flex-direction:column;gap:6px;margin-top:14px"></div>
+        <div style="display:flex;gap:10px;margin-top:14px">
+          <div style="flex:1;text-align:center;background:var(--brand-l);border:1px solid var(--brand-m);border-radius:10px;padding:10px"><div style="font-size:18px;font-weight:800;color:var(--brand-d)" id="contAv">0%</div><div style="font-size:10px;font-weight:700;color:var(--brand-d);text-transform:uppercase;letter-spacing:.7px;margin-top:3px">Avance</div></div>
+          <div style="flex:1;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px"><div style="font-size:18px;font-weight:800;color:var(--t1)" id="contClis">0</div><div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;margin-top:3px">Clientes</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-tool"></i>Especialidades</div><div class="sec-extra">Contratado vs Pendiente</div></div>
+      <div class="sec-body">
+        <div style="position:relative;height:240px"><canvas id="chEspecialidades" role="img" aria-label="Especialidades"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-label"><i class="ti ti-users-group"></i>Contratistas &amp; Clientes</div>
+  <div class="section">
+    <div class="sec-head"><div class="sec-title"><i class="ti ti-building-community"></i>Proyectos por Contratista — Contratados</div><div class="sec-extra">Solo servicios Contratado · Clientes distintos a la derecha</div></div>
+    <div class="sec-body" id="proyPorCont"></div>
+  </div>
+
+  <div class="sec-label"><i class="ti ti-alert-octagon"></i>Riesgos &amp; Carga de Equipo</div>
+  <div class="g2">
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-alert-triangle"></i>Panel de Riesgo Multi-Cliente</div></div>
+      <div class="sec-body" id="panelRiesgo"></div>
+    </div>
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-user-check"></i>Carga por Supervisor</div></div>
+      <div class="sec-body" id="supCargaEjec"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PMO -->
+<div class="page" id="page-pmo">
+  <div class="ph"><div><div class="ph-title">Vista PMO</div><div class="ph-sub">Demanda y cobertura por especialidad · Análisis de servicios y contratistas asignados</div></div></div>
+  <div class="kpi-grid" id="kpi-pmo"></div>
+
+  <div class="sec-label"><i class="ti ti-tool"></i>Demanda por Especialidad</div>
+  <div class="section">
+    <div class="sec-head">
+      <div class="sec-title"><i class="ti ti-chart-bar"></i>Servicios por especialidad — desglose contractual</div>
+      <div class="sec-extra">Verde = Contratado · Ámbar = Pendiente · Morado = Licitación</div>
+    </div>
+    <div class="sec-body" id="demEsps"></div>
+  </div>
+
+  <div class="g2">
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-users"></i>Cobertura — Contratistas por Especialidad</div></div>
+      <div class="sec-body" id="cobEsps"></div>
+    </div>
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-alert-triangle"></i>Riesgo Multi-Cliente</div></div>
+      <div class="sec-body" id="multiClienteList"></div>
+    </div>
+  </div>
+
+  <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-building-skyscraper"></i>Clientes por Volumen de Servicios</div></div>
+    <div class="sec-body"><div style="position:relative;height:240px"><canvas id="chCliPMO" role="img" aria-label="Servicios por cliente"></canvas></div></div>
+  </div>
+</div>
+
+<!-- OPERATIVA -->
+<div class="page" id="page-operativa">
+  <div class="ph"><div><div class="ph-title">Vista Operativa</div><div class="ph-sub">Detalle completo de servicios con indicadores de riesgo</div></div></div>
+  <div class="frow">
+    <select id="opFiltEst" onchange="renderOperativa()"><option value="">Todos los estados</option></select>
+    <select id="opFiltEsp" onchange="renderOperativa()"><option value="">Todas las especialidades</option></select>
+    <select id="opFiltSup" onchange="renderOperativa()"><option value="">Todos los supervisores</option></select>
+    <select id="opFiltSit" onchange="renderOperativa()"><option value="">Toda situación contractual</option></select>
+    <input type="text" id="opSearch" placeholder="Buscar cliente o contratista…" oninput="renderOperativa()">
+  </div>
+  <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-table"></i>Tabla de Servicios</div><div id="opCount" style="font-size:11.5px;color:var(--t3);font-weight:500"></div></div>
+    <div style="overflow-x:auto"><table><thead><tr>
+      <th>Cliente</th><th>Contratista</th><th>Especialidad</th><th>Situación</th><th>Estado</th>
+      <th>Supervisor</th><th>Inicio</th><th>Fin</th><th>Días Rest.</th><th>Riesgo</th>
+    </tr></thead><tbody id="opBody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- UNIVERSO -->
+<div class="page" id="page-universo">
+  <div class="ph"><div><div class="ph-title">Universo de Contratistas</div><div class="ph-sub">Clasificación operativa completa · Riesgo calculado por clientes simultáneos</div></div></div>
+  <div class="frow">
+    <select id="uFiltSt" onchange="renderUniverso()"><option value="">Todos los estados</option></select>
+    <select id="uFiltEsp" onchange="renderUniverso()"><option value="">Todas las especialidades</option></select>
+    <input type="text" id="uSearch" placeholder="Buscar contratista…" oninput="renderUniverso()">
+  </div>
+  <div class="kpi-grid" id="kpi-univ"></div>
+  <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-users"></i>Directorio Operativo Completo</div><div id="univCount" style="font-size:11.5px;color:var(--t3);font-weight:500"></div></div>
+    <div style="overflow-x:auto"><table><thead><tr>
+      <th>Contratista</th><th>Estado Operativo</th><th>Riesgo Multi-Cliente</th>
+      <th>Clientes Activos</th><th>Especialidades</th><th>Activos</th><th>Futuros</th><th>Próx. Fin</th>
+    </tr></thead><tbody id="univBody"></tbody></table>
+  </div></div>
+</div>
+
+<!-- MATRIZ -->
+<div class="page" id="page-matriz">
+  <div class="ph"><div><div class="ph-title">Matriz Operativa</div><div class="ph-sub">Cruce Cliente × Especialidad → Contratista asignada</div></div></div>
+  <div class="frow">
+    <input type="text" id="matSearch" placeholder="Buscar cliente…" oninput="renderMatriz()">
+    <select id="matFiltEst" onchange="renderMatriz()"><option value="">Todos los estados</option><option value="activo">Solo activos</option><option value="futuro">Solo futuros</option></select>
+  </div>
+  <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-layout-grid"></i>Matriz Cliente × Especialidad</div><div class="sec-extra">Color = estado del servicio</div></div>
+    <div class="sec-body" style="overflow-x:auto"><div id="matrizContainer"></div></div>
+  </div>
+</div>
+
+<!-- GANTT -->
+<div class="page" id="page-gantt">
+  <div class="ph">
+    <div><div class="ph-title">Gantt Gerencial</div><div class="ph-sub">Cronograma de servicios · Por Contratista · Por Cliente · Timeline</div></div>
+    <div class="tabs" id="ganttTabs">
+      <div class="tab active" onclick="setGanttView('contratista',this)"><i class="ti ti-tool"></i>Por Contratista</div>
+      <div class="tab" onclick="setGanttView('cliente',this)"><i class="ti ti-building"></i>Por Cliente</div>
+      <div class="tab" onclick="setGanttView('timeline',this)"><i class="ti ti-timeline"></i>Timeline</div>
+    </div>
+  </div>
+  <div class="frow" style="gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+    <select id="gfCont" onchange="renderGantt()"><option value="">Todas las contratistas</option></select>
+    <select id="gfEsp" onchange="renderGantt()"><option value="">Todas las especialidades</option></select>
+    
+    <select id="gfCli" onchange="renderGantt()"><option value="">Todos los clientes</option></select>
+    <select id="gfSit" onchange="renderGantt()"><option value="">Toda situación</option></select>
+    <select id="gfAnio" onchange="renderGantt()" style="min-width:90px">
+      <option value="">Todos los años</option>
+      <option value="2024">2024</option>
+      <option value="2025">2025</option>
+      <option value="2026">2026</option>
+      <option value="2027">2027</option>
+    </select>
+    <select id="gfCarga" onchange="renderGantt()" style="min-width:160px">
+      <option value="">Toda carga</option>
+      <option value="1">1 proyecto asignado</option>
+      <option value="2">2+ proyectos asignados</option>
+      <option value="3">3+ proyectos asignados</option>
+    </select>
+
+    <div style="display:flex;align-items:center;gap:4px;margin-left:2px">
+      <button id="gfSortBtn" onclick="toggleGanttSort()" style="display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);font-size:12px;font-weight:600;color:var(--t2);cursor:pointer">
+        <i class="ti ti-sort-ascending" id="gfSortIcon"></i><span id="gfSortLabel">Fin ↑</span>
+      </button>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+      <span style="font-size:11px;font-weight:600;color:var(--t3)">Zoom:</span>
+      <button onclick="zoomGantt(-1)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);font-size:16px;font-weight:700;cursor:pointer;color:var(--t2);display:flex;align-items:center;justify-content:center">−</button>
+      <span id="ganttZoomLbl" style="font-size:11px;font-weight:700;color:var(--t2);min-width:36px;text-align:center">100%</span>
+      <button onclick="zoomGantt(1)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);font-size:16px;font-weight:700;cursor:pointer;color:var(--t2);display:flex;align-items:center;justify-content:center">+</button>
+      <button onclick="zoomGantt(0)" style="padding:5px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);font-size:11px;font-weight:600;cursor:pointer;color:var(--t3)">Reset</button>
+    </div>
+  </div>
+  <div id="ganttLegend" style="margin-bottom:8px"></div>
+  <div id="ganttScroll" style="overflow-x:auto;overflow-y:auto;max-height:74vh;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-md);background:var(--surface)">
+    <div id="ganttWrap"></div>
+  </div>
+</div>
+
+<!-- URGENTES SIN CONTRATAR -->
+<div class="page" id="page-urgentes">
+  <div class="ph">
+    <div><div class="ph-title">Próximos a Vencer sin Contratar</div><div class="ph-sub">Servicios en Pendiente / Licitación ordenados por proximidad de inicio o fin · Riesgo PMO crítico</div></div>
+    <div class="tabs" id="urgTabs">
+      <div class="tab active" onclick="setUrgView('inicio',this)"><i class="ti ti-flag-3"></i>Por Inicio</div>
+      <div class="tab" onclick="setUrgView('fin',this)"><i class="ti ti-flag-check"></i>Por Fin</div>
+    </div>
+  </div>
+
+  <!-- Hero summary cards -->
+  <div class="hero-grid">
+    <div class="hero-c h-danger">
+      <div class="hero-head">
+        <div class="hero-label">Sin Contratista · Inicio Crítico</div>
+        <div class="hero-ico hero-pulse"><i class="ti ti-alert-octagon"></i></div>
+      </div>
+      <div class="hero-num" id="urgKPI-critico">0</div>
+      <div class="hero-sub">Inicio en ≤ 14 días o ya iniciado sin contratar</div>
+      <div class="hero-foot">
+        <div class="hero-foot-item"><div class="hf-num" id="urgKPI-vencidos">0</div><div class="hf-lbl">Ya Iniciados</div></div>
+        <div class="hero-foot-item"><div class="hf-num" id="urgKPI-7d">0</div><div class="hf-lbl">Inicio ≤7d</div></div>
+        <div class="hero-foot-item"><div class="hf-num" id="urgKPI-14d">0</div><div class="hf-lbl">Inicio ≤14d</div></div>
+      </div>
+    </div>
+    <div class="hero-c h-warn">
+      <div class="hero-head">
+        <div class="hero-label">Pendiente · Por Contratar</div>
+        <div class="hero-ico"><i class="ti ti-hourglass"></i></div>
+      </div>
+      <div class="hero-num" id="urgKPI-pend">0</div>
+      <div class="hero-sub">Servicios en gestión de propuesta</div>
+      <div class="hero-foot">
+        <div class="hero-foot-item"><div class="hf-num" id="urgKPI-30d">0</div><div class="hf-lbl">Inicio ≤30d</div></div>
+        <div class="hero-foot-item"><div class="hf-num" id="urgKPI-60d">0</div><div class="hf-lbl">Inicio ≤60d</div></div>
+      </div>
+    </div>
+    <div class="hero-c h-dark">
+      <div class="hero-head">
+        <div class="hero-label">Licitación Abierta</div>
+        <div class="hero-ico"><i class="ti ti-gavel"></i></div>
+      </div>
+      <div class="hero-num" id="urgKPI-licit">0</div>
+      <div class="hero-sub">Procesos de licitación en curso</div>
+      <div class="hero-foot">
+        <div class="hero-foot-item"><div class="hf-num" id="urgKPI-licitClis">0</div><div class="hf-lbl">Clientes</div></div>
+        <div class="hero-foot-item"><div class="hf-num" id="urgKPI-licitEsp">0</div><div class="hf-lbl">Especialidades</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="frow">
+    <select id="urgFiltSit" onchange="renderUrgentes()"><option value="">Toda situación</option><option value="Pendiente">Pendiente</option><option value="Licitación">Licitación</option></select>
+    <select id="urgFiltCli" onchange="renderUrgentes()"><option value="">Todos los clientes</option></select>
+    <select id="urgFiltEsp" onchange="renderUrgentes()"><option value="">Todas las especialidades</option></select>
+    <select id="urgFiltSup" onchange="renderUrgentes()"><option value="">Todos los supervisores</option></select>
+  </div>
+
+  <div class="sec-label" id="urgSecLbl"><i class="ti ti-list"></i>Servicios Ordenados por Proximidad de Inicio</div>
+  <div id="urgList" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<!-- ALERTAS -->
+<div class="page" id="page-alertas">
+  <div class="ph"><div><div class="ph-title">Alertas &amp; Riesgos PMO</div><div class="ph-sub">Motor de alertas operativas · Lógica multi-cliente corregida</div></div></div>
+  <div class="kpi-grid" id="kpi-alertas"></div>
+  <div class="g2">
+    <div>
+      <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-alert-triangle" style="color:var(--red)"></i>Crítico — Acción Inmediata</div></div><div class="sec-body" id="alertCrit"></div></div>
+      <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-alert-circle" style="color:var(--amber)"></i>Alerta — Seguimiento Requerido</div></div><div class="sec-body" id="alertMod"></div></div>
+    </div>
+    <div>
+      <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-clock-exclamation"></i>Vencimientos &lt;30 días</div></div><div class="sec-body" id="alertVenc"></div></div>
+      <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-user-exclamation"></i>Carga por Supervisor</div></div><div class="sec-body" id="alertSup"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DISPONIBILIDAD -->
+<div class="page" id="page-disponibilidad">
+  <div class="ph"><div><div class="ph-title">Consulta de Disponibilidad</div><div class="ph-sub">Estado real de contratistas para cualquier fecha · Considera Contratado + Licitación + Pendiente</div></div></div>
+  <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-calendar-search"></i>Fecha de Consulta</div></div>
+    <div class="sec-body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+      <div><label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.6px">Selecciona una fecha</label><input type="date" id="fechaQ" style="width:200px"></div>
+      <button class="btn primary" onclick="queryDate()"><i class="ti ti-search"></i>Consultar</button>
+      <button class="btn" onclick="setToday()"><i class="ti ti-calendar-today"></i>Hoy</button>
+    </div>
+  </div>
+  <div id="dispResult"></div>
+</div>
+
+<!-- BOT -->
+<div class="page" id="page-bot">
+  <div class="ph"><div><div class="ph-title">IA PMO Asistente</div><div class="ph-sub">Consulta inteligente sobre operaciones FRIOPACKING</div></div></div>
+  <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-robot"></i>PMO Assistant</div><div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--green-d);font-weight:600"><span class="dot d-green"></span>Activo</div></div>
+    <div class="chat-outer">
+      <div class="chat-msgs" id="chatMsgs"></div>
+      <div class="chat-quick" id="chatQuick"></div>
+      <div class="chat-inp-row">
+        <input class="chat-inp" id="chatInput" placeholder="Consulta al asistente PMO…" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="send-btn" onclick="sendChat()"><i class="ti ti-send"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODELO -->
+<div class="page" id="page-modelo">
+  <div class="ph"><div><div class="ph-title">Modelo de Datos &amp; DAX</div><div class="ph-sub">Arquitectura Power BI · Tablas, relaciones y medidas listas para copiar</div></div></div>
+  <div class="g3" id="tablasMod"></div>
+  <div class="section" style="margin-top:14px"><div class="sec-head"><div class="sec-title"><i class="ti ti-code"></i>Medidas DAX — Power BI</div></div><div class="sec-body" id="daxBody"></div></div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /layout -->
+</div><!-- /app -->
+
+<script>
+/* ===========================================================
+   FRIOPACKING PMO — DATA
+   - Metalfresh REMOVIDO de Imbarex (per request)
+   =========================================================== */
+let DATA=[
+/* 81 SERVICIOS — Lista actualizada 15/07/2026 (fechas fin +20d ajustadas) */
+{c:'Agrokasa',e:'Paneles',sit:'Licitación',est:'Por Iniciar',sup:'Percy Casas',con:'Sin asignar',ini:'2026-08-01',fin:'2026-08-25'},
+{c:'Tal SA',e:'Mecánica',sit:'Contratado',est:'Proceso',sup:'Dennis Saravia',con:'YLA',ini:'2026-03-17',fin:'2026-07-05'},
+{c:'Imbarex',e:'Eléctrico',sit:'Contratado',est:'Concluido',sup:'Percy Casas',con:'V&G',ini:'2026-05-01',fin:'2026-06-26'},
+{c:'Prosembra',e:'Eléctrico',sit:'Contratado',est:'Concluido',sup:'Victor Flores',con:'V&G',ini:'2026-05-01',fin:'2026-06-25'},
+{c:'Agrokasa',e:'Mecánica',sit:'Licitación',est:'Por Iniciar',sup:'Percy Casas',con:'Sin asignar',ini:'2026-08-01',fin:'2026-08-25'},
+{c:'Imbarex',e:'EEMM',sit:'Contratado',est:'Proceso',sup:'Percy Casas',con:'Huber Villalva',ini:'2026-05-01',fin:'2026-06-25'},
+{c:'Agrokasa',e:'Eléctrico',sit:'Licitación',est:'Por Iniciar',sup:'Percy Casas',con:'Sin asignar',ini:'2026-08-01',fin:'2026-08-25'},
+{c:'Tal SA',e:'Mecánica',sit:'Contratado',est:'Proceso',sup:'Dennis Saravia',con:'TOP METAL',ini:'2026-03-17',fin:'2026-07-05'},
+{c:'Prolan',e:'Reubicación de Equipos',sit:'Contratado',est:'Por Iniciar',sup:'Walter Chung',con:'A&R',ini:'2026-06-05',fin:'2026-07-08'},
+{c:'Proagro',e:'Mecánica',sit:'Licitación',est:'Por Iniciar',sup:'Benjamin Viera',con:'Sin asignar',ini:'2026-08-05',fin:'2026-11-19'},
+{c:'Proagro',e:'Mecánica',sit:'Licitación',est:'Por Iniciar',sup:'Benjamin Viera',con:'Sin asignar',ini:'2026-08-05',fin:'2026-11-19'},
+{c:'Proagro',e:'Eléctrico',sit:'Pendiente',est:'Por Iniciar',sup:'Benjamin Viera',con:'Sin asignar',ini:'2026-08-05',fin:'2026-11-19'},
+{c:'Tal SA',e:'Paneles',sit:'Contratado',est:'Proceso',sup:'Dennis Saravia',con:'Servic León',ini:'2026-03-05',fin:'2026-07-05'},
+{c:'Qpack',e:'Aislamiento',sit:'Contratado',est:'Proceso',sup:'Jesus Cabrera',con:'SAM',ini:'2026-04-15',fin:'2026-07-15'},
+{c:'Bomarea',e:'Aislamiento',sit:'Contratado',est:'Por Iniciar',sup:'Jorvin Paredes',con:'SAM',ini:'2026-05-15',fin:'2026-07-05'},
+{c:'AIB',e:'Paneles',sit:'Licitación',est:'Por Iniciar',sup:'Victor Flores',con:'Sin asignar',ini:'2026-08-15',fin:'2026-08-19'},
+{c:'Qpack',e:'Paneles',sit:'Contratado',est:'Proceso',sup:'Jesus Cabrera',con:'R&D',ini:'2026-03-20',fin:'2026-07-20'},
+{c:'Berry Harvest',e:'Campamento',sit:'Contratado',est:'Proceso',sup:'Irwin Gutierrez',con:'Prominerc',ini:'2026-03-01',fin:'2026-07-20'},
+{c:'AIB',e:'Instalación Electromecánica',sit:'Licitación',est:'Por Iniciar',sup:'Victor Flores',con:'Sin asignar',ini:'2026-08-15',fin:'2026-08-28'},
+{c:'Bomarea',e:'Mecánica',sit:'Contratado',est:'Proceso',sup:'Jorvin Paredes',con:'Pedro Tineo',ini:'2026-05-18',fin:'2026-08-04'},
+{c:'Prolan',e:'Rack Acumulativo',sit:'Contratado',est:'Por Iniciar',sup:'Walter Chung',con:'P Y A',ini:'2026-07-02',fin:'2026-08-04'},
+{c:'Viveros del Tambo',e:'Paneles',sit:'Contratado',est:'Proceso',sup:'Dyland Marquina',con:'Alex Navarrete',ini:'2026-05-01',fin:'2026-07-05'},
+{c:'Viveros del Tambo',e:'Instalación Electromecánica',sit:'Contratado',est:'Proceso',sup:'Dyland Marquina',con:'Alex Navarrete',ini:'2026-05-01',fin:'2026-07-05'},
+{c:'Bomarea',e:'Eléctrico',sit:'Contratado',est:'Por Iniciar',sup:'Jorvin Paredes',con:'H&E',ini:'2026-06-01',fin:'2026-08-04'},
+{c:'AIB',e:'Instalación Electromecánica',sit:'Licitación',est:'Por Iniciar',sup:'Victor Flores',con:'Sin asignar',ini:'2026-08-15',fin:'2026-09-03'},
+{c:'Campo Sol',e:'Mecánica',sit:'Contratado',est:'Proceso',sup:'Renato Jara',con:'MIG',ini:'2026-04-09',fin:'2026-08-04'},
+{c:'Agro Floral',e:'Instalación Electromecánica',sit:'Contratado',est:'Concluido',sup:'Luis Goycochea',con:'Metalfresh',ini:'2026-05-01',fin:'2026-06-19'},
+{c:'AIB',e:'EEMM',sit:'Contratado',est:'Por Iniciar',sup:'Victor Flores',con:'Petty',ini:'2026-07-01',fin:'2026-08-10'},
+{c:'Agrolatina',e:'Mecánica',sit:'Contratado',est:'Proceso',sup:'Luis Goycochea',con:'Metalfresh',ini:'2026-07-15',fin:'2026-10-05'},
+{c:'Torre Blanca',e:'Mecánica',sit:'Contratado',est:'Proceso',sup:'Waldir Saldaña',con:'Metalfresh',ini:'2026-04-15',fin:'2026-07-06'},
+{c:'Torre Blanca',e:'Paneles',sit:'Contratado',est:'Concluido',sup:'Waldir Saldaña',con:'Metalfresh',ini:'2026-03-18',fin:'2026-06-19'},
+{c:'Pampa Baja',e:'Paneles',sit:'Contratado',est:'Por Iniciar',sup:'Dylan Marquina',con:'Store Cold',ini:'2026-08-07',fin:'2026-09-30'},
+{c:'Tal SA',e:'Aislamiento',sit:'Contratado',est:'Proceso',sup:'Dennis Saravia',con:'Liao Termic',ini:'2026-04-13',fin:'2026-07-05'},
+{c:'Torre Blanca',e:'Obras Civiles',sit:'Contratado',est:'Concluido',sup:'Waldir Saldaña',con:'Conciarun',ini:'2026-02-09',fin:'2026-06-19'},
+{c:'Pampa Baja',e:'Eléctrico',sit:'Licitación',est:'Por Iniciar',sup:'Dylan Marquina',con:'Sin asignar',ini:'2026-08-28',fin:'2026-10-23'},
+{c:'Reiter',e:'Paneles',sit:'Contratado',est:'Proceso',sup:'Gustavo Martinez',con:'J&L',ini:'2026-04-15',fin:'2026-06-30'},
+{c:'Reiter',e:'Mecánica',sit:'Contratado',est:'Proceso',sup:'Gustavo Martinez',con:'J&L',ini:'2026-05-05',fin:'2026-06-30'},
+{c:'Reiter',e:'Eléctrico',sit:'Contratado',est:'Proceso',sup:'Gustavo Martinez',con:'J&L',ini:'2026-05-05',fin:'2026-06-30'},
+{c:'Bomarea',e:'Paneles',sit:'Contratado',est:'Proceso',sup:'Jorvin Paredes',con:'J&B',ini:'2026-04-15',fin:'2026-07-10'},
+{c:'Tal SA',e:'Eléctrico',sit:'Contratado',est:'Proceso',sup:'Dennis Saravia',con:'Impromels',ini:'2026-04-13',fin:'2026-07-05'},
+{c:'Prolan',e:'EEMM',sit:'Contratado',est:'Proceso',sup:'Walter Chung',con:'Huber Villalva',ini:'2026-06-30',fin:'2026-11-05'},
+{c:'Qpack',e:'Eléctrico',sit:'Contratado',est:'Proceso',sup:'Jesus Cabrera',con:'H&E',ini:'2026-04-08',fin:'2026-07-20'},
+{c:'TAL (Acopio)',e:'Obras Civiles',sit:'Contratado',est:'Concluido',sup:'Antero Ávila',con:'GALTOP',ini:'2026-03-10',fin:'2026-06-19'},
+{c:'Pampa Baja',e:'Mecánica',sit:'Licitación',est:'Por Iniciar',sup:'Dylan Marquina',con:'Sin asignar',ini:'2026-08-28',fin:'2026-11-03'},
+{c:'Torre Blanca',e:'Eléctrico',sit:'Contratado',est:'Proceso',sup:'Waldir Saldaña',con:'G&S',ini:'2026-04-20',fin:'2026-07-06'},
+{c:'Santa Sofía',e:'Paneles',sit:'Contratado',est:'Concluido',sup:'Steve Sarmiento',con:'Friotecnic',ini:'2026-03-15',fin:'2026-06-30'},
+{c:'Santa Sofía',e:'Instalación Electromecánica',sit:'Contratado',est:'Proceso',sup:'Steve Sarmiento',con:'Friotecnic',ini:'2026-03-30',fin:'2026-06-30'},
+{c:'Virú',e:'Mecánica',sit:'Contratado',est:'Proceso',sup:'Dyland Marquina',con:'Firmisa',ini:'2026-05-01',fin:'2026-06-19'},
+{c:'TA Export',e:'Mecánica',sit:'Contratado',est:'Proceso',sup:'Patrick Vasquez',con:'Firmisa',ini:'2026-04-07',fin:'2026-07-25'},
+{c:'Agrolatina',e:'Eléctrico',sit:'Licitación',est:'Por Iniciar',sup:'Luis Goycochea',con:'Sin asignar',ini:'2026-08-30',fin:'2026-10-05'},
+{c:'Agrolatina',e:'Aislamiento',sit:'Licitación',est:'Por Iniciar',sup:'Luis Goycochea',con:'Sin asignar',ini:'2026-08-30',fin:'2026-10-05'},
+{c:'Agroberries +',e:'Mecánica',sit:'Pendiente',est:'Por Iniciar',sup:'Dennis Saravia',con:'Sin asignar',ini:'2026-09-29',fin:'2027-02-25'},
+{c:'Agroberries +',e:'Eléctrico',sit:'Pendiente',est:'Por Iniciar',sup:'Dennis Saravia',con:'Sin asignar',ini:'2026-09-29',fin:'2027-02-25'},
+{c:'TA Export',e:'Eléctrico',sit:'Contratado',est:'Proceso',sup:'Patrick Vasquez',con:'ELM ELECTRIC',ini:'2026-04-13',fin:'2026-07-25'},
+{c:'Agroberries',e:'Instalación Electromecánica',sit:'Contratado',est:'Proceso',sup:'Diego Asmat',con:'Electricold',ini:'2026-04-15',fin:'2026-07-05'},
+{c:'Prolan',e:'Paneles',sit:'Contratado',est:'Proceso',sup:'Walter Chung',con:'J&L',ini:'2026-06-15',fin:'2026-09-20'},
+{c:'Agroberries',e:'Obras Civiles',sit:'Contratado',est:'Proceso',sup:'Diego Asmat',con:'Diagon',ini:'2026-02-06',fin:'2026-06-19'},
+{c:'Agroberries +',e:'Mecánica',sit:'Pendiente',est:'Por Iniciar',sup:'Dennis Saravia',con:'Sin asignar',ini:'2026-09-29',fin:'2027-02-25'},
+{c:'Qpack',e:'Mecánica',sit:'Contratado',est:'Proceso',sup:'Jesus Cabrera',con:'Decas',ini:'2026-03-23',fin:'2026-07-20'},
+{c:'Imbarex',e:'Paneles',sit:'Contratado',est:'Concluido',sup:'Percy Casas',con:'Climatec',ini:'2026-05-01',fin:'2026-06-19'},
+{c:'Pampa Baja',e:'Aislamiento',sit:'Pendiente',est:'Por Iniciar',sup:'Dylan Marquina',con:'Sin asignar',ini:'2026-09-30',fin:'2026-10-30'},
+{c:'Proagro',e:'Paneles',sit:'Contratado',est:'Por Iniciar',sup:'Benjamin Viera',con:'Climatec',ini:'2026-07-05',fin:'2026-11-19'},
+{c:'TA Export',e:'Paneles',sit:'Contratado',est:'Proceso',sup:'Patrick Vasquez',con:'Climatec',ini:'2026-02-22',fin:'2026-07-05'},
+{c:'Campo Sol',e:'Eléctrico',sit:'Contratado',est:'Proceso',sup:'Renato Jara',con:'CCM',ini:'2026-04-28',fin:'2026-08-04'},
+{c:'TYT',e:'Mecánica',sit:'Contratado',est:'Proceso',sup:'Luis Silva',con:'BERMAC',ini:'2026-04-18',fin:'2026-07-05'},
+{c:'TYT',e:'Eléctrico',sit:'Contratado',est:'Proceso',sup:'Luis Silva',con:'BERMAC',ini:'2026-04-18',fin:'2026-07-05'},
+{c:'TYT',e:'Paneles',sit:'Contratado',est:'Proceso',sup:'Luis Silva',con:'BERMAC',ini:'2026-04-08',fin:'2026-07-05'},
+{c:'Agroberries +',e:'Paneles',sit:'Pendiente',est:'Por Iniciar',sup:'Dennis Saravia',con:'Sin asignar',ini:'2026-10-28',fin:'2027-01-13'},
+{c:'TAL (Acopio)',e:'Instalación Electromecánica',sit:'Contratado',est:'Concluido',sup:'Antero Ávila',con:'Arquin',ini:'2026-04-15',fin:'2026-06-25'},
+{c:'TAL (Acopio)',e:'Obras Civiles',sit:'Contratado',est:'Concluido',sup:'Antero Ávila',con:'Arquin',ini:'2026-04-15',fin:'2026-06-25'},
+{c:'TAL (Acopio)',e:'Paneles',sit:'Contratado',est:'Concluido',sup:'Antero Ávila',con:'Arquin',ini:'2026-04-07',fin:'2026-06-25'},
+{c:'Agrolatina',e:'Paneles',sit:'Contratado',est:'Proceso',sup:'Luis Goycochea',con:'Metalfresh',ini:'2026-07-05',fin:'2026-09-19'},
+{c:'Prolan',e:'Instalación Electromecánica',sit:'Contratado',est:'Proceso',sup:'Walter Chung',con:'Control Planner',ini:'2026-06-30',fin:'2026-11-05'},
+{c:'Prolan',e:'Instalación Electromecánica',sit:'Contratado',est:'Proceso',sup:'Walter Chung',con:'J&L',ini:'2026-06-30',fin:'2026-11-05'},
+{c:'Rintisa',e:'Instalación Electromecánica',sit:'Contratado',est:'Proceso',sup:'Steve Sarmiento',con:'PowerCold',ini:'2026-07-05',fin:'2026-09-29'},
+{c:'Qali',e:'EEMM',sit:'Contratado',est:'Proceso',sup:'Wilson Urbina',con:'Albuilding',ini:'2026-06-15',fin:'2026-08-09'},
+{c:'Qali',e:'OOCC',sit:'Contratado',est:'Proceso',sup:'Wilson Urbina',con:'Conciarun',ini:'2026-06-15',fin:'2026-08-09'},
+{c:'Qali',e:'Paneles',sit:'Contratado',est:'Por Iniciar',sup:'Wilson Urbina',con:'Arquin',ini:'2026-07-20',fin:'2026-09-28'},
+{c:'Qali',e:'Mecánica',sit:'Contratado',est:'Por Iniciar',sup:'Wilson Urbina',con:'Arquin',ini:'2026-07-20',fin:'2026-09-28'},
+{c:'Qali',e:'Eléctrico',sit:'Contratado',est:'Por Iniciar',sup:'Wilson Urbina',con:'Arquin',ini:'2026-07-20',fin:'2026-09-28'},
+{c:'Qali',e:'Aislamiento',sit:'Contratado',est:'Por Iniciar',sup:'Wilson Urbina',con:'Arquin',ini:'2026-07-20',fin:'2026-09-28'}
+];
+
+const TODAY=new Date('2026-07-15T12:00:00');
+const pd=s=>{if(!s||s==='—')return null;try{return new Date(s+'T12:00:00');}catch(e){return null;}};
+const fm=d=>{if(!d)return '—';return d.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'2-digit'});};
+const daysDiff=d=>{if(!d)return null;return Math.round((d-TODAY)/86400000);};
+const ACTIVE=['Proceso','Cierre'];
+const FUTURE=['Por Iniciar'];
+const CONTRACTED_SIT=['Contratado'];
+const PENDING_SIT=['Pendiente','Licitación'];
+
+let projects=DATA.map(r=>({...r,iniD:pd(r.ini),finD:pd(r.fin)}));
+let allConts=[...new Set(projects.map(p=>p.con).filter(c=>c&&c!=='—'))].sort();
+let allEsps=[...new Set(projects.map(p=>p.e))].sort();
+let allSups=[...new Set(projects.map(p=>p.sup))].sort();
+let allClis=[...new Set(projects.map(p=>p.c))].sort();
+let allEsts=[...new Set(projects.map(p=>p.est))];
+let allSits=[...new Set(projects.map(p=>p.sit))];
+
+/* ===========================================================
+   RISK ENGINE — MULTI-CLIENT (CORRECT)
+   =========================================================== */
+function getActiveClients(cont,date){
+  return[...new Set(projects.filter(p=>
+    p.con===cont&&ACTIVE.includes(p.est)&&CONTRACTED_SIT.includes(p.sit)&&
+    p.iniD&&p.finD&&p.iniD<=date&&p.finD>=date
+  ).map(p=>p.c))];
+}
+function getRisk(cont,date){date=date||TODAY;const n=getActiveClients(cont,date).length;return n>=3?2:n>=2?1:0;}
+function rLabel(n){return['Normal','⚠ Alerta Multi-Cliente','🔴 Riesgo Crítico'][n];}
+function rClass(n){return['r0','r1','r2'][n];}
+
+/* ===========================================================
+   AVAILABILITY ENGINE — CORRECTED
+   - A contractor is NOT free if they have ANY assignment (Contratado, Licitación or Pendiente) overlapping the date
+   - This fixes the A&R/Prolan bug where Licitación was treated as "Libre"
+   =========================================================== */
+function getAssignmentsOnDate(cont,date){
+  return projects.filter(p=>p.con===cont&&p.iniD&&p.finD&&p.iniD<=date&&p.finD>=date);
+}
+function getContractedAssignmentsOnDate(cont,date){
+  return projects.filter(p=>p.con===cont&&CONTRACTED_SIT.includes(p.sit)&&ACTIVE.includes(p.est)&&p.iniD&&p.finD&&p.iniD<=date&&p.finD>=date);
+}
+function getProposedAssignmentsOnDate(cont,date){
+  return projects.filter(p=>p.con===cont&&PENDING_SIT.includes(p.sit)&&p.iniD&&p.finD&&p.iniD<=date&&p.finD>=date);
+}
+
+function classifyOp(cont){
+  const ps=projects.filter(p=>p.con===cont);
+  if(!ps.length)return'SIN USO EN CARTERA';
+  if(getContractedAssignmentsOnDate(cont,TODAY).length>0)return'OCUPADA';
+  if(getProposedAssignmentsOnDate(cont,TODAY).length>0)return'COMPROMETIDA';
+  if(ps.some(p=>p.iniD>TODAY&&CONTRACTED_SIT.includes(p.sit)))return'ASIGNADA PRÓXIMAMENTE';
+  if(ps.some(p=>p.iniD>TODAY&&PENDING_SIT.includes(p.sit)))return'COMPROMETIDA';
+  return'DISPONIBLE';
+}
+
+document.getElementById('dateChip').textContent=TODAY.toLocaleDateString('es-PE',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+
+/* ===========================================================
+   KPI CARD BUILDER — Corporate Style with badge
+   =========================================================== */
+function kpiC(opts){
+  const {label,value,sub,color,icon,bar}=opts;
+  const cm={
+    brand:['#0ea5a4','#ccfbf1'],blue:['#3b82f6','#dbeafe'],amber:['#f59e0b','#fef3c7'],
+    green:['#10b981','#d1fae5'],red:['#ef4444','#fee2e2'],purple:['#8b5cf6','#ede9fe'],
+    orange:['#f97316','#fed7aa'],dark:['#374151','#e5e7eb'],pink:['#ec4899','#fce7f3'],gray:['#64748b','#f1f5f9']
+  };
+  const[c,bg]=cm[color]||cm.brand;
+  const isLong=String(value).length>4;
+  return`<div class="kpi-c">
+    <div class="kpi-top-line" style="background:${c}"></div>
+    <div class="kpi-badge" style="background:${bg};color:${c}">${value}</div>
+    <div class="kpi-ico-sq" style="background:${bg};color:${c}"><i class="ti ${icon}"></i></div>
+    <div class="kpi-num${isLong?' md':''}" style="color:${c}">${value}</div>
+    <div class="kpi-lbl">${label}</div>
+    ${sub?`<div class="kpi-sub">${sub}</div>`:''}
+    ${bar!=null?`<div class="kpi-bar"><div class="kpi-bar-fill" style="width:${bar}%;background:${c}"></div></div>`:''}
+  </div>`;
+}
+
+function nav(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  el.classList.add('active');
+  ({pmo:renderPMO,operativa:renderOperativa,universo:renderUniverso,matriz:renderMatriz,gantt:renderGantt,urgentes:renderUrgentes,alertas:renderAlertas,modelo:renderModelo,bot:initBot}[id]||function(){})();
+}
+
+function populateFilters(){
+  const add=(id,opts)=>{const el=document.getElementById(id);if(!el)return;opts.forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=o;el.appendChild(op);});};
+  add('opFiltEst',allEsts);add('opFiltEsp',allEsps);add('opFiltSup',allSups);add('opFiltSit',allSits);
+  add('uFiltSt',['OCUPADA','DISPONIBLE','ASIGNADA PRÓXIMAMENTE','COMPROMETIDA','SIN USO EN CARTERA']);add('uFiltEsp',allEsps);
+  add('gfCont',allConts);add('gfEsp',allEsps);add('gfEst',allEsts);add('gfCli',allClis);add('gfSit',allSits);
+  add('urgFiltCli',allClis);add('urgFiltEsp',allEsps);add('urgFiltSup',allSups);
+}
+
+/* ===========================================================
+   VISTA EJECUTIVA — REDISEÑADA CORPORATIVA
+   =========================================================== */
+/* ── Toggle Concluidos Vista Ejecutiva ── */
+let exclConcluido=false;
+function toggleEjecutivaConcluido(){
+  exclConcluido=!exclConcluido;
+  const btn=document.getElementById('btnToggleConcluido');
+  const icon=document.getElementById('iconToggleConcluido');
+  const lbl=document.getElementById('lblToggleConcluido');
+  if(icon) icon.className='ti '+(exclConcluido?'ti-eye':'ti-eye-off');
+  if(lbl) lbl.textContent=exclConcluido?'Mostrar Concluidos':'Ocultar Concluidos';
+  if(btn){
+    btn.style.background=exclConcluido?'#065f46':'';
+    btn.style.color=exclConcluido?'#fff':'';
+    btn.style.borderColor=exclConcluido?'#065f46':'';
+  }
+  initEjecutiva();
+}
+
+function initEjecutiva(){
+  // Counters
+  const activeProjects=projects.filter(p=>activeEstados.has(p.est));
+  const totalServ=activeProjects.length;
+  const totalClis=allClis.length;
+  const totalConts=allConts.length;
+  const totalEsps=allEsps.length;
+  const totalSups=allSups.length;
+  const contratados=activeProjects.filter(p=>CONTRACTED_SIT.includes(p.sit)).length;
+  const pendientes=activeProjects.filter(p=>p.sit==='Pendiente').length;
+  const licitacion=activeProjects.filter(p=>p.sit==='Licitación').length;
+  const sinContratar=pendientes+licitacion;
+  const enProceso=activeProjects.filter(p=>p.est==='Proceso').length;
+  const enCierre=activeProjects.filter(p=>p.est==='Cierre').length;
+  const porIniciar=activeProjects.filter(p=>p.est==='Por Iniciar').length;
+  const enEjec=enProceso;
+  const riesgoFecha7=activeProjects.filter(p=>{const d=daysDiff(p.finD);return d!==null&&d>=0&&d<=7&&ACTIVE.includes(p.est);}).length;
+  const riesgoFecha30=activeProjects.filter(p=>{const d=daysDiff(p.finD);return d!==null&&d>=0&&d<=30&&ACTIVE.includes(p.est);}).length;
+  const pctAvance=totalServ?Math.round(contratados/totalServ*100):0;
+  const pctPend=totalServ?Math.round(pendientes/totalServ*100):0;
+  const pctLicit=totalServ?Math.round(licitacion/totalServ*100):0;
+  // No contratados próximos a vencer (sin contratar y fin ≤30d)
+  const noContratProx=activeProjects.filter(p=>PENDING_SIT.includes(p.sit)&&p.iniD&&daysDiff(p.iniD)<=30).length;
+  // Contractors with multiple projects
+  const contCounts={};projects.forEach(p=>{if(p.con&&p.con!=='—')contCounts[p.con]=(contCounts[p.con]||0)+1;});
+  const contsMultiProy=Object.values(contCounts).filter(n=>n>1).length;
+  const contsMultiCli=allConts.filter(c=>getActiveClients(c,TODAY).length>=2).length;
+
+  const crit=allConts.filter(c=>getRisk(c)===2).length;
+  const alrt=allConts.filter(c=>getRisk(c)===1).length;
+  const totalUrg=allConts.filter(c=>getRisk(c)===2||getRisk(c)===1).length;
+  document.getElementById('nb-total').textContent=totalConts;
+  const _nbAl=document.getElementById('nb-alertas');if(_nbAl)_nbAl.textContent=crit+alrt;
+  // Nav badge para nueva pestaña
+  const nbUrg=document.getElementById('nb-urgentes');
+  if(nbUrg)nbUrg.textContent=noContratProx;
+
+  // ===== HERO KPIs (3 large cards) =====
+  document.getElementById('kpi-hero').innerHTML=`
+    <!-- Hero 1: Portafolio Activo -->
+    <div class="hero-c h-brand">
+      <div class="hero-head">
+        <div class="hero-label">Portafolio Activo</div>
+        <div class="hero-ico"><i class="ti ti-briefcase"></i></div>
+      </div>
+      <div class="hero-num">${totalServ}</div>
+      <div class="hero-sub">servicios activos en gestión</div>
+      <div class="hero-foot">
+        <div class="hero-foot-item"><div class="hf-num">${totalClis}</div><div class="hf-lbl">Clientes</div></div>
+        <div class="hero-foot-item"><div class="hf-num">${totalConts}</div><div class="hf-lbl">Contratistas</div></div>
+        <div class="hero-foot-item"><div class="hf-num">${totalEsps}</div><div class="hf-lbl">Especialidades</div></div>
+      </div>
+    </div>
+
+    <!-- Hero 2: Salud Contractual -->
+    <div class="hero-c h-success">
+      <div class="hero-head">
+        <div class="hero-label">Salud Contractual</div>
+        <div class="hero-ico"><i class="ti ti-file-check"></i></div>
+      </div>
+      <div class="hero-num">${pctAvance}<span style="font-size:32px;font-weight:700;opacity:.9">%</span></div>
+      <div class="hero-sub">Servicios contratados · ${contratados}/${totalServ}</div>
+      <div class="hero-stack">
+        <div class="hero-stack-seg" style="width:${pctAvance}%;background:#86efac"></div>
+        <div class="hero-stack-seg" style="width:${pctPend}%;background:#fcd34d"></div>
+        <div class="hero-stack-seg" style="width:${pctLicit}%;background:#c4b5fd"></div>
+      </div>
+      <div class="hero-stack-leg">
+        <span><span class="dot-s" style="background:#86efac"></span>Contratado ${contratados}</span>
+        <span><span class="dot-s" style="background:#fcd34d"></span>Pendiente ${pendientes}</span>
+        <span><span class="dot-s" style="background:#c4b5fd"></span>Licitación ${licitacion}</span>
+      </div>
+    </div>
+
+    <!-- Hero 3: Urgencias -->
+    <div class="hero-c ${riesgoFecha7>0?'h-danger':'h-dark'}">
+      <div class="hero-head">
+        <div class="hero-label">Urgencias Operativas</div>
+        <div class="hero-ico ${riesgoFecha7>0?'hero-pulse':''}"><i class="ti ti-alert-octagon"></i></div>
+      </div>
+      <div class="hero-num smaller">${riesgoFecha7}</div>
+      <div class="hero-sub">Vencen en ≤ 7 días (en ejecución)</div>
+      <div class="hero-foot">
+        <div class="hero-foot-item"><div class="hf-num">${riesgoFecha30}</div><div class="hf-lbl">Vencen ≤30d</div></div>
+        <div class="hero-foot-item"><div class="hf-num">${noContratProx}</div><div class="hf-lbl">Sin Contrato ≤30d</div></div>
+        <div class="hero-foot-item"><div class="hf-num">${totalUrg}</div><div class="hf-lbl">Multi-Cliente</div></div>
+      </div>
+    </div>
+  `;
+
+  // ===== STRIP 1: Estado Operacional (5 KPIs) =====
+  document.getElementById('kpi-op').innerHTML=[
+    kpiC({label:'En Ejecución',value:enEjec,color:'blue',icon:'ti-settings',sub:'En campo ahora'}),
+    kpiC({label:'En Cierre / Obs',value:enCierre,color:'amber',icon:'ti-alert-triangle',sub:'Requieren atención'}),
+    kpiC({label:'Por Iniciar',value:porIniciar,color:'orange',icon:'ti-rocket',sub:'Próximo arranque'}),
+    kpiC({label:'Pendientes',value:pendientes,color:'pink',icon:'ti-hourglass',sub:`${pctPend}% del total`}),
+    kpiC({label:'En Licitación',value:licitacion,color:'purple',icon:'ti-gavel',sub:'En evaluación'}),
+  ].join('');
+
+  // ===== STRIP 2: Recursos & Cobertura (4 KPIs) =====
+  document.getElementById('kpi-rec').innerHTML=[
+    kpiC({label:'Contratistas',value:totalConts,color:'brand',icon:'ti-tower',sub:''}),
+    kpiC({label:'Multi-Cliente',value:contsMultiCli,color:'red',icon:'ti-users',sub:'Contratistas con ≥2 clientes'}),
+    kpiC({label:'Clientes',value:totalClis,color:'dark',icon:'ti-building-skyscraper',sub:`${totalEsps} especialidades`}),
+    kpiC({label:'Supervisores',value:totalSups,color:'green',icon:'ti-user-shield',sub:''}),
+  ].join('');
+
+  // Donut: Estado de Servicios
+  const estC={};allEsts.forEach(e=>{estC[e]=activeProjects.filter(p=>p.est===e).length;});
+  const estCol={Proceso:'#3b82f6',Cierre:'#f59e0b',Concluído:'#0f172a','Por Iniciar':'#f97316'};
+  const eK=Object.keys(estC).filter(k=>estC[k]>0);
+  document.getElementById('dEstNum').textContent=totalServ;
+  new Chart(document.getElementById('chEstados'),{type:'doughnut',data:{labels:eK,datasets:[{data:eK.map(k=>estC[k]),backgroundColor:eK.map(k=>estCol[k]||'#94a3b8'),borderWidth:3,borderColor:'#fff',hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false},tooltip:{backgroundColor:'#fff',titleColor:'#0f172a',bodyColor:'#475569',borderColor:'#e5e7eb',borderWidth:1,padding:10,titleFont:{weight:700,size:12},bodyFont:{size:12}}}}});
+  const leg=document.getElementById('legEstados');leg.innerHTML='';
+  eK.forEach(k=>{leg.innerHTML+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;justify-content:space-between"><div style="display:flex;align-items:center;gap:7px"><span style="width:10px;height:10px;border-radius:3px;background:${estCol[k]||'#94a3b8'}"></span><span style="color:var(--t2);font-weight:500">${k}</span></div><strong style="color:var(--t1);font-weight:700">${estC[k]}</strong></div>`;});
+
+  // Donut: Situación Contractual
+  document.getElementById('dContPct').textContent=pctAvance+'%';
+  document.getElementById('contAv').textContent=pctAvance+'%';
+  document.getElementById('contClis').textContent=totalClis;
+  new Chart(document.getElementById('chContrat'),{type:'doughnut',data:{labels:['Contratado','Pendiente'],datasets:[{data:[contratados,sinContratar],backgroundColor:['#0ea5a4','#f59e0b'],borderWidth:3,borderColor:'#fff',hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false},tooltip:{backgroundColor:'#fff',titleColor:'#0f172a',bodyColor:'#475569',borderColor:'#e5e7eb',borderWidth:1,padding:10}}}});
+  document.getElementById('legContrat').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;justify-content:space-between"><div style="display:flex;align-items:center;gap:7px"><span style="width:10px;height:10px;border-radius:3px;background:#0ea5a4"></span><span style="color:var(--t2);font-weight:500">Contratado</span></div><strong style="color:var(--t1);font-weight:700">${contratados}</strong></div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;justify-content:space-between"><div style="display:flex;align-items:center;gap:7px"><span style="width:10px;height:10px;border-radius:3px;background:#f59e0b"></span><span style="color:var(--t2);font-weight:500">Pendiente</span></div><strong style="color:var(--t1);font-weight:700">${sinContratar}</strong></div>`;
+
+  // Especialidades chart: Contratado vs Pendiente
+  const espData={};allEsps.forEach(e=>{espData[e]={c:0,p:0};});
+  projects.forEach(p=>{if(CONTRACTED_SIT.includes(p.sit))espData[p.e].c++;else if(PENDING_SIT.includes(p.sit))espData[p.e].p++;});
+  const sortedEsps=Object.entries(espData).sort((a,b)=>(b[1].c+b[1].p)-(a[1].c+a[1].p)).slice(0,10);
+  new Chart(document.getElementById('chEspecialidades'),{
+    type:'bar',
+    data:{labels:sortedEsps.map(x=>x[0].length>14?x[0].slice(0,13)+'…':x[0]),datasets:[
+      {label:'Contratado',data:sortedEsps.map(x=>x[1].c),backgroundColor:'#0ea5a4',borderRadius:6,borderSkipped:false,barPercentage:.85,categoryPercentage:.7},
+      {label:'Pendiente',data:sortedEsps.map(x=>x[1].p),backgroundColor:'#f59e0b',borderRadius:6,borderSkipped:false,barPercentage:.85,categoryPercentage:.7}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',align:'end',labels:{boxWidth:10,boxHeight:10,padding:12,font:{size:11,weight:600},color:'#475569'}},tooltip:{backgroundColor:'#fff',titleColor:'#0f172a',bodyColor:'#475569',borderColor:'#e5e7eb',borderWidth:1,padding:10,callbacks:{title:(t)=>sortedEsps[t[0].dataIndex][0]}}},scales:{x:{ticks:{color:'#94a3b8',font:{size:9.5},maxRotation:35,minRotation:25},grid:{display:false}},y:{ticks:{color:'#94a3b8',font:{size:10},stepSize:5},grid:{color:'#f1f5f9'},beginAtZero:true}}}
+  });
+
+  // Proyectos por Contratista — SOLO CONTRATADO (todo lo confirmado)
+  const palette=['#0ea5a4','#f59e0b','#8b5cf6','#3b82f6','#ec4899','#10b981','#06b6d4','#f97316','#a855f7'];
+  const contratadoCount={},contratadoClis={};
+  projects.filter(p=>p.sit==='Contratado').forEach(p=>{
+    if(!p.con||p.con==='—')return;
+    contratadoCount[p.con]=(contratadoCount[p.con]||0)+1;
+    if(!contratadoClis[p.con])contratadoClis[p.con]=new Set();
+    contratadoClis[p.con].add(p.c);
+  });
+  const sortedCC=Object.entries(contratadoCount).map(([n,v])=>({n,proy:v,cli:contratadoClis[n].size})).sort((a,b)=>b.proy-a.proy||b.cli-a.cli);
+  const maxCC=sortedCC[0]?.proy||1;
+  document.getElementById('proyPorCont').innerHTML=sortedCC.length?sortedCC.map((x,i)=>{
+    const pct=(x.proy/maxCC*100);
+    const cliBadge=x.cli>=3?'background:#fef2f2;color:#991b1b;border:1px solid #fca5a5':x.cli===2?'background:#fffbeb;color:#92400e;border:1px solid #fde68a':'background:#f0fdfa;color:#115e59;border:1px solid #99f6e4';
+    return`<div style="display:flex;align-items:center;gap:12px;margin-bottom:9px;font-size:12.5px">
+      <div style="width:130px;color:var(--t1);font-weight:600;text-align:right;flex-shrink:0">${x.n}</div>
+      <div style="flex:1;background:#f1f5f9;border-radius:10px;height:22px;overflow:hidden;position:relative">
+        <div style="height:100%;width:${pct}%;background:${palette[i%palette.length]};border-radius:10px;display:flex;align-items:center;justify-content:flex-start;padding-left:10px;transition:.3s">
+          <span style="font-size:11.5px;color:#fff;font-weight:700">${x.proy} servicios</span>
+        </div>
+      </div>
+      <div style="width:90px;text-align:right;flex-shrink:0"><span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:10px;${cliBadge}">${x.cli} cliente${x.cli!==1?'s':''}</span></div>
+    </div>`;
+  }).join(''):`<div style="color:var(--t3);font-size:12.5px;padding:24px 0;text-align:center">Sin contratistas con servicios contratados</div>`;
+
+  // Panel de Riesgo Multi-Cliente
+  const rCrit=allConts.filter(c=>getRisk(c)===2);
+  const rAlt=allConts.filter(c=>getRisk(c)===1);
+  let ph='';
+  rCrit.forEach(c=>{const cls=getActiveClients(c,TODAY);ph+=`<div class="alert-row"><div class="alert-ico a-red"><i class="ti ti-alert-triangle"></i></div><div><div class="alert-title">🔴 ${c} — Riesgo Crítico</div><div class="alert-desc">${cls.length} clientes simultáneos: ${cls.join(', ')}</div></div></div>`;});
+  rAlt.forEach(c=>{const cls=getActiveClients(c,TODAY);ph+=`<div class="alert-row"><div class="alert-ico a-amber"><i class="ti ti-alert-circle"></i></div><div><div class="alert-title">⚠ ${c} — Alerta Multi-Cliente</div><div class="alert-desc">2 clientes: ${cls.join(', ')}</div></div></div>`;});
+  if(!rCrit.length&&!rAlt.length)ph=`<div style="color:var(--t3);font-size:12.5px;padding:24px 0;text-align:center"><i class="ti ti-circle-check" style="color:var(--green);font-size:24px;display:block;margin-bottom:8px"></i> Sin riesgos multi-cliente hoy</div>`;
+  document.getElementById('panelRiesgo').innerHTML=ph;
+
+  // Carga por Supervisor
+  const supC={};projects.forEach(p=>{supC[p.sup]=(supC[p.sup]||0)+1;});
+  const maxS=Math.max(...Object.values(supC));
+  document.getElementById('supCargaEjec').innerHTML=Object.entries(supC).sort((a,b)=>b[1]-a[1]).map(([s,n])=>{const p=Math.round(n/maxS*100);const col=p>75?'var(--red)':p>50?'var(--amber)':'var(--green)';return`<div class="bar-row"><div class="bar-lbl">${s}</div><div class="bar-track"><div class="bar-fill" style="width:${p}%;background:${col}"></div></div><div class="bar-pct" style="color:${col}">${n}</div></div>`;}).join('');
+}
+
+/* ===========================================================
+   PMO VIEW
+   =========================================================== */
+function renderPMO(){
+  // Por cada especialidad: total servicios, contratados, pendientes, licitación, contratistas distintos
+  const esp={};
+  allEsps.forEach(e=>{
+    const ps=projects.filter(p=>p.e===e);
+    const cs=[...new Set(ps.map(p=>p.con).filter(c=>c&&c!=='—'))];
+    const contratados=ps.filter(p=>p.sit==='Contratado').length;
+    const pendientes=ps.filter(p=>p.sit==='Pendiente').length;
+    const licitacion=ps.filter(p=>p.sit==='Licitación').length;
+    esp[e]={total:ps.length,contratados,pendientes,licitacion,conts:cs,nconts:cs.length};
+  });
+  const sorted=Object.entries(esp).sort((a,b)=>b[1].total-a[1].total);
+
+  // KPIs gerenciales — concretos y accionables
+  const totalEsp=allEsps.length;
+  const espMasDem=sorted[0];
+  const espSinContrato=sorted.filter(e=>e[1].pendientes+e[1].licitacion>0).length;
+  const espBajaCobertura=sorted.filter(e=>e[1].nconts<=1).length;
+  const totalConContratista=projects.filter(p=>p.con&&p.con!=='—').length;
+  const promConPorEsp=totalEsp?(Object.values(esp).reduce((s,v)=>s+v.nconts,0)/totalEsp).toFixed(1):0;
+
+  document.getElementById('kpi-pmo').innerHTML=[
+    kpiC({label:'Especialidades',value:totalEsp,color:'brand',icon:'ti-tool',sub:`${promConPorEsp} contratistas/especialidad`}),
+    kpiC({label:'Más Demandada',value:espMasDem?espMasDem[0]:'—',color:'purple',icon:'ti-star',sub:`${espMasDem?espMasDem[1].total:0} servicios totales`}),
+    kpiC({label:'Con Pendientes',value:espSinContrato,color:'amber',icon:'ti-hourglass',sub:'Falta contratar al menos 1'}),
+    kpiC({label:'Baja Cobertura',value:espBajaCobertura,color:'red',icon:'ti-alert-triangle',sub:'≤1 contratista distinto'}),
+  ].join('');
+
+  // Demanda por Especialidad — barras apiladas claras
+  document.getElementById('demEsps').innerHTML=sorted.map(([e,v])=>{
+    const max=sorted[0][1].total||1;
+    const wTot=Math.max(15,(v.total/max)*100);
+    const pctC=v.total?(v.contratados/v.total*100):0;
+    const pctP=v.total?(v.pendientes/v.total*100):0;
+    const pctL=v.total?(v.licitacion/v.total*100):0;
+    return`<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+        <div style="font-size:13px;color:var(--t1);font-weight:600;display:flex;align-items:center;gap:8px">${e}<span style="font-size:11px;color:var(--t3);font-weight:500">· ${v.nconts} contratistas</span></div>
+        <div style="font-size:12px;color:var(--t2);font-weight:600"><strong style="color:var(--t1);font-size:14px">${v.total}</strong> servicios</div>
+      </div>
+      <div style="display:flex;height:22px;border-radius:7px;overflow:hidden;background:var(--surface3);width:${wTot}%;min-width:80px;box-shadow:inset 0 1px 2px rgba(0,0,0,.04)">
+        ${v.contratados?`<div style="width:${pctC}%;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10.5px;font-weight:700">${v.contratados>0?v.contratados:''}</div>`:''}
+        ${v.pendientes?`<div style="width:${pctP}%;background:linear-gradient(135deg,#f59e0b,#d97706);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10.5px;font-weight:700">${v.pendientes>0?v.pendientes:''}</div>`:''}
+        ${v.licitacion?`<div style="width:${pctL}%;background:linear-gradient(135deg,#8b5cf6,#7c3aed);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10.5px;font-weight:700">${v.licitacion>0?v.licitacion:''}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Cobertura — qué contratistas atienden cada especialidad
+  document.getElementById('cobEsps').innerHTML=sorted.map(([e,v])=>{
+    const dotCls=v.nconts<=1?'r2':v.nconts<=2?'r1':'r0';
+    const lbl=v.nconts<=1?'Riesgo':v.nconts<=2?'Limitado':'OK';
+    return`<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px">
+      <span class="risk ${dotCls}" style="font-size:10px;min-width:54px;text-align:center">${v.nconts} · ${lbl}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:3px">${e}</div>
+        <div style="font-size:11px;color:var(--t3);line-height:1.5">${v.conts.length?v.conts.join(' · '):'<em>sin contratista asignado</em>'}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Riesgo Multi-Cliente
+  const mc=allConts.map(c=>({c,r:getRisk(c),cls:getActiveClients(c,TODAY)})).filter(x=>x.r>0).sort((a,b)=>b.r-a.r);
+  document.getElementById('multiClienteList').innerHTML=mc.length?mc.map(x=>`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><span class="risk ${rClass(x.r)}">${rLabel(x.r)}</span><div><div style="font-size:12.5px;font-weight:600;color:var(--t1)">${x.c}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${x.cls.join(' · ')}</div></div></div>`).join(''):`<div style="color:var(--t3);font-size:12px;padding:24px 0;text-align:center"><i class="ti ti-circle-check" style="color:var(--green);font-size:24px;display:block;margin-bottom:8px"></i> Sin conflictos multi-cliente hoy</div>`;
+
+  // Clientes por volumen
+  const cc={};projects.forEach(p=>{cc[p.c]=(cc[p.c]||0)+1;});
+  const tc=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  if(window._chCliPMO)window._chCliPMO.destroy();
+  window._chCliPMO=new Chart(document.getElementById('chCliPMO'),{type:'bar',data:{labels:tc.map(c=>c[0]),datasets:[{label:'Servicios',data:tc.map(c=>c[1]),backgroundColor:'rgba(14,165,164,.8)',borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#fff',titleColor:'#0f172a',bodyColor:'#475569',borderColor:'#e5e7eb',borderWidth:1}},scales:{x:{ticks:{color:'#94a3b8',font:{size:10},maxRotation:40},grid:{display:false}},y:{ticks:{color:'#94a3b8',font:{size:10}},grid:{color:'#f1f5f9'}}}}});
+}
+
+/* ===========================================================
+   OPERATIVA
+   =========================================================== */
+function renderOperativa(){
+  const fe=document.getElementById('opFiltEst').value,fesp=document.getElementById('opFiltEsp').value,fsup=document.getElementById('opFiltSup').value,fsit=document.getElementById('opFiltSit').value,fq=(document.getElementById('opSearch').value||'').toLowerCase();
+  let rows=projects.filter(p=>(!fe||p.est===fe)&&(!fesp||p.e===fesp)&&(!fsup||p.sup===fsup)&&(!fsit||p.sit===fsit)&&(!fq||p.c.toLowerCase().includes(fq)||(p.con||'').toLowerCase().includes(fq)));
+  document.getElementById('opCount').textContent=`${rows.length} servicios`;
+  const stTag=s=>({Proceso:'t-proceso',Cierre:'t-cierre',Concluído:'t-concluido','Por Iniciar':'t-porinicia',Licitación:'t-licitacion',Pendiente:'t-pendiente'}[s]||'t-porinicia');
+  const sitTag=s=>({Contratado:'t-contratado',Pendiente:'t-pendiente',Licitación:'t-licitacion'}[s]||'t-porinicia');
+  document.getElementById('opBody').innerHTML=rows.map(p=>{const d=daysDiff(p.finD);const r=p.con&&p.con!=='—'?getRisk(p.con):0;const dc=d!==null&&d<=7?'var(--red)':d!==null&&d<=14?'var(--amber)':'var(--t3)';return`<tr><td class="bold">${p.c}</td><td>${p.con||'—'}</td><td>${p.e}</td><td><span class="tag ${sitTag(p.sit)}">${p.sit}</span></td><td><span class="tag ${stTag(p.est)}">${p.est}</span></td><td style="font-size:11.5px">${p.sup}</td><td style="font-size:11.5px">${fm(p.iniD)}</td><td style="font-size:11.5px">${fm(p.finD)}</td><td style="font-size:11.5px;font-weight:700;color:${dc}">${d!==null?d+'d':'—'}</td><td>${r>0?`<span class="risk ${rClass(r)}" style="font-size:10px">${['','⚠','🔴'][r]}</span>`:'<span style="color:var(--t3);font-size:11px">—</span>'}</td></tr>`;}).join('');
+}
+
+/* ===========================================================
+   UNIVERSO
+   =========================================================== */
+function renderUniverso(){
+  const fst=document.getElementById('uFiltSt').value,fesp=document.getElementById('uFiltEsp').value,fq=(document.getElementById('uSearch').value||'').toLowerCase();
+  let rows=allConts;
+  if(fst)rows=rows.filter(c=>classifyOp(c)===fst);
+  if(fesp)rows=rows.filter(c=>projects.some(p=>p.con===c&&p.e===fesp));
+  if(fq)rows=rows.filter(c=>c.toLowerCase().includes(fq));
+  document.getElementById('univCount').textContent=`${rows.length} contratistas`;
+  const disp=allConts.filter(c=>classifyOp(c)==='DISPONIBLE').length;
+  const ocup=allConts.filter(c=>classifyOp(c)==='OCUPADA').length;
+  const compr=allConts.filter(c=>classifyOp(c)==='COMPROMETIDA').length;
+  const crit=allConts.filter(c=>getRisk(c)===2).length;
+  document.getElementById('kpi-univ').innerHTML=[
+    kpiC({label:'Total',value:allConts.length,color:'brand',icon:'ti-users'}),
+    kpiC({label:'Ocupadas',value:ocup,color:'red',icon:'ti-user-check'}),
+    kpiC({label:'Comprometidas',value:compr,color:'purple',icon:'ti-user-question',sub:'Pendiente/Licitación'}),
+    kpiC({label:'Disponibles',value:disp,color:'green',icon:'ti-user-plus'}),
+    kpiC({label:'Riesgo Crítico',value:crit,color:'red',icon:'ti-alert-triangle'}),
+  ].join('');
+  const opTC=op=>({'OCUPADA':'t-ocupada','DISPONIBLE':'t-disponible','ASIGNADA PRÓXIMAMENTE':'t-asignada','COMPROMETIDA':'t-comprometida','SIN USO EN CARTERA':'t-sinuso'}[op]||'t-sinuso');
+  document.getElementById('univBody').innerHTML=rows.map(c=>{const op=classifyOp(c);const r=getRisk(c);const cla=getActiveClients(c,TODAY);const ps=projects.filter(p=>p.con===c);const esps=[...new Set(ps.map(p=>p.e))];const actP=ps.filter(p=>ACTIVE.includes(p.est)&&CONTRACTED_SIT.includes(p.sit)).length;const futP=ps.filter(p=>p.iniD>TODAY).length;const fins=ps.map(p=>p.finD).filter(Boolean).sort((a,b)=>a-b);return`<tr><td class="bold">${c}</td><td><span class="tag ${opTC(op)}">${op}</span></td><td><span class="risk ${rClass(r)}">${rLabel(r)}</span>${cla.length?`<div style="font-size:10.5px;color:var(--t3);margin-top:3px">${cla.join(' · ')}</div>`:''}</td><td style="text-align:center;font-weight:700;color:${cla.length>=2?'var(--red)':cla.length?'var(--amber)':'var(--t3)'}">${cla.length||'—'}</td><td style="font-size:11px">${esps.slice(0,3).join(', ')}</td><td style="text-align:center">${actP||'—'}</td><td style="text-align:center">${futP||'—'}</td><td style="font-size:11.5px">${fm(fins.length?fins[fins.length-1]:null)}</td></tr>`;}).join('');
+}
+
+/* ===========================================================
+   MATRIZ
+   =========================================================== */
+function renderMatriz(){
+  const fq=(document.getElementById('matSearch').value||'').toLowerCase();
+  const fest=document.getElementById('matFiltEst').value;
+  const cliRows=allClis.filter(c=>!fq||c.toLowerCase().includes(fq));
+  const usedEsps=[...new Set(projects.filter(p=>{if(fest==='activo')return ACTIVE.includes(p.est);if(fest==='futuro')return FUTURE.includes(p.est);return true;}).map(p=>p.e))].sort();
+  const bc=est=>({Proceso:'#3b82f6',Cierre:'#f59e0b',Concluído:'#0f172a','Por Iniciar':'#f97316'}[est]||'#94a3b8');
+  let html=`<table class="mx-table"><thead><tr><th class="rh">Cliente</th>`;
+  usedEsps.forEach(e=>{html+=`<th>${e}</th>`;});
+  html+=`<th>Total</th></tr></thead><tbody>`;
+  cliRows.forEach(cli=>{
+    const cp=projects.filter(p=>p.c===cli&&(!fest||(fest==='activo'?ACTIVE.includes(p.est):FUTURE.includes(p.est))));
+    if(!cp.length)return;
+    html+=`<tr><td class="bold" style="text-align:left">${cli}</td>`;
+    usedEsps.forEach(esp=>{const m=cp.filter(p=>p.e===esp);if(!m.length){html+=`<td><span style="color:var(--t4)">—</span></td>`;}else{const f=m[0];const col=bc(f.est);const isPending=PENDING_SIT.includes(f.sit);const style=isPending?`background:repeating-linear-gradient(135deg,${col}11,${col}11 3px,${col}33 3px,${col}33 6px);color:${col};border:1px dashed ${col}66`:`background:${col}22;color:${col};border:1px solid ${col}44`;html+=`<td><span style="display:inline-block;padding:3px 9px;border-radius:10px;font-size:10.5px;font-weight:700;${style}">${f.con||'—'}</span></td>`;}});
+    html+=`<td style="text-align:center;font-weight:700;color:var(--brand)">${cp.length}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById('matrizContainer').innerHTML=html;
+}
+
+/* ===========================================================
+   GANTT v6 — Vivo, limpio, sticky correcto
+   =========================================================== */
+
+const CLI_COLORS={
+  '2M':'#e11d48','3P':'#db2777','AIB':'#7c3aed','AIB - Motupe':'#6d28d9',
+  'Agricola Pampa Baja':'#0891b2','Agricola San Juan':'#0e7490',
+  'Agro Floral':'#059669','Agroberries':'#047857','Agroberries +':'#065f46',
+  'Agrobusiness':'#65a30d','Agrocasagrande':'#4d7c0f','Agrokasa':'#a16207',
+  'Agrolatina':'#b45309','Agrovision':'#92400e','Alaya':'#c2410c',
+  'Aquanqa':'#0284c7','Ara Export':'#0369a1','Ara Foods':'#1d4ed8',
+  'Berry Harvest':'#4f46e5','Bomarea':'#4338ca','Campo Sol':'#3730a3',
+  'Camsac':'#9333ea','Danper Trujillo':'#be185d','Delice':'#9d174d',
+  'Diamond':'#881337','Drokasa':'#155e75','El Pedregal - Ica':'#164e63',
+  'El Rocio':'#134e4a','Family Farms':'#14532d','Frutos del Oro':'#166534',
+  'Fusion Foods':'#b91c1c','Huarmey':'#991b1b','Imbarex':'#7f1d1d',
+  'Limones Piuranos':'#78350f','Proagro':'#7c2d12','Prolan':'#713f12',
+  'Prosembra':'#3f6212','Qpack':'#166534','Reiter':'#065f46',
+  'Rintisa':'#0c4a6e','San Efisio':'#1e3a5f','Santa Sofía':'#312e81',
+  'Smartpacking':'#4c1d95','TA Export':'#6b21a8','TAL (Acopio)':'#701a75',
+  'TYT':'#831843','Tal SA':'#9f1239','Torre Blanca':'#7f1d1d',
+  'Virú':'#1c1917','Viveros del Tambo':'#0f172a',
+};
+function cliColor(c){
+  if(CLI_COLORS[c])return CLI_COLORS[c];
+  let h=0;for(let i=0;i<c.length;i++)h=Math.imul(31,h)+c.charCodeAt(i)|0;
+  return`hsl(${Math.abs(h)%360},65%,38%)`;
+}
+
+const ESP_COLORS={
+  'Mecánica':'#2563eb','Mecánico':'#2563eb','Mecánico ':'#2563eb',
+  'Mecánica Acero':'#1e40af','Mecánico Acero':'#1e40af',
+  'Mecánica de Glicol':'#0369a1','Mecánico Glicol':'#0369a1',
+  'Eléctrico':'#d97706','Instalación Electromecánica':'#ea580c','EEMM':'#ea580c',
+  'Paneles':'#059669','Obras Civiles':'#7c3aed','OOCC':'#7c3aed',
+  'Aislamiento':'#db2777','Rack Acumulativo':'#0f766e','Montaje de Rack':'#0f766e',
+  'Sistema Contraincendios':'#dc2626','VideoVigilancia':'#475569','VideoVigilancia ':'#475569',
+  'Campamento':'#92400e','Lonas':'#5b21b6','Reubicación de Equipos':'#0369a1',
+};
+function espColor(e){return ESP_COLORS[e]||'#475569';}
+
+function sitCls(sit){
+  if(sit==='Pendiente')return' sit-pend';
+  if(sit==='Licitación')return' sit-licit';
+  return'';
+}
+function isUrgent(p){
+  const d=daysDiff(p.finD);
+  return d!==null&&d>=0&&d<=10&&ACTIVE.includes(p.est)&&CONTRACTED_SIT.includes(p.sit);
+}
+function assignLanes(items){
+  const sorted=[...items].sort((a,b)=>(a.iniD||0)-(b.iniD||0));
+  const laneEnd=[];
+  sorted.forEach(p=>{
+    let lane=0;
+    while(laneEnd[lane]&&laneEnd[lane]>((p.iniD||0)-86400000*2))lane++;
+    laneEnd[lane]=(p.finD||0);
+    p._lane=lane;
+  });
+  return Math.max(1,...sorted.map(p=>p._lane+1));
+}
+function mergeByClient(items){
+  const map={};
+  items.forEach(p=>{
+    if(!map[p.c])map[p.c]={c:p.c,iniD:p.iniD,finD:p.finD,sit:p.sit,est:p.est,esps:[],items:[]};
+    const g=map[p.c];
+    if(p.iniD&&(!g.iniD||p.iniD<g.iniD))g.iniD=p.iniD;
+    if(p.finD&&(!g.finD||p.finD>g.finD))g.finD=p.finD;
+    if(p.sit==='Contratado')g.sit='Contratado';
+    if(!g.esps.includes(p.e))g.esps.push(p.e);
+    g.items.push(p);
+  });
+  return Object.values(map);
+}
+
+/* Zoom */
+let ganttZoom=1.0;
+const ZOOM_STEPS=[0.6,0.8,1.0,1.4,2.0,3.0,4.5];
+let ganttZoomIdx=2;
+function zoomGantt(dir){
+  if(dir===0){ganttZoomIdx=2;}
+  else{ganttZoomIdx=Math.max(0,Math.min(ZOOM_STEPS.length-1,ganttZoomIdx+dir));}
+  ganttZoom=ZOOM_STEPS[ganttZoomIdx];
+  document.getElementById('ganttZoomLbl').textContent=Math.round(ganttZoom*100)+'%';
+  renderGantt();
+}
+
+/* Sort */
+/* ── FILTRO GLOBAL DE ESTADO ── */
+let activeEstados=new Set(['Proceso','Cierre','Por Iniciar']); // Concluido OFF por defecto
+
+const EST_CHIP_STYLE={
+  'Proceso':    {border:'#2563eb',bg:'#dbeafe',color:'#1e40af'},
+  'Cierre':     {border:'#d97706',bg:'#fef3c7',color:'#92400e'},
+  'Por Iniciar':{border:'#64748b',bg:'#f1f5f9',color:'#475569'},
+  'Concluido':  {border:'#9ca3af',bg:'#f3f4f6',color:'#6b7280'},
+};
+
+function toggleGlobalEst(el, est){
+  if(activeEstados.has(est)){
+    activeEstados.delete(est);
+    el.style.opacity='.45';
+    el.style.background='#f9fafb';
+    el.style.borderColor='#d1d5db';
+    el.style.color='#9ca3af';
+  } else {
+    activeEstados.add(est);
+    el.style.opacity='1';
+    const s=EST_CHIP_STYLE[est]||EST_CHIP_STYLE['Por Iniciar'];
+    el.style.background=s.bg;
+    el.style.borderColor=s.border;
+    el.style.color=s.color;
+  }
+  refreshAllViews();
+}
+
+function refreshAllViews(){
+  try{
+    const activePage=document.querySelector('.page.active');
+    if(!activePage) return;
+    const id=activePage.id;
+    if(id==='page-ejecutiva'&&typeof initEjecutiva==='function') initEjecutiva();
+    else if(id==='page-pmo'&&typeof renderPMO==='function') renderPMO();
+    else if(id==='page-pmo'&&typeof initPMO==='function') initPMO();
+    else if(id==='page-gantt'&&typeof renderGantt==='function') renderGantt();
+    else if(id==='page-matriz'&&typeof renderMatriz==='function') renderMatriz();
+    else if(id==='page-matriz'&&typeof initMatriz==='function') initMatriz();
+    else if(id==='page-disponibilidad'&&typeof renderDisp==='function') renderDisp();
+    else if(id==='page-disponibilidad'&&typeof initDisp==='function') initDisp();
+  }catch(e){console.warn('refreshAllViews:',e);}
+}
+
+// Legacy alias for gantt local chips (now unused but keep safe)
+function toggleEstChip(el,est){toggleGlobalEst(el,est);}
+
+let ganttSortAsc=true;
+function toggleGanttSort(){
+  ganttSortAsc=!ganttSortAsc;
+  document.getElementById('gfSortIcon').className='ti '+(ganttSortAsc?'ti-sort-ascending':'ti-sort-descending');
+  document.getElementById('gfSortLabel').textContent=ganttSortAsc?'Fin ↑':'Fin ↓';
+  renderGantt();
+}
+
+/* Exclude concluidos */
+let ganttExclConc=false;
+function toggleGanttConcluido(){
+  ganttExclConc=!ganttExclConc;
+  const btn=document.getElementById('btnExclConc');
+  document.getElementById('iconExclConc').className='ti '+(ganttExclConc?'ti-eye':'ti-eye-off');
+  document.getElementById('lblExclConc').textContent=ganttExclConc?'Mostrar Concluidos':'Excluir Concluidos';
+  btn.style.background=ganttExclConc?'#065f46':'#f0fdf4';
+  btn.style.color=ganttExclConc?'#fff':'#065f46';
+  btn.style.borderColor=ganttExclConc?'#065f46':'#10b981';
+  renderGantt();
+}
+
+/* Header builder */
+function buildHeaders(minD,maxD,totalMs){
+  let h='';
+  let cur=new Date(minD.getFullYear(),minD.getMonth(),1);
+  while(cur<maxD){
+    const next=new Date(cur.getFullYear(),cur.getMonth()+1,1);
+    const lft=(cur-minD)/totalMs*100;
+    const ww=(Math.min(maxD,next)-Math.max(minD,cur))/totalMs*100;
+    if(ww>0.1){
+      const isJan=cur.getMonth()===0;
+      const mo=cur.toLocaleDateString('es-PE',{month:'short'}).replace('.','').toUpperCase();
+      const yr=String(cur.getFullYear()).slice(2);
+      const txt=isJan?`${mo} '${yr}`:mo;
+      h+=`<div style="position:absolute;left:${lft}%;width:${ww}%;border-left:1px solid ${isJan?'#94a3b8':'#e2e8f0'};${isJan?'background:rgba(14,165,164,.07)':''};text-align:center;font-size:10px;font-weight:${isJan?800:600};color:${isJan?'#0f172a':'#94a3b8'};display:flex;align-items:center;justify-content:center;height:100%;white-space:nowrap;overflow:hidden">${txt}</div>`;
+    }
+    cur=next;
+  }
+  return h;
+}
+function buildGrid(minD,maxD,totalMs){
+  let h='';
+  let cur=new Date(minD.getFullYear(),minD.getMonth(),1);
+  while(cur<maxD){
+    const lft=(cur-minD)/totalMs*100;
+    const isJan=cur.getMonth()===0;
+    if(lft>=0&&lft<=100.5)
+      h+=`<div style="position:absolute;left:${lft}%;top:0;bottom:0;width:${isJan?2:1}px;background:${isJan?'#cbd5e1':'#f1f5f9'};z-index:0;pointer-events:none"></div>`;
+    cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);
+  }
+  return h;
+}
+function todayLine(todayP){
+  return`<div style="position:absolute;left:${todayP}%;top:0;bottom:0;width:2px;background:#ef4444;opacity:.8;z-index:5;pointer-events:none">
+    <div style="position:absolute;top:4px;left:50%;transform:translateX(-50%);background:#ef4444;color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px;white-space:nowrap;letter-spacing:.3px;box-shadow:0 2px 4px rgba(239,68,68,.4)">HOY</div>
+  </div>`;
+}
+function buildLegend(filtered2){
+  const estCols={
+    'Proceso':'#2563eb','Cierre':'#d97706','Concluido':'#6b7280',
+    'Por Iniciar (Contratado)':'#64748b'
+  };
+  return`<div style="display:flex;flex-direction:column;gap:6px">
+  <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:9px 14px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;font-size:11px;font-weight:600;color:#475569">
+    <span style="font-size:9.5px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px">Sit.:</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:24px;height:9px;border-radius:3px;background:#2563eb"></span>Contratado</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:24px;height:9px;border-radius:3px;background:#94a3b8;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.45) 0,rgba(255,255,255,.45) 5px,transparent 5px,transparent 10px);border:1.5px dashed rgba(255,255,255,.9)"></span>Pendiente</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:24px;height:9px;border-radius:3px;background:#7c3aed;background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.18) 0,rgba(0,0,0,.18) 4px,transparent 4px,transparent 8px);border:1.5px dotted rgba(255,255,255,.8)"></span>Licitación</span>
+    <span style="padding-left:10px;border-left:1px solid #e5e7eb;display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 2px #fff,0 0 0 3px #ef4444;display:inline-block"></span>Vence ≤10d</span>
+    <span style="display:flex;align-items:center;gap:4px"><span class="multi-badge" style="font-size:9px;padding:1px 5px">⚠ MULTI</span></span>
+    <span style="font-size:9.5px;color:#94a3b8;font-style:italic">· Hover sobre barra = detalles</span>
+  </div></div>`;
+}
+
+let ganttView='contratista';
+function setGanttView(v,el){
+  ganttView=v;
+  document.querySelectorAll('#ganttTabs .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderGantt();
+}
+
+function renderGantt(){
+  const gfc=document.getElementById('gfCont')?.value||'',
+        gfe=document.getElementById('gfEsp')?.value||'',
+        gfes='', // estado handled by activeEstados chips
+        gfcl=document.getElementById('gfCli')?.value||'',
+        gfsit=document.getElementById('gfSit')?.value||'',
+        gfAnio=document.getElementById('gfAnio')?.value||'',
+        gfCarga=parseInt(document.getElementById('gfCarga')?.value||'0')||0;
+
+  const minD=new Date(2024,10,1);
+  const maxD=new Date(2027,3,1);
+  const totalMs=maxD-minD;
+  const baseW=Math.max(900,document.getElementById('ganttScroll').clientWidth||900);
+  const innerW=Math.round(baseW*ganttZoom);
+  const pct=d=>Math.max(0,Math.min(100,(d-minD)/totalMs*100));
+  const todayP=pct(TODAY);
+
+  // Pre-compute contratista project counts for carga filter
+  const contrSvcCount={};
+  projects.forEach(p=>{if(p.con&&p.con!=='—')contrSvcCount[p.con]=(contrSvcCount[p.con]||0)+1;});
+
+  let filtered=projects.filter(p=>{
+    if(!p.iniD||!p.finD) return false; // solo proyectos con fecha
+    if(gfc && p.con!==gfc) return false;
+    if(gfe && p.e!==gfe) return false;
+    if(gfes && p.est!==gfes) return false; // legacy select (hidden)
+    if(!activeEstados.has(p.est)) return false; // chip filter
+    if(gfcl && p.c!==gfcl) return false;
+    if(gfsit && p.sit!==gfsit) return false;
+    // Año filter: check if ini or fin falls in that year
+    if(gfAnio){
+      const yr=parseInt(gfAnio);
+      const iniYr=p.iniD.getFullYear(), finYr=p.finD.getFullYear();
+      if(iniYr!==yr && finYr!==yr && !(iniYr<yr && finYr>yr)) return false;
+    }
+    return true;
+  });
+  if(ganttExclConc) filtered=filtered.filter(p=>p.est!=='Concluido');
+
+  // Carga filter: keep only contratistas with N+ projects in filtered set
+  if(gfCarga>0){
+    const filteredContrCounts={};
+    filtered.forEach(p=>{if(p.con)filteredContrCounts[p.con]=(filteredContrCounts[p.con]||0)+1;});
+    filtered=filtered.filter(p=>p.con&&(filteredContrCounts[p.con]||0)>=gfCarga);
+  }
+
+  document.getElementById('ganttLegend').innerHTML=buildLegend(filtered);
+
+  const LW=240;
+  const ROW_H=46;
+  const BAR_H=22;
+  const BPAD=Math.round((ROW_H-BAR_H)/2);
+  let html=`<div style="min-width:${innerW}px">`;
+
+  /* ── shared sticky month header ── */
+  function stickyHdr(leftTxt){
+    return`<div style="display:grid;grid-template-columns:${LW}px 1fr;position:sticky;top:0;z-index:20;background:#f8fafc;border-bottom:2px solid #cbd5e1">
+      <div style="position:sticky;left:0;z-index:21;background:#f8fafc;padding:10px 14px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;border-right:2px solid #cbd5e1">${leftTxt}</div>
+      <div style="position:relative;height:38px;overflow:hidden;background:#f8fafc">${buildHeaders(minD,maxD,totalMs)}</div>
+    </div>`;
+  }
+
+  /* ── group header (NOT sticky, flows normally) ── */
+  function groupHdr(name, sub, bg, badges){
+    return`<div style="display:grid;grid-template-columns:${LW}px 1fr;background:${bg};border-top:2px solid #e2e8f0;border-bottom:1px solid #e2e8f0">
+      <div style="position:sticky;left:0;z-index:8;background:${bg};padding:9px 12px;border-right:2px solid #e2e8f0;display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:#0f172a">${name}</span>
+        ${sub?`<span style="font-size:10px;color:#94a3b8;font-weight:500">${sub}</span>`:''}
+        ${badges||''}
+      </div>
+      <div style="position:relative;height:34px;background:${bg}">${buildGrid(minD,maxD,totalMs)}${todayLine(todayP)}</div>
+    </div>`;
+  }
+
+  /* ── detail row ── */
+  function detailRow(leftHTML, rightHTML, rh){
+    return`<div style="display:grid;grid-template-columns:${LW}px 1fr;border-bottom:1px solid #f1f5f9;min-height:${rh}px">
+      <div style="position:sticky;left:0;z-index:7;background:#fff;border-right:2px solid #e2e8f0;padding:0 12px 0 20px;display:flex;flex-direction:column;justify-content:center">${leftHTML}</div>
+      <div style="position:relative;min-height:${rh}px;background:#fff">${buildGrid(minD,maxD,totalMs)}${todayLine(todayP)}${rightHTML}</div>
+    </div>`;
+  }
+
+  /* ── sort helper ── */
+  function sortByFin(arr, keyFn){
+    return [...arr].sort((a,b)=>{
+      const av=keyFn(a)||Infinity, bv=keyFn(b)||Infinity;
+      return ganttSortAsc?(av-bv):(bv-av);
+    });
+  }
+
+  /* ================================================================
+     VIEW 1 — Por Contratista
+     1 row per CLIENT (merged), color by client, no text on bar
+  ================================================================ */
+  if(ganttView==='contratista'){
+    html+=stickyHdr('Contratista / Cliente');
+
+    const byC={};
+    filtered.forEach(p=>{const k=p.con||'—';if(!byC[k])byC[k]=[];byC[k].push(p);});
+
+    let cKeys=Object.keys(byC);
+    cKeys=sortByFin(cKeys, k=>{
+      const act=byC[k].filter(p=>ACTIVE.includes(p.est)&&CONTRACTED_SIT.includes(p.sit));
+      if(act.length)return Math.min(...act.map(p=>p.finD?.getTime()||Infinity));
+      return Math.min(...byC[k].filter(p=>p.finD).map(p=>p.finD.getTime()),Infinity);
+    });
+
+    cKeys.forEach(cont=>{
+      const all=byC[cont];
+      const merged=mergeByClient(all);
+      const isMulti=getActiveClients(cont,TODAY).length>=2;
+      const r=getRisk(cont);
+      const bg=isMulti?'#fefce8':r>=2?'#fef2f2':'#f0fdfa';
+      const badges=(isMulti?`<span class="multi-badge">⚠ MULTI</span>`:'')+
+        (r>=2?`<span style="background:#fee2e2;color:#991b1b;font-size:9px;font-weight:700;padding:1px 7px;border-radius:4px">🔴 Crítico</span>`:'');
+
+      html+=groupHdr(cont,`${merged.length} cli · ${all.length} svc`,bg,badges);
+
+      sortByFin(merged, g=>g.finD?.getTime()).forEach(g=>{
+        const lft=pct(g.iniD), ww=Math.max(0.6,pct(g.finD)-pct(g.iniD));
+        const col=cliColor(g.c);
+        const sc=sitCls(g.sit);
+        const urg=g.items.some(p=>isUrgent(p));
+        const tip=`📌 ${g.c}&#10;🔧 ${g.esps.join(', ')}&#10;📋 ${g.sit} · ${g.est}&#10;📅 ${fm(g.iniD)} → ${fm(g.finD)}&#10;${g.items.length} servicio(s)`;
+        const bar=`<div class="gantt-bar${sc}${urg?' urgent':''}" style="position:absolute;left:${lft}%;width:${ww}%;top:${BPAD}px;height:${BAR_H}px;background:${col};font-size:0;box-shadow:0 2px 6px ${col}55" title="${tip}"></div>`;
+        const left=`<div style="display:flex;align-items:center;gap:9px">
+          <span style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0;box-shadow:0 0 0 2.5px ${col}44"></span>
+          <div><div style="font-size:12px;font-weight:600;color:#0f172a">${g.c}</div>
+          <div style="font-size:9.5px;color:#94a3b8;margin-top:1px">${fm(g.iniD)} → ${fm(g.finD)} · ${g.items.length} svc</div></div>
+        </div>`;
+        html+=detailRow(left,bar,ROW_H);
+      });
+    });
+  }
+
+  /* ================================================================
+     VIEW 2 — Por Cliente
+     1 row per CONTRATISTA (merged), color by client, contratista name on bar
+  ================================================================ */
+  else if(ganttView==='cliente'){
+    html+=stickyHdr('Cliente / Contratista');
+
+    const byC={};
+    filtered.forEach(p=>{if(!byC[p.c])byC[p.c]=[];byC[p.c].push(p);});
+    const cKeys=sortByFin(Object.keys(byC), k=>Math.min(...byC[k].filter(p=>p.finD).map(p=>p.finD.getTime()),Infinity));
+
+    cKeys.forEach(cli=>{
+      const all=byC[cli];
+      const col=cliColor(cli);
+      const pend=all.filter(p=>PENDING_SIT.includes(p.sit)).length;
+      const pctC=Math.round(all.filter(p=>CONTRACTED_SIT.includes(p.sit)).length/all.length*100);
+      const badges=pend?`<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 7px;border-radius:4px">${pend} pend</span>`:'';
+
+      // Group by contratista, merge
+      const byContr={};
+      all.forEach(p=>{const k=p.con||'—';if(!byContr[k])byContr[k]=[];byContr[k].push(p);});
+      const contrKeys=sortByFin(Object.keys(byContr), k=>Math.min(...byContr[k].filter(p=>p.finD).map(p=>p.finD.getTime()),Infinity));
+
+      html+=groupHdr(cli,`${contrKeys.length} contrat. · ${all.length} svc · ${pctC}% contrat.`,`${col}15`,badges);
+
+      contrKeys.forEach(cont=>{
+        const items=byContr[cont];
+        const iniD=items.filter(p=>p.iniD).reduce((m,p)=>(!m||p.iniD<m)?p.iniD:m,null);
+        const finD=items.filter(p=>p.finD).reduce((m,p)=>(!m||p.finD>m)?p.finD:m,null);
+        const sit=items.some(p=>p.sit==='Contratado')?'Contratado':items[0].sit;
+        const esps=[...new Set(items.map(p=>p.e))];
+        const lft=pct(iniD), ww=Math.max(0.6,pct(finD)-pct(iniD));
+        const sc=sitCls(sit);
+        const urg=items.some(p=>isUrgent(p));
+        const tip=`🔧 ${cont}&#10;${esps.join(', ')}&#10;${sit}&#10;${fm(iniD)} → ${fm(finD)}&#10;${items.length} svc`;
+        const bar=`<div class="gantt-bar${sc}${urg?' urgent':''}" style="position:absolute;left:${lft}%;width:${ww}%;top:${BPAD}px;height:${BAR_H}px;background:${col};font-size:10.5px;font-weight:600;overflow:hidden;box-shadow:0 2px 6px ${col}55" title="${tip}">${cont}</div>`;
+        const espDots=esps.map(e=>`<span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${espColor(e)}" title="${e}"></span>`).join('');
+        const left=`<div>
+          <div style="font-size:12px;font-weight:600;color:#0f172a;display:flex;align-items:center;gap:5px">${cont} ${espDots}</div>
+          <div style="font-size:9.5px;color:#94a3b8;margin-top:2px">${esps.join(' · ')} · <span style="color:${sit==='Contratado'?'#059669':sit==='Pendiente'?'#d97706':'#7c3aed'};font-weight:700">${sit}</span></div>
+          <div style="font-size:9px;color:#94a3b8;margin-top:1px">${fm(iniD)} → ${fm(finD)}</div>
+        </div>`;
+        html+=detailRow(left,bar,ROW_H);
+      });
+    });
+  }
+
+  /* ================================================================
+     VIEW 3 — Timeline por Contratista
+     Same as "Por Contratista" but ALL clients in ONE row (stacked lanes)
+     Like image 2: shows especialidad + situación text in left col
+  ================================================================ */
+  else if(ganttView==='timeline'){
+    const TLW=240;
+    html=`<div style="min-width:${innerW}px">`;
+    html+=`<div style="display:grid;grid-template-columns:${TLW}px 1fr;position:sticky;top:0;z-index:20;background:#f8fafc;border-bottom:2px solid #cbd5e1">
+      <div style="position:sticky;left:0;z-index:21;background:#f8fafc;padding:10px 14px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;border-right:2px solid #cbd5e1">Contratista / Cliente / Especialidad</div>
+      <div style="position:relative;height:38px;overflow:hidden;background:#f8fafc">${buildHeaders(minD,maxD,totalMs)}</div>
+    </div>`;
+
+    const byC={};
+    filtered.forEach(p=>{const k=p.con||'—';if(!byC[k])byC[k]=[];byC[k].push(p);});
+    const cKeys=sortByFin(Object.keys(byC), k=>{
+      const act=byC[k].filter(p=>ACTIVE.includes(p.est)&&CONTRACTED_SIT.includes(p.sit));
+      return act.length
+        ? Math.min(...act.map(p=>p.finD?.getTime()||Infinity))
+        : Math.min(...byC[k].filter(p=>p.finD).map(p=>p.finD.getTime()),Infinity);
+    });
+
+    cKeys.forEach(cont=>{
+      const all=byC[cont];
+      const isMulti=getActiveClients(cont,TODAY).length>=2;
+      const r=getRisk(cont);
+      const bg=isMulti?'#fefce8':r>=2?'#fef2f2':'#f8fafc';
+      const badges=(isMulti?`<span class="multi-badge">⚠ MULTI</span>`:'')+
+        (r>=2?`<span style="background:#fee2e2;color:#991b1b;font-size:9px;font-weight:700;padding:1px 7px;border-radius:4px">🔴</span>`:'');
+
+      // Group by client, keep specialties separate (like image 2)
+      const byCli={};
+      all.forEach(p=>{if(!byCli[p.c])byCli[p.c]=[];byCli[p.c].push(p);});
+      const totalSvc=all.length;
+
+      html+=groupHdr(cont,`${Object.keys(byCli).length} cli · ${totalSvc} svc`,bg,badges);
+
+      // One row per CLIENT per SPECIALTY (exactly like image 2)
+      sortByFin(Object.keys(byCli), k=>Math.min(...byCli[k].filter(p=>p.finD).map(p=>p.finD.getTime()),Infinity))
+      .forEach(cli=>{
+        const cliItems=sortByFin(byCli[cli], p=>p.finD?.getTime());
+        // Group by specialty for this client
+        const byEsp={};
+        cliItems.forEach(p=>{if(!byEsp[p.e])byEsp[p.e]=[];byEsp[p.e].push(p);});
+
+        Object.entries(byEsp).forEach(([esp,espItems])=>{
+          // Merge overlapping services of same esp+client into lanes
+          const numLanes=assignLanes(espItems);
+          const rh=Math.max(ROW_H, numLanes*26+10);
+          let bars='';
+          espItems.forEach(p=>{
+            const lft=pct(p.iniD), ww=Math.max(0.6,pct(p.finD)-pct(p.iniD));
+            const top=4+p._lane*26;
+            const col=espColor(esp);
+            const sc=sitCls(p.sit);
+            const urg=isUrgent(p);
+            const tip=`📌 ${p.c}&#10;🔧 ${p.con}&#10;📋 ${esp}&#10;${p.sit} · ${p.est}&#10;📅 ${fm(p.iniD)} → ${fm(p.finD)}`;
+            bars+=`<div class="gantt-bar${sc}${urg?' urgent':''}" style="position:absolute;left:${lft}%;width:${ww}%;top:${top}px;height:20px;background:${col};font-size:10px;font-weight:600;overflow:hidden;box-shadow:0 1px 4px ${col}44" title="${tip}">${esp}</div>`;
+          });
+          const sit=espItems.some(p=>p.sit==='Contratado')?'Contratado':espItems[0].sit;
+          const sitColor=sit==='Contratado'?'#059669':sit==='Pendiente'?'#d97706':'#7c3aed';
+          const left=`<div style="padding:6px 0">
+            <div style="font-size:12px;font-weight:600;color:#0f172a">${cli}</div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">${esp} · <span style="color:${sitColor};font-weight:700">${sit}</span></div>
+          </div>`;
+          html+=detailRow(left,bars,rh);
+        });
+      });
+    });
+  }
+
+  html+=`</div>`;
+  document.getElementById('ganttWrap').innerHTML=html||`<div style="padding:30px;text-align:center;color:#94a3b8">Sin servicios con los filtros seleccionados</div>`;
+}
+
+
+
+/* ===========================================================
+   URGENTES SIN CONTRATAR — pendiente/licitación próximos a vencer
+   =========================================================== */
+let urgView='inicio'; // 'inicio' or 'fin'
+function setUrgView(v,el){
+  urgView=v;
+  document.querySelectorAll('#urgTabs .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('urgSecLbl').innerHTML=`<i class="ti ti-list"></i>Servicios Ordenados por Proximidad de ${v==='inicio'?'Inicio':'Fin'}`;
+  renderUrgentes();
+}
+
+function renderUrgentes(){
+  // Filtra solo Pendiente/Licitación
+  const fSit=document.getElementById('urgFiltSit')?.value||'';
+  const fCli=document.getElementById('urgFiltCli')?.value||'';
+  const fEsp=document.getElementById('urgFiltEsp')?.value||'';
+  const fSup=document.getElementById('urgFiltSup')?.value||'';
+
+  let lista=projects.filter(p=>PENDING_SIT.includes(p.sit));
+
+  // KPIs (sobre el total no filtrado para que no varíen)
+  const todos=lista;
+  const totalPend=todos.filter(p=>p.sit==='Pendiente').length;
+  const totalLicit=todos.filter(p=>p.sit==='Licitación').length;
+  const vencidos=todos.filter(p=>p.iniD&&daysDiff(p.iniD)<0).length;
+  const ini7=todos.filter(p=>p.iniD&&daysDiff(p.iniD)>=0&&daysDiff(p.iniD)<=7).length;
+  const ini14=todos.filter(p=>p.iniD&&daysDiff(p.iniD)>=0&&daysDiff(p.iniD)<=14).length;
+  const ini30=todos.filter(p=>p.iniD&&daysDiff(p.iniD)>=0&&daysDiff(p.iniD)<=30).length;
+  const ini60=todos.filter(p=>p.iniD&&daysDiff(p.iniD)>=0&&daysDiff(p.iniD)<=60).length;
+  const critTotal=vencidos+ini14;
+
+  const licitClis=new Set(todos.filter(p=>p.sit==='Licitación').map(p=>p.c)).size;
+  const licitEsp=new Set(todos.filter(p=>p.sit==='Licitación').map(p=>p.e)).size;
+
+  document.getElementById('urgKPI-critico').textContent=critTotal;
+  document.getElementById('urgKPI-vencidos').textContent=vencidos;
+  document.getElementById('urgKPI-7d').textContent=ini7;
+  document.getElementById('urgKPI-14d').textContent=ini14;
+  document.getElementById('urgKPI-pend').textContent=totalPend;
+  document.getElementById('urgKPI-30d').textContent=ini30;
+  document.getElementById('urgKPI-60d').textContent=ini60;
+  document.getElementById('urgKPI-licit').textContent=totalLicit;
+  document.getElementById('urgKPI-licitClis').textContent=licitClis;
+  document.getElementById('urgKPI-licitEsp').textContent=licitEsp;
+
+  // Aplica filtros adicionales
+  if(fSit)lista=lista.filter(p=>p.sit===fSit);
+  if(fCli)lista=lista.filter(p=>p.c===fCli);
+  if(fEsp)lista=lista.filter(p=>p.e===fEsp);
+  if(fSup)lista=lista.filter(p=>p.sup===fSup);
+
+  // Ordena por inicio o fin
+  const dateKey=urgView==='inicio'?'iniD':'finD';
+  lista.sort((a,b)=>{
+    const da=a[dateKey],db=b[dateKey];
+    if(!da&&!db)return 0;
+    if(!da)return 1;
+    if(!db)return -1;
+    return da-db;
+  });
+
+  // Render
+  if(lista.length===0){
+    document.getElementById('urgList').innerHTML=`<div style="padding:30px;text-align:center;color:var(--t3);background:var(--surface);border-radius:14px;border:1px solid var(--border)"><i class="ti ti-circle-check" style="color:var(--green);font-size:32px;display:block;margin-bottom:10px"></i>Sin servicios con los filtros seleccionados</div>`;
+    return;
+  }
+
+  document.getElementById('urgList').innerHTML=lista.map(p=>{
+    const dIni=p.iniD?daysDiff(p.iniD):null;
+    const dFin=p.finD?daysDiff(p.finD):null;
+    const refD=urgView==='inicio'?dIni:dFin;
+    let urgCls='urg-low',dCls='';
+    if(refD===null){urgCls='urg-low';dCls='';}
+    else if(refD<0){urgCls='urg-crit';dCls='d-crit';}
+    else if(refD<=7){urgCls='urg-crit';dCls='d-crit';}
+    else if(refD<=14){urgCls='urg-high';dCls='d-high';}
+    else if(refD<=30){urgCls='urg-med';dCls='d-med';}
+    else{urgCls='urg-low';dCls='';}
+
+    const statusCls=p.sit==='Licitación'?'s-licit':'s-pend';
+    const dDisplay=refD===null?'—':(refD<0?Math.abs(refD)+'d':refD+'d');
+    const dLabel=refD===null?'sin fecha':(refD<0?(urgView==='inicio'?'iniciado':'vencido'):(urgView==='inicio'?'al inicio':'al fin'));
+
+    const vencidoBadge=(urgView==='inicio'&&dIni!==null&&dIni<0)?`<div class="urg-status s-vencido" style="margin-top:4px"><i class="ti ti-flag-exclamation" style="font-size:11px;vertical-align:-1px"></i> YA INICIADO</div>`:'';
+
+    return`<div class="urg-card ${urgCls}">
+      <div class="urg-days ${dCls}">
+        <div class="ud-n">${dDisplay}</div>
+        <div class="ud-l">${dLabel}</div>
+      </div>
+      <div class="urg-info">
+        <div class="urg-cli">${p.c} <span style="font-size:12px;color:var(--t3);font-weight:600">·</span> <span style="font-size:13px;color:var(--t2);font-weight:600">${p.e}</span></div>
+        <div class="urg-meta">
+          <span><i class="ti ti-calendar-event"></i>Inicio: ${fm(p.iniD)}</span>
+          <span><i class="ti ti-calendar-check"></i>Fin: ${fm(p.finD)}</span>
+          <span><i class="ti ti-user-shield"></i>${p.sup}</span>
+        </div>
+      </div>
+      <div class="urg-right">
+        <span class="urg-status ${statusCls}">${p.sit}</span>
+        ${vencidoBadge}
+        <div class="urg-prop">Propuesto: <strong>${p.con||'—'}</strong></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ===========================================================
+   ALERTAS
+   =========================================================== */
+function renderAlertas(){
+  const crit=allConts.filter(c=>getRisk(c)===2);
+  const alrt=allConts.filter(c=>getRisk(c)===1);
+  const venc30=projects.filter(p=>{const d=daysDiff(p.finD);return d!==null&&d>=0&&d<=30&&ACTIVE.includes(p.est);});
+  const venc10=projects.filter(p=>{const d=daysDiff(p.finD);return d!==null&&d>=0&&d<=10&&ACTIVE.includes(p.est);});
+  const sinC=projects.filter(p=>!p.con||p.con==='—');
+  document.getElementById('kpi-alertas').innerHTML=[
+    kpiC({label:'Riesgo Crítico',value:crit.length,color:'red',icon:'ti-alert-triangle',sub:'3+ clientes simult.'}),
+    kpiC({label:'Multi-Cliente',value:alrt.length,color:'amber',icon:'ti-alert-circle',sub:'2 clientes simult.'}),
+    kpiC({label:'Vencen ≤10d',value:venc10.length,color:'red',icon:'ti-clock-exclamation',sub:'⏰ Acción urgente'}),
+    kpiC({label:'Vencen ≤30d',value:venc30.length,color:'amber',icon:'ti-clock',sub:'Seguimiento'}),
+    kpiC({label:'Sin Asignación',value:sinC.length,color:'red',icon:'ti-user-x',sub:'Pendientes'})
+  ].join('');
+  const ba=(items,ico,cls)=>items.length?items.map(a=>`<div class="alert-row"><div class="alert-ico ${cls}"><i class="ti ${ico}"></i></div><div><div class="alert-title">${a.t}</div><div class="alert-desc">${a.d}</div></div></div>`).join(''):`<div style="color:var(--t3);font-size:12px;padding:20px 0;text-align:center"><i class="ti ti-circle-check" style="color:var(--green);font-size:22px;display:block;margin-bottom:6px"></i> Sin alertas</div>`;
+  const ci=[...crit.map(c=>({t:`🔴 ${c} — Riesgo Crítico`,d:`${getActiveClients(c,TODAY).length} clientes: ${getActiveClients(c,TODAY).join(', ')}`})),...sinC.map(p=>({t:`Sin asignación: ${p.c} — ${p.e}`,d:`Sup: ${p.sup} · Inicio: ${fm(p.iniD)}`}))];
+  document.getElementById('alertCrit').innerHTML=ba(ci,'ti-alert-triangle','a-red');
+  document.getElementById('alertMod').innerHTML=ba(alrt.map(c=>({t:`⚠ ${c} — 2 Clientes Simultáneos`,d:getActiveClients(c,TODAY).join(' · ')})),'ti-alert-circle','a-amber');
+  document.getElementById('alertVenc').innerHTML=venc30.length?venc30.sort((a,b)=>a.finD-b.finD).slice(0,10).map(p=>{const d=daysDiff(p.finD);const col=d<=7?'var(--red)':d<=14?'var(--amber)':'var(--green)';return`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><span class="dot" style="background:${col}"></span><div style="flex:1"><div style="font-size:12.5px;font-weight:600;color:var(--t1)">${p.c} · ${p.con||'—'}</div><div style="font-size:11px;color:var(--t3)">${p.e} · ${fm(p.finD)}</div></div><div style="font-size:13px;font-weight:800;color:${col}">${d}d</div></div>`;}).join(''):`<div style="color:var(--t3);font-size:12px;padding:10px 0;text-align:center">Sin vencimientos próximos</div>`;
+  const supC={};projects.forEach(p=>{supC[p.sup]=(supC[p.sup]||0)+1;});const maxS=Math.max(...Object.values(supC));
+  document.getElementById('alertSup').innerHTML=Object.entries(supC).sort((a,b)=>b[1]-a[1]).map(([s,n])=>{const p=Math.round(n/maxS*100);const col=p>75?'var(--red)':p>50?'var(--amber)':'var(--green)';return`<div class="bar-row"><div class="bar-lbl" style="width:160px">${s}</div><div class="bar-track"><div class="bar-fill" style="width:${p}%;background:${col}"></div></div><div class="bar-pct" style="color:${col}">${n}</div></div>`;}).join('');
+}
+
+/* ===========================================================
+   DISPONIBILIDAD — CORREGIDO
+   - Ahora considera Licitación / Pendiente como NO LIBRE
+   - Esto soluciona el bug A&R/Prolan
+   =========================================================== */
+function setToday(){document.getElementById('fechaQ').value='2026-05-25';queryDate();}
+function queryDate(){
+  const v=document.getElementById('fechaQ').value;if(!v)return;
+  const f=new Date(v+'T12:00:00');
+  const fs=f.toLocaleDateString('es-PE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+  // OCUPADAS: Contratado + en ejecución activa cubriendo la fecha
+  const ocupItems=allConts.map(c=>{
+    const asn=getContractedAssignmentsOnDate(c,f);
+    return asn.length?{c,clis:[...new Set(asn.map(a=>a.c))],sit:'Contratado'}:null;
+  }).filter(Boolean);
+
+  // COMPROMETIDAS: Licitación o Pendiente (propuestas — no asignadas oficialmente, no se pueden considerar 100% libres)
+  const comprItems=allConts.map(c=>{
+    const asn=getProposedAssignmentsOnDate(c,f);
+    if(!asn.length)return null;
+    // skip if also ocupada (ya contadas arriba)
+    if(ocupItems.find(x=>x.c===c))return null;
+    return{c,clis:[...new Set(asn.map(a=>a.c))],sit:asn[0].sit};
+  }).filter(Boolean);
+
+  // LIBRES: ni ocupadas, ni comprometidas en esa fecha
+  const ocupSet=new Set(ocupItems.map(x=>x.c));
+  const comprSet=new Set(comprItems.map(x=>x.c));
+  const libres=allConts.filter(c=>!ocupSet.has(c)&&!comprSet.has(c));
+
+  // CON PRÓX. OBRA: tiene proyecto futuro a partir de la fecha
+  const conSig=allConts.filter(c=>projects.some(p=>p.con===c&&p.iniD&&p.iniD>f));
+
+  // MULTI-CLIENTE: contratistas con 2+ clientes simultáneos contratados/activos
+  const mc=allConts.filter(c=>getActiveClients(c,f).length>=2);
+
+  const cardOcup=(t,items,ic,col)=>`<div class="avail-c"><div class="avail-c-title" style="color:${col}"><i class="ti ${ic}"></i>${t} (${items.length})</div><ul>${items.length?items.map(i=>`<li><span class="dot" style="background:${col}"></span><span>${i.c}</span><small>${i.clis.join(' · ')}</small></li>`).join(''):'<li style="color:var(--t3)">Ninguna</li>'}</ul></div>`;
+  const cardCompr=(t,items,ic,col)=>`<div class="avail-c"><div class="avail-c-title" style="color:${col}"><i class="ti ${ic}"></i>${t} (${items.length})</div><ul>${items.length?items.map(i=>`<li><span class="dot" style="background:${col}"></span><span>${i.c}</span><small>${i.sit} · ${i.clis.join(', ')}</small></li>`).join(''):'<li style="color:var(--t3)">Ninguna</li>'}</ul></div>`;
+  const cardSimple=(t,arr,ic,col)=>`<div class="avail-c"><div class="avail-c-title" style="color:${col}"><i class="ti ${ic}"></i>${t} (${arr.length})</div><ul>${arr.length?arr.map(i=>`<li><span class="dot" style="background:${col}"></span>${i}</li>`).join(''):'<li style="color:var(--t3)">Ninguna</li>'}</ul></div>`;
+
+  document.getElementById('dispResult').innerHTML=`
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-calendar-event"></i>Resultado: ${fs}</div><div class="sec-extra">Total contratistas: ${allConts.length}</div></div>
+      <div class="sec-body">
+        <div style="background:var(--blue-l);border:1px solid #93c5fd;border-radius:10px;padding:11px 14px;margin-bottom:14px;font-size:12px;color:var(--blue-d);display:flex;align-items:center;gap:9px">
+          <i class="ti ti-info-circle" style="font-size:16px"></i>
+          <div><strong>Lógica corregida:</strong> ahora <em>"Comprometidas"</em> también incluye contratistas con asignaciones en <strong>Licitación</strong> o <strong>Pendiente</strong> cubriendo la fecha (no aparecen como Libres). Ejemplo: A&amp;R en Prolan ya no aparece como Libre.</div>
+        </div>
+        <div class="avail-grid">
+          ${cardOcup('Ocupadas (Contratado activo)',ocupItems,'ti-user-check','var(--red)')}
+          ${cardCompr('Comprometidas (Pendiente / Licitación)',comprItems,'ti-user-question','var(--purple)')}
+          ${cardSimple('Libres',libres,'ti-user-plus','var(--green)')}
+          ${cardSimple('Con próxima obra (a futuro)',conSig,'ti-calendar-plus','var(--blue)')}
+          ${cardSimple('Multi-Cliente ⚠',mc,'ti-alert-circle','var(--amber)')}
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ===========================================================
+   BOT
+   =========================================================== */
+let botR=false;
+const BOTS={
+  'libre':()=>{const d=allConts.filter(c=>classifyOp(c)==='DISPONIBLE');return`<strong>Contratistas disponibles hoy (${d.length}):</strong><br>${d.map(c=>`• ${c}`).join('<br>')}<br><br>Sin proyectos activos ni comprometidos futuros. Candidatas inmediatas.`;},
+  'saturad':()=>`<strong>Análisis multi-cliente (lógica corregida):</strong><br>🔴 Crítico (3+ clientes): ${allConts.filter(c=>getRisk(c)===2).map(c=>`${c}: ${getActiveClients(c,TODAY).join(', ')}`).join(' | ')||'Ninguno'}<br>⚠ Alerta (2 clientes): ${allConts.filter(c=>getRisk(c)===1).map(c=>`${c}: ${getActiveClients(c,TODAY).join(', ')}`).join(' | ')||'Ninguno'}`,
+  'riesgo':()=>{const cr=allConts.filter(c=>getRisk(c)===2);const al=allConts.filter(c=>getRisk(c)===1);const vc=projects.filter(p=>{const d=daysDiff(p.finD);return d!==null&&d>=0&&d<=7&&ACTIVE.includes(p.est);});return`<strong>Reporte de Riesgos PMO</strong><br><br>🔴 <strong>Críticos:</strong><br>${cr.length?cr.map(c=>`• ${c}: ${getActiveClients(c,TODAY).join(', ')}`).join('<br>'):'• Sin riesgos críticos'}<br><br>⚠ <strong>Alertas:</strong><br>${al.length?al.map(c=>`• ${c}: ${getActiveClients(c,TODAY).join(', ')}`).join('<br>'):'• Sin alertas'}<br><br>⏰ Vencen ≤7 días: ${vc.length} servicios`;},
+  'mecánica':()=>{const m=allConts.filter(c=>projects.some(p=>p.con===c&&p.e==='Mecánica')&&classifyOp(c)==='DISPONIBLE');return`<strong>Contratistas de Mecánica disponibles:</strong><br>${m.length?m.map(c=>`• ${c}`).join('<br>'):'Ninguna actualmente'}`;},
+  'supervisor':()=>{const sc={};projects.forEach(p=>{sc[p.sup]=(sc[p.sup]||0)+1;});return`<strong>Carga por Supervisor:</strong><br>${Object.entries(sc).sort((a,b)=>b[1]-a[1]).map(([s,n])=>`• <strong>${s}:</strong> ${n} servicios`).join('<br>')}`;},
+  'multi':()=>{const mc=allConts.filter(c=>getRisk(c)>0);return`<strong>Contratistas con multi-cliente:</strong><br>${mc.length?mc.map(c=>`• <strong>${c}</strong> [${rLabel(getRisk(c))}]: ${getActiveClients(c,TODAY).join(', ')}`).join('<br>'):'Ninguna hoy'}`;},
+  'clientes':()=>`<strong>Resumen de clientes:</strong><br>Total servicios: ${projects.length}<br>Total clientes distintos: <strong>${allClis.length}</strong><br>Total contratistas: <strong>${allConts.length}</strong><br><br><em>Nota: cada cliente puede tener varios servicios. No confundir servicios (${projects.length}) con clientes (${allClis.length}).</em>`,
+};
+function initBot(){
+  if(botR)return;botR=true;
+  addBotM(`¡Bienvenido al <strong>Asistente PMO FRIOPACKING</strong>!<br><br>📊 ${projects.length} servicios · ${allClis.length} clientes · ${allConts.length} contratistas<br>✅ ${allConts.filter(c=>classifyOp(c)==='DISPONIBLE').length} disponibles hoy<br><br><em>Lógica multi-cliente activa:</em> El riesgo se calcula por clientes distintos simultáneos.<br><br>¿En qué puedo ayudarte?`);
+  const qs=['¿Qué contratistas están libres?','Riesgos multi-cliente','Reporte de riesgos','Carga de supervisores','Mecánica disponible','Resumen de clientes'];
+  document.getElementById('chatQuick').innerHTML=qs.map(q=>`<button class="quick-btn" onclick="sendQ('${q}')">${q}</button>`).join('');
+}
+function addBotM(t){const m=document.getElementById('chatMsgs');const ts=new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});m.innerHTML+=`<div class="msg bot"><div class="msg-bubble">${t}</div><div class="msg-ts">${ts}</div></div>`;m.scrollTop=m.scrollHeight;}
+function addUserM(t){const m=document.getElementById('chatMsgs');const ts=new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});m.innerHTML+=`<div class="msg user"><div class="msg-bubble">${t}</div><div class="msg-ts" style="text-align:right">${ts}</div></div>`;m.scrollTop=m.scrollHeight;}
+function processC(t){const tl=t.toLowerCase();for(const[k,fn]of Object.entries(BOTS)){if(tl.includes(k))return fn();}return`Tengo acceso a ${projects.length} servicios, ${allClis.length} clientes y ${allConts.length} contratistas.<br><br>${allConts.filter(c=>classifyOp(c)==='DISPONIBLE').length} disponibles · ${allConts.filter(c=>getRisk(c)===2).length} con riesgo crítico<br><br>Pregunta sobre: disponibilidad, riesgos multi-cliente, supervisores, especialidades, vencimientos o clientes.`;}
+function sendChat(){const i=document.getElementById('chatInput');const t=i.value.trim();if(!t)return;addUserM(t);i.value='';setTimeout(()=>addBotM(processC(t)),350);}
+function sendQ(t){addUserM(t);setTimeout(()=>addBotM(processC(t)),350);}
+
+/* ===========================================================
+   MODELO DATOS & DAX
+   =========================================================== */
+function renderModelo(){
+  const tabs=[{n:'Fact_Servicios',i:'ti-table',f:['ID_Servicio (PK)','ID_Contratista (FK)','ID_Cliente (FK)','ID_Especialidad (FK)','ID_Supervisor (FK)','Situacion','Estado','Fecha_Inicio','Fecha_Fin']},{n:'Dim_Contratistas',i:'ti-users',f:['ID_Contratista (PK)','Empresa_Normalizada','Alias[]','Encargado','Telefono','Correo','Estado_Directorio']},{n:'Dim_Clientes',i:'ti-building',f:['ID_Cliente (PK)','Nombre_Cliente','Sector','Region']},{n:'Dim_Especialidades',i:'ti-tool',f:['ID_Especialidad (PK)','Especialidad','Categoria','Criticidad']},{n:'Dim_Supervisores',i:'ti-user-check',f:['ID_Supervisor (PK)','Nombre_Supervisor','Area','Nivel']},{n:'Dim_Calendario',i:'ti-calendar',f:['Fecha (PK)','Año','Mes','Semana','Trimestre']}];
+  document.getElementById('tablasMod').innerHTML=tabs.map(t=>`<div class="section" style="margin-bottom:0"><div class="sec-head"><div class="sec-title"><i class="ti ${t.i}"></i>${t.n}</div></div><div class="sec-body">${t.f.map(f=>`<div style="font-size:12px;color:var(--t2);padding:5px 0;border-bottom:1px solid var(--border)">${f}</div>`).join('')}</div></div>`).join('');
+  const dax=[
+    {n:'Servicios vs Clientes (clarificación)',c:`Total_Servicios = COUNTROWS(Fact_Servicios)\nTotal_Clientes  = DISTINCTCOUNT(Fact_Servicios[ID_Cliente])\n// NO confundir: cada cliente puede tener N servicios`},
+    {n:'% Avance Contratación',c:`Pct_Avance =\nDIVIDE(\n  CALCULATE(COUNTROWS(Fact_Servicios),Fact_Servicios[Situacion]="Contratado"),\n  COUNTROWS(Fact_Servicios)\n)`},
+    {n:'Riesgo Multi-Cliente Crítico',c:`Riesgo_Critico =\nCALCULATE(\n  DISTINCTCOUNT(Fact_Servicios[ID_Contratista]),\n  [Clientes_Activos_Simultaneos] >= 3\n)`},
+    {n:'Servicios Vencen ≤10 días',c:`Vencen_10d =\nCALCULATE(\n  COUNTROWS(Fact_Servicios),\n  Fact_Servicios[Estado] IN {"Proceso","Cierre"},\n  DATEDIFF(TODAY(), Fact_Servicios[Fecha_Fin], DAY) <= 10,\n  DATEDIFF(TODAY(), Fact_Servicios[Fecha_Fin], DAY) >= 0\n)`}
+  ];
+  document.getElementById('daxBody').innerHTML=dax.map(d=>`<div class="dax-block"><div class="dax-name"><i class="ti ti-math-function" style="color:var(--brand)"></i>${d.n}</div><pre>${d.c}</pre></div>`).join('');
+}
+
+/* ===========================================================
+   INIT
+   =========================================================== */
+function _svRerender(){populateFilters();initEjecutiva();setToday();}
+/* ── Datos EN VIVO desde Supabase (portafolio_servicios) · fallback al seed ── */
+const SV_URL='https://vsploxglutkbeokumunp.supabase.co';
+const SV_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+fetch(SV_URL+'/rest/v1/portafolio_servicios?select=*',{headers:{apikey:SV_KEY,Authorization:'Bearer '+SV_KEY}})
+  .then(r=>r.ok?r.json():[]).then(rows=>{
+    if(rows.length){
+      DATA=rows.map(r=>({c:r.cliente||'',e:r.especialidad||'',sit:r.situacion||'',est:r.estado||'',sup:r.supervisor||'',con:r.contratista||'',ini:r.fecha_inicio||'',fin:r.fecha_fin||''}));
+      projects=DATA.map(r=>({...r,iniD:pd(r.ini),finD:pd(r.fin)}));
+      allConts=[...new Set(projects.map(p=>p.con).filter(c=>c&&c!=='—'))].sort();
+      allEsps=[...new Set(projects.map(p=>p.e))].sort();
+      allSups=[...new Set(projects.map(p=>p.sup))].sort();
+      allClis=[...new Set(projects.map(p=>p.c))].sort();
+      allEsts=[...new Set(projects.map(p=>p.est))];
+      allSits=[...new Set(projects.map(p=>p.sit))];
+    }
+    _svRerender();
+  }).catch(()=>_svRerender());
+</script>
+</body>
+</html>

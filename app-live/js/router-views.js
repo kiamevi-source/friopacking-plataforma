@@ -30,7 +30,7 @@
   const NATIVE_VIEWS = {
     servicios: {
       el: document.getElementById('view-servicios'),
-      init: () => { if (typeof window.loadServicios === 'function') window.loadServicios(); },
+      init: () => {},  // ahora es el módulo Dashboard de Servicios v4 (iframe), no la vista nativa
     },
     // Evaluación de Contratistas (módulo propio embebido · escribe a evaluacion_contratistas)
     'eval-contratistas': {
