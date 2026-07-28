@@ -5040,7 +5040,12 @@ async function cargarProyectos() {
     if (!esAdmin) {
       url += '&supervisor_email=eq.' + encodeURIComponent((currentUser && currentUser.email) || '__none__');
     }
-    const rows = await sbFetch(url);
+    // FUENTE ÚNICA de proyectos: la BD de PMO (Gerencia crea/edita; el supervisor solo LEE).
+    // El resto de la app (reportes, Gantt, etc.) enlaza por cod_proyecto/nombre, no por id,
+    // así que el id distinto de PMO no afecta.
+    const PMO_URL = 'https://vsploxglutkbeokumunp.supabase.co';
+    const PMO_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+    const rows = await fetch(PMO_URL + url, { headers: { apikey: PMO_KEY, Authorization: 'Bearer ' + PMO_KEY } }).then(r => r.ok ? r.json() : []);
     const sel = document.getElementById('sel-proyecto');
     sel.innerHTML = '<option value="">— Selecciona —</option>';
     rows.forEach(p => {
@@ -10047,32 +10052,49 @@ async function subirFotosReporte(files) {
   if (!files || !files.length) return;
   const cod = (currentProyecto?.cod || 'sin-cod').replace(/[^a-zA-Z0-9._-]/g,'_');
   const status = document.getElementById('rd-fotos-status');
+  let encoladas = 0;
   for (const file of files) {
     status.textContent = `Procesando ${file.name}…`;
     const c = await _comprimirImagen(file);
-    status.textContent = `Subiendo ${c.name}…`;
     const safe = c.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-    const path = `${cod}/${Date.now()}_${safe}`;
-    try {
-      const token = localStorage.getItem('sb_token');
-      const res = await fetch(`${SB_URL}/storage/v1/object/reporte-fotos/${path}`, {
-        method:'POST',
-        headers:{ 'apikey':SB_KEY, 'Authorization':'Bearer '+(token||SB_KEY), 'Content-Type': c.type||'application/octet-stream', 'x-upsert':'true' },
-        body: c.blob
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const url = `${SB_URL}/storage/v1/object/public/reporte-fotos/${path}`;
-      rdFotos.push({ url, nombre:c.name, tipo:c.type||'', ambiente:'', actividad:'', captura_ts: new Date().toISOString() });
-    } catch(e) {
-      showToast('Error subiendo '+file.name);
-      console.error(e);
+    // Con señal: subida directa (comportamiento original).
+    if (navigator.onLine) {
+      status.textContent = `Subiendo ${c.name}…`;
+      const path = `${cod}/${Date.now()}_${safe}`;
+      try {
+        const token = localStorage.getItem('sb_token');
+        const res = await fetch(`${SB_URL}/storage/v1/object/reporte-fotos/${path}`, {
+          method:'POST',
+          headers:{ 'apikey':SB_KEY, 'Authorization':'Bearer '+(token||SB_KEY), 'Content-Type': c.type||'application/octet-stream', 'x-upsert':'true' },
+          body: c.blob
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const url = `${SB_URL}/storage/v1/object/public/reporte-fotos/${path}`;
+        rdFotos.push({ url, nombre:c.name, tipo:c.type||'', ambiente:'', actividad:'', captura_ts: new Date().toISOString() });
+        continue;
+      } catch(e) { console.warn('Subida directa falló, encolando offline:', e); }
     }
+    // Sin señal o subida fallida → guardar la foto en el equipo (IndexedDB) y encolar.
+    const ok = await _encolarFotoOffline(c, cod);
+    if (ok) encoladas++;
   }
-  status.textContent = `${rdFotos.length} foto(s) cargada(s)`;
+  try { await _mirrorLocal(); } catch(e){}   // persiste las fotos pendientes en el borrador local
+  status.textContent = encoladas
+    ? `${rdFotos.length} foto(s) · ${encoladas} guardada(s) sin señal, se subirá(n) al reconectar`
+    : `${rdFotos.length} foto(s) cargada(s)`;
   document.getElementById('rd-fotos-input').value = '';
   renderFotosReporte();
 }
-function eliminarFotoReporte(i){ rdFotos.splice(i,1); renderFotosReporte(); }
+function eliminarFotoReporte(i){
+  const f = rdFotos[i];
+  if (f && f.pending && f.localId) {
+    _idbDelFoto(f.localId).catch(()=>{});
+    if (f.previewUrl) { try{ URL.revokeObjectURL(f.previewUrl); }catch(e){} }
+  }
+  rdFotos.splice(i,1);
+  renderFotosReporte();
+  try { _mirrorLocal(); } catch(e){}
+}
 function rdSetFotoMeta(i, field, val){ if (rdFotos[i]) rdFotos[i][field] = val; if (typeof rdUpdateRing==='function') rdUpdateRing(); }
 function renderFotosReporte() {
   const grid = document.getElementById('rd-fotos-grid');
@@ -10082,9 +10104,11 @@ function renderFotosReporte() {
   const attr = s => (s==null?'':String(s)).replace(/"/g,'&quot;');
   grid.innerHTML = rdFotos.map((f,i)=>{
     const isImg = /^image\//.test(f.tipo||'') || /\.(jpe?g|png|webp|gif|heic|heif|bmp)$/i.test(f.nombre||'');
-    const body = isImg ? `<img src="${f.url}" alt="">` : `<div class="file"><i data-lucide="file" class="ri"></i><span>${(f.nombre||'archivo').slice(-18)}</span></div>`;
-    return `<div class="rd-photo-card">
-      <div class="rd-photo-thumb">${body}<button class="del" title="Quitar" onclick="eliminarFotoReporte(${i})">×</button></div>
+    const src = f.previewUrl || f.url || '';
+    const body = isImg ? `<img src="${src}" alt="">` : `<div class="file"><i data-lucide="file" class="ri"></i><span>${(f.nombre||'archivo').slice(-18)}</span></div>`;
+    const pend = f.pending ? `<span class="rd-photo-pend">⏳ sin subir</span>` : '';
+    return `<div class="rd-photo-card${f.pending?' is-pending':''}">
+      <div class="rd-photo-thumb">${body}${pend}<button class="del" title="Quitar" onclick="eliminarFotoReporte(${i})">×</button></div>
       <div class="rd-photo-meta">
         <input class="rd-photo-inp" placeholder="Ambiente (ej: Cámara 3, Sala de máquinas)" value="${attr(f.ambiente)}" oninput="rdSetFotoMeta(${i},'ambiente',this.value)">
         <input class="rd-photo-inp" placeholder="¿Qué actividad se hizo?" value="${attr(f.actividad)}" oninput="rdSetFotoMeta(${i},'actividad',this.value)">
@@ -10106,7 +10130,10 @@ function rdEnsureFotoStyles(){
   .rd-photo-meta{display:flex;flex-direction:column;gap:6px;padding:9px;}
   .rd-photo-inp{border:1px solid var(--border-strong);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text-1);background:var(--surface-2);width:100%;}
   .rd-photo-inp:focus{outline:none;border-color:var(--brand-500,#0891b2);background:var(--surface-1);}
-  .rd-photo-inp::placeholder{color:var(--text-3);}`;
+  .rd-photo-inp::placeholder{color:var(--text-3);}
+  .rd-photo-card.is-pending{border-color:var(--warning,#d97706);}
+  .rd-photo-pend{position:absolute;left:6px;top:6px;display:inline-flex;align-items:center;gap:4px;background:var(--warning,#d97706);color:#fff;font-size:10.5px;font-weight:700;padding:3px 7px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.25);}
+  .rd-photo-card.is-pending .rd-photo-thumb img{opacity:.82;}`;
   const st = document.createElement('style'); st.id='rd-foto-styles'; st.textContent = css; document.head.appendChild(st);
 }
 
@@ -11107,7 +11134,7 @@ async function hidratarReporte(r, cod){
     r.hitos_dia.forEach(hd=>{ const h=rdHitos.find(x=>x.nombre===hd.nombre); if(h){ h.hoy=!!hd.hoy; h.manana=!!hd.manana; if(hd.pct!=null) h.pct_nuevo=hd.pct; } });
     if (typeof renderHitos==='function') renderHitos();
   }
-  if (Array.isArray(r.fotos)) { rdFotos = r.fotos; renderFotosReporte(); }
+  if (Array.isArray(r.fotos)) { rdFotos = r.fotos; renderFotosReporte(); _rehidratarFotosPendientes(); }
   if (Array.isArray(r.restricciones)) { rdRestricciones = r.restricciones; if (typeof renderRestricciones==='function') renderRestricciones(); }
   if (Array.isArray(r.riesgos)) { riesgosTemp = r.riesgos; if (typeof renderRiesgos==='function') renderRiesgos(); }
   if (g('rd-visita')) g('rd-visita').value = r.cliente_visita ? 'true' : 'false';
@@ -11208,7 +11235,7 @@ async function guardarReporte(esDraft = false, silent = false) {
     await sbFetch('/rest/v1/reportes?on_conflict=cod_proyecto,fecha_reporte', {
       method:'POST',
       headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
-      body: JSON.stringify(payload)
+      body: JSON.stringify(_payloadParaServidor(payload))
     });
     await persistirHitosYRestricciones(esDraft);
     _saveDraftLocal(payload, false);  // confirmado en el servidor
@@ -11319,17 +11346,127 @@ async function _flushOutbox(){
     let rec; try{ rec=JSON.parse(localStorage.getItem(k)); }catch(e){ continue; }
     if(!rec || !rec.pending || !rec.payload) continue;
     try{
-      await sbFetch('/rest/v1/reportes?on_conflict=cod_proyecto,fecha_reporte', { method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}, body: JSON.stringify(rec.payload) });
+      await sbFetch('/rest/v1/reportes?on_conflict=cod_proyecto,fecha_reporte', { method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}, body: JSON.stringify(_payloadParaServidor(rec.payload)) });
       rec.pending=false; localStorage.setItem(k, JSON.stringify(rec)); flushed++;
     }catch(e){ /* sigue pendiente hasta el próximo intento */ }
   }
   if(flushed>0){ setSyncStatus('ok','Sincronizado ✓'); if(typeof showToast==='function') showToast(flushed+' reporte(s) pendiente(s) subido(s) ✓', 2800, 'success'); }
   return flushed;
 }
-window.addEventListener('online', ()=>{ _flushOutbox(); });
-setInterval(()=>{ if(navigator.onLine) _flushOutbox(); }, 60000);
-setTimeout(()=>{ if(navigator.onLine) _flushOutbox(); }, 4000);   // intento de subida al abrir la app
+// Al reconectar / periódicamente: primero suben las FOTOS pendientes (para que el
+// reporte lleve sus URLs reales), luego se re-postean los reportes de la cola.
+function _flushTodo(){ return _flushFotos().catch(()=>0).then(()=>_flushOutbox()); }
+window.addEventListener('online', ()=>{ _flushTodo(); });
+setInterval(()=>{ if(navigator.onLine) _flushTodo(); }, 60000);
+setTimeout(()=>{ if(navigator.onLine) _flushTodo(); }, 4000);   // intento de subida al abrir la app
 window.addEventListener('beforeunload', ()=>{ try{ _mirrorLocal(); }catch(e){} });
+
+// ══════════════════════════════════════════════════════════════════
+//  Cola de FOTOS offline (IndexedDB): los blobs no caben en localStorage.
+//  Sin señal la foto se guarda en el equipo y se sube al reconectar,
+//  junto con el reporte. NO se envía al servidor hasta tener URL real.
+// ══════════════════════════════════════════════════════════════════
+const _IDB_NAME = 'fp_sup_offline', _IDB_STORE = 'fotos';
+function _idbOpen(){
+  return new Promise((res, rej)=>{
+    let rq; try{ rq = indexedDB.open(_IDB_NAME, 1); }catch(e){ return rej(e); }
+    rq.onupgradeneeded = ()=>{ const db = rq.result; if(!db.objectStoreNames.contains(_IDB_STORE)) db.createObjectStore(_IDB_STORE, { keyPath:'localId' }); };
+    rq.onsuccess = ()=>res(rq.result);
+    rq.onerror   = ()=>rej(rq.error);
+  });
+}
+async function _idbPutFoto(rec){ const db = await _idbOpen(); return new Promise((res,rej)=>{ const tx = db.transaction(_IDB_STORE,'readwrite'); tx.objectStore(_IDB_STORE).put(rec); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
+async function _idbGetFoto(localId){ const db = await _idbOpen(); return new Promise((res,rej)=>{ const tx = db.transaction(_IDB_STORE,'readonly'); const rq = tx.objectStore(_IDB_STORE).get(localId); rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>rej(rq.error); }); }
+async function _idbAllFotos(){ const db = await _idbOpen(); return new Promise((res,rej)=>{ const tx = db.transaction(_IDB_STORE,'readonly'); const rq = tx.objectStore(_IDB_STORE).getAll(); rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error); }); }
+async function _idbDelFoto(localId){ const db = await _idbOpen(); return new Promise((res,rej)=>{ const tx = db.transaction(_IDB_STORE,'readwrite'); tx.objectStore(_IDB_STORE).delete(localId); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
+
+// Guarda una foto comprimida en el equipo y la agrega a rdFotos como "pendiente".
+async function _encolarFotoOffline(c, cod){
+  const fecha = document.getElementById('rd-fecha')?.value || new Date().toISOString().slice(0,10);
+  const localId = 'foto_' + Date.now() + '_' + Math.round(Math.random()*1e6);
+  const rec = { localId, cod, fecha, blob:c.blob, nombre:c.name, tipo:c.type||'', ts:Date.now() };
+  try { await _idbPutFoto(rec); }
+  catch(e){ showToast('No se pudo guardar la foto sin señal en este equipo.'); console.error('IDB put foto:', e); return false; }
+  let previewUrl = ''; try{ previewUrl = URL.createObjectURL(c.blob); }catch(e){}
+  rdFotos.push({ pending:true, localId, nombre:c.name, tipo:c.type||'', ambiente:'', actividad:'', captura_ts:new Date().toISOString(), previewUrl });
+  return true;
+}
+
+// Tras un refresh: regenera el preview (blob URL) de las fotos pendientes desde IndexedDB.
+async function _rehidratarFotosPendientes(){
+  let changed = false;
+  for (const f of rdFotos){
+    if (f && f.pending && f.localId && !f.previewUrl){
+      try { const rec = await _idbGetFoto(f.localId); if (rec && rec.blob){ f.previewUrl = URL.createObjectURL(rec.blob); changed = true; } }
+      catch(e){}
+    }
+  }
+  if (changed) renderFotosReporte();
+}
+
+// Sube un blob pendiente al bucket y devuelve la URL pública.
+async function _uploadFotoBlob(rec){
+  const cod  = (rec.cod || 'sin-cod').replace(/[^a-zA-Z0-9._-]/g,'_');
+  const safe = (rec.nombre || 'foto.jpg').replace(/[^a-zA-Z0-9._-]/g,'_');
+  const path = `${cod}/${rec.ts}_${safe}`;
+  const token = localStorage.getItem('sb_token');
+  const res = await fetch(`${SB_URL}/storage/v1/object/reporte-fotos/${path}`, {
+    method:'POST',
+    headers:{ 'apikey':SB_KEY, 'Authorization':'Bearer '+(token||SB_KEY), 'Content-Type': rec.tipo||'application/octet-stream', 'x-upsert':'true' },
+    body: rec.blob
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return `${SB_URL}/storage/v1/object/public/reporte-fotos/${path}`;
+}
+
+// En el borrador local del reporte (cod,fecha), reemplaza la foto pendiente por su URL real
+// y marca el reporte como pendiente de re-subir (para que el outbox lo re-postee).
+function _replacePendingEnDraft(cod, fecha, localId, url){
+  const rec = _getDraftLocal(cod, fecha);
+  if (!rec || !rec.payload || !Array.isArray(rec.payload.fotos)) return;
+  const it = rec.payload.fotos.find(f=>f.localId===localId);
+  if (it){ delete it.pending; delete it.localId; delete it.previewUrl; it.url = url; }
+  rec.pending = true;
+  try{ localStorage.setItem(_draftKey(cod,fecha), JSON.stringify(rec)); }catch(e){}
+}
+
+// Sube todas las fotos pendientes; actualiza borrador local + vista si el reporte está abierto.
+async function _flushFotos(){
+  if (!navigator.onLine) return 0;
+  let pend = []; try{ pend = await _idbAllFotos(); }catch(e){ return 0; }
+  let subidas = 0;
+  for (const rec of pend){
+    try {
+      const url = await _uploadFotoBlob(rec);
+      _replacePendingEnDraft(rec.cod, rec.fecha, rec.localId, url);
+      const curCod = currentProyecto?.cod || currentProyecto?.nombre;
+      const curFecha = document.getElementById('rd-fecha')?.value;
+      if (curCod === rec.cod && curFecha === rec.fecha){
+        const it = rdFotos.find(f=>f.localId===rec.localId);
+        if (it){ delete it.pending; delete it.localId; if(it.previewUrl){ try{URL.revokeObjectURL(it.previewUrl);}catch(e){} delete it.previewUrl; } it.url = url; }
+        renderFotosReporte();
+      }
+      await _idbDelFoto(rec.localId);
+      subidas++;
+    } catch(e){ /* sigue pendiente hasta el próximo intento */ }
+  }
+  if (subidas > 0 && typeof showToast==='function') showToast(subidas+' foto(s) subida(s) al reconectar ✓', 2800, 'success');
+  return subidas;
+}
+
+// Quita del payload al servidor las fotos aún sin subir (sin URL real).
+function _payloadParaServidor(payload){
+  if (!payload) return payload;
+  const p = Object.assign({}, payload);
+  if (Array.isArray(p.fotos)){
+    const limpias = p.fotos
+      .filter(f => f && !f.pending && f.url)
+      .map(f => { const { previewUrl, pending, localId, ...rest } = f; return rest; });
+    p.fotos = limpias;
+    p.fotos_count = limpias.length;
+  }
+  return p;
+}
 
 // ── Auto-guardado (multi-dispositivo): guarda borrador solo mientras se captura ──
 let _autosaveReady = false, _autosaveTimer = null;
