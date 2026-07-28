@@ -2118,10 +2118,11 @@ function renderGerencial(){
   const _proxG=ps.filter(p=>{const cf=parseD(p._cf||p.cf||'');if(!cf)return false;const d=Math.round((cf-today)/864e5);return d>=0&&d<=30&&p.valp<99;}).length;
   const finMiniHtml=`<div class="panel full" style="padding:12px 16px">
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">📊 Indicadores adicionales</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">
       ${[
         {ico:'🏦',l:'Por cobrar',    v:fmtUSD(_porCobrarG), sub:(100-_pctFG).toFixed(0)+'% de cartera pendiente', c:'#e67e22'},
         {ico:'🚨',l:'CF Vencidos',   v:_vencG,              sub:'proyectos con plazo pasado',                      c:_vencG>0?'#c1272d':'#2e7d32'},
+        {ico:'📅',l:'Próximos a cerrar',v:_proxG,           sub:'cierran en ≤30 días',                             c:_proxG>0?'#2E7DD1':'#8a94a6'},
         {ico:'⚠️',l:'En riesgo',     v:_enRiesgoG,          sub:'SPI < 0.95 (requieren acción)',                   c:_enRiesgoG>0?'#e67e22':'#2e7d32'},
         {ico:'📉',l:'Brecha cartera',v:(_brechaG>=0?'+':'')+_brechaG.toFixed(1)+'pts', sub:'avance real vs plan esperado hoy', c:_brechaG>=0?'#2e7d32':'#c1272d'},
       ].map(k=>`<div style="border-radius:8px;background:${k.c}0d;border:1px solid ${k.c}22;padding:10px 12px;cursor:default"
