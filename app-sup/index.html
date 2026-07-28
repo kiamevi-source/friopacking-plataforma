@@ -4155,6 +4155,29 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
           </div>
         </div>
 
+        <!-- REPROGRAMACIÓN DE FECHA FIN -->
+        <div class="rd-card folded">
+          <div class="rd-head click" onclick="rdFold(this,event)">
+            <div class="rd-head-ic"><i data-lucide="calendar-clock" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Reprogramación de fecha de fin</h4><p>Solo si la fecha de término del proyecto cambió</p></div>
+            <label class="rd-switch" onclick="event.stopPropagation()"><input type="checkbox" id="rd-repro-chk" onchange="rdToggleRepro(this.checked)"><span class="track"></span></label>
+            <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
+          </div>
+          <div class="rd-body">
+            <div id="rd-repro-fields" style="display:none;">
+              <div class="form-row">
+                <div class="field"><label>Nueva fecha de fin</label><input type="date" id="rd-repro-fecha"></div>
+                <div class="field" style="grid-column:span 2"><label>Motivo del cambio</label><input type="text" id="rd-repro-motivo" placeholder="Ej: atraso por lluvias, adicional de obra, llegada tardía de materiales…"></div>
+              </div>
+              <div class="form-row">
+                <div class="field"><label>¿Formalizado?</label><select id="rd-repro-formal"><option value="false">Pendiente</option><option value="true">Sí, formalizado</option></select></div>
+                <div class="field" style="grid-column:span 2"><label>Referencia (adenda / acta)</label><input type="text" id="rd-repro-ref" placeholder="Ej: Adenda N°2, aprobada 12 jul"></div>
+              </div>
+            </div>
+            <p id="rd-repro-none" style="font-size:12.5px;color:var(--text-3);padding:4px 0;">La fecha de fin no cambió hoy.</p>
+          </div>
+        </div>
+
         <!-- FACTURACIÓN -->
         <div class="rd-card folded">
           <div class="rd-head click" onclick="rdFold(this,event)">
@@ -9637,6 +9660,12 @@ function rdToggleVisita(on){
   rdUpdateRing();
 }
 
+function rdToggleRepro(on){
+  const f = document.getElementById('rd-repro-fields'); if (f) f.style.display = on ? '' : 'none';
+  const none = document.getElementById('rd-repro-none'); if (none) none.style.display = on ? 'none' : '';
+  if (typeof rdUpdateRing==='function') rdUpdateRing();
+}
+
 // Completitud del reporte (0–100) para el anillo del hero + mini-ring
 function rdComputeCompleteness(){
   const g = id => document.getElementById(id);
@@ -11017,6 +11046,16 @@ async function hidratarReporte(r, cod){
   if (r.cliente_nombre && g('rd-visita-nombre')) g('rd-visita-nombre').value = r.cliente_nombre;
   if (r.cliente_obs && g('rd-visita-obs')) g('rd-visita-obs').value = r.cliente_obs;
   if (typeof rdToggleVisita==='function') rdToggleVisita(!!r.cliente_visita);
+  // Reprogramación de fecha fin (rehidratar si el reporte ya la traía)
+  const _rp = r.reprogramacion;
+  if (_rp && _rp.fecha_nueva) {
+    if (g('rd-repro-chk')) g('rd-repro-chk').checked = true;
+    if (g('rd-repro-fecha')) g('rd-repro-fecha').value = _rp.fecha_nueva;
+    if (g('rd-repro-motivo')) g('rd-repro-motivo').value = _rp.motivo || '';
+    if (g('rd-repro-formal')) g('rd-repro-formal').value = _rp.formalizado ? 'true' : 'false';
+    if (g('rd-repro-ref')) g('rd-repro-ref').value = _rp.formalizacion_ref || '';
+    if (typeof rdToggleRepro==='function') rdToggleRepro(true);
+  } else if (typeof rdToggleRepro==='function') { if (g('rd-repro-chk')) g('rd-repro-chk').checked = false; rdToggleRepro(false); }
   if (Array.isArray(r.checklist_cierre)) r.checklist_cierre.forEach((c,i)=>{ const el=g('rd-chk-'+i); if (el) el.checked = !!c.ok; });
   if (r.meta_mes!=null && g('rd-meta-mes')) g('rd-meta-mes').value = r.meta_mes;
   if (r.facturado_codigo!=null && g('rd-facturado')) g('rd-facturado').value = r.facturado_codigo;
@@ -11130,6 +11169,19 @@ async function guardarReporte(esDraft = false, silent = false) {
     actividad: document.getElementById('rd-actividad').value,
     observaciones: document.getElementById('rd-obs').value,
     plan_manana: { texto: document.getElementById('rd-plan-manana').value },
+    reprogramacion: (function(){
+      const on = document.getElementById('rd-repro-chk')?.checked;
+      const f  = document.getElementById('rd-repro-fecha')?.value;
+      if (!on || !f) return null;   // sin cambio de fecha → no se registra nada
+      return {
+        fecha_anterior: currentProyecto?.finCont || currentProyecto?.fecha_fin_contractual || null,
+        fecha_nueva: f,
+        motivo: (document.getElementById('rd-repro-motivo')?.value||'').trim(),
+        formalizado: document.getElementById('rd-repro-formal')?.value === 'true',
+        formalizacion_ref: (document.getElementById('rd-repro-ref')?.value||'').trim() || null,
+        reportado_por: currentUser?.nombre || null
+      };
+    })(),
     jornada_entrada: document.getElementById('rd-entrada').value||null,
     jornada_salida:  document.getElementById('rd-salida').value||null,
     jornada_motivo:  document.getElementById('rd-jornada-motivo').value||null,

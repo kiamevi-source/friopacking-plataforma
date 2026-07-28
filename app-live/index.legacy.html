@@ -1145,7 +1145,8 @@ async function initFromSupabase(){
         _ci:(_sp?_sp.ci:'')||p.fecha_ini_contractual||p.fecha_inicio||'',
         _spiFact:_sp?(_sp.fact||0):0,_spiVenta:_sp?(_sp.venta||0):0,
         personal_total:lastPers,contratas_activas:lastContratas,
-        _lastReportDate:lastRepFecha,_reportedToday:reportedToday
+        _lastReportDate:lastRepFecha,_reportedToday:reportedToday,
+        _cod:p.cod_proyecto||''
       };
     });
 
@@ -1775,6 +1776,7 @@ function renderModalResumen(p){
       <div class="m-kpi val"><div class="l">Valor del proyecto</div><div class="v">${fmtUSD(p.venta)}</div></div>
       <div class="m-kpi dias"><div class="l">${rf?(daysBetween(today,rf)>=0?'Días al cierre':'Días vencido'):'Días'}</div><div class="v">${rf?Math.abs(daysBetween(today,rf))+' d':'—'}</div></div>
     </div>
+    <div class="m-card" id="mv-cierre" style="margin-bottom:14px"><h4>📅 Fecha de cierre comprometida</h4><div style="color:var(--muted);font-size:12px;padding:6px 0">Cargando reprogramaciones…</div></div>
     <div class="m-grid">
       <div class="m-card">
         <h4>📈 Plan vs Real <span style="font-size:11px;font-weight:500;color:var(--muted)">avance acumulado</span></h4>
@@ -1806,6 +1808,55 @@ function renderModalResumen(p){
       ${(p.titulos||[]).length?`<h4 style="margin-top:14px">📄 Títulos (${p.titulos.length})</h4><table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px 4px;border-bottom:1px solid var(--line);color:var(--muted);font-size:10px;text-transform:uppercase">Título</th><th style="text-align:right;padding:6px 4px;border-bottom:1px solid var(--line);color:var(--muted);font-size:10px;text-transform:uppercase">Venta</th><th style="text-align:right;padding:6px 4px;border-bottom:1px solid var(--line);color:var(--muted);font-size:10px;text-transform:uppercase">Fact</th><th style="text-align:right;padding:6px 4px;border-bottom:1px solid var(--line);color:var(--muted);font-size:10px;text-transform:uppercase">Avance</th></tr></thead><tbody>${p.titulos.map(t=>`<tr><td style="padding:5px 4px;border-bottom:1px dashed var(--line)">${t.desc}</td><td style="padding:5px 4px;border-bottom:1px dashed var(--line);text-align:right;font-variant-numeric:tabular-nums">${fmtUSD(t.venta)}</td><td style="padding:5px 4px;border-bottom:1px dashed var(--line);text-align:right;font-variant-numeric:tabular-nums">${fmtUSD(t.fact)}</td><td style="padding:5px 4px;border-bottom:1px dashed var(--line);text-align:right;font-variant-numeric:tabular-nums"><b>${fmtPct(t.valp)}</b></td></tr>`).join('')}</tbody></table>`:''}
     </div>
   </div>`;
+  _loadReproCierre(p);
+}
+
+// ── Fecha de cierre comprometida + reprogramaciones (reportadas por el supervisor) ──
+function _escR(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+async function _loadReproCierre(p){
+  const el=document.getElementById('mv-cierre'); if(!el) return;
+  const cod=p._cod||'', nombre=p.name||''; let reps=[];
+  try{
+    const db=getSB(); if(!db){ el.innerHTML=_reproCierreHTML(p,[]); return; }
+    if(cod){
+      const {data}=await db.from('reportes').select('fecha_reporte,reprogramacion,supervisor').eq('cod_proyecto',cod).not('reprogramacion','is',null).order('fecha_reporte',{ascending:false}).limit(30);
+      reps=data||[];
+    }
+    if(!reps.length && nombre){
+      const {data}=await db.from('reportes').select('fecha_reporte,reprogramacion,supervisor').eq('nombre_proyecto',nombre).not('reprogramacion','is',null).order('fecha_reporte',{ascending:false}).limit(30);
+      reps=data||[];
+    }
+  }catch(e){ console.warn('repro cierre:',e); }
+  el.innerHTML=_reproCierreHTML(p, reps);
+}
+function _reproCierreHTML(p, reps){
+  const list=(reps||[]).filter(r=>r&&r.reprogramacion&&r.reprogramacion.fecha_nueva);
+  const contractual=p.cf||p._cf||'';
+  const latest=list.length?list[0].reprogramacion:null;
+  const committed=latest?latest.fecha_nueva:contractual;
+  const cD=parseD(committed), kD=parseD(contractual);
+  const delta=(cD&&kD)?daysBetween(kD,cD):null;
+  const pill = delta==null?'' : (delta>0
+    ? `<span style="font-size:11px;font-weight:700;color:#c1272d;background:#fdecea;padding:3px 9px;border-radius:999px">+${delta} días vs contractual</span>`
+    : `<span style="font-size:11px;font-weight:700;color:#2e7d32;background:#e7f6ec;padding:3px 9px;border-radius:999px">${delta<0?delta+' días vs contractual':'en fecha contractual'}</span>`);
+  const badge = latest ? (latest.formalizado
+    ? `<span style="font-size:11px;font-weight:700;color:#2e7d32;background:#e7f6ec;padding:3px 9px;border-radius:999px">✓ Formalizada${latest.formalizacion_ref?' · '+_escR(latest.formalizacion_ref):''}</span>`
+    : `<span style="font-size:11px;font-weight:700;color:#b9791a;background:#fdf3e0;padding:3px 9px;border-radius:999px">Pendiente de formalizar</span>`) : '';
+  let trail;
+  if(list.length){
+    trail = `<div style="border-left:2px solid var(--line);margin-left:4px;padding-left:12px;display:grid;gap:8px">`
+      + `<div style="font-size:12px"><b>${fmtD(kD)}</b> <span style="color:var(--muted)">· fecha contractual original</span></div>`
+      + list.slice().reverse().map(r=>{const rp=r.reprogramacion; return `<div style="font-size:12px"><b>${fmtD(parseD(rp.fecha_nueva))}</b> ${rp.formalizado?'<span style="color:#2e7d32">✓ formalizada</span>':'<span style="color:#b9791a">pendiente</span>'}${rp.formalizacion_ref?' <span style="color:var(--muted)">('+_escR(rp.formalizacion_ref)+')</span>':''}<div style="color:var(--muted);font-size:11px;margin-top:1px">Motivo: ${_escR(rp.motivo||'—')} · reportó ${_escR(rp.reportado_por||r.supervisor||'—')} el ${fmtD(parseD(r.fecha_reporte))}</div></div>`;}).join('')
+      + `</div>`;
+  } else {
+    trail = `<div style="color:var(--muted);font-size:12px">Sin reprogramaciones registradas. La fecha comprometida es la contractual.</div>`;
+  }
+  return `<h4 style="margin:0 0 6px;font-size:14px;font-weight:700;color:#0d2436">📅 Fecha de cierre comprometida</h4>
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:4px 0 12px">
+      <div style="font-size:25px;font-weight:800;color:#0d2436">${committed?fmtD(cD):'—'}</div>
+      ${badge}${pill}
+    </div>
+    ${trail}`;
 }
 
 
@@ -18606,6 +18657,9 @@ function _renderExecutiveFull(p){
       </div>
     </div>
 
+    <!-- FECHA DE CIERRE COMPROMETIDA (reprogramaciones reportadas por el supervisor) -->
+    <div id="mv-cierre" style="background:#fff;border:1px solid #e6edf5;border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(13,36,54,.05)"><div style="color:#64748b;font-size:12px">Cargando reprogramaciones…</div></div>
+
     <!-- LIVE S-CURVE -->
     <div class="exc-curve" id="exc-curve-wrap">
       <div class="exc-curve-head">
@@ -18675,6 +18729,7 @@ function _renderExecutiveFull(p){
 
   // Animate
   requestAnimationFrame(() => _animateExecutive(body, series));
+  _loadReproCierre(p);
 }
 
 /* ─── Curve SVG builder ─── */
