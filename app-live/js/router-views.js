@@ -42,9 +42,9 @@
       el: document.getElementById('view-dash-contratistas'),
       init: () => {},
     },
-    // TimeLine Operaciones (módulo editable · proyectos_timeline + asignaciones_timeline)
-    'timeline': {
-      el: document.getElementById('view-timeline'),
+    // PMO Ejecutivo (módulo editable · asignaciones_pmo — reemplaza al Timeline)
+    'pmo-ejecutivo': {
+      el: document.getElementById('view-pmo-ejecutivo'),
       init: () => {},
     },
     // Evaluación 360° (módulo lectura · eval360_areas/items/supervisores)

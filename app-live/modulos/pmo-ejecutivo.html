@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>PMO · Friopacking</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#F4F4F0;--white:#fff;--navy:#0D1B3E;--navy2:#162448;
+  --gold:#C8991A;--border:#E3E3DA;--text:#18182E;--muted:#6B7280;
+  --sur:#0B6E4F;--norte:#1040A0;--centro:#7C2D12;
+  --warn:#FF5722;--warnbg:#FFF0EB;
+  --pause:#6B7280;
+}
+body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* HEADER */
+.hdr{background:var(--white);border-bottom:2px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(13,27,62,.07);}
+.hdr-logo img{height:36px;}
+.hdr-right{display:flex;align-items:center;gap:10px;}
+.hdr-date{font-size:11px;color:var(--muted);font-weight:500;}
+.hdr-clock{font-size:13px;font-weight:800;color:var(--navy);letter-spacing:.5px;font-variant-numeric:tabular-nums;background:#F4F4F0;padding:5px 12px;border-radius:8px;border:1px solid var(--border);min-width:72px;text-align:center;}
+.btn-save{background:var(--navy);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;}
+.btn-save:hover{background:var(--navy2);}
+.btn-save.ok{background:#16A34A;}
+
+/* TABS */
+.tabs{background:var(--white);border-bottom:1px solid var(--border);display:flex;padding:0 24px;gap:2px;overflow-x:auto;}
+.tab{padding:13px 18px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;transition:.15s;}
+.tab.active{color:var(--navy);border-bottom-color:var(--navy);}
+.tab:hover:not(.active){color:var(--text);}
+
+/* CONTENT */
+.content{padding:20px 24px;}
+.pane{display:none;}
+.pane.active{display:block;}
+
+/* FILTER BAR */
+.fbar{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px;align-items:flex-end;}
+.fg{display:flex;flex-direction:column;gap:3px;}
+.fg label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+select,input[type=date],input[type=text]{font-family:inherit;font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--white);color:var(--text);outline:none;}
+select:focus,input:focus{border-color:var(--navy);}
+.btn-clr{background:var(--bg);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;align-self:flex-end;}
+.btn-clr:hover{color:var(--text);}
+
+/* GANTT WRAP */
+.gwrap{background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.glegend{display:flex;flex-wrap:wrap;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);background:#FAFAF7;}
+.li{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted);}
+.ld{width:14px;height:10px;border-radius:3px;flex-shrink:0;}
+.gscroll{overflow-x:auto;}
+
+/* GANTT TABLE */
+.gtbl{border-collapse:collapse;min-width:900px;width:100%;}
+.gtbl th{background:#F6F6F2;font-size:10px;font-weight:700;color:var(--muted);padding:7px 8px;text-align:center;border-bottom:1px solid var(--border);border-right:1px solid var(--border);white-space:nowrap;letter-spacing:.3px;}
+.gtbl th.lh{text-align:left;position:sticky;left:0;background:#F6F6F2;z-index:2;min-width:210px;}
+.gtbl td{border-bottom:1px solid var(--border);border-right:1px solid #EFEFEA;vertical-align:middle;padding:0;}
+.gtbl td.lc{position:sticky;left:0;background:var(--white);z-index:1;padding:8px 12px;min-width:210px;border-right:2px solid var(--border);}
+.gtbl tr:hover td.lc{background:#F0F4FF;}
+.gtbl tr:hover td{background:#F8F9FF;}
+
+/* ROW LABELS */
+.rl-name{font-size:12px;font-weight:700;color:var(--text);}
+.rl-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+.rl-unassigned .rl-name{color:var(--warn);}
+
+/* CLIENT GROUP ROW */
+.cgrow td{background:#EEF2FF!important;padding:7px 14px!important;border-bottom:1px solid #D0D9F5!important;}
+.cg-title{font-size:12px;font-weight:800;color:#1E3A8A;display:flex;align-items:center;gap:8px;}
+.cg-zone{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;color:#fff;}
+.zn-sur{background:var(--sur);}
+.zn-norte{background:var(--norte);}
+.zn-centro{background:var(--centro);}
+
+/* GANTT BARS */
+.gcell{height:44px;min-height:44px;position:relative;}
+.bar{position:absolute;height:24px;top:50%;transform:translateY(-50%);border-radius:5px;display:flex;align-items:center;padding:0 7px;font-size:10px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;transition:opacity .15s;box-shadow:0 1px 4px rgba(0,0,0,.2);}
+.bar:hover{opacity:.82;z-index:10;}
+.bar.unassigned{border:2px dashed rgba(255,255,255,.5)!important;animation:wpulse 2s ease-in-out infinite;}
+@keyframes wpulse{0%,100%{opacity:1}50%{opacity:.6}}
+.bar.paused{opacity:.6;background:var(--pause)!important;background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(255,255,255,.15) 4px,rgba(255,255,255,.15) 8px)!important;}
+
+/* TODAY LINE */
+.today-line{position:absolute;top:0;bottom:0;width:2px;background:#EF4444;z-index:5;pointer-events:none;}
+.today-line::before{content:'HOY';position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#EF4444;white-space:nowrap;}
+
+/* AVAIL */
+.avail-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+.av-card{background:var(--white);border-radius:12px;border:1px solid var(--border);padding:14px;text-align:center;}
+.av-num{font-size:28px;font-weight:800;}
+.av-lbl{font-size:11px;font-weight:600;margin-top:2px;}
+.avail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;}
+.acard{background:var(--white);border:1px solid var(--border);border-radius:11px;padding:14px;display:flex;align-items:center;gap:11px;}
+.avatar{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0;}
+.ai-name{font-size:12px;font-weight:700;}
+.ai-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+.ai-proj{font-size:10px;color:var(--muted);margin-top:3px;}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;margin-top:3px;}
+.b-free{background:#DCFCE7;color:#15803D;}
+.b-occ{background:#FEE2E2;color:#B91C1C;}
+
+/* ORGANIGRAMA */
+.org-wrap{background:var(--white);border-radius:14px;border:1px solid var(--border);padding:28px;overflow-x:auto;}
+.org-tree{display:flex;flex-direction:column;align-items:center;gap:0;}
+.org-level{display:flex;justify-content:center;gap:24px;position:relative;padding:10px 0;}
+.org-node{background:var(--navy);color:#fff;border-radius:12px;padding:12px 18px;text-align:center;min-width:160px;position:relative;box-shadow:0 2px 8px rgba(13,27,62,.18);}
+.org-node.pmo{background:#1E40AF;}
+.org-node.zona-sur{background:var(--sur);}
+.org-node.zona-norte{background:var(--norte);}
+.org-node.zona-centro{background:var(--centro);}
+.org-node.persona{background:var(--white);color:var(--text);border:2px solid var(--border);}
+.org-node.persona.unassigned{border:2px dashed var(--warn);background:var(--warnbg);}
+.on-name{font-size:12px;font-weight:800;}
+.on-role{font-size:10px;opacity:.8;margin-top:2px;}
+.on-role.dark{color:var(--muted);}
+.org-connector{width:2px;height:20px;background:var(--border);margin:0 auto;}
+.org-h-line{height:2px;background:var(--border);position:absolute;top:0;left:50%;transform:translateX(-50%);}
+.zona-section{margin-top:32px;}
+.zona-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.zona-badge{font-size:12px;font-weight:800;color:#fff;padding:5px 14px;border-radius:20px;}
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+.proj-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:12px;}
+.proj-card.unassigned{border-color:var(--warn);background:var(--warnbg);}
+.pc-name{font-size:12px;font-weight:700;}
+.pc-per{font-size:11px;margin-top:4px;color:var(--muted);}
+.pc-per.warn{color:var(--warn);font-weight:700;}
+.pc-dates{font-size:10px;color:var(--muted);margin-top:4px;}
+
+/* DB */
+.db-wrap{background:var(--white);border-radius:14px;border:1px solid var(--border);overflow:hidden;}
+.db-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);}
+.db-bar-l{display:flex;gap:8px;align-items:center;}
+.btn-add{background:var(--navy);color:#fff;border:none;padding:7px 14px;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;}
+.btn-csv{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:inherit;font-size:12px;cursor:pointer;}
+.db-srch{padding:7px 11px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:12px;width:200px;}
+table.dbt{width:100%;border-collapse:collapse;font-size:12px;}
+table.dbt th{background:#F6F6F2;font-size:10px;font-weight:700;color:var(--muted);padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);letter-spacing:.3px;}
+table.dbt td{padding:9px 12px;border-bottom:1px solid var(--border);}
+table.dbt tr:last-child td{border-bottom:none;}
+table.dbt tr:hover td{background:#FAFAF7;}
+.tbl-acts{display:flex;gap:5px;}
+.be,.bd{border:none;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;}
+.be{background:#EFF6FF;color:#1D4ED8;}
+.bd{background:#FFF1F2;color:#BE123C;}
+.rb{display:inline-block;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:700;}
+.rb-sup{background:#DBEAFE;color:#1E40AF;}
+.rb-ast{background:#D1FAE5;color:#065F46;}
+.rb-log{background:#FEF3C7;color:#92400E;}
+.rb-mgr{background:#EDE9FE;color:#5B21B6;}
+.rb-oth{background:#F1F5F9;color:#475569;}
+.unassign-row td:first-child{border-left:3px solid var(--warn);}
+
+/* MODAL */
+.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;}
+.mbg.open{display:flex;}
+.modal{background:var(--white);border-radius:16px;padding:26px;width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.modal h3{font-size:15px;font-weight:800;color:var(--navy);margin-bottom:18px;}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.fgrid .full{grid-column:1/-1;}
+.fgrp{display:flex;flex-direction:column;gap:4px;}
+.fgrp label{font-size:11px;font-weight:700;color:var(--muted);}
+.fgrp input,.fgrp select{font-family:inherit;font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;}
+.macts{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+.btn-cancel{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 16px;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;}
+.btn-ok{background:var(--navy);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;}
+
+/* TOOLTIP */
+#tip{position:fixed;display:none;background:#0D1B3E;color:#fff;padding:9px 13px;border-radius:10px;font-size:11px;z-index:999;pointer-events:none;max-width:220px;line-height:1.7;box-shadow:0 4px 20px rgba(0,0,0,.3);}
+#tip strong{display:block;margin-bottom:3px;font-size:12px;}
+#tip span{color:#93C5FD;}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:10px 18px;border-radius:10px;font-size:12px;font-weight:700;z-index:9999;opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none;}
+#toast.show{opacity:1;transform:translateY(0);}
+
+/* ═══════════════ VISTA DUEÑO ═══════════════ */
+.vd-wrap{display:flex;flex-direction:column;gap:18px;}
+.vd-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+.vd-kpi{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:18px 16px;position:relative;overflow:hidden;transition:.2s;}
+.vd-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;}
+.vd-kpi.k-activo::before{background:#1565C0;}
+.vd-kpi.k-alerta::before{background:#EF4444;}
+.vd-kpi.k-vacante::before{background:#F59E0B;}
+.vd-kpi.k-personal::before{background:#0B6E4F;}
+.vd-kpi.k-cierre::before{background:#7C3AED;}
+.vd-kpi-num{font-size:36px;font-weight:800;line-height:1;color:var(--text);}
+.vd-kpi-num.red{color:#DC2626;}
+.vd-kpi-num.amber{color:#D97706;}
+.vd-kpi-lbl{font-size:11px;font-weight:700;color:var(--muted);margin-top:5px;text-transform:uppercase;letter-spacing:.4px;}
+.vd-kpi-sub{font-size:10px;color:var(--muted);margin-top:3px;}
+.vd-zonas{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.vd-zona{background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.vd-zona-hdr{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
+.vd-zona-hdr.sur{background:var(--sur);}
+.vd-zona-hdr.norte{background:var(--norte);}
+.vd-zona-hdr.centro{background:var(--centro);}
+.vd-zona-title{font-size:13px;font-weight:800;color:#fff;}
+.vd-zona-count{font-size:11px;color:rgba(255,255,255,.75);font-weight:600;}
+.vd-zona-body{padding:12px;}
+.vd-zona-stat{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px;}
+.vd-zona-stat:last-child{border-bottom:none;}
+.vd-zona-stat-lbl{color:var(--muted);font-weight:600;}
+.vd-zona-stat-val{font-weight:800;color:var(--text);}
+.vd-zona-stat-val.red{color:#DC2626;}
+.vd-alertas{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.vd-alert-panel{background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.vd-alert-hdr{padding:11px 16px;font-size:12px;font-weight:800;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--border);}
+.vd-alert-hdr.danger{background:#FFF5F5;color:#991B1B;}
+.vd-alert-hdr.warn{background:#FFFBEB;color:#92400E;}
+.vd-alert-hdr.purple{background:#F5F3FF;color:#4C1D95;}
+.vd-alert-hdr.info{background:#EFF6FF;color:#1E3A8A;}
+.vd-alert-body{padding:10px 0;max-height:220px;overflow-y:auto;}
+.vd-alert-row{display:flex;align-items:flex-start;justify-content:space-between;padding:7px 16px;font-size:11px;border-bottom:1px solid #F5F5F0;gap:8px;}
+.vd-alert-row:last-child{border-bottom:none;}
+.vd-alert-row:hover{background:#FAFAF7;}
+.vd-ar-name{font-weight:700;color:var(--text);}
+.vd-ar-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+.vd-ar-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;flex-shrink:0;}
+.vd-ar-badge.red{background:#FEE2E2;color:#991B1B;}
+.vd-ar-badge.amber{background:#FEF3C7;color:#92400E;}
+.vd-ar-badge.purple{background:#EDE9FE;color:#5B21B6;}
+.vd-ar-badge.blue{background:#DBEAFE;color:#1E40AF;}
+.vd-empty{padding:20px;text-align:center;color:var(--muted);font-size:11px;}
+.vd-bottom{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.vd-pipeline{background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.vd-pipe-hdr{padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:800;color:var(--navy);}
+.vd-pipe-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+.vd-pipe-col{padding:12px 14px;}
+.vd-pipe-col:first-child{border-right:1px solid var(--border);}
+.vd-pipe-col-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.vd-pipe-col-title.red{color:#DC2626;}
+.vd-pipe-col-title.green{color:#059669;}
+.vd-pipe-item{display:flex;justify-content:space-between;align-items:flex-start;padding:5px 0;border-bottom:1px solid #F5F5F0;font-size:11px;gap:6px;}
+.vd-pipe-item:last-child{border-bottom:none;}
+.vd-pi-name{font-weight:700;flex:1;}
+.vd-pi-zone{font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;color:#fff;flex-shrink:0;}
+.vd-pi-date{font-size:10px;color:var(--muted);white-space:nowrap;}
+.vd-sobrecarga{background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.vd-sob-hdr{padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:800;color:var(--navy);}
+.vd-sob-row{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid #F5F5F0;font-size:11px;}
+.vd-sob-row:last-child{border-bottom:none;}
+.vd-sob-name{font-weight:700;min-width:150px;font-size:10px;}
+.vd-sob-bar-wrap{flex:1;background:#F1F5F9;border-radius:6px;height:9px;overflow:hidden;}
+.vd-sob-bar{height:9px;border-radius:6px;}
+.vd-sob-count{font-size:10px;font-weight:800;min-width:55px;text-align:right;}
+
+/* TABLA COMPACTA PROYECTO */
+.vd-proj-table-wrap{background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.vd-proj-table-hdr{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.vd-proj-table-hdr>span{font-size:12px;font-weight:800;color:var(--navy);}
+.vd-proj-tbl{width:100%;border-collapse:collapse;font-size:11px;}
+.vd-proj-tbl thead th{background:#F6F6F2;font-size:10px;font-weight:700;color:var(--muted);padding:7px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;letter-spacing:.3px;}
+.vd-proj-tbl tbody tr{border-bottom:1px solid #F0F0EA;}
+.vd-proj-tbl tbody tr:last-child{border-bottom:none;}
+.vd-proj-tbl tbody tr:hover td{background:#FAFAF7;}
+.vd-proj-tbl tbody tr.viru-row td{background:#F8F4FF;}
+.vd-proj-tbl tbody tr.has-vac td:first-child{border-left:3px solid var(--warn);}
+.vd-proj-tbl td{padding:7px 12px;vertical-align:middle;}
+.vd-proj-name{font-weight:700;color:var(--text);white-space:nowrap;}
+.vd-proj-dates{font-size:10px;color:var(--muted);white-space:nowrap;}
+.vd-team-cell{display:flex;flex-wrap:wrap;gap:3px;align-items:center;}
+.vd-team-pill{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  
+  <div class="hdr-right">
+    <span class="hdr-date" id="hdate"></span>
+    <span class="hdr-clock" id="hclock">00:00:00</span>
+    <button class="btn-save" id="btnSave" onclick="saveAll()">💾 Guardar</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="sw('dueno',this)">👁 Vista Ejecutiva</div>
+  <div class="tab" onclick="sw('gantt-sup',this)">📊 Gantt Supervisor</div>
+  <div class="tab" onclick="sw('gantt-cli',this)">🏢 Gantt Cliente</div>
+  <div class="tab" onclick="sw('avail',this)">📅 Disponibilidad</div>
+  <div class="tab" onclick="sw('org',this)">🗂 Organigrama</div>
+  <div class="tab" onclick="sw('db',this)">🗄 Base de Datos</div>
+</div>
+
+<div class="content">
+
+<!-- ═══ VISTA EJECUTIVA (DUEÑO) ═══ -->
+<div class="pane active" id="pane-dueno">
+  <div class="vd-wrap" id="vd-out"></div>
+</div>
+
+<!-- ═══ GANTT SUPERVISOR ═══ -->
+<div class="pane" id="pane-gantt-sup">
+  <div class="fbar">
+    <div class="fg"><label>Zona</label><select id="gs-zona" onchange="rGS()"><option value="">Todas</option><option>Centro</option><option>Norte</option><option>Sur</option></select></div>
+    <div class="fg"><label>Estado</label><select id="gs-est" onchange="rGS()"><option value="">Todos</option><option>Activo</option><option>Por Iniciar</option><option>Finalizado</option><option>En Pausa</option></select></div>
+    <div class="fg"><label>Ordenar</label><select id="gs-ord" onchange="rGS()"><option value="asc">Más próximo primero</option><option value="desc">Más lejano primero</option></select></div>
+    <div class="fg"><label>Persona</label><select id="gs-per" onchange="rGS()"><option value="">Todos</option></select></div>
+    <button class="btn-clr" onclick="clrF('gs')">✕ Limpiar</button>
+  </div>
+  <div class="gwrap">
+    <div class="glegend">
+      <span class="li"><span class="ld" style="background:#1565C0"></span>Activo</span>
+      <span class="li"><span class="ld" style="background:#7C3AED"></span>Por Iniciar</span>
+      <span class="li"><span class="ld" style="background:#059669"></span>Finalizado</span>
+      <span class="li"><span class="ld" style="background:#D97706"></span>En Pausa</span>
+      <span class="li"><span class="ld" style="background:var(--warn);border:1px dashed #fff;outline:1px dashed var(--warn)"></span>Sin Asignar ⚠</span>
+    </div>
+    <div class="gscroll"><div id="gs-out"></div></div>
+  </div>
+</div>
+
+<!-- ═══ GANTT CLIENTE ═══ -->
+<div class="pane" id="pane-gantt-cli">
+  <div class="fbar">
+    <div class="fg"><label>Zona</label><select id="gc-zona" onchange="rGC()"><option value="">Todas</option><option>Centro</option><option>Norte</option><option>Sur</option></select></div>
+    <div class="fg"><label>Estado</label><select id="gc-est" onchange="rGC()"><option value="">Todos</option><option>Activo</option><option>Por Iniciar</option><option>Finalizado</option><option>En Pausa</option></select></div>
+    <div class="fg"><label>Ordenar</label><select id="gc-ord" onchange="rGC()"><option value="asc">Más próximo primero</option><option value="desc">Más lejano primero</option></select></div>
+    <div class="fg"><label>Buscar cliente</label><input type="text" id="gc-srch" placeholder="Nombre..." oninput="rGC()"></div>
+    <button class="btn-clr" onclick="clrF('gc')">✕ Limpiar</button>
+  </div>
+  <div class="gwrap">
+    <div class="glegend">
+      <span class="li"><span class="ld" style="background:#1565C0"></span>Activo</span>
+      <span class="li"><span class="ld" style="background:#7C3AED"></span>Por Iniciar</span>
+      <span class="li"><span class="ld" style="background:#059669"></span>Finalizado</span>
+      <span class="li"><span class="ld" style="background:#D97706"></span>En Pausa</span>
+      <span class="li"><span class="ld" style="background:var(--warn);outline:1px dashed var(--warn)"></span>Sin Asignar ⚠</span>
+    </div>
+    <div class="gscroll"><div id="gc-out"></div></div>
+  </div>
+</div>
+
+<!-- ═══ DISPONIBILIDAD ═══ -->
+<div class="pane" id="pane-avail">
+  <div class="fbar">
+    <div class="fg"><label>Fecha</label><input type="date" id="av-date" onchange="rAV()"></div>
+    <div class="fg"><label>Zona</label><select id="av-zona" onchange="rAV()"><option value="">Todas</option><option>Centro</option><option>Norte</option><option>Sur</option></select></div>
+    <div class="fg"><label>Mostrar</label><select id="av-filt" onchange="rAV()"><option value="">Todos</option><option value="free">Solo disponibles</option><option value="occ">Solo ocupados</option></select></div>
+  </div>
+  <div id="av-out"></div>
+</div>
+
+<!-- ═══ ORGANIGRAMA ═══ -->
+<div class="pane" id="pane-org">
+  <div class="org-wrap" id="org-out"></div>
+</div>
+
+<!-- ═══ BASE DE DATOS ═══ -->
+<div class="pane" id="pane-db">
+  <div class="db-wrap">
+    <div class="db-bar">
+      <div class="db-bar-l">
+        <button class="btn-add" onclick="openM()">＋ Agregar</button>
+        <button class="btn-csv" onclick="expCSV()">⬇ CSV</button>
+        <select id="db-zona" onchange="rDB()" style="font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;">
+          <option value="">Todas las zonas</option><option>Centro</option><option>Norte</option><option>Sur</option>
+        </select>
+      </div>
+      <input class="db-srch" id="db-srch" placeholder="🔍 Buscar persona, proyecto..." oninput="rDB()">
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="dbt"><thead><tr>
+        <th>CLIENTE</th><th>ZONA</th><th>PERSONA</th><th>CARGO</th><th>INICIO</th><th>FIN</th><th>ESTADO</th><th>ACCIONES</th>
+      </tr></thead><tbody id="db-body"></tbody></table>
+    </div>
+  </div>
+</div>
+
+</div><!-- /content -->
+
+<!-- MODAL -->
+<div class="mbg" id="mbg">
+  <div class="modal">
+    <h3 id="m-title">Agregar Registro</h3>
+    <div class="fgrid">
+      <div class="fgrp full"><label>Cliente / Proyecto</label><input id="f-cli" placeholder="Nombre del proyecto"></div>
+      <div class="fgrp"><label>Zona</label><select id="f-zona"><option>Centro</option><option>Norte</option><option>Sur</option></select></div>
+      <div class="fgrp"><label>Estado</label><select id="f-est"><option>Activo</option><option>Por Iniciar</option><option>Finalizado</option><option>En Pausa</option></select></div>
+      <div class="fgrp full"><label>Persona (vacío = Sin Asignar)</label><input id="f-per" list="pmo-roster" placeholder="Nombre completo"><datalist id="pmo-roster"></datalist></div>
+      <div class="fgrp full"><label>Cargo</label><input id="f-cargo" placeholder="Supervisor de Proyecto, Asistente..."></div>
+      <div class="fgrp"><label>Fecha Inicio</label><input type="date" id="f-ini"></div>
+      <div class="fgrp"><label>Fecha Fin</label><input type="date" id="f-fin"></div>
+    </div>
+    <div class="macts">
+      <button class="btn-cancel" onclick="closeM()">Cancelar</button>
+      <button class="btn-ok" onclick="saveRec()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="tip"></div>
+<div id="toast"></div>
+
+<script>
+// ══════════════ LOGO ══════════════
+
+
+// ══════════════ DATA ══════════════
+const LS = 'pmo_v8';
+const DEFAULT_DB = [{"id": 1, "cli": "AgroBerries", "zona": "Norte", "per": "Anthony Rodriguez Meza", "cargo": "Asistente de Proyecto", "ini": "2026-01-21", "fin": "2026-06-20", "est": "Activo"}, {"id": 2, "cli": "Agrolatina", "zona": "Sur", "per": "Luis Goycochea Martinez", "cargo": "Supervisor de Proyecto", "ini": "2026-07-01", "fin": "2026-09-30", "est": "Por Iniciar"}, {"id": 3, "cli": "Agrolatina", "zona": "Sur", "per": "Caleb Calderón", "cargo": "Asistente de Proyecto", "ini": "2026-07-01", "fin": "2026-09-30", "est": "Por Iniciar"}, {"id": 4, "cli": "Agrolatina", "zona": "Sur", "per": "Sin Asignar", "cargo": "Almacenero", "ini": "2026-07-01", "fin": "2026-08-31", "est": "Por Iniciar"}, {"id": 5, "cli": "AIB", "zona": "Sur", "per": "Victor Flores Salazar", "cargo": "Supervisor de Proyecto", "ini": "2026-08-15", "fin": "2026-10-30", "est": "Por Iniciar"}, {"id": 6, "cli": "AIB", "zona": "Sur", "per": "Gianpier Girao Ramos", "cargo": "Asistente de Proyecto", "ini": "2026-08-15", "fin": "2026-10-30", "est": "Por Iniciar"}, {"id": 7, "cli": "Ara Export", "zona": "Centro", "per": "Abdon Solorzano Toscano", "cargo": "Supervisor de Proyecto", "ini": "2026-01-27", "fin": "2026-07-25", "est": "Activo"}, {"id": 8, "cli": "Arca Continental", "zona": "Norte", "per": "Dylan Marquina Rodriguez", "cargo": "Supervisor de Proyecto", "ini": "", "fin": "", "est": "En Pausa"}, {"id": 9, "cli": "AT (ASV)", "zona": "Sur", "per": "Patrick Vasquez Zavaleta", "cargo": "Supervisor de Proyecto", "ini": "2026-02-02", "fin": "2026-07-30", "est": "Activo"}, {"id": 10, "cli": "AT (ASV)", "zona": "Sur", "per": "Williams Vila Lujan", "cargo": "Asistente de Proyecto", "ini": "2026-02-02", "fin": "2026-07-30", "est": "Activo"}, {"id": 11, "cli": "Berry Harvest", "zona": "Norte", "per": "Erick Jara", "cargo": "Supervisor EEMM", "ini": "2026-01-15", "fin": "2026-07-30", "est": "Activo"}, {"id": 12, "cli": "Bomarea", "zona": "Norte", "per": "Jorvin Paredes Morales", "cargo": "Supervisor de Proyecto", "ini": "2026-03-23", "fin": "2026-08-15", "est": "Activo"}, {"id": 13, "cli": "Bomarea", "zona": "Norte", "per": "Bruno Mendoza", "cargo": "Asistente Logístico", "ini": "2026-03-23", "fin": "2026-08-15", "est": "Activo"}, {"id": 14, "cli": "Bomarea", "zona": "Norte", "per": "Andrés Raymundo", "cargo": "Asistente de Proyecto", "ini": "2026-03-23", "fin": "2026-08-15", "est": "Activo"}, {"id": 15, "cli": "Campo Sol", "zona": "Norte", "per": "Renato Jara Medina", "cargo": "Supervisor de Proyecto", "ini": "2026-03-14", "fin": "2026-07-15", "est": "Activo"}, {"id": 16, "cli": "Campo Sol", "zona": "Norte", "per": "Fernando Asmat", "cargo": "Asistente de Proyecto", "ini": "2026-03-14", "fin": "2026-07-15", "est": "Activo"}, {"id": 17, "cli": "Drokasa - Ica", "zona": "Sur", "per": "Anthony Rodriguez Meza", "cargo": "Supervisor de Proyecto", "ini": "2026-08-01", "fin": "2026-09-20", "est": "Por Iniciar"}, {"id": 18, "cli": "Drokasa - Pisco", "zona": "Sur", "per": "Jean Casas Roncal", "cargo": "Supervisor de Proyecto", "ini": "2026-08-01", "fin": "2026-08-31", "est": "Por Iniciar"}, {"id": 19, "cli": "Emergent Cold", "zona": "Centro", "per": "Antero Avila Sanchez", "cargo": "Supervisor Eléctrico", "ini": "2026-07-06", "fin": "2026-07-25", "est": "Activo"}, {"id": 20, "cli": "Huarmey", "zona": "Norte", "per": "Carlos Rojo", "cargo": "Asistente de Proyecto", "ini": "2026-06-09", "fin": "2026-07-30", "est": "Activo"}, {"id": 21, "cli": "Imbarex", "zona": "Sur", "per": "Jean Casas Roncal", "cargo": "Supervisor de Proyecto", "ini": "2026-01-28", "fin": "2026-07-30", "est": "Activo"}, {"id": 22, "cli": "Pampa Baja", "zona": "Sur", "per": "Dylan Marquina Rodriguez", "cargo": "Supervisor de Proyecto", "ini": "2026-07-20", "fin": "2026-10-15", "est": "Por Iniciar"}, {"id": 23, "cli": "ProAgro", "zona": "Sur", "per": "Benjamin Viera", "cargo": "Supervisor de Proyecto", "ini": "2026-07-01", "fin": "2026-10-30", "est": "Por Iniciar"}, {"id": 24, "cli": "ProAgro", "zona": "Sur", "per": "Jordy Acosta Valencia", "cargo": "Asistente de Proyecto", "ini": "2026-07-01", "fin": "2026-10-30", "est": "Por Iniciar"}, {"id": 25, "cli": "ProAgro", "zona": "Sur", "per": "Percy Sanchez Sanchez", "cargo": "Almacenero", "ini": "2026-07-01", "fin": "2026-10-30", "est": "Por Iniciar"}, {"id": 26, "cli": "Prolan", "zona": "Sur", "per": "Walter Chung", "cargo": "Supervisor de Proyecto", "ini": "2026-06-09", "fin": "2026-10-20", "est": "Activo"}, {"id": 27, "cli": "Prolan", "zona": "Sur", "per": "Luis Silva Davila", "cargo": "Asistente de Proyecto", "ini": "2026-06-09", "fin": "2026-10-20", "est": "Activo"}, {"id": 28, "cli": "Prolan", "zona": "Sur", "per": "Carmen Priale Romero", "cargo": "Supervisor EEMM", "ini": "2026-06-30", "fin": "2026-07-30", "est": "Activo"}, {"id": 29, "cli": "Prosembra", "zona": "Sur", "per": "Victor Flores Salazar", "cargo": "Supervisor de Proyecto", "ini": "2025-12-22", "fin": "2026-07-30", "est": "Activo"}, {"id": 30, "cli": "Q pack", "zona": "Norte", "per": "Jesus Cabrera Camacho", "cargo": "Supervisor de Proyecto", "ini": "2026-02-02", "fin": "2026-08-15", "est": "Activo"}, {"id": 31, "cli": "Q pack", "zona": "Norte", "per": "Fernando Aurazo Alvarado", "cargo": "Asistente de Proyecto", "ini": "2026-02-02", "fin": "2026-08-15", "est": "Activo"}, {"id": 32, "cli": "Q pack", "zona": "Norte", "per": "Juan de Dios Varas Rodriguez", "cargo": "Asistente Logístico", "ini": "2026-02-02", "fin": "2026-08-15", "est": "Activo"}, {"id": 33, "cli": "Qali", "zona": "Centro", "per": "Wilson Urbina", "cargo": "Supervisor de Proyecto", "ini": "2026-06-10", "fin": "2026-10-15", "est": "Activo"}, {"id": 34, "cli": "Rintinsa", "zona": "Centro", "per": "Steve Sarmiento Chavez", "cargo": "Supervisor de Proyecto", "ini": "2026-07-14", "fin": "2026-08-30", "est": "Activo"}, {"id": 35, "cli": "Santa Sofía", "zona": "Sur", "per": "Steve Sarmiento Chavez", "cargo": "Supervisor de Proyecto", "ini": "2026-03-02", "fin": "2026-06-20", "est": "Activo"}, {"id": 36, "cli": "Tal S.A", "zona": "Norte", "per": "Antero Avila Sanchez", "cargo": "Supervisor Eléctrico", "ini": "2026-03-09", "fin": "2026-07-08", "est": "En Pausa"}, {"id": 37, "cli": "Torre Blanca", "zona": "Centro", "per": "Waldir Saldaña Lopez", "cargo": "Supervisor de Proyecto", "ini": "2026-02-02", "fin": "2026-07-20", "est": "Activo"}, {"id": 38, "cli": "AgroBerries", "zona": "Norte", "per": "Diego Asmat Delgado", "cargo": "Supervisor Civil", "ini": "2026-06-08", "fin": "2026-12-20", "est": "Activo"}, {"id": 39, "cli": "AgroBerries", "zona": "Norte", "per": "Sin Asignar", "cargo": "Jefe de Planificación", "ini": "2026-06-08", "fin": "2027-01-30", "est": "Activo"}, {"id": 40, "cli": "AgroBerries", "zona": "Norte", "per": "Erick Salvador Lizarraga", "cargo": "Asistente de Proyecto", "ini": "2026-06-22", "fin": "2027-01-30", "est": "Activo"}, {"id": 41, "cli": "AgroBerries", "zona": "Norte", "per": "Sin Asignar", "cargo": "Jefe de Proyecto", "ini": "2026-06-22", "fin": "2027-01-30", "est": "Activo"}];
+
+let DB = [];
+let editId = null;
+const TODAY = new Date();
+
+function pD(s){return s?new Date(s+'T00:00:00'):null;}
+function fD(d){return d?d.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'2-digit'}):'';}
+function isUA(r){return !r.per||r.per==='Sin Asignar';}
+function isSup(c){return/supervisor|gerente/i.test(c);}
+
+function calcEst(r){
+  if(r.est==='En Pausa') return 'En Pausa';
+  const s=pD(r.ini),e=pD(r.fin);
+  if(!s) return 'En Pausa';
+  if(s>TODAY) return 'Por Iniciar';
+  if(e&&e<TODAY) return 'Finalizado';
+  return 'Activo';
+}
+
+/* ── Persistencia en Supabase (instancia PMO) · tabla asignaciones_pmo ── */
+const SB_URL='https://vsploxglutkbeokumunp.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+const SB_H={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'};
+function sbGet(t){return fetch(SB_URL+'/rest/v1/'+t+'?select=*',{headers:SB_H}).then(r=>r.ok?r.json():[]);}
+function sbUpsert(t,rows){if(!rows.length)return Promise.resolve();return fetch(SB_URL+'/rest/v1/'+t+'?on_conflict=id',{method:'POST',headers:{...SB_H,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rows)});}
+function sbDelIds(t,ids){return Promise.all(ids.map(i=>fetch(SB_URL+'/rest/v1/'+t+'?id=eq.'+i,{method:'DELETE',headers:{...SB_H,'Prefer':'return=minimal'}})));}
+async function loadData(){
+  try{
+    const rows=await sbGet('asignaciones_pmo');
+    if(rows.length){ DB=rows.map(r=>({id:+r.id,cli:r.cli||'',zona:r.zona||'',per:r.per||'',cargo:r.cargo||'',ini:r.ini||'',fin:r.fin||'',est:r.est||''})); }
+    else { DB=JSON.parse(JSON.stringify(DEFAULT_DB)); await sbSync(true); }
+  }catch(e){ DB=JSON.parse(JSON.stringify(DEFAULT_DB)); }
+}
+async function sbSync(seed){
+  const rows=DB.map(r=>({id:r.id,cli:r.cli,zona:r.zona,per:r.per,cargo:r.cargo,ini:r.ini,fin:r.fin,est:r.est,updated_at:new Date().toISOString()}));
+  await sbUpsert('asignaciones_pmo',rows);
+  if(!seed){ const ex=await sbGet('asignaciones_pmo'); const ids=new Set(DB.map(r=>r.id)); await sbDelIds('asignaciones_pmo',ex.map(r=>+r.id).filter(i=>!ids.has(i))); }
+}
+function saveAll(){
+  const b=document.getElementById('btnSave');b.textContent='Guardando…';
+  sbSync(false).then(()=>{b.classList.add('ok');b.textContent='✓ Guardado';setTimeout(()=>{b.classList.remove('ok');b.textContent='💾 Guardar';},2200);toast('Guardado en la plataforma');})
+  .catch(e=>{b.textContent='💾 Guardar';toast('Error al guardar');});
+}
+
+// ══════════════ COLOR SYSTEM ══════════════
+// Distinct palettes per zone for readability
+// ── PER-PERSON unique colors (40 distinct, readable on dark) ──
+const PERSON_PALETTE = [
+  '#1565C0','#0B6E4F','#7C2D12','#7C3AED','#0891B2',
+  '#D97706','#BE185D','#0E7490','#15803D','#6D28D9',
+  '#B45309','#0369A1','#166534','#9D174D','#1D4ED8',
+  '#065F46','#92400E','#5B21B6','#0C4A6E','#166534',
+  '#831843','#1E40AF','#134E4A','#78350F','#4C1D95',
+  '#155E75','#6B21A8','#14532D','#9A3412','#1E3A8A',
+  '#047857','#7F1D1D','#1E3A8A','#064E3B','#4A1942',
+  '#0C4A6E','#854D0E','#312E81','#065F46','#6B21A8',
+];
+const PER_CLR = {};
+let perIdx = 0;
+function perColor(name){
+  if(!name||name==='Sin Asignar') return 'var(--warn)';
+  if(!PER_CLR[name]){ PER_CLR[name]=PERSON_PALETTE[perIdx%PERSON_PALETTE.length]; perIdx++; }
+  return PER_CLR[name];
+}
+// Extra distinct shades when one person has 2+ projects (offset hue slightly)
+const SHADE_OFFSETS = ['DD','BB','99','77','55'];
+function perColorShade(name, projIdx){
+  const base = perColor(name);
+  if(projIdx===0) return base;
+  // derive shade by mixing with white/dark
+  const shades=['#1A73C2','#0D9E6E','#A0522D','#9C4FED','#1AA8D2',
+                '#F0A020','#D44090','#20A0B0','#2DAD53','#8048E9'];
+  const nameIdx = PERSON_PALETTE.indexOf(PER_CLR[name]);
+  return shades[(nameIdx + projIdx) % shades.length];
+}
+function estClr(est){
+  return {Activo:'#1565C0','Por Iniciar':'#7C3AED',Finalizado:'#059669','En Pausa':'#D97706'}[est]||'#6B7280';
+}
+function zoneClrHex(z){return {Sur:'#0B6E4F',Norte:'#1040A0',Centro:'#7C2D12'}[z]||'#374151';}
+
+// ══════════════ GANTT ENGINE ══════════════
+function timeAxis(rows){
+  const validRows = rows.filter(r=>r.ini&&r.fin);
+  if(!validRows.length){
+    const now=new Date();
+    return {minD:new Date(now.getFullYear(),now.getMonth()-1,1),maxD:new Date(now.getFullYear(),now.getMonth()+6,0),months:[]};
+  }
+  let mn=new Date('2099-01-01'),mx=new Date('2000-01-01');
+  validRows.forEach(r=>{const s=pD(r.ini),e=pD(r.fin);if(s<mn)mn=s;if(e>mx)mx=e;});
+  mn=new Date(mn.getFullYear(),mn.getMonth(),1);
+  mx=new Date(mx.getFullYear(),mx.getMonth()+1,0);
+  const months=[];
+  let c=new Date(mn);
+  while(c<=mx){months.push(new Date(c));c=new Date(c.getFullYear(),c.getMonth()+1,1);}
+  return {minD:mn,maxD:mx,months};
+}
+
+function barPos(r,minD,maxD){
+  const s=pD(r.ini),e=pD(r.fin);
+  if(!s||!e) return null;
+  const tot=maxD-minD||1;
+  const l=Math.max(0,(s-minD)/tot*100);
+  const w=Math.max(.5,(Math.min(e,maxD)-Math.max(s,minD))/tot*100);
+  return {l:l.toFixed(2)+'%',w:w.toFixed(2)+'%'};
+}
+
+function todayPct(minD,maxD){
+  const tot=maxD-minD||1;
+  const p=((TODAY-minD)/tot*100);
+  if(p<0||p>100) return null;
+  return p.toFixed(2)+'%';
+}
+
+function buildGanttSup(rows,ord){
+  if(!rows.length) return '<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px;">Sin resultados</div>';
+  const {minD,maxD,months}=timeAxis(rows);
+  const COL=Math.max(55,Math.floor(680/Math.max(months.length,1)));
+  const tp=todayPct(minD,maxD);
+
+  // Group ALL rows by person (not by project-supervisor)
+  // Each person gets one row with a bar per project they appear in
+  const personMap={};
+  rows.forEach(r=>{
+    const key = isUA(r)?'__UNASSIGNED__':r.per;
+    if(!personMap[key]) personMap[key]={name:key,zona:r.zona,cargo:r.cargo,projects:[]};
+    // One entry per cli+zona
+    const projKey=r.cli+'§'+r.zona;
+    let proj=personMap[key].projects.find(p=>p.key===projKey);
+    if(!proj){
+      proj={key:projKey,cli:r.cli,zona:r.zona,cargo:r.cargo,ini:r.ini,fin:r.fin,est:r.est};
+      personMap[key].projects.push(proj);
+    } else {
+      // Extend range if multiple rows same project
+      if(r.ini&&(!proj.ini||r.ini<proj.ini)) proj.ini=r.ini;
+      if(r.fin&&(!proj.fin||r.fin>proj.fin)) proj.fin=r.fin;
+    }
+    // Prefer supervisor cargo label
+    if(isSup(r.cargo)&&!isUA(r)) personMap[key].cargo=r.cargo;
+  });
+
+  // Sort: unassigned last, rest by earliest project
+  const keys=Object.keys(personMap).sort((a,b)=>{
+    if(a==='__UNASSIGNED__') return 1;
+    if(b==='__UNASSIGNED__') return -1;
+    const ma=Math.min(...personMap[a].projects.filter(p=>p.ini).map(p=>+new Date(p.ini)||9e12));
+    const mb=Math.min(...personMap[b].projects.filter(p=>p.ini).map(p=>+new Date(p.ini)||9e12));
+    return ord==='asc'?ma-mb:mb-ma;
+  });
+
+  // Pre-assign colors per person
+  keys.forEach(k=>{ if(k!=='__UNASSIGNED__') perColor(k); });
+
+  // Zone colors for bar shading per project
+  const projClrs=['#1565C0','#0B6E4F','#7C3AED','#B45309','#0891B2','#BE185D','#166534','#9D174D','#0369A1','#6D28D9'];
+  const projColorMap={};
+  let projColorIdx=0;
+  function projColor(key){
+    if(!projColorMap[key]){projColorMap[key]=projClrs[projColorIdx%projClrs.length];projColorIdx++;}
+    return projColorMap[key];
+  }
+
+  let h=`<table class="gtbl"><thead><tr><th class="lh">PERSONA / CARGO</th>`;
+  months.forEach(m=>{h+=`<th style="min-width:${COL}px">${m.toLocaleDateString('es-PE',{month:'short',year:'2-digit'}).toUpperCase()}</th>`;});
+  h+='</tr></thead><tbody>';
+
+  keys.forEach(k=>{
+    const person=personMap[k];
+    const isUArow=k==='__UNASSIGNED__';
+    const projs=person.projects;
+    const multiProj=projs.length>1;
+    // Row height: 24px per project bar + padding
+    const rowH=Math.max(44, projs.length*26+10);
+
+    h+=`<tr><td class="lc ${isUArow?'rl-unassigned':''}" style="vertical-align:top;padding-top:10px;">
+      <div class="rl-name">${isUArow?'⚠ Sin Asignar':k}</div>
+      <div class="rl-sub">${isUArow?'Posición(es) sin cubrir':person.cargo}`;
+    if(multiProj) h+=` · <span style="color:#D97706;font-weight:700;">${projs.length} proyectos</span>`;
+    h+=`</div>`;
+    // Show project name pills when multi
+    if(multiProj){
+      h+=`<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">`;
+      projs.forEach(p=>{
+        const clr=projColor(p.key);
+        h+=`<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:5px;background:${clr}22;color:${clr};border:1px solid ${clr}55;">${p.cli.substring(0,10)}</span>`;
+      });
+      h+=`</div>`;
+    }
+    h+=`</td>`;
+    h+=`<td class="gcell" colspan="${months.length}" style="position:relative;height:${rowH}px;">`;
+    if(tp) h+=`<div class="today-line" style="left:${tp}"></div>`;
+
+    projs.forEach((p,idx)=>{
+      const pos=barPos(p,minD,maxD);
+      if(!pos) return;
+      const paused=p.est==='En Pausa'||!p.ini;
+      const clr=isUArow?'#EF4444':(paused?'#9CA3AF':projColor(p.key));
+      const topPx=5+idx*26;
+      const tipD=`${p.cli}|${p.zona}|${isUArow?'Sin Asignar':k}|${fD(pD(p.ini))}|${fD(pD(p.fin))}|${p.cargo}`;
+      h+=`<div class="bar${isUArow?' unassigned':''}${paused?' paused':''}"
+        style="left:${pos.l};width:${pos.w};background:${clr};top:${topPx}px;height:20px;font-size:9px;transform:none;border-radius:4px;"
+        data-tip="${tipD}" onmouseenter="showTip(event,this)" onmouseleave="hideTip()">${p.cli}</div>`;
+    });
+    h+='</td></tr>';
+  });
+  return h+'</tbody></table>';
+}
+
+function buildGanttCli(rows,ord){
+  if(!rows.length) return '<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px;">Sin resultados</div>';
+  const {minD,maxD,months}=timeAxis(rows);
+  const COL=Math.max(55,Math.floor(680/Math.max(months.length,1)));
+  const tp=todayPct(minD,maxD);
+
+  // Cargo → color mapping (same palette as Vista Dueño)
+  const cargoClr=c=>{
+    if(/gerente/i.test(c))            return '#6D28D9';
+    if(/supervisor.*civil/i.test(c))  return '#B45309';
+    if(/supervisor.*eléc|supervisor.*elec/i.test(c)) return '#0369A1';
+    if(/supervisor.*mec/i.test(c))    return '#065F46';
+    if(/supervisor.*eemm/i.test(c))   return '#9D174D';
+    if(/supervisor.*calidad/i.test(c))return '#0891B2';
+    if(/supervisor.*ssoma/i.test(c))  return '#9A3412';
+    if(/supervisor/i.test(c))         return '#1565C0';
+    if(/asistente.*log/i.test(c))     return '#166534';
+    if(/asistente/i.test(c))          return '#15803D';
+    if(/coordinador/i.test(c))        return '#854D0E';
+    if(/ssoma/i.test(c))              return '#9A3412';
+    if(/calidad/i.test(c))            return '#0891B2';
+    if(/almacen/i.test(c))            return '#475569';
+    if(/planeam|lider/i.test(c))      return '#6D28D9';
+    if(/administrador/i.test(c))      return '#701A75';
+    return '#374151';
+  };
+
+  // Group by client
+  const clients={};
+  rows.forEach(r=>{
+    if(!clients[r.cli]) clients[r.cli]={zona:r.zona,rows:[]};
+    clients[r.cli].rows.push(r);
+  });
+
+  // Sort clients by earliest date
+  const cliKeys=Object.keys(clients).sort((a,b)=>{
+    const ra=clients[a].rows.filter(r=>r.ini);
+    const rb=clients[b].rows.filter(r=>r.ini);
+    if(!ra.length) return 1; if(!rb.length) return -1;
+    const ma=Math.min(...ra.map(r=>new Date(r.ini)));
+    const mb=Math.min(...rb.map(r=>new Date(r.ini)));
+    return ord==='asc'?ma-mb:mb-ma;
+  });
+
+  let h=`<table class="gtbl"><thead><tr><th class="lh">CLIENTE / EQUIPO</th>`;
+  months.forEach(m=>{h+=`<th style="min-width:${COL}px">${m.toLocaleDateString('es-PE',{month:'short',year:'2-digit'}).toUpperCase()}</th>`;});
+  h+='</tr></thead><tbody>';
+
+  cliKeys.forEach((cli,cliIdx)=>{
+    const {zona,rows:crows}=clients[cli];
+    const zHexMap={Norte:'#1040A0',Centro:'#7C2D12',Sur:'#0B6E4F'};
+    const zClr=zHexMap[zona]||'#374151';
+    const sup=crows.find(r=>isSup(r.cargo)&&!isUA(r));
+    const supName=sup?sup.per:'⚠ Sin supervisor';
+    const hasUA=crows.some(r=>isUA(r));
+    const rowBg=cliIdx%2===0?'var(--white)':'#FAFAF9';
+
+    // Sort rows: gerente → supervisor → asistente → otros → sin asignar
+    const sorted=[...crows].sort((a,b)=>{
+      const rank=r=>{if(isUA(r))return 5;if(/gerente/i.test(r.cargo))return 0;if(/supervisor/i.test(r.cargo))return 1;if(/asistente/i.test(r.cargo))return 2;if(/coordinador/i.test(r.cargo))return 3;return 4;};
+      return rank(a)-rank(b);
+    });
+
+    const rowH=Math.max(50, sorted.length*22+14);
+
+    // Left panel: show each person as a color-coded line
+    const personLines=sorted.map(r=>{
+      const clr=isUA(r)?'#DC2626':cargoClr(r.cargo);
+      const nm=isUA(r)?`⚠ Sin asignar — ${r.cargo}`:r.per;
+      const cargoShort=isUA(r)?'':r.cargo.replace(/supervisor/i,'Sup.').replace(/asistente/i,'Asist.').replace(/de proyecto/i,'').replace(/logístico/i,'Log.').trim();
+      return `<div style="display:flex;align-items:center;gap:5px;padding:1px 0;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${clr};flex-shrink:0;${isUA(r)?'border:2px dashed '+clr:''}"></span>
+        <span style="font-size:9px;font-weight:${isUA(r)?'700':'600'};color:${isUA(r)?'#DC2626':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;">${nm}</span>
+        ${!isUA(r)?`<span style="font-size:8px;color:#94A3B8;flex-shrink:0;">${cargoShort}</span>`:''}
+      </div>`;
+    }).join('');
+
+    h+=`<tr style="background:${rowBg};">
+      <td class="lc" style="vertical-align:top;padding:8px 12px;background:${rowBg};border-left:4px solid ${zClr};">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+          <span style="font-size:12px;font-weight:800;color:var(--text);">${cli}</span>
+          <span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:8px;color:#fff;background:${zClr};">${zona}</span>
+          ${hasUA?'<span style="font-size:9px;font-weight:700;color:#DC2626;background:#FEE2E2;padding:1px 6px;border-radius:6px;">⚠ Vacante</span>':''}
+        </div>
+        ${personLines}
+      </td>`;
+
+    h+=`<td class="gcell" colspan="${months.length}" style="position:relative;height:${rowH}px;background:${rowBg};">`;
+    if(tp) h+=`<div class="today-line" style="left:${tp}"></div>`;
+
+    sorted.forEach((r,idx)=>{
+      const pos=barPos(r,minD,maxD);
+      if(!pos){return;}
+      const ua=isUA(r);
+      const paused=r.est==='En Pausa'||!r.ini;
+      const clr=ua?'#DC2626':(paused?'#9CA3AF':cargoClr(r.cargo));
+      const label=ua?`⚠ vacante`:r.per.split(' ')[0];
+      const topPx=7+idx*22;
+      const tipD=`${r.cli}|${r.zona}|${ua?'Sin Asignar':r.per}|${fD(pD(r.ini))}|${fD(pD(r.fin))}|${r.cargo}`;
+      h+=`<div class="bar${ua?' unassigned':''}${paused?' paused':''}"
+        style="left:${pos.l};width:${pos.w};background:${clr};top:${topPx}px;height:19px;font-size:9px;transform:none;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.2);"
+        data-tip="${tipD}" onmouseenter="showTip(event,this)" onmouseleave="hideTip()">${label}</div>`;
+    });
+    h+='</td></tr>';
+  });
+  return h+'</tbody></table>';
+}
+
+// ══════════════ RENDER FUNCTIONS ══════════════
+function rGS(){
+  const zona=v('gs-zona'),est=v('gs-est'),ord=v('gs-ord'),per=v('gs-per');
+  let rows=[...DB];
+  if(zona) rows=rows.filter(r=>r.zona===zona);
+  if(est)  rows=rows.filter(r=>calcEst(r)===est);
+  if(per)  rows=rows.filter(r=>r.per===per);
+  rows.sort((a,b)=>{const da=pD(a.ini)||new Date('2099'),db=pD(b.ini)||new Date('2099');return ord==='asc'?da-db:db-da;});
+  document.getElementById('gs-out').innerHTML=buildGanttSup(rows,ord);
+}
+
+function rGC(){
+  const zona=v('gc-zona'),est=v('gc-est'),ord=v('gc-ord'),srch=v('gc-srch').toLowerCase();
+  let rows=[...DB];
+  if(zona) rows=rows.filter(r=>r.zona===zona);
+  if(est)  rows=rows.filter(r=>calcEst(r)===est);
+  if(srch) rows=rows.filter(r=>r.cli.toLowerCase().includes(srch));
+  rows.sort((a,b)=>{const da=pD(a.ini)||new Date('2099'),db=pD(b.ini)||new Date('2099');return ord==='asc'?da-db:db-da;});
+  document.getElementById('gc-out').innerHTML=buildGanttCli(rows,ord);
+}
+
+function rAV(){
+  const dv=v('av-date'),zona=v('av-zona'),filt=v('av-filt');
+  if(!dv){document.getElementById('av-out').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted);">Selecciona una fecha</div>';return;}
+  const qD=pD(dv);
+  const persons={};
+  DB.forEach(r=>{
+    if(isUA(r)) return;
+    if(!persons[r.per]) persons[r.per]={name:r.per,zona:r.zona,cargo:r.cargo,active:[]};
+    const s=pD(r.ini),e=pD(r.fin);
+    if(s&&e&&s<=qD&&qD<=e) persons[r.per].active.push(r);
+  });
+  let cards=Object.values(persons);
+  if(zona) cards=cards.filter(p=>p.zona===zona);
+  if(filt==='free') cards=cards.filter(p=>!p.active.length);
+  if(filt==='occ')  cards=cards.filter(p=>p.active.length>0);
+  cards.sort((a,b)=>a.active.length===b.active.length?a.name.localeCompare(b.name):a.active.length-b.active.length);
+
+  const free=cards.filter(p=>!p.active.length).length;
+  const occ=cards.length-free;
+  let h=`<div class="avail-summary">
+    <div class="av-card" style="border-color:#86EFAC"><div class="av-num" style="color:#15803D">${free}</div><div class="av-lbl" style="color:#15803D">Disponibles</div></div>
+    <div class="av-card" style="border-color:#FCA5A5"><div class="av-num" style="color:#B91C1C">${occ}</div><div class="av-lbl" style="color:#B91C1C">Ocupados</div></div>
+    <div class="av-card" style="border-color:#93C5FD"><div class="av-num" style="color:#1D4ED8">${cards.length}</div><div class="av-lbl" style="color:#1D4ED8">Total consultado</div></div>
+  </div><div class="avail-grid">`;
+  cards.forEach(p=>{
+    const clr=zoneClrHex(p.zona);
+    const ini=p.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    h+=`<div class="acard">
+      <div class="avatar" style="background:${clr}">${ini}</div>
+      <div>
+        <div class="ai-name">${p.name}</div>
+        <div class="ai-sub">${p.zona} · ${p.cargo}</div>
+        <span class="badge ${p.active.length?'b-occ':'b-free'}">${p.active.length?'Ocupado':'Disponible'}</span>
+        ${p.active.map(r=>`<div class="ai-proj">📌 ${r.cli}</div>`).join('')}
+      </div>
+    </div>`;
+  });
+  document.getElementById('av-out').innerHTML=h+'</div>';
+}
+
+function rORG(){
+  const zones = ['Norte','Centro','Sur'];
+  const zHex={Norte:'#1040A0',Centro:'#7C2D12',Sur:'#0B6E4F'};
+
+  // ── HEADCOUNT BY CATEGORY ──
+  // Count unique people per cargo category (active only, no unassigned)
+  const cats=[
+    {label:'Gerentes',icon:'👔',color:'#4C1D95',bg:'#EDE9FE', test:c=>/gerente/i.test(c)},
+    {label:'Supervisores',icon:'🦺',color:'#1E40AF',bg:'#DBEAFE', test:c=>/supervisor/i.test(c)&&!/gerente/i.test(c)},
+    {label:'Asistentes Proy.',icon:'📋',color:'#166534',bg:'#DCFCE7', test:c=>/asistente.*proy/i.test(c)},
+    {label:'Asist. Logístico',icon:'📦',color:'#065F46',bg:'#D1FAE5', test:c=>/asistente.*log/i.test(c)},
+    {label:'SSOMA',icon:'⛑',color:'#9A3412',bg:'#FFF7ED', test:c=>/ssoma/i.test(c)},
+    {label:'Calidad',icon:'✅',color:'#075985',bg:'#E0F2FE', test:c=>/calidad/i.test(c)},
+    {label:'Coordinadores',icon:'🔗',color:'#713F12',bg:'#FEF9C3', test:c=>/coordinador/i.test(c)},
+    {label:'Almaceneros',icon:'🏪',color:'#475569',bg:'#F1F5F9', test:c=>/almacen/i.test(c)},
+    {label:'Planeamiento',icon:'📐',color:'#701A75',bg:'#FDF4FF', test:c=>/planeam|lider/i.test(c)},
+    {label:'Administración',icon:'🗂',color:'#9D174D',bg:'#FDF2F8', test:c=>/administrador/i.test(c)},
+  ];
+
+  // Build person→cargo map (active rows only, deduplicate by person)
+  const personCargo={};
+  DB.filter(r=>!isUA(r)).forEach(r=>{
+    if(!personCargo[r.per]) personCargo[r.per]=r.cargo;
+    // upgrade to supervisor if they have one
+    if(isSup(r.cargo)) personCargo[r.per]=r.cargo;
+  });
+  const allPersons=Object.entries(personCargo);
+  const totalPersonas=allPersons.length;
+
+  // Count per category
+  const catCounts=cats.map(cat=>{
+    const people=allPersons.filter(([,c])=>cat.test(c));
+    return {...cat, count:people.length, people:people.map(([n])=>n)};
+  });
+  const uncategorized=allPersons.filter(([,c])=>!cats.some(cat=>cat.test(c)));
+
+  // Zone headcount
+  const zonePersons={};
+  zones.forEach(z=>{
+    zonePersons[z]=[...new Set(DB.filter(r=>r.zona===z&&!isUA(r)).map(r=>r.per))].length;
+  });
+
+  let h=`
+  <!-- HEADCOUNT PANEL -->
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:20px;">
+    <div style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span style="font-size:13px;font-weight:800;color:var(--navy);">👥 Headcount por categoría</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:10px;background:#0D1B3E;color:#fff;">${totalPersonas} personas totales</span>
+        ${zones.map(z=>`<span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:10px;background:${zHex[z]};color:#fff;">${z}: ${zonePersons[z]}</span>`).join('')}
+      </div>
+    </div>
+    <div style="padding:14px 18px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;">
+        <div style="background:#0D1B3E;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">👔</span>
+          <div>
+            <div style="font-size:22px;font-weight:800;color:#fff;line-height:1;">1</div>
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.7);margin-top:1px;">Gerente Operaciones</div>
+          </div>
+        </div>
+        <div style="background:#1E40AF;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">🧩</span>
+          <div>
+            <div style="font-size:22px;font-weight:800;color:#fff;line-height:1;">3</div>
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.7);margin-top:1px;">PMO</div>
+          </div>
+        </div>
+        ${catCounts.filter(c=>c.count>0).map(c=>`
+        <div style="background:${c.bg};border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;" title="${c.people.join(', ')}">
+          <span style="font-size:20px;">${c.icon}</span>
+          <div>
+            <div style="font-size:22px;font-weight:800;color:${c.color};line-height:1;">${c.count}</div>
+            <div style="font-size:10px;font-weight:700;color:${c.color};opacity:.8;margin-top:1px;">${c.label}</div>
+          </div>
+        </div>`).join('')}
+        ${uncategorized.length>0?`
+        <div style="background:#F1F5F9;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">🔹</span>
+          <div>
+            <div style="font-size:22px;font-weight:800;color:#475569;line-height:1;">${uncategorized.length}</div>
+            <div style="font-size:10px;font-weight:700;color:#475569;opacity:.8;margin-top:1px;">Otros</div>
+          </div>
+        </div>`:''}
+        <div style="background:#0B6E4F;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;grid-column:span 2;">
+          <span style="font-size:24px;">🏗</span>
+          <div>
+            <div style="font-size:26px;font-weight:800;color:#fff;line-height:1;">${totalPersonas+4}</div>
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.75);margin-top:1px;">Total Operaciones (campo + PMO + gerencia)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORG TREE -->
+  <div style="text-align:center;margin-bottom:28px;">
+    <div style="display:inline-flex;flex-direction:column;align-items:center;">
+      <div class="org-node" style="background:var(--navy);min-width:220px;padding:14px 24px;">
+        <div class="on-name" style="font-size:14px;">Daniel Fuentes</div>
+        <div class="on-role">Gerente de Operaciones</div>
+      </div>
+      <div class="org-connector"></div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;">PMO · 3 personas</div>
+      <div style="display:flex;gap:16px;justify-content:center;">
+        ${['Carlos Calderón','Kiara Medina','Pablo Paredes'].map(n=>`
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div class="org-node pmo" style="min-width:148px;padding:10px 16px;">
+            <div class="on-name" style="font-size:11px;">${n}</div>
+            <div class="on-role" style="font-size:9px;margin-top:2px;">PMO</div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>
+  <div style="border-top:2px solid var(--border);margin:24px 0;"></div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">`;
+
+  zones.forEach(z=>{
+    const projMap={};
+    DB.filter(r=>r.zona===z).forEach(r=>{
+      if(!projMap[r.cli]) projMap[r.cli]={cli:r.cli,zona:z,sup:null,team:[],hasUA:false};
+      if(isUA(r)) projMap[r.cli].hasUA=true;
+      else if(!projMap[r.cli].sup && isSup(r.cargo)) projMap[r.cli].sup=r.per;
+      projMap[r.cli].team.push(r);
+    });
+    const zpList=Object.values(projMap);
+    const zClr=zoneClrHex(z);
+    const zPersonas=[...new Set(DB.filter(r=>r.zona===z&&!isUA(r)).map(r=>r.per))].length;
+    const zIcon={Norte:'🔵',Centro:'🟤',Sur:'🟢'}[z];
+    h+=`<div>
+      <div class="zona-header">
+        <span class="zona-badge" style="background:${zClr}">${zIcon} Zona ${z}</span>
+        <span style="font-size:11px;color:var(--muted);font-weight:600;">${zpList.length} proyectos · ${zPersonas} personas</span>
+      </div>
+      <div class="proj-grid" style="grid-template-columns:1fr;">`;
+    zpList.forEach(p=>{
+      const ua=p.hasUA;
+      const teamCount=[...new Set(p.team.filter(r=>!isUA(r)).map(r=>r.per))].length;
+      const vacCount=p.team.filter(r=>isUA(r)).length;
+      const validTeam=p.team.filter(r=>r.ini&&r.fin);
+      const minIni=validTeam.length?validTeam.reduce((mn,r)=>r.ini<mn?r.ini:mn,validTeam[0].ini):null;
+      const maxFin=validTeam.length?validTeam.reduce((mx,r)=>r.fin>mx?r.fin:mx,validTeam[0].fin):null;
+      h+=`<div class="proj-card ${ua?'unassigned':''}">
+        <div class="pc-name">${p.cli}</div>
+        <div class="pc-per ${!p.sup?'warn':''}">${p.sup?'👤 '+p.sup:'⚠ Sin supervisor'}</div>
+        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
+          <span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:8px;background:#DBEAFE;color:#1E40AF;">${teamCount} persona${teamCount!==1?'s':''}</span>
+          ${vacCount>0?`<span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:8px;background:#FEE2E2;color:#991B1B;">⚠ ${vacCount} vacante${vacCount!==1?'s':''}</span>`:''}
+        </div>
+        ${minIni?`<div class="pc-dates">📅 ${fD(pD(minIni))} → ${fD(pD(maxFin))}</div>`:'<div class="pc-dates" style="color:var(--pause);">En Pausa</div>'}
+      </div>`;
+    });
+    h+=`</div></div>`;
+  });
+
+  // TOTALES AL FINAL
+  const totalProys=[...new Set(DB.map(r=>r.cli+'§'+r.zona))].length;
+  const totalVacantes=DB.filter(r=>isUA(r)).length;
+  const totalCampo=[...new Set(DB.filter(r=>!isUA(r)).map(r=>r.per))].length;
+  h+=`</div>
+  <div style="margin-top:24px;border-top:2px solid var(--border);padding-top:18px;">
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">📊 Totales generales</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+      <div style="background:var(--navy);border-radius:12px;padding:16px;text-align:center;color:#fff;">
+        <div style="font-size:32px;font-weight:800;">${totalProys}</div>
+        <div style="font-size:11px;font-weight:600;opacity:.8;margin-top:4px;">Total Proyectos</div>
+      </div>
+      <div style="background:#0B6E4F;border-radius:12px;padding:16px;text-align:center;color:#fff;">
+        <div style="font-size:32px;font-weight:800;">${totalCampo}</div>
+        <div style="font-size:11px;font-weight:600;opacity:.8;margin-top:4px;">Personal en Campo</div>
+      </div>
+      <div style="background:#1040A0;border-radius:12px;padding:16px;text-align:center;color:#fff;">
+        <div style="font-size:32px;font-weight:800;">4</div>
+        <div style="font-size:11px;font-weight:600;opacity:.8;margin-top:4px;">Equipo PMO + Gerencia</div>
+      </div>
+      <div style="background:${totalVacantes>0?'#DC2626':'#059669'};border-radius:12px;padding:16px;text-align:center;color:#fff;">
+        <div style="font-size:32px;font-weight:800;">${totalVacantes}</div>
+        <div style="font-size:11px;font-weight:600;opacity:.8;margin-top:4px;">Vacantes Abiertas</div>
+      </div>
+    </div>
+  </div>`;
+  document.getElementById('org-out').innerHTML=h;
+}
+
+function rDB(){
+  const zona=v('db-zona'),srch=v('db-srch').toLowerCase();
+  let rows=[...DB];
+  if(zona) rows=rows.filter(r=>r.zona===zona);
+  if(srch) rows=rows.filter(r=>(r.cli+r.per+r.cargo).toLowerCase().includes(srch));
+
+  const rbClass=c=>{
+    if(/gerente/i.test(c)) return 'rb rb-mgr';
+    if(/supervisor/i.test(c)) return 'rb rb-sup';
+    if(/asistente/i.test(c)) return 'rb rb-ast';
+    if(/logístico|almacen|coordinador|ssoma|calidad|planeamiento|documental/i.test(c)) return 'rb rb-log';
+    return 'rb rb-oth';
+  };
+
+  let h='';
+  rows.forEach(r=>{
+    const st=calcEst(r);
+    const stClr={Activo:'#1565C0','Por Iniciar':'#7C3AED',Finalizado:'#059669','En Pausa':'#D97706'}[st]||'#6B7280';
+    const ua=isUA(r);
+    h+=`<tr class="${ua?'unassign-row':''}">
+      <td><strong>${r.cli}</strong></td>
+      <td><span style="font-size:10px;padding:2px 7px;border-radius:10px;color:#fff;background:${zoneClrHex(r.zona)};font-weight:700;">${r.zona}</span></td>
+      <td>${ua?'<span style="color:var(--warn);font-weight:700;">⚠ Sin Asignar</span>':r.per}</td>
+      <td><span class="${rbClass(r.cargo)}">${r.cargo}</span></td>
+      <td style="font-size:11px;color:var(--muted);">${r.ini||'—'}</td>
+      <td style="font-size:11px;color:var(--muted);">${r.fin||'—'}</td>
+      <td><span style="font-size:10px;padding:2px 7px;border-radius:10px;color:#fff;background:${stClr};font-weight:700;">${st}</span></td>
+      <td><div class="tbl-acts"><button class="be" onclick="openM(${r.id})">✏</button><button class="bd" onclick="delR(${r.id})">🗑</button></div></td>
+    </tr>`;
+  });
+  document.getElementById('db-body').innerHTML=h||'<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--muted);">Sin resultados</td></tr>';
+}
+
+// ══════════════ MODAL / CRUD ══════════════
+function openM(id){
+  editId=id||null;
+  document.getElementById('m-title').textContent=id?'Editar':'Agregar Registro';
+  if(id){
+    const r=DB.find(x=>x.id===id);
+    sv('f-cli',r.cli);sv('f-zona',r.zona);sv('f-est',r.est);
+    sv('f-per',r.per==='Sin Asignar'?'':r.per);sv('f-cargo',r.cargo);
+    sv('f-ini',r.ini);sv('f-fin',r.fin);
+  } else {
+    ['f-cli','f-per','f-cargo','f-ini','f-fin'].forEach(x=>sv(x,''));
+    sv('f-zona','Centro');sv('f-est','Activo');
+  }
+  document.getElementById('mbg').classList.add('open');
+}
+function closeM(){document.getElementById('mbg').classList.remove('open');editId=null;}
+function saveRec(){
+  const per=v('f-per').trim()||'Sin Asignar';
+  const rec={cli:v('f-cli').trim(),zona:v('f-zona'),est:v('f-est'),per,cargo:v('f-cargo').trim()||'Sin Asignar',ini:v('f-ini'),fin:v('f-fin')};
+  if(!rec.cli||!rec.ini||!rec.fin){toast('Completa los campos requeridos');return;}
+  if(editId){const i=DB.findIndex(x=>x.id===editId);DB[i]={...rec,id:editId};toast('Actualizado');}
+  else{rec.id=Math.max(0,...DB.map(x=>x.id))+1;DB.push(rec);toast('Agregado');}
+  closeM();refreshAll();
+}
+function delR(id){if(!confirm('¿Eliminar registro?')) return;DB=DB.filter(x=>x.id!==id);refreshAll();toast('Eliminado');}
+
+function expCSV(){
+  const h=['ID','Cliente','Zona','Persona','Cargo','Inicio','Fin','Estado'];
+  const rows=DB.map(r=>[r.id,r.cli,r.zona,r.per,r.cargo,r.ini,r.fin,calcEst(r)]);
+  const csv=[h,...rows].map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='PMO_Friopacking.csv';a.click();
+}
+
+// ══════════════ POPULATE FILTERS ══════════════
+function popFilters(){
+  const sel=document.getElementById('gs-per');
+  sel.innerHTML='<option value="">Todos</option>';
+  const pers=[...new Set(DB.filter(r=>!isUA(r)).map(r=>r.per))].sort();
+  pers.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;sel.appendChild(o);});
+}
+
+// ══════════════ CLEAR FILTERS ══════════════
+function clrF(scope){
+  if(scope==='gs'){['gs-zona','gs-est','gs-per'].forEach(x=>sv(x,''));sv('gs-ord','asc');rGS();}
+  if(scope==='gc'){['gc-zona','gc-est'].forEach(x=>sv(x,''));sv('gc-ord','asc');sv('gc-srch','');rGC();}
+}
+
+function sw(id,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('pane-'+id).classList.add('active');
+  if(id==='dueno') rVD();
+  if(id==='gantt-sup') rGS();
+  if(id==='gantt-cli') rGC();
+  if(id==='avail') rAV();
+  if(id==='org') rORG();
+  if(id==='db') rDB();
+}
+
+// ══════════════ VISTA DUEÑO ══════════════
+function rVD(){
+  const today = TODAY;
+  const in30 = new Date(today); in30.setDate(in30.getDate()+30);
+  const in60 = new Date(today); in60.setDate(in60.getDate()+60);
+
+  // Unique projects (by cli+zona)
+  const projMap = {};
+  DB.forEach(r=>{
+    const k=r.cli+'§'+r.zona;
+    if(!projMap[k]) projMap[k]={cli:r.cli,zona:r.zona,ini:r.ini,fin:r.fin,est:r.est,rows:[]};
+    projMap[k].rows.push(r);
+    if(r.ini&&(!projMap[k].ini||r.ini<projMap[k].ini)) projMap[k].ini=r.ini;
+    if(r.fin&&(!projMap[k].fin||r.fin>projMap[k].fin)) projMap[k].fin=r.fin;
+  });
+  const projs = Object.values(projMap);
+
+  // KPIs
+  const activos = projs.filter(p=>calcEstP(p)==='Activo').length;
+  const porIniciar = projs.filter(p=>calcEstP(p)==='Por Iniciar').length;
+  const finalizados = projs.filter(p=>calcEstP(p)==='Finalizado').length;
+  const pausados = projs.filter(p=>calcEstP(p)==='En Pausa').length;
+  const totalPers = [...new Set(DB.filter(r=>!isUA(r)).map(r=>r.per))].length;
+  const vacantes = DB.filter(r=>isUA(r)).length;
+  const cierran30 = projs.filter(p=>{
+    if(!p.fin) return false;
+    const f=pD(p.fin);
+    return f>=today && f<=in30 && calcEstP(p)==='Activo';
+  }).length;
+
+  // Proyectos con vacantes
+  const projsConVacante = projs.filter(p=>p.rows.some(r=>isUA(r)));
+
+  // Por zona
+  const zonas = ['Norte','Centro','Sur'];
+  const zData = {};
+  zonas.forEach(z=>{
+    const zp = projs.filter(p=>p.zona===z);
+    const zpers = [...new Set(DB.filter(r=>r.zona===z&&!isUA(r)).map(r=>r.per))];
+    zData[z]={
+      activos: zp.filter(p=>calcEstP(p)==='Activo').length,
+      total: zp.length,
+      personal: zpers.length,
+      vacantes: DB.filter(r=>r.zona===z&&isUA(r)).length,
+      cierran30: zp.filter(p=>{if(!p.fin)return false;const f=pD(p.fin);return f>=today&&f<=in30&&calcEstP(p)==='Activo';}).length,
+    };
+  });
+
+  // Cierran próximos 30 días
+  const cierranList = projs.filter(p=>{
+    if(!p.fin) return false;
+    const f=pD(p.fin);
+    return f>=today && f<=in60 && calcEstP(p)==='Activo';
+  }).sort((a,b)=>a.fin.localeCompare(b.fin));
+
+  // Por iniciar próximos 60 días
+  const porIniciarList = projs.filter(p=>{
+    if(!p.ini) return false;
+    const s=pD(p.ini);
+    return s>=today && s<=in60;
+  }).sort((a,b)=>a.ini.localeCompare(b.ini));
+
+  // Sobrecarga: personas con +1 proyecto activo simultáneo
+  const perLoad = {};
+  DB.filter(r=>!isUA(r)&&calcEst(r)==='Activo').forEach(r=>{
+    if(!perLoad[r.per]) perLoad[r.per]={name:r.per,count:0};
+    perLoad[r.per].count++;
+  });
+  const sobrecargados = Object.values(perLoad).filter(p=>p.count>1).sort((a,b)=>b.count-a.count).slice(0,8);
+  const maxLoad = sobrecargados[0]?.count||1;
+
+  // ── KPIs ──
+  // Full headcount: all unique named people with at least one active assignment
+  const zHex={Norte:'#1040A0',Centro:'#7C2D12',Sur:'#0B6E4F'};
+  let h='';
+  const headcountActivo = [...new Set(DB.filter(r=>!isUA(r)&&calcEst(r)==='Activo').map(r=>r.per))].length;
+  const nSups = [...new Set(DB.filter(r=>!isUA(r)&&/supervisor|gerente/i.test(r.cargo)&&calcEst(r)==='Activo').map(r=>r.per))].length;
+  const nAsist = headcountActivo - nSups;
+
+  h+=`<div class="vd-kpis">
+    <div class="vd-kpi k-activo">
+      <div class="vd-kpi-num">${activos}</div>
+      <div class="vd-kpi-lbl">Proyectos Activos</div>
+      <div class="vd-kpi-sub">${porIniciar} por iniciar · ${pausados} en pausa</div>
+    </div>
+    <div class="vd-kpi k-alerta">
+      <div class="vd-kpi-num ${projsConVacante.length>0?'red':''}">${projsConVacante.length}</div>
+      <div class="vd-kpi-lbl">Proyectos con Vacante</div>
+      <div class="vd-kpi-sub">${vacantes} posición${vacantes!==1?'es':''} sin cubrir</div>
+    </div>
+    <div class="vd-kpi k-cierre">
+      <div class="vd-kpi-num ${cierran30>0?'amber':''}">${cierran30}</div>
+      <div class="vd-kpi-lbl">Cierran en 30 días</div>
+      <div class="vd-kpi-sub">Personal próximo a liberarse</div>
+    </div>
+    <div class="vd-kpi k-personal">
+      <div class="vd-kpi-num">${headcountActivo}</div>
+      <div class="vd-kpi-lbl">Headcount Operaciones</div>
+      <div class="vd-kpi-sub">${nSups} supervisores · ${nAsist} asistentes/otros</div>
+    </div>
+    <div class="vd-kpi k-vacante">
+      <div class="vd-kpi-num">${finalizados}</div>
+      <div class="vd-kpi-lbl">Finalizados</div>
+      <div class="vd-kpi-sub">Total de proyectos cerrados</div>
+    </div>
+  </div>`;
+
+  // ── ZONAS ──
+  h+=`<div class="vd-zonas">`;
+  zonas.forEach(z=>{
+    const d=zData[z];
+    const cls=z.toLowerCase();
+    h+=`<div class="vd-zona">
+      <div class="vd-zona-hdr ${cls}">
+        <div class="vd-zona-title">Zona ${z}</div>
+        <div class="vd-zona-count">${d.total} proyectos</div>
+      </div>
+      <div class="vd-zona-body">
+        <div class="vd-zona-stat"><span class="vd-zona-stat-lbl">Activos</span><span class="vd-zona-stat-val">${d.activos}</span></div>
+        <div class="vd-zona-stat"><span class="vd-zona-stat-lbl">Personal</span><span class="vd-zona-stat-val">${d.personal}</span></div>
+        <div class="vd-zona-stat"><span class="vd-zona-stat-lbl">Vacantes</span><span class="vd-zona-stat-val ${d.vacantes>0?'red':''}">${d.vacantes}</span></div>
+        <div class="vd-zona-stat"><span class="vd-zona-stat-lbl">Cierran (30d)</span><span class="vd-zona-stat-val ${d.cierran30>0?'red':''}">${d.cierran30}</span></div>
+      </div>
+    </div>`;
+  });
+  h+=`</div>`;
+
+  // ── TABLA COMPACTA: SUPERVISOR POR PROYECTO (una línea por proyecto) ──
+  const cargoTag = c => {
+    if(/gerente/i.test(c))    return {bg:'#EDE9FE',color:'#4C1D95',label:'Gerente'};
+    if(/supervisor.*civil/i.test(c)) return {bg:'#FEF3C7',color:'#78350F',label:'Sup. Civil'};
+    if(/supervisor.*eléc|supervisor.*elec/i.test(c)) return {bg:'#DBEAFE',color:'#1E40AF',label:'Sup. Eléc.'};
+    if(/supervisor.*mec/i.test(c)) return {bg:'#D1FAE5',color:'#065F46',label:'Sup. Mec.'};
+    if(/supervisor.*eemm/i.test(c)) return {bg:'#FCE7F3',color:'#9D174D',label:'EEMM'};
+    if(/supervisor.*calidad/i.test(c)) return {bg:'#E0F2FE',color:'#075985',label:'Calidad'};
+    if(/supervisor.*ssoma/i.test(c)) return {bg:'#FFF7ED',color:'#9A3412',label:'SSOMA'};
+    if(/supervisor/i.test(c)) return {bg:'#DBEAFE',color:'#1E40AF',label:'Supervisor'};
+    if(/asistente.*log/i.test(c)) return {bg:'#F0FDF4',color:'#166534',label:'Asist.Log.'};
+    if(/asistente/i.test(c)) return {bg:'#F0FDF4',color:'#166534',label:'Asistente'};
+    if(/coordinador/i.test(c)) return {bg:'#FEF9C3',color:'#713F12',label:'Coord.'};
+    if(/ssoma/i.test(c)) return {bg:'#FFF7ED',color:'#9A3412',label:'SSOMA'};
+    if(/calidad/i.test(c)) return {bg:'#E0F2FE',color:'#075985',label:'Calidad'};
+    if(/almacen/i.test(c)) return {bg:'#F1F5F9',color:'#475569',label:'Almacén'};
+    if(/planeam|lider/i.test(c)) return {bg:'#FDF4FF',color:'#701A75',label:'Planeam.'};
+    if(/administrador/i.test(c)) return {bg:'#FDF4FF',color:'#701A75',label:'Admin.'};
+    return {bg:'#F1F5F9',color:'#475569',label:c.substring(0,10)};
+  };
+
+  // ── ALERTAS ──
+  h+=`<div class="vd-alertas">`;
+
+  // Panel: vacantes críticas
+  h+=`<div class="vd-alert-panel">
+    <div class="vd-alert-hdr danger">⚠ Posiciones sin cubrir (${vacantes})</div>
+    <div class="vd-alert-body">`;
+  const vacsRows = DB.filter(r=>isUA(r));
+  if(vacsRows.length===0){h+=`<div class="vd-empty">✓ Sin vacantes</div>`;}
+  else{vacsRows.forEach(r=>{
+    h+=`<div class="vd-alert-row">
+      <div><div class="vd-ar-name">${r.cli}</div><div class="vd-ar-sub">${r.cargo}</div></div>
+      <span class="vd-ar-badge red" style="background:${zHex[r.zona]};color:#fff;">${r.zona}</span>
+    </div>`;
+  });}
+  h+=`</div></div>`;
+
+  // Panel: cierran pronto
+  h+=`<div class="vd-alert-panel">
+    <div class="vd-alert-hdr warn">📅 Cierran en 60 días (${cierranList.length})</div>
+    <div class="vd-alert-body">`;
+  if(cierranList.length===0){h+=`<div class="vd-empty">Sin cierres próximos</div>`;}
+  else{cierranList.forEach(p=>{
+    const dias=Math.round((pD(p.fin)-today)/(1000*60*60*24));
+    const cls=dias<=30?'red':'amber';
+    h+=`<div class="vd-alert-row">
+      <div><div class="vd-ar-name">${p.cli}</div><div class="vd-ar-sub">Zona ${p.zona}</div></div>
+      <span class="vd-ar-badge ${cls}">${dias}d</span>
+    </div>`;
+  });}
+  h+=`</div></div>`;
+
+  h+=`</div>`;
+
+  // ── BOTTOM: Pipeline + Sobrecarga ──
+  h+=`<div class="vd-bottom">`;
+
+  // Pipeline
+  h+=`<div class="vd-pipeline">
+    <div class="vd-pipe-hdr">📦 Pipeline de proyectos</div>
+    <div class="vd-pipe-grid">
+      <div class="vd-pipe-col">
+        <div class="vd-pipe-col-title red">🔴 Cierran pronto</div>`;
+  cierranList.slice(0,8).forEach(p=>{
+    h+=`<div class="vd-pipe-item">
+      <span class="vd-pi-name">${p.cli}</span>
+      <span class="vd-pi-zone" style="background:${zHex[p.zona]};">${p.zona[0]}</span>
+      <span class="vd-pi-date">${fD(pD(p.fin))}</span>
+    </div>`;
+  });
+  if(cierranList.length===0) h+=`<div style="font-size:11px;color:var(--muted);padding:8px 0;">Sin cierres próximos</div>`;
+  h+=`</div><div class="vd-pipe-col">
+        <div class="vd-pipe-col-title green">🟢 Por iniciar</div>`;
+  porIniciarList.slice(0,8).forEach(p=>{
+    h+=`<div class="vd-pipe-item">
+      <span class="vd-pi-name">${p.cli}</span>
+      <span class="vd-pi-zone" style="background:${zHex[p.zona]};">${p.zona[0]}</span>
+      <span class="vd-pi-date">${fD(pD(p.ini))}</span>
+    </div>`;
+  });
+  if(porIniciarList.length===0) h+=`<div style="font-size:11px;color:var(--muted);padding:8px 0;">Sin proyectos próximos</div>`;
+  h+=`</div></div></div>`;
+
+  // Sobrecarga
+  h+=`<div class="vd-sobrecarga">
+    <div class="vd-sob-hdr">👥 Personal con múltiple asignación</div>`;
+  if(sobrecargados.length===0){
+    h+=`<div class="vd-empty">Sin personal sobrecargado</div>`;
+  } else {
+    sobrecargados.forEach(p=>{
+      const pct=Math.round(p.count/maxLoad*100);
+      const clr=p.count>=3?'#DC2626':p.count===2?'#D97706':'#1565C0';
+      h+=`<div class="vd-sob-row">
+        <div class="vd-sob-name">${p.name}</div>
+        <div class="vd-sob-bar-wrap"><div class="vd-sob-bar" style="width:${pct}%;background:${clr};"></div></div>
+        <div class="vd-sob-count" style="color:${clr};">${p.count} proyecto${p.count!==1?'s':''}</div>
+      </div>`;
+    });
+  }
+  h+=`</div>`;
+
+  h+=`</div>`; // vd-bottom
+
+  document.getElementById('vd-out').innerHTML=h;
+}
+
+function calcEstP(p){
+  if(p.est==='En Pausa'||!p.ini) return 'En Pausa';
+  const s=pD(p.ini),e=pD(p.fin);
+  if(!s) return 'En Pausa';
+  if(s>TODAY) return 'Por Iniciar';
+  if(e&&e<TODAY) return 'Finalizado';
+  return 'Activo';
+}
+
+
+// ══════════════ TOOLTIP ══════════════
+const tip=document.getElementById('tip');
+function showTip(e,el){
+  const[a,b,c,d,f,g]=el.dataset.tip.split('|');
+  tip.innerHTML=`<strong>${a}</strong><span>Zona:</span> ${b}<br><span>Responsable:</span> ${c}<br><span>Inicio:</span> ${d}<br><span>Fin:</span> ${f}<br><span>Cargo:</span> ${g}`;
+  tip.style.display='block';moveTip(e);
+}
+function moveTip(e){tip.style.left=Math.min(e.clientX+14,innerWidth-240)+'px';tip.style.top=(e.clientY-10)+'px';}
+function hideTip(){tip.style.display='none';}
+document.addEventListener('mousemove',e=>{if(tip.style.display!=='none')moveTip(e);});
+
+// ══════════════ HELPERS ══════════════
+function v(id){return document.getElementById(id)?.value||'';}
+function sv(id,val){const el=document.getElementById(id);if(el)el.value=val;}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+
+function refreshAll(){popFilters();rGS();rGC();rAV();rORG();rDB();}
+
+// ══════════════ INIT ══════════════
+document.getElementById('hdate').textContent=TODAY.toLocaleDateString('es-PE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+document.getElementById('av-date').valueAsDate=TODAY;
+loadData().then(()=>{refreshAll();rVD();});
+/* Fuente única de personas: sugerencias desde supervisores_equipo (roster) */
+fetch(SB_URL+'/rest/v1/supervisores_equipo?select=n&order=n.asc',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+  .then(r=>r.ok?r.json():[]).then(rows=>{const dl=document.getElementById('pmo-roster');rows.forEach(x=>{const o=document.createElement('option');o.value=x.n;dl.appendChild(o);});}).catch(()=>{});
+rVD();
+
+// ── RELOJ ──
+function tickClock(){
+  const now=new Date();
+  const hh=String(now.getHours()).padStart(2,'0');
+  const mm=String(now.getMinutes()).padStart(2,'0');
+  const ss=String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('hclock').textContent=`${hh}:${mm}:${ss}`;
+}
+tickClock();
+setInterval(tickClock,1000);
+</script>
+</body>
+</html>
