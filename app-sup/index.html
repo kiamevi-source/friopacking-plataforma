@@ -3512,6 +3512,11 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       <span>Dashboard</span>
       <span class="tab-badge hidden"></span>
     </button>
+    <button class="nav-tab" data-tab="preparacion" onclick="showTab('preparacion')">
+      <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+      <span>Preparación</span>
+      <span class="tab-badge hidden"></span>
+    </button>
     <button class="nav-tab" data-tab="gantt" onclick="showTab('gantt')">
       <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="14" y2="6"/><line x1="9" y1="11" x2="18" y2="11"/><line x1="4" y1="16" x2="12" y2="16"/><line x1="3" y1="3" x2="3" y2="21"/></svg></span>
       <span>Gantt</span>
@@ -4625,6 +4630,11 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
     </div>
 
     <!-- ══ PLANOS ══ -->
+    <div class="tab-content" id="tab-preparacion">
+      <div class="tab-head"><h2>Preparación para ejecución</h2><p>Estado de alistamiento de la obra (nace del kick-off). Marca cada ítem; si está pendiente, indica el impedimento y las fechas.</p></div>
+      <div id="chk-body"><div class="loading"><span class="spinner"></span>Selecciona un proyecto…</div></div>
+    </div>
+
     <div class="tab-content" id="tab-planos">
 
       <div class="sec-card">
@@ -11886,6 +11896,102 @@ function showTab(tab) {
   // Inicializar reporte diario al entrar si aún no se cargó
   if (tab === 'diario' && currentProyecto && !_rdCargado) { try { cargarReporteDiario(); } catch(e){} }
   if (tab === 'diario') { try { initFirmaCanvas(); } catch(e){} }
+  if (tab === 'preparacion' && currentProyecto) { try { cargarChecklist(); } catch(e){} }
+}
+
+/* ════ Checklist de preparación de obra (kick-off) — captura Supervisor ════ */
+const CHK_SECCIONES = [
+  { key:'planos',    label:'Planos',    base:['Mecánico','Eléctrico','Civil','EEMM','Otros'] },
+  { key:'equipos',   label:'Equipos',   base:['Equipos','Paneles','Racks','EEMM','Otros'] },
+  { key:'compras',   label:'Compras',   base:['Tuberías','Cables','Paneles','Lonas','Otros'] },
+  { key:'servicios', label:'Servicios', base:['Montaje de paneles','Montaje EEMM','Estructuras metálicas','Obras civiles','Otros'] },
+  { key:'recursos',  label:'Recursos',  base:['Caseta','Almacén','Almacenero','Internet (Starlink)','Otros'] }
+];
+let chkState = null, chkSaveTimer = null;
+function _chkEsc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function _chkDefault(){ const s={}; CHK_SECCIONES.forEach(sec=>{ s[sec.key]=sec.base.map(n=>({n, estado:null, impedimento:'', fecha_max:'', fecha_est:''})); }); return s; }
+function _chkMerge(data){ const s=_chkDefault(); CHK_SECCIONES.forEach(sec=>{ if(Array.isArray(data[sec.key])) s[sec.key]=data[sec.key].map(it=>({ n:it.n||'', estado:it.estado||null, impedimento:it.impedimento||'', fecha_max:it.fecha_max||'', fecha_est:it.fecha_est||'' })); }); return s; }
+function _chkStats(){ let listo=0,total=0,pend=0,venc=0; const hoy=new Date().toISOString().slice(0,10); CHK_SECCIONES.forEach(sec=>{ (chkState[sec.key]||[]).forEach(it=>{ total++; if(it.estado==='listo')listo++; if(it.estado==='pendiente'){ pend++; if(it.fecha_max && it.fecha_max<hoy)venc++; } }); }); return {listo,total,pend,venc,pct:total?Math.round(listo/total*100):0}; }
+async function cargarChecklist(){
+  _chkEnsureStyles();
+  const cont=document.getElementById('chk-body'); if(!cont) return;
+  const cod=currentProyecto?.cod||currentProyecto?.nombre;
+  if(!cod){ cont.innerHTML='<p style="color:var(--text-3);padding:20px">Selecciona un proyecto.</p>'; return; }
+  cont.innerHTML='<div class="loading"><span class="spinner"></span>Cargando checklist…</div>';
+  try{
+    const rows=await sbFetch(`/rest/v1/checklist_proyecto?cod_proyecto=eq.${encodeURIComponent(cod)}&select=data&limit=1`);
+    chkState=(rows&&rows[0]&&rows[0].data&&Object.keys(rows[0].data).length)?_chkMerge(rows[0].data):_chkDefault();
+  }catch(e){ chkState=_chkDefault(); }
+  renderChecklist();
+}
+function renderChecklist(){
+  const cont=document.getElementById('chk-body'); if(!cont||!chkState) return;
+  const st=_chkStats();
+  const secHTML=CHK_SECCIONES.map(sec=>{
+    const items=chkState[sec.key]||[]; const l=items.filter(i=>i.estado==='listo').length;
+    const rows=items.map((it,idx)=>{
+      const pend=it.estado==='pendiente';
+      const fields=pend?`<div class="chk-fields">
+        <div class="chk-f grow"><label>Impedimento</label><input value="${_chkEsc(it.impedimento)}" oninput="chkSet('${sec.key}',${idx},'impedimento',this.value)" placeholder="¿Qué lo traba?"></div>
+        <div class="chk-f"><label>Fecha máxima</label><input type="date" value="${_chkEsc(it.fecha_max)}" oninput="chkSet('${sec.key}',${idx},'fecha_max',this.value)"></div>
+        <div class="chk-f"><label>¿Cuándo lo tendrán/pedirán?</label><input type="date" value="${_chkEsc(it.fecha_est)}" oninput="chkSet('${sec.key}',${idx},'fecha_est',this.value)"></div>
+      </div>`:'';
+      return `<div class="chk-item ${it.estado||''}"><div class="chk-item-top">
+        <span class="chk-name">${_chkEsc(it.n)}</span>
+        <span class="chk-seg"><button class="${it.estado==='listo'?'on-ok':''}" onclick="chkEstado('${sec.key}',${idx},'listo')">Listo</button><button class="${pend?'on-no':''}" onclick="chkEstado('${sec.key}',${idx},'pendiente')">Pendiente</button></span>
+        <button class="chk-del" title="Quitar" onclick="chkDel('${sec.key}',${idx})">×</button>
+      </div>${fields}</div>`;
+    }).join('');
+    return `<div class="chk-sec"><div class="chk-sec-head"><span class="chk-sec-title">${sec.label}</span><span class="chk-sec-frac">${l}/${items.length}</span></div>${rows}
+      <div class="chk-add"><input id="chk-add-${sec.key}" placeholder="Agregar ítem a ${sec.label}…" onkeydown="if(event.key==='Enter')chkAdd('${sec.key}')"><button onclick="chkAdd('${sec.key}')">＋ Agregar</button></div></div>`;
+  }).join('');
+  cont.innerHTML=`<div class="chk-summary"><div class="chk-ring" style="--p:${st.pct}"><span>${st.pct}%</span></div>
+    <div><div class="chk-sum-t">Preparación para ejecución</div><div class="chk-sum-s">${st.listo} de ${st.total} ítems listos · ${st.pend} pendientes${st.venc?` · <b style="color:var(--danger)">${st.venc} con fecha máxima vencida</b>`:''}</div></div></div>${secHTML}`;
+}
+function chkEstado(sec,idx,estado){ const it=chkState?.[sec]?.[idx]; if(!it)return; it.estado=(it.estado===estado?null:estado); renderChecklist(); chkGuardar(); }
+function chkSet(sec,idx,field,val){ const it=chkState?.[sec]?.[idx]; if(!it)return; it[field]=val; chkGuardar(); }
+function chkAdd(sec){ const inp=document.getElementById('chk-add-'+sec); const n=(inp?.value||'').trim(); if(!n||!chkState?.[sec])return; chkState[sec].push({n,estado:null,impedimento:'',fecha_max:'',fecha_est:''}); if(inp)inp.value=''; renderChecklist(); chkGuardar(); }
+function chkDel(sec,idx){ if(!chkState?.[sec])return; chkState[sec].splice(idx,1); renderChecklist(); chkGuardar(); }
+function chkGuardar(){
+  clearTimeout(chkSaveTimer); setSyncStatus('syncing','Guardando…');
+  chkSaveTimer=setTimeout(async ()=>{
+    const cod=currentProyecto?.cod||currentProyecto?.nombre; if(!cod)return;
+    try{
+      await sbFetch('/rest/v1/checklist_proyecto?on_conflict=cod_proyecto',{ method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({ cod_proyecto:cod, data:chkState, updated_at:new Date().toISOString(), updated_by: currentUser?.nombre||null }) });
+      setSyncStatus('ok','Guardado ✓');
+    }catch(e){ setSyncStatus('error','Error al guardar'); }
+  }, 900);
+}
+let _chkStylesDone=false;
+function _chkEnsureStyles(){
+  if(_chkStylesDone)return; _chkStylesDone=true;
+  const css=`
+  #tab-preparacion .chk-summary{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:15px 18px;margin-bottom:16px}
+  .chk-ring{width:64px;height:64px;border-radius:50%;flex:none;display:grid;place-items:center;background:conic-gradient(var(--brand-600,#2E7DD1) calc(var(--p)*1%),var(--border) 0)}
+  .chk-ring span{width:48px;height:48px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-weight:800;color:var(--navy);font-size:14.5px;font-variant-numeric:tabular-nums}
+  .chk-sum-t{font-weight:700;color:var(--navy);font-size:15px}
+  .chk-sum-s{font-size:13px;color:var(--text-2);margin-top:2px}
+  .chk-sec{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 16px;margin-bottom:13px}
+  .chk-sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+  .chk-sec-title{font-weight:700;color:var(--navy);font-size:14.5px}
+  .chk-sec-frac{font-family:var(--mono,ui-monospace);font-weight:700;color:var(--text-2);font-size:13px}
+  .chk-item{border:1px solid var(--border);border-radius:10px;padding:9px 12px;margin-bottom:8px;background:var(--surface-2)}
+  .chk-item.listo{border-color:rgba(22,163,74,.35)}
+  .chk-item-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .chk-name{flex:1;min-width:120px;font-size:13.5px;font-weight:600;color:var(--text)}
+  .chk-seg{display:inline-flex;gap:3px;background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:3px}
+  .chk-seg button{border:none;background:transparent;font-family:inherit;font-size:12px;font-weight:600;padding:5px 12px;border-radius:5px;color:var(--text-2);cursor:pointer}
+  .chk-seg button.on-ok{background:var(--success);color:#fff}
+  .chk-seg button.on-no{background:var(--danger);color:#fff}
+  .chk-del{border:none;background:transparent;color:var(--text-3);font-size:17px;line-height:1;cursor:pointer;padding:0 4px}
+  .chk-fields{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)}
+  .chk-f{flex:1;min-width:150px}.chk-f.grow{flex-basis:100%}
+  .chk-f label{display:block;font-size:10.5px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
+  .chk-f input{width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--text)}
+  .chk-add{display:flex;gap:8px;margin-top:4px}
+  .chk-add input{flex:1;border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--text)}
+  .chk-add button{border:1px dashed var(--brand-600,#2E7DD1);background:var(--brand-wash,#eaf1fc);color:var(--brand-600,#2E7DD1);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap}`;
+  const st=document.createElement('style'); st.id='chk-styles'; st.textContent=css; document.head.appendChild(st);
 }
 
 function setSyncStatus(cls, lbl) {
