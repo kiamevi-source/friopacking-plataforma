@@ -18,6 +18,17 @@
               transform .3s cubic-bezier(.4,0,.2,1);
   overflow: hidden;
 }
+/* La lista de módulos hace scroll interno cuando no entra en la pantalla
+   (antes se cortaba: el logo queda fijo arriba y el usuario abajo). */
+.sidebar > nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.sidebar > nav::-webkit-scrollbar { width: 5px; }
+.sidebar > nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 3px; }
+.sidebar > nav::-webkit-scrollbar-track { background: transparent; }
 
 /* ─── Sidebar collapsed (icon-only mode) ─── */
 .sidebar.collapsed { width: 68px; padding: 24px 8px; }
