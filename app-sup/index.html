@@ -3647,6 +3647,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
             <span class="proj-badge estado-activo" id="dash-status-badge">EN PLAN</span>
           </div>
           <div class="sec-body">
+            <div id="sup-cierre" style="margin-bottom:12px"></div>
             <div class="curva-wrap"><canvas id="curva-canvas" class="curva-canvas"></canvas></div>
             <div class="curva-chip-row">
               <span class="curva-chip"><span class="swatch plan"></span>Plan acumulado</span>
@@ -5080,10 +5081,52 @@ async function cargarProyecto() {
 // ═══════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════
+// ── Fecha de cierre comprometida (reprogramaciones reportadas en el reporte diario) ──
+function _cierreEscape(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function _cFmt(s){ if(!s) return '—'; try{ const d = s instanceof Date ? s : new Date(s+'T12:00:00'); return d.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'}).replace(/\./g,''); }catch(e){ return String(s); } }
+function _cierreCompromisoHTML(reps){
+  const contractual = currentProyecto?.finCont || '';
+  const list=(reps||[]).filter(r=>r&&r.reprogramacion&&r.reprogramacion.fecha_nueva);
+  const latest=list.length?list[0].reprogramacion:null;
+  const committed=latest?latest.fecha_nueva:contractual;
+  if(!committed) return '';
+  const delta = (committed&&contractual)? Math.round((new Date(committed+'T12:00:00')-new Date(contractual+'T12:00:00'))/86400000) : null;
+  const pill = (!latest||delta==null)?'' : (delta>0
+    ? `<span style="font-size:11px;font-weight:700;color:#dc2626;background:#fee2e2;padding:2px 8px;border-radius:999px">+${delta}d vs contractual</span>`
+    : `<span style="font-size:11px;font-weight:700;color:#16a34a;background:#dcfce7;padding:2px 8px;border-radius:999px">${delta<0?delta+'d vs contractual':'en fecha'}</span>`);
+  const badge = latest ? (latest.formalizado
+    ? `<span style="font-size:11px;font-weight:700;color:#16a34a;background:#dcfce7;padding:2px 8px;border-radius:999px">✓ Formalizada${latest.formalizacion_ref?' · '+_cierreEscape(latest.formalizacion_ref):''}</span>`
+    : `<span style="font-size:11px;font-weight:700;color:#d97706;background:#fef3c7;padding:2px 8px;border-radius:999px">Pendiente de formalizar</span>`) : `<span style="font-size:11px;color:var(--text-3)">sin reprogramaciones</span>`;
+  let hist='';
+  if(list.length){
+    hist = `<div style="border-left:2px solid var(--border-strong);margin-left:3px;padding-left:11px;margin-top:9px;display:grid;gap:6px">`
+      + `<div style="font-size:11.5px"><b>${_cFmt(contractual)}</b> <span style="color:var(--text-3)">· contractual original</span></div>`
+      + list.slice().reverse().map(r=>{const rp=r.reprogramacion; return `<div style="font-size:11.5px"><b>${_cFmt(rp.fecha_nueva)}</b> ${rp.formalizado?'<span style="color:#16a34a">✓ formalizada</span>':'<span style="color:#d97706">pendiente</span>'}<div style="color:var(--text-3);font-size:10.5px;margin-top:1px">Motivo: ${_cierreEscape(rp.motivo||'—')} · ${_cierreEscape(rp.reportado_por||r.supervisor||'—')} · ${_cFmt(r.fecha_reporte)}</div></div>`;}).join('')
+      + `</div>`;
+  }
+  return `<div style="background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:11px 13px">
+    <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+      <span style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600">📅 Cierre comprometido</span>
+      <b style="font-size:15px;color:var(--navy)">${_cFmt(committed)}</b>
+      ${badge}${pill}
+    </div>${hist}
+  </div>`;
+}
+async function cargarCierreCompromiso(){
+  const el=document.getElementById('sup-cierre'); if(!el) return;
+  const cod=currentProyecto?.cod, nombre=currentProyecto?.nombre; let reps=[];
+  try{
+    if(cod) reps = await sbFetch(`/rest/v1/reportes?cod_proyecto=eq.${encodeURIComponent(cod)}&reprogramacion=not.is.null&select=fecha_reporte,reprogramacion,supervisor&order=fecha_reporte.desc&limit=20`) || [];
+    if((!reps||!reps.length) && nombre) reps = await sbFetch(`/rest/v1/reportes?nombre_proyecto=eq.${encodeURIComponent(nombre)}&reprogramacion=not.is.null&select=fecha_reporte,reprogramacion,supervisor&order=fecha_reporte.desc&limit=20`) || [];
+  }catch(e){}
+  el.innerHTML = _cierreCompromisoHTML(reps);
+}
+
 async function cargarDashboard() {
   if (!currentProyecto) return;
   const cod = currentProyecto.cod || currentProyecto.nombre;
   const nombre = currentProyecto.nombre;
+  cargarCierreCompromiso();
 
   try {
     // ── Carga paralela de todas las fuentes ──
