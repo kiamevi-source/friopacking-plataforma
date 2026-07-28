@@ -1891,32 +1891,38 @@ function _preparacionHTML(rec){
   <div style="margin-top:12px;display:grid;gap:8px">${bars}</div>${pendHTML}`;
 }
 
-// ── Contratas de la obra (por proyecto, desde los reportes) ──
+// ── Contratas de la obra: estado de licitación (tareas_gantt categoria=LICITACION, instancia Supervisor) ──
+const _LIC_LABELS={pendiente:'Pendiente',en_licitacion:'En licitación',adjudicado:'Adjudicado',contratado:'Contratado',cancelado:'Cancelado'};
+const _LIC_COLORS={pendiente:'#64748b',en_licitacion:'#d97706',adjudicado:'#2563eb',contratado:'#16a34a',cancelado:'#dc2626'};
+function _licMoney(v){ return (v==null||v===''||isNaN(v))?'—':('S/ '+Number(v).toLocaleString('es-PE')); }
 async function _renderContratas(p){
   const body=document.getElementById('modal-body'); if(!body) return;
-  body.innerHTML='<div class="mview on exc"><div style="padding:24px;color:#94a3b8;font-size:13px">Cargando contratas…</div></div>';
-  let contratas=[];
+  body.innerHTML='<div class="mview on exc"><div style="padding:24px;color:#94a3b8;font-size:13px">Cargando licitaciones…</div></div>';
+  let rows=[];
   try{
-    const db=getSB();
-    if(db){
-      let q=db.from('reportes').select('fecha_reporte,contratas_detalle').order('fecha_reporte',{ascending:false}).limit(40);
-      q = p._cod ? q.eq('cod_proyecto',p._cod) : q.eq('nombre_proyecto',p.name);
-      const {data}=await q;
-      const map={};
-      (data||[]).forEach(r=>{ (Array.isArray(r.contratas_detalle)?r.contratas_detalle:[]).forEach(c=>{ const k=(c.nombre||'').trim(); if(!k)return; if(!map[k]) map[k]={nombre:k, especialidad:c.especialidad||'', obreros:c.obreros||0, avance:c.avance||0}; }); });
-      contratas=Object.values(map);
+    const cod=p._cod||'';
+    if(cod){
+      const r=await fetch(_PREP_SUP_URL+'/rest/v1/tareas_gantt?cod_proyecto=eq.'+encodeURIComponent(cod)+'&categoria=eq.LICITACION&select=nombre_tarea,estado_licitacion,contratista_adjudicado,monto_adjudicado,fecha_adjudicacion,obs_licitacion&order=nombre_tarea',{headers:{apikey:_PREP_SUP_KEY,Authorization:'Bearer '+_PREP_SUP_KEY}});
+      if(r.ok) rows=(await r.json())||[];
     }
-  }catch(e){ console.warn('contratas:',e); }
-  const inner = contratas.length
+  }catch(e){ console.warn('contratas/licitación:',e); }
+  const counts={}; rows.forEach(r=>{ const e=r.estado_licitacion||'pendiente'; counts[e]=(counts[e]||0)+1; });
+  const chips=Object.keys(counts).map(e=>`<span style="font-size:11px;font-weight:700;color:${_LIC_COLORS[e]||'#64748b'};background:${(_LIC_COLORS[e]||'#64748b')}1e;padding:3px 9px;border-radius:999px">${_LIC_LABELS[e]||e}: ${counts[e]}</span>`).join(' ');
+  const inner = rows.length
     ? `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>
-        <th style="text-align:left;padding:8px 6px;border-bottom:1px solid #e6edf5;color:#8a94a6;font-size:10px;text-transform:uppercase">Contrata</th>
-        <th style="text-align:left;padding:8px 6px;border-bottom:1px solid #e6edf5;color:#8a94a6;font-size:10px;text-transform:uppercase">Especialidad</th>
-        <th style="text-align:right;padding:8px 6px;border-bottom:1px solid #e6edf5;color:#8a94a6;font-size:10px;text-transform:uppercase">Personal</th>
-        <th style="text-align:right;padding:8px 6px;border-bottom:1px solid #e6edf5;color:#8a94a6;font-size:10px;text-transform:uppercase">Avance</th></tr></thead><tbody>`
-      + contratas.map(c=>`<tr><td style="padding:7px 6px;border-bottom:1px dashed #eef2f7;font-weight:600;color:#0d2436">${_escR(c.nombre)}</td><td style="padding:7px 6px;border-bottom:1px dashed #eef2f7;color:#556270">${_escR(c.especialidad||'—')}</td><td style="padding:7px 6px;border-bottom:1px dashed #eef2f7;text-align:right;font-variant-numeric:tabular-nums">${parseInt(c.obreros)||0}</td><td style="padding:7px 6px;border-bottom:1px dashed #eef2f7;text-align:right;font-variant-numeric:tabular-nums">${(parseFloat(c.avance)||0).toFixed(0)}%</td></tr>`).join('')
+        ${['Alcance / especialidad','Estado','Contratista','Monto','Adjudicación'].map(h=>`<th style="text-align:${h==='Monto'?'right':'left'};padding:8px 6px;border-bottom:1px solid #e6edf5;color:#8a94a6;font-size:10px;text-transform:uppercase">${h}</th>`).join('')}
+       </tr></thead><tbody>`
+      + rows.map(r=>{ const est=r.estado_licitacion||'pendiente', col=_LIC_COLORS[est]||'#64748b'; return `<tr>
+          <td style="padding:8px 6px;border-bottom:1px dashed #eef2f7;font-weight:600;color:#0d2436">${_escR(r.nombre_tarea||'—')}</td>
+          <td style="padding:8px 6px;border-bottom:1px dashed #eef2f7"><span style="font-size:11px;font-weight:700;color:${col};background:${col}1e;padding:2px 9px;border-radius:999px">${_escR(_LIC_LABELS[est]||est)}</span></td>
+          <td style="padding:8px 6px;border-bottom:1px dashed #eef2f7;color:#334155">${_escR(r.contratista_adjudicado||'—')}</td>
+          <td style="padding:8px 6px;border-bottom:1px dashed #eef2f7;text-align:right;font-variant-numeric:tabular-nums">${_licMoney(r.monto_adjudicado)}</td>
+          <td style="padding:8px 6px;border-bottom:1px dashed #eef2f7;color:#556270">${r.fecha_adjudicacion?_escR(r.fecha_adjudicacion):'—'}</td></tr>`;}).join('')
       + `</tbody></table>`
-    : `<div style="padding:26px;text-align:center;color:#8a94a6;font-size:13px">Sin contratas registradas para esta obra.<br><span style="font-size:11.5px">Se registran en el reporte diario del supervisor (avance por especialidad).</span></div>`;
-  body.innerHTML=`<div class="mview on exc"><div style="background:#fff;border:1px solid #e6edf5;border-radius:14px;padding:18px 20px"><h4 style="margin:0 0 12px;font-size:15px;font-weight:700;color:#0d2436">Contratas de la obra</h4>${inner}</div></div>`;
+    : `<div style="padding:26px;text-align:center;color:#8a94a6;font-size:13px">Sin licitaciones registradas para esta obra.<br><span style="font-size:11.5px">Las contratas y su estado de licitación se gestionan en el Gantt del supervisor (tareas de tipo Licitación).</span></div>`;
+  body.innerHTML=`<div class="mview on exc"><div style="background:#fff;border:1px solid #e6edf5;border-radius:14px;padding:18px 20px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px"><h4 style="margin:0;font-size:15px;font-weight:700;color:#0d2436">Contratas · estado de licitación</h4><span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">${chips}</span></div>
+    ${inner}</div></div>`;
 }
 
 /* ====== Helper: download CSV ====== */
