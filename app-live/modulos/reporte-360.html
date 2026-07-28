@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KPI 05 — Nivel de Servicio Interno · Friopacking</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --nv:#0b1f3a;--nv2:#112849;--nv3:#1e3d5e;
+  --bl:#1e6fb5;--bl2:#e8f3fd;
+  --te:#059669;--te2:#d1fae5;
+  --am:#d97706;--am2:#fef3c7;
+  --rd:#dc2626;--rd2:#fee2e2;
+  --pu:#7c3aed;--pu2:#ede9fe;
+  --bg:#eef1f8;--w:#fff;--w2:#f6f8fb;--w3:#edf0f6;
+  --br:#e2e8f0;--tx:#0f172a;--tx2:#334155;--tx3:#64748b;--tx4:#94a3b8;
+  --r:12px;--rs:8px;--rx:5px;
+  --sh:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04);
+  --F:"Manrope",sans-serif;--M:"JetBrains Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--F);background:var(--bg);color:var(--tx);font-size:13px;min-height:100vh}
+.pg{max-width:1200px;margin:0 auto;padding:20px 18px 40px}
+/* HEADER */
+.hdr{background:linear-gradient(135deg,#0b1f3a 0%,#1a3a5c 100%);border-radius:14px;overflow:hidden;margin-bottom:16px;box-shadow:0 6px 28px rgba(11,31,58,.28)}
+.hi{display:flex;justify-content:space-between;align-items:flex-start;padding:22px 28px 18px}
+.logo{height:30px;margin-bottom:10px;display:block}
+.hi h1{font-size:16px;font-weight:700;color:#fff;margin-bottom:2px;letter-spacing:-.2px}
+.hi p{font-size:11px;color:#7fa8d4;font-weight:500}
+.hr{text-align:right}
+.ml{font-size:9px;color:#5a82a8;letter-spacing:1.2px;text-transform:uppercase;font-weight:700}
+.mv{font-size:30px;font-weight:800;color:#f59e0b;font-family:var(--M);line-height:1.1}
+.ms{font-size:10px;color:#7fa8d4;margin-top:2px}
+.ks{background:rgba(0,0,0,.18);border-top:1px solid rgba(255,255,255,.07);padding:10px 28px;display:flex;gap:0;flex-wrap:wrap}
+.kc{padding:5px 18px 5px 0;border-right:1px solid rgba(255,255,255,.09);margin-right:18px;display:flex;flex-direction:column;gap:1px}
+.kc:last-child{border:none;margin:0}
+.kv{font-size:17px;font-weight:700;color:#fff;font-family:var(--M)}
+.kl{font-size:9px;color:#7fa8d4;font-weight:600;letter-spacing:.3px}
+.kb{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;margin-top:2px;display:inline-block;letter-spacing:.2px}
+.kg{background:rgba(5,150,105,.22);color:#34d399;border:1px solid rgba(5,150,105,.28)}
+.ka{background:rgba(217,119,6,.22);color:#fbbf24;border:1px solid rgba(217,119,6,.28)}
+.kr{background:rgba(220,38,38,.22);color:#fca5a5;border:1px solid rgba(220,38,38,.28)}
+.kb2{background:rgba(30,111,181,.22);color:#7dd3fc;border:1px solid rgba(30,111,181,.28)}
+/* NAV */
+.nav{display:flex;gap:3px;background:var(--w);border-radius:var(--r);padding:4px;margin-bottom:14px;border:1px solid var(--br);box-shadow:var(--sh)}
+.nav button{flex:1;padding:8px 5px;font-size:11px;font-weight:700;font-family:var(--F);border:none;background:transparent;cursor:pointer;color:var(--tx3);border-radius:8px;transition:.15s;white-space:nowrap}
+.nav button.on{background:var(--nv);color:#fff;box-shadow:0 2px 8px rgba(11,31,58,.22)}
+.nav button:hover:not(.on){background:var(--w2)}
+.pn{display:none}.pn.on{display:block}
+/* ALERTS */
+.als{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-bottom:14px}
+.al{display:flex;align-items:flex-start;gap:9px;padding:10px 13px;border-radius:var(--rs);border:1px solid;font-size:11px;font-weight:600}
+.alr{background:var(--rd2);border-color:#fecaca;color:#991b1b}
+.ala{background:var(--am2);border-color:#fde68a;color:#92400e}
+.alg{background:var(--te2);border-color:#6ee7b7;color:#065f46}
+.alb{background:var(--bl2);border-color:#bfdbfe;color:#1e40af}
+.ali{font-size:15px;flex-shrink:0}
+/* KPI GRID */
+.kg2{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:14px}
+.kcard{background:var(--w);border-radius:var(--r);border:1px solid var(--br);padding:14px 15px;box-shadow:var(--sh)}
+.kcl{font-size:9px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.kcv{font-size:22px;font-weight:800;font-family:var(--M);line-height:1.1}
+.kcs{font-size:10px;color:var(--tx3);margin-top:3px;font-weight:600}
+.kcb{height:3px;border-radius:2px;background:var(--br);margin-top:9px}
+.kcf{height:3px;border-radius:2px}
+.kcd{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;margin-top:5px;display:inline-block;letter-spacing:.2px}
+/* AREA CARDS */
+.ag{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.acard{background:var(--w);border-radius:var(--r);border:1px solid var(--br);padding:14px;box-shadow:var(--sh)}
+.aname{font-size:9px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px}
+.atop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.ascore{font-size:21px;font-weight:800;font-family:var(--M)}
+.bgs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.pl{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;letter-spacing:.2px}
+.pt{background:var(--te2);color:#065f46}.pa{background:var(--am2);color:#92400e}.pr{background:var(--rd2);color:#991b1b}.pb{background:var(--bl2);color:#1e40af}.pg2{background:var(--w3);color:var(--tx3)}
+/* ITEM BARS */
+.ir{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.ilb{font-size:10px;color:var(--tx2);flex:1;line-height:1.3;font-weight:600}
+.ib{width:72px;height:5px;border-radius:3px;background:var(--br);flex-shrink:0}
+.if{height:5px;border-radius:3px}
+.iv{font-size:10px;font-weight:700;font-family:var(--M);min-width:26px;text-align:right;flex-shrink:0}
+.ifl{font-size:9px;flex-shrink:0;width:12px;text-align:center}
+/* NC INDICATOR */
+.nc-row{display:flex;align-items:center;justify-content:space-between;margin-top:9px;padding-top:8px;border-top:1px solid var(--br)}
+.nc-lbl{font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px}
+.nc-val{font-size:13px;font-weight:800;font-family:var(--M)}
+.nc-bar{flex:1;height:5px;border-radius:3px;background:var(--br);margin:0 8px;overflow:hidden}
+.nc-fill{height:5px;border-radius:3px}
+/* SECTION TITLE */
+.st{font-size:9px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:1px;margin:16px 0 10px;display:flex;align-items:center;gap:8px}
+.st::after{content:"";flex:1;height:1px;background:var(--br)}
+/* CHART CARDS */
+.cc{background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:16px;box-shadow:var(--sh)}
+.cch{font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:12px;letter-spacing:-.1px}
+/* INSIGHTS */
+.ins{border-left:3px solid var(--bl);padding:10px 14px;background:var(--w);border-radius:0 var(--rs) var(--rs) 0;margin-bottom:8px;border:1px solid var(--br);border-left-width:3px;box-shadow:var(--sh)}
+.ins.w{border-left-color:var(--am)}.ins.d{border-left-color:var(--rd)}.ins.g{border-left-color:var(--te)}.ins.p{border-left-color:var(--pu)}
+.ins .it{font-size:12px;font-weight:700;margin-bottom:3px}
+.ins p{font-size:11px;color:var(--tx2);line-height:1.55;font-weight:500}
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+/* TABLE */
+.tbl{background:var(--w);border:1px solid var(--br);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{padding:8px 10px;background:var(--w2);color:var(--tx3);font-weight:800;font-size:9px;text-transform:uppercase;letter-spacing:.6px;text-align:left;border-bottom:1px solid var(--br)}
+td{padding:7px 10px;border-bottom:1px solid var(--br);font-weight:500}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--w2)}
+.sp{display:inline-block;min-width:36px;text-align:center;padding:2px 5px;border-radius:4px;font-weight:700;font-size:10px;font-family:var(--M)}
+/* FILTERS */
+.fi{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding:10px 14px;background:var(--w);border-radius:var(--r);border:1px solid var(--br)}
+.fi label{font-size:9px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px}
+select{font-size:11px;font-family:var(--F);font-weight:600;padding:5px 9px;border-radius:var(--rx);border:1px solid var(--br);background:var(--w2);color:var(--tx);cursor:pointer}
+/* HEATMAP */
+.hmw{overflow-x:auto}
+.hm{border-collapse:collapse;font-size:10px;width:100%}
+.hm th{padding:5px 8px;background:var(--w2);color:var(--tx3);font-weight:800;font-size:9px;text-align:center;border:1px solid var(--br)}
+.hm td{padding:4px 7px;text-align:center;border:1px solid var(--br);font-family:var(--M);font-weight:600;font-size:10px}
+.hms{text-align:left!important;font-family:var(--F);font-weight:600;color:var(--tx2);white-space:nowrap;padding-left:10px!important}
+/* RANK */
+.rl{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.ri{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--w);border:1px solid var(--br);border-radius:var(--rs);box-shadow:var(--sh)}
+.rn{font-size:11px;font-weight:800;color:var(--tx3);font-family:var(--M);min-width:22px}
+.rnm{font-size:11px;font-weight:600;flex:1}
+.rb{width:80px;height:4px;border-radius:3px;background:var(--br)}
+.rf{height:4px;border-radius:3px}
+.rs2{font-size:11px;font-weight:700;font-family:var(--M);min-width:30px;text-align:right}
+/* REC */
+.rg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.rc{background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:14px;border-top:3px solid;box-shadow:var(--sh)}
+.rc h4{font-size:11px;font-weight:800;margin-bottom:8px}
+.rc ul{list-style:none}
+.rc li{font-size:10px;color:var(--tx2);padding:3px 0 3px 12px;position:relative;line-height:1.5;border-bottom:1px solid var(--w3);font-weight:500}
+.rc li:last-child{border-bottom:none}
+.rc li::before{content:"›";position:absolute;left:0;color:var(--bl);font-weight:800;font-size:12px}
+.ft{display:flex;justify-content:space-between;font-size:10px;color:var(--tx4);padding:14px 0 4px;border-top:1px solid var(--br);margin-top:20px;font-weight:600}
+@media(max-width:700px){.ag,.g2,.g3,.rg{grid-template-columns:1fr}.nav button{font-size:9px;padding:6px 3px}}
+</style>
+</head>
+<body>
+<div class="pg">
+<div class="hdr">
+  <div class="hi">
+    <div>
+      
+      <h1>KPI 05 &middot; Nivel de Servicio Interno</h1>
+      <p>Evaluación 360° — Percepción de Áreas de Soporte hacia Operaciones &middot; Perú 2026</p>
+    </div>
+    <div class="hr">
+      <div class="ml">Meta 2026</div>
+      <div class="mv">&#8805; 3.5</div>
+      <div class="ms">sobre 5.0 · escala uniforme</div>
+    </div>
+  </div>
+  <div class="ks">
+    <div class="kc"><span class="kv" id="hdr-global">—</span><span class="kl">Promedio global</span><span class="kb kg" id="hdr-meta">Calculando...</span></div>
+    <div class="kc"><span class="kv">6</span><span class="kl">Áreas evaluadoras</span><span class="kb kb2" id="hdr-sobre">—</span></div>
+    <div class="kc"><span class="kv" id="hdr-sups">—</span><span class="kl">Supervisores</span><span class="kb kb2">activos</span></div>
+    <div class="kc"><span class="kv" id="hdr-nk">—</span><span class="kl">No-conoce prom.</span><span class="kb ka">Baja visibilidad</span></div>
+    <div class="kc"><span class="kv" id="hdr-brecha">—</span><span class="kl">Brecha máx–mín área</span><span class="kb kr">Heterogéneo</span></div>
+    <div class="kc"><span class="kv">1.99</span><span class="kl">Ítem más crítico</span><span class="kb kr">Devoluciones LogC</span></div>
+  </div>
+</div>
+<div class="nav">
+  <button class="on" onclick="go('resumen',this)">📊 Resumen</button>
+  <button onclick="go('ranking',this)">🏆 Ranking</button>
+  <button onclick="go('areas',this)">🏢 Por área</button>
+  <button onclick="go('visibilidad',this)">👁 Visibilidad</button>
+  <button onclick="go('supervisores',this)">👤 Supervisores</button>
+  <button onclick="go('heatmap',this)">🔥 Heat Map</button>
+  <button onclick="go('matrix',this)">⚡ Matriz</button>
+  <button onclick="go('rec',this)">🎯 Plan acción</button>
+</div>
+
+<!-- RESUMEN -->
+<div class="pn on" id="pn-resumen">
+  <div class="als" id="alertsRow"></div>
+  <div class="kg2" id="kpiCards"></div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="cc"><div class="cch">Promedio por área vs Meta 3.5 (escala 1–5)</div><div style="position:relative;height:220px"><canvas id="cBar"></canvas></div></div>
+    <div class="cc"><div class="cch">Radar comparativo normalizado /5</div><div style="position:relative;height:220px"><canvas id="cRadar"></canvas></div></div>
+  </div>
+  <div class="st">Análisis ítem a ítem — con indicador de no-conoce por área</div>
+  <div class="ag" id="aRow1"></div>
+  <div class="ag" id="aRow2"></div>
+</div>
+
+<!-- RANKING -->
+<div class="pn" id="pn-ranking">
+  <div class="ins p"><div class="it">Ranking global de supervisores — promedio ponderado entre todas las áreas que lo evaluaron (escala 1–5)</div>
+    <p>Solo se incluyen áreas donde el supervisor fue efectivamente evaluado (se excluyen "No lo conozco"). A mayor número de áreas evaluadas, mayor representatividad del puntaje.</p></div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="cc"><div class="cch">Top 15 supervisores</div><div style="position:relative;height:380px"><canvas id="cRankBar"></canvas></div></div>
+    <div class="cc"><div class="cch">Distribución por nivel de desempeño</div><div style="position:relative;height:380px"><canvas id="cRankDist"></canvas></div></div>
+  </div>
+  <div class="st">Tabla completa — todos los supervisores rankeados</div>
+  <div class="tbl" id="rankFullTable"></div>
+</div>
+
+<!-- AREAS -->
+<div class="pn" id="pn-areas">
+  <div class="fi"><label>Área:</label>
+    <select id="selA" onchange="drill()">
+      <option value="ING">Ingeniería</option><option value="SSOMA">SSOMA</option>
+      <option value="LOG_C">Log. Compras</option><option value="ADM">Administración</option>
+      <option value="CAL">Calidad</option><option value="LOG_S">Log. Servicios</option>
+    </select>
+  </div>
+  <div id="drillOut"></div>
+</div>
+
+<!-- VISIBILIDAD -->
+<div class="pn" id="pn-visibilidad">
+  <div class="ins d"><div class="it">¿Por qué el "No conoce" es un indicador gerencial crítico?</div>
+    <p>Un supervisor evaluado por solo 1 de 4 evaluadores posibles tiene un <strong>KPI incompleto</strong>. Si el 40% del área no lo conoce, la percepción está sesgada. Reducir el no-conoce es una meta de visibilidad interna — no es opcional.</p></div>
+  <div class="kg2" id="visCards"></div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="cc"><div class="cch">% No conoce por área evaluadora</div><div style="position:relative;height:230px"><canvas id="cVis"></canvas></div></div>
+    <div class="cc"><div class="cch">Evaluaciones válidas vs no-conoce</div><div style="position:relative;height:230px"><canvas id="cVisS"></canvas></div></div>
+  </div>
+  <div class="st">Supervisores con menor cobertura — Log. Compras</div>
+  <div class="tbl" id="visTable"></div>
+</div>
+
+<!-- SUPERVISORES -->
+<div class="pn" id="pn-supervisores">
+  <div class="fi">
+    <label>Área:</label>
+    <select id="fA" onchange="buildSup()"><option value="all">Todas</option><option value="ING">Ingeniería</option><option value="SSOMA">SSOMA</option><option value="LOG_C">Log. Compras</option><option value="ADM">Administración</option><option value="CAL">Calidad</option><option value="LOG_S">Log. Servicios</option></select>
+    <label>Orden:</label>
+    <select id="fO" onchange="buildSup()"><option value="n">Nombre</option><option value="d">Promedio ↓</option><option value="a">Promedio ↑</option></select>
+    <label>Nivel:</label>
+    <select id="fL" onchange="buildSup()"><option value="all">Todos</option><option value="h">Alto ≥4.0</option><option value="m">Medio 3.0–3.99</option><option value="l">Bajo &lt;3.0</option></select>
+  </div>
+  <div class="tbl" id="supOut"></div>
+</div>
+
+<!-- HEATMAP -->
+<div class="pn" id="pn-heatmap">
+  <div class="ins"><div class="it">Mapa de calor — supervisor × área (escala 1–5)</div>
+    <p>🟢 ≥4.0 &nbsp;·&nbsp; 🟡 3.0–3.9 &nbsp;·&nbsp; 🟠 2.0–2.9 &nbsp;·&nbsp; 🔴 &lt;2.0 &nbsp;·&nbsp; — = no evaluado. La última columna es el promedio ponderado del supervisor entre todas las áreas que lo evaluaron.</p></div>
+  <div class="cc" style="margin-top:12px"><div class="hmw"><table class="hm" id="hmTable"></table></div></div>
+</div>
+
+<!-- MATRIZ -->
+<div class="pn" id="pn-matrix">
+  <div class="ins p"><div class="it">Matriz Impacto Estratégico × Desempeño</div>
+    <p>Eje X = promedio /5. Eje Y = impacto operativo del área (1–5). Tamaño burbuja = % no-conoce. <strong>Bajo desempeño + alto impacto = intervención urgente.</strong></p></div>
+  <div class="cc" style="margin-top:12px"><div style="position:relative;height:340px"><canvas id="cMatrix"></canvas></div></div>
+  <div class="g2" style="margin-top:14px">
+    <div class="ins d"><div class="it">🔴 Intervención urgente</div><p>Log. Compras: alto impacto operativo, promedio 2.92/5. Devoluciones al cierre: 1.99/5.</p></div>
+    <div class="ins w"><div class="it">🟡 Mejora programada</div><p>Calidad 3.33/5 — cumple estándares pero "impulsa mejoras" en 1.83/5.</p></div>
+    <div class="ins g"><div class="it">🟢 Sostener</div><p>ING 4.0 y SSOMA 4.11 — sobre meta con alta percepción. Documentar y replicar.</p></div>
+    <div class="ins"><div class="it">🔵 Optimizar</div><p>ADM 3.57 y Log. Servicios 3.77 — sobre meta. Reducir no-conoce para mayor representatividad.</p></div>
+  </div>
+</div>
+
+<!-- PLAN ACCIÓN -->
+<div class="pn" id="pn-rec">
+  <div class="st">Indicadores de seguimiento Q2–Q4 2026</div>
+  <div class="g3" style="margin-bottom:14px">
+    <div class="kcard"><div class="kcl">Objetivo Q2 — Log. Compras</div><div class="kcv" style="color:var(--rd)">3.20</div><div class="kcs">desde 2.92 · +0.28 requerido</div><div class="kcb"><div class="kcf" style="width:58%;background:var(--rd)"></div></div><span class="kcd" style="background:var(--rd2);color:var(--rd)">▼ 0.28 gap</span></div>
+    <div class="kcard"><div class="kcl">Objetivo Q2 — Calidad</div><div class="kcv" style="color:var(--am)">3.50</div><div class="kcs">desde 3.33 · +0.17 requerido</div><div class="kcb"><div class="kcf" style="width:67%;background:var(--am)"></div></div><span class="kcd" style="background:var(--am2);color:var(--am)">▼ 0.17 gap</span></div>
+    <div class="kcard"><div class="kcl">Objetivo año — No-conoce</div><div class="kcv" style="color:var(--te)">&#8804;20%</div><div class="kcs">desde 35.2% · −15.2pp req.</div><div class="kcb"><div class="kcf" style="width:57%;background:var(--te)"></div></div><span class="kcd" style="background:var(--te2);color:var(--te)">▲ reducir</span></div>
+  </div>
+  <div class="ins d"><div class="it">🚨 Acción 1 — Log. Compras: rediseño proceso de cierre logístico (Q2)</div><p>Devoluciones al cierre: <strong>1.99/5</strong>. Checklist digital en NISIRA, responsable por proyecto, capacitación a 31 supervisores. Meta: 1.99 → 3.5 en Q3.</p></div>
+  <div class="ins w"><div class="it">⚠️ Acción 2 — Calidad: programa mejora continua (Q2)</div><p>"Impulsa mejoras" en 1.83/5. Solo Diego Asmat, Erick Jara y Benjamin Viera alcanzaron ≥4.0. Ciclo mensual de lecciones aprendidas + KPI de mejoras propuestas.</p></div>
+  <div class="ins"><div class="it">📡 Acción 3 — Reducir no-conoce al 20% (año completo)</div><p>ADM e ING superan 45% de no-conoce. Rotación 1h/mes por área de soporte, presentaciones en reuniones, sesiones integración trimestrales.</p></div>
+  <div class="ins g"><div class="it">✅ Acción 4 — ING y SSOMA: institucionalizar buenas prácticas</div><p>ING 4.0 y SSOMA 4.11 son las áreas top. Dennis Saravia, Jorvin Paredes y Jesus Cabrera como embajadores internos.</p></div>
+  <div class="st">Plan por área</div>
+  <div class="rg" id="recOut"></div>
+  <div class="st">Supervisores en zona de desarrollo prioritario</div>
+  <div class="tbl" id="devTable"></div>
+</div>
+
+<div class="ft"><span>Friopacking · Gerencia de Operaciones · Perú Q1 2026</span><span>KPI 05 — Evaluación 360° Escala 1–5 · CONFIDENCIAL</span></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ═══ DATA (escala 1-5 real) ═══════════════════════════════════════
+var D={
+  ING:{lbl:'Ingeniería',avg:4.0,n:23,col:'#3b82f6',nkP:45.2,nkR:70,totR:155,valR:85,imp:3,
+    qa:{'Seguimiento técnico':4.24,'Conocimiento técnico':3.88,'Comunicación oportuna':4.22,'Aporta mejoras':3.91},
+    qs:['Seguim.','Conoc.','Comun.','Mejoras'],
+    ana:'Mejor área en la evaluación con 4.0/5. Comunicación (4.22) y seguimiento (4.24) son las fortalezas. Conocimiento técnico (3.88) es el punto a reforzar. Alta tasa de no-conoce (45.2%) — 5 evaluadores con perspectivas diversas.',
+    crit:'Conocimiento técnico (3.88) y no-conoce 45.2%',
+    sups:{'Antero Ávila':{avg:4.06,ne:4},'Benjamin Viera':{avg:4.1,ne:5},'Dennis Saravia':{avg:4.7,ne:5},'Diego Asmat':{avg:3.88,ne:2},'Dylan Marquina':{avg:4.25,ne:5},'Erick Jara':{avg:3.75,ne:2},'Erick Salvador':{avg:3.75,ne:4},'Fernando Aurazo':{avg:3.88,ne:2},'Gustavo Martinez':{avg:3.83,ne:3},'Irwin Gutierrez':{avg:4.0,ne:1},'Jean Casas':{avg:3.33,ne:3},'Jesus Cabrera':{avg:4.35,ne:5},'Jorvin Paredes':{avg:4.6,ne:5},'Luis Goycochea':{avg:4.5,ne:4},'Luis Silva':{avg:3.75,ne:4},'Patrick Vasquez':{avg:3.75,ne:4},'Percy Sanchez':{avg:3.5,ne:1},'Renato Jara':{avg:4.25,ne:4},'Steve Sarmiento':{avg:4.1,ne:5},'Victor Flores':{avg:3.8,ne:5},'Victor Ramirez':{avg:3.8,ne:5},'Waldir Saldaña':{avg:4.12,ne:4},'Wilson urbina':{avg:4.0,ne:3}}},
+  SSOMA:{lbl:'SSOMA',avg:4.11,n:18,col:'#10b981',nkP:41.9,nkR:13,totR:31,valR:18,imp:5,
+    qa:{'P1-Riesgos':4.11,'P2-EPP/Normas':4.28,'P3-Reportes':4.22,'P4-Liderazgo':4.06,'P5-Cumplim.':4.33},
+    qs:['P1','P2','P3','P4','P5'],
+    ana:'Segunda mejor área con 4.11/5. Todos los ítems sobre 4.0. Liderazgo en seguridad (4.06) es el más bajo pero sigue siendo alto. Solo 1 evaluador — alto no-conoce (41.9%).',
+    crit:'No-conoce 41.9% — solo 1 evaluador. Luis Silva (2.0) y Patrick Vasquez (2.0) en zona crítica.',
+    sups:{'Benjamin Viera':{avg:5.0,ne:1},'Dennis Saravia':{avg:5.0,ne:1},'Diego Asmat':{avg:5.0,ne:1},'Dylan Marquina':{avg:5.0,ne:1},'Jean Casas':{avg:3.0,ne:1},'Jesus Cabrera':{avg:5.0,ne:1},'Jordy Acosta':{avg:4.0,ne:1},'Jorvin Paredes':{avg:4.0,ne:1},'Luis Goycochea':{avg:3.0,ne:1},'Luis Silva':{avg:2.0,ne:1},'Patrick Vasquez':{avg:2.0,ne:1},'Percy Sanchez':{avg:4.0,ne:1},'Renato Jara':{avg:5.0,ne:1},'Steve Sarmiento':{avg:5.0,ne:1},'Victor Flores':{avg:5.0,ne:1},'Victor Ramirez':{avg:5.0,ne:1},'Waldir Saldaña':{avg:4.0,ne:1},'Wilson Urbina':{avg:3.0,ne:1}}},
+  LOG_C:{lbl:'Log. Compras',avg:2.92,n:31,col:'#ef4444',nkP:29.0,nkR:36,totR:124,valR:88,imp:5,
+    qa:{'Solicita anticipado':3.52,'Planificación':3.44,'Recepción obra':3.22,'Devolución al cierre':1.99,'Internamientos':2.85,'Atención Almacén':2.98},
+    qs:['Anticip.','Planif.','Recep.','Devoluc.','Interna.','Almacén'],
+    ana:'ÁREA CRÍTICA. Único área bajo 3.0. Devolución al cierre: 1.99/5 — el piso de toda la evaluación. 4 evaluadores con visiones muy distintas. Anticipación y planificación aceptables (>3.4) pero son arrastradas.',
+    crit:'Devolución al cierre (1.99) e Internamientos (2.85) — proceso de cierre inexistente',
+    sups:{'Abdon Solorzano':{avg:2.61,ne:3},'Antero Ávila':{avg:2.78,ne:3},'Antony Rodriguez':{avg:2.5,ne:1},'Benjamin Viera':{avg:2.5,ne:2},'Carmen Priale':{avg:3.61,ne:3},'Dennis Saravia':{avg:2.89,ne:3},'Diego Asmat':{avg:2.67,ne:3},'Dylan Marquina':{avg:2.61,ne:3},'Erick Jara':{avg:3.62,ne:4},'Erick Salvador':{avg:3.29,ne:4},'Fernando Aurazo':{avg:2.72,ne:3},'Gian Pier Girao':{avg:2.5,ne:1},'Gustavo Martinez':{avg:2.75,ne:2},'Irwin Gutierrez':{avg:2.75,ne:2},'Jean Casas':{avg:2.5,ne:3},'Jesus Cabrera':{avg:3.75,ne:4},'Jordy Acosta':{avg:2.5,ne:3},'Jorge Hernandez':{avg:2.75,ne:2},'Jorvin Paredes':{avg:2.94,ne:3},'Juan de Dios Varas':{avg:2.75,ne:2},'Luis Goycochea':{avg:3.78,ne:3},'Luis Silva':{avg:2.56,ne:3},'Patrick Vasquez':{avg:2.5,ne:3},'Percy Sanchez':{avg:3.5,ne:3},'Renato Jara':{avg:3.33,ne:4},'Steve Sarmiento':{avg:2.67,ne:2},'Victor Flores':{avg:2.61,ne:3},'Victor Ramirez':{avg:3.29,ne:4},'Waldir Saldaña':{avg:3.33,ne:4},'William Vila':{avg:2.5,ne:1},'Wilson urbina':{avg:3.33,ne:4}}},
+  ADM:{lbl:'Administración',avg:3.57,n:17,col:'#8b5cf6',nkP:45.2,nkR:14,totR:31,valR:17,imp:4,
+    qa:{'Valorizaciones':3.53,'Cierre proyectos':3.41,'Atención ADM':3.71,'Lineamientos':3.65},
+    qs:['Valoriz.','Cierre','Atención','Linea.'],
+    ana:'Sobre meta con 3.57/5. Cierre de proyectos (3.41) es el ítem más bajo. El máximo otorgado fue 4.0 — nadie dio 5, que es el techo real de la escala. No-conoce más alto (45.2%) — solo 1 evaluador con muestra incompleta.',
+    crit:'Cierre proyectos (3.41) y no-conoce 45.2% — muestra de solo 17 de 31 supervisores',
+    sups:{'Antero Ávila':{avg:4.0,ne:1},'Benjamin Viera':{avg:4.0,ne:1},'Dennis Saravia':{avg:4.0,ne:1},'Diego Asmat':{avg:4.0,ne:1},'Gustavo Martinez':{avg:3.0,ne:1},'Jean Casas':{avg:3.0,ne:1},'Jesus Cabrera':{avg:4.0,ne:1},'Jorvin Paredes':{avg:3.75,ne:1},'Luis Goycochea':{avg:4.0,ne:1},'Luis Silva':{avg:3.25,ne:1},'Patrick Vasquez':{avg:3.5,ne:1},'Renato Jara':{avg:3.75,ne:1},'Steve Sarmiento':{avg:3.0,ne:1},'Victor Flores':{avg:4.0,ne:1},'Victor Ramirez':{avg:4.0,ne:1},'Waldir Saldaña':{avg:3.0,ne:1},'Wilson urbina':{avg:2.5,ne:1}}},
+  CAL:{lbl:'Calidad',avg:3.33,n:18,col:'#f59e0b',nkP:41.9,nkR:13,totR:31,valR:18,imp:4,
+    qa:{'Resolución problemas':3.89,'Estándares calidad':3.72,'Seguimiento/control':3.89,'Impulsa mejoras':1.83},
+    qs:['Resoluc.','Estánd.','Seguim.','Mejoras'],
+    ana:'Bajo meta en 3.33/5. Colapso en un único ítem: "Impulsa mejoras" 1.83/5. Los otros 3 ítems entre 3.72–3.89. El equipo CUMPLE pero no INNOVA. 14 de 18 supervisores recibieron 1.0 en mejoras.',
+    crit:'Impulsa mejoras: 1.83/5 — solo Benjamin Viera (5.0), Diego Asmat y Erick Jara (4.0) lo impulsan',
+    sups:{'Antero Ávila':{avg:3.25,ne:1},'Benjamin Viera':{avg:4.25,ne:1},'Dennis Saravia':{avg:3.5,ne:1},'Diego Asmat':{avg:4.0,ne:1},'Dylan Marquina':{avg:3.25,ne:1},'Erick Jara':{avg:4.0,ne:1},'Jean Casas':{avg:2.75,ne:1},'Jesus Cabrera':{avg:3.75,ne:1},'Jorvin Paredes':{avg:3.5,ne:1},'Luis Goycochea':{avg:3.25,ne:1},'Luis Silva':{avg:3.0,ne:1},'Patrick Vasquez':{avg:3.5,ne:1},'Renato Jara':{avg:3.5,ne:1},'Steve Sarmiento':{avg:3.25,ne:1},'Victor Flores':{avg:3.25,ne:1},'Victor Ramirez':{avg:3.0,ne:1},'Waldir Saldaña':{avg:2.5,ne:1},'Wilson urbina':{avg:2.5,ne:1}}},
+  LOG_S:{lbl:'Log. Servicios',avg:3.77,n:27,col:'#0891b2',nkP:17.7,nkR:11,totR:62,valR:51,imp:4,
+    qa:{'Análisis costos':3.55,'Doc. pagos':3.92,'Atención general':3.84},
+    qs:['Costos','Doc.pagos','Atención'],
+    ana:'Tercera mejor área con 3.77/5. Análisis de costos (3.55) es el más bajo. Menor no-conoce del grupo (17.7%) — 2 evaluadores con muestra más representativa. Jesús Cabrera y Jorvin Paredes con 5.0/5.',
+    crit:'Análisis de costos (3.55) por supervisor',
+    sups:{'Abdon Solorzano':{avg:3.67,ne:1},'Antero Ávila':{avg:3.5,ne:2},'Benjamin Viera':{avg:4.5,ne:2},'Carmen Priale':{avg:4.33,ne:2},'Dennis Saravia':{avg:3.33,ne:2},'Diego Asmat':{avg:4.0,ne:2},'Dylan Marquina':{avg:3.67,ne:2},'Erick Jara':{avg:3.33,ne:2},'Erick Salvador':{avg:3.83,ne:2},'Fernando Aurazo':{avg:4.67,ne:2},'Gustavo Martinez':{avg:3.33,ne:2},'Irwin Gutierrez':{avg:3.67,ne:1},'Jean Casas':{avg:3.17,ne:2},'Jesus Cabrera':{avg:5.0,ne:2},'Jordy Acosta':{avg:3.83,ne:2},'Jorvin Paredes':{avg:5.0,ne:2},'Luis Goycochea':{avg:3.83,ne:2},'Luis Silva':{avg:4.5,ne:2},'Patrick Vasquez':{avg:4.0,ne:2},'Percy Sanchez':{avg:3.5,ne:2},'Renato Jara':{avg:3.0,ne:2},'Steve Sarmiento':{avg:3.0,ne:2},'Victor Flores':{avg:3.67,ne:2},'Victor Ramirez':{avg:3.33,ne:2},'Waldir Saldaña':{avg:3.17,ne:2},'William Vila':{avg:3.67,ne:1},'Wilson urbina':{avg:3.17,ne:2}}}
+};
+var KS=Object.keys(D);
+
+// ═══ Supabase (instancia PMO) · 3 tablas-agregado reconstruyen D ═══════
+var SB_URL='https://vsploxglutkbeokumunp.supabase.co';
+var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+var SB_H={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'};
+var SEED_PERIODO='2026-05-01';
+function sbGet(t,q){return fetch(SB_URL+'/rest/v1/'+t+'?'+q,{headers:SB_H}).then(function(r){return r.ok?r.json():[];});}
+function sbPost(t,rows){if(!rows.length)return Promise.resolve();return fetch(SB_URL+'/rest/v1/'+t,{method:'POST',headers:Object.assign({},SB_H,{Prefer:'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(rows)});}
+async function seed360(){
+  var per=SEED_PERIODO,areas=[],items=[],sups=[];
+  KS.forEach(function(k){var d=D[k];
+    areas.push({periodo:per,area:k,lbl:d.lbl,col:d.col,imp:d.imp,avg:d.avg,n:d.n,nk_pct:d.nkP,nk_resp:d.nkR,tot_resp:d.totR,val_resp:d.valR,ana:d.ana,crit:d.crit});
+    Object.keys(d.qa).forEach(function(it,i){items.push({periodo:per,area:k,item:it,qs:(d.qs&&d.qs[i])||'',puntaje:d.qa[it],orden:i});});
+    Object.keys(d.sups).forEach(function(s){sups.push({periodo:per,area:k,supervisor:s,avg:d.sups[s].avg,ne:d.sups[s].ne});});
+  });
+  await sbPost('eval360_areas',areas);await sbPost('eval360_items',items);await sbPost('eval360_supervisores',sups);
+}
+async function loadD360(){
+  var pers=await sbGet('eval360_areas','select=periodo&order=periodo.desc&limit=1');
+  if(!pers.length){await seed360();return;}   // sembrado; D ya está en memoria (semilla)
+  var f='periodo=eq.'+pers[0].periodo;
+  var res=await Promise.all([sbGet('eval360_areas',f+'&select=*'),sbGet('eval360_items',f+'&select=*&order=orden'),sbGet('eval360_supervisores',f+'&select=*')]);
+  res[0].forEach(function(a){if(!D[a.area])return;D[a.area]={lbl:a.lbl,col:a.col,imp:a.imp,avg:+a.avg,n:a.n,nkP:+a.nk_pct,nkR:a.nk_resp,totR:a.tot_resp,valR:a.val_resp,ana:a.ana,crit:a.crit,qa:{},qs:[],sups:{}};});
+  res[1].forEach(function(it){if(D[it.area]){D[it.area].qa[it.item]=+it.puntaje;D[it.area].qs.push(it.qs||'');}});
+  res[2].forEach(function(s){if(D[s.area])D[s.area].sups[s.supervisor]={avg:+s.avg,ne:s.ne};});
+}
+
+// ═══ HELPERS ══════════════════════════════════════════════════════
+function scc(v){return v>=4.0?{bg:'#d1fae5',c:'#065f46'}:v>=3.0?{bg:'#fef9c3',c:'#854d0e'}:{bg:'#fee2e2',c:'#991b1b'};}
+function ncc(p){return p>40?'#dc2626':p>30?'#d97706':'#059669';}
+function hcc(v){if(!v||isNaN(v))return'#edf0f6';if(v>=4.0)return'#bbf7d0';if(v>=3.0)return'#fef9c3';if(v>=2.0)return'#fed7aa';return'#fecaca';}
+function plv(v){return v>=4.0?'<span class="pl pt">Alto</span>':v>=3.0?'<span class="pl pa">Medio</span>':'<span class="pl pr">Bajo</span>';}
+
+var CH={};
+
+// ═══ NAV ══════════════════════════════════════════════════════════
+function go(id,btn){
+  document.querySelectorAll('.pn').forEach(function(p){p.classList.remove('on');});
+  document.querySelectorAll('.nav button').forEach(function(b){b.classList.remove('on');});
+  document.getElementById('pn-'+id).classList.add('on');btn.classList.add('on');
+  if(id==='areas')drill();
+  if(id==='ranking')buildRanking();
+  if(id==='supervisores')buildSup();
+  if(id==='heatmap')buildHM();
+  if(id==='matrix')buildMatrix();
+  if(id==='rec')buildRec();
+  if(id==='visibilidad')buildVis();
+}
+
+// ═══ INIT ═════════════════════════════════════════════════════════
+window.onload=function(){
+  var render=function(){calcHeader();buildAlerts();buildKpiCards();buildAreaCards();buildBarChart();buildRadarChart();};
+  loadD360().then(render).catch(function(e){console.warn('[360] '+e);render();});
+};
+
+function calcHeader(){
+  var avgs=KS.map(function(k){return D[k].avg;});
+  var global=(avgs.reduce(function(a,b){return a+b;},0)/avgs.length).toFixed(2);
+  var maxA=Math.max.apply(null,avgs);var minA=Math.min.apply(null,avgs);
+  var nkAll=KS.map(function(k){return D[k].nkP;});
+  var nkAvg=(nkAll.reduce(function(a,b){return a+b;},0)/nkAll.length).toFixed(1);
+  var sobre=avgs.filter(function(v){return v>=3.5;}).length;
+  var allSups=new Set();KS.forEach(function(k){Object.keys(D[k].sups).forEach(function(s){allSups.add(s);});});
+  document.getElementById('hdr-global').textContent=global;
+  document.getElementById('hdr-meta').textContent=global>=3.5?'✓ META CUMPLIDA':'✗ BAJO META';
+  document.getElementById('hdr-sobre').textContent=sobre+' sobre meta';
+  document.getElementById('hdr-sups').textContent=allSups.size;
+  document.getElementById('hdr-nk').textContent=nkAvg+'%';
+  document.getElementById('hdr-brecha').textContent=(maxA-minA).toFixed(2);
+}
+
+function buildAlerts(){
+  var avgs=KS.map(function(k){return D[k].avg;});
+  var global=(avgs.reduce(function(a,b){return a+b;},0)/avgs.length);
+  var sobre=avgs.filter(function(v){return v>=3.5;}).length;
+  document.getElementById('alertsRow').innerHTML=
+    '<div class="al alr"><span class="ali">🚨</span><div><strong>Crítico:</strong> Log. Compras 2.92/5. Ítem devoluciones: 1.99/5 — piso de toda la evaluación.</div></div>'+
+    '<div class="al ala"><span class="ali">⚠️</span><div><strong>Atención:</strong> Calidad 3.33/5 — "impulsa mejoras" colapsado en 1.83/5 (14 de 18 supervisores con 1.0).</div></div>'+
+    '<div class="al '+(global>=3.5?'alg':'alr')+'"><span class="ali">'+(global>=3.5?'✅':'❌')+'</span><div><strong>'+(global>=3.5?'Meta cumplida:':'Bajo meta:')+'</strong> Promedio global '+(global).toFixed(2)+'/5 · '+sobre+' de 6 áreas sobre 3.5.</div></div>'+
+    '<div class="al alb"><span class="ali">👁</span><div><strong>Visibilidad:</strong> ING y ADM superan 45% de evaluadores que no conocen a los supervisores.</div></div>';
+}
+
+// ═══ KPI CARDS ════════════════════════════════════════════════════
+function buildKpiCards(){
+  document.getElementById('kpiCards').innerHTML=KS.map(function(k){
+    var d=D[k];var x=scc(d.avg);var pct=(d.avg/5*100).toFixed(0);
+    var delta=(d.avg-3.5).toFixed(2);var dc=+delta>=0?'background:#d1fae5;color:#065f46':'background:#fee2e2;color:#991b1b';
+    return '<div class="kcard"><div class="kcl">'+d.lbl+'</div>'+
+      '<div class="kcv" style="color:'+x.c+'">'+d.avg.toFixed(2)+'</div>'+
+      '<div class="kcs">de 5.0 &nbsp;·&nbsp; '+d.n+' supervisores</div>'+
+      '<div class="kcb"><div class="kcf" style="width:'+pct+'%;background:'+x.c+'"></div></div>'+
+      '<span class="kcd" style="'+dc+'">'+(+delta>=0?'▲ +'+delta:'▼ '+delta)+' vs meta 3.5</span></div>';
+  }).join('');
+}
+
+// ═══ AREA CARDS ═══════════════════════════════════════════════════
+function buildAreaCards(){
+  [['aRow1',KS.slice(0,3)],['aRow2',KS.slice(3,6)]].forEach(function(p){
+    document.getElementById(p[0]).innerHTML=p[1].map(function(k){
+      var d=D[k];var x=scc(d.avg);
+      var qe=Object.entries(d.qa);
+      var qMax=qe.reduce(function(a,b){return b[1]>a[1]?b:a;},qe[0]);
+      var qMin=qe.reduce(function(a,b){return b[1]<a[1]?b:a;},qe[0]);
+      var items=qe.map(function(q){
+        var pp=(q[1]/5*100).toFixed(0);
+        var fc=q[1]>=4.0?'var(--te)':q[1]>=3.0?'var(--am)':'var(--rd)';
+        var fl=q[1]<2.5?'⚠':'';
+        return '<div class="ir"><div class="ilb">'+q[0]+'</div>'+
+          '<div class="ib"><div class="if" style="width:'+pp+'%;background:'+fc+'"></div></div>'+
+          '<div class="iv" style="color:'+fc+'">'+q[1].toFixed(1)+'</div>'+
+          '<div class="ifl">'+fl+'</div></div>';
+      }).join('');
+      var nkCol=ncc(d.nkP);
+      return '<div class="acard">'+
+        '<div class="atop"><div>'+
+          '<div class="aname">'+d.lbl+'</div>'+
+          '<div class="bgs">'+plv(d.avg)+'<span class="pl pg2">'+d.n+' sup.</span><span class="pl pg2">'+d.nkP+'% NC</span></div>'+
+        '</div><div class="ascore" style="color:'+x.c+'">'+d.avg.toFixed(2)+'<span style="font-size:10px;color:var(--tx3)">/5</span></div></div>'+
+        items+
+        '<div style="margin-top:9px;padding-top:7px;border-top:1px solid var(--br)">'+
+          '<div style="font-size:9px;color:var(--te);font-weight:800">▲ '+qMax[0]+': '+qMax[1].toFixed(2)+'</div>'+
+          '<div style="font-size:9px;color:var(--rd);font-weight:800;margin-top:2px">▼ '+qMin[0]+': '+qMin[1].toFixed(2)+'</div>'+
+        '</div>'+
+        '<div class="nc-row">'+
+          '<div><span class="nc-lbl">No conocen</span><br><span class="nc-val" style="color:'+nkCol+'">'+d.nkP+'%</span></div>'+
+          '<div class="nc-bar"><div class="nc-fill" style="width:'+d.nkP+'%;background:'+nkCol+'"></div></div>'+
+          '<div style="text-align:right"><span class="nc-lbl">Conocen</span><br><span style="font-size:12px;font-weight:800;font-family:var(--M);color:var(--te)">'+(100-d.nkP).toFixed(1)+'%</span></div>'+
+        '</div></div>';
+    }).join('');
+  });
+}
+
+// ═══ BAR CHART ════════════════════════════════════════════════════
+function buildBarChart(){
+  CH.bar=new Chart(document.getElementById('cBar').getContext('2d'),{
+    type:'bar',
+    data:{labels:KS.map(function(k){return D[k].lbl;}),datasets:[
+      {label:'Promedio',data:KS.map(function(k){return D[k].avg;}),backgroundColor:KS.map(function(k){return D[k].col+'cc';}),borderRadius:6,barPercentage:.65,order:1},
+      {label:'Meta 3.5',data:KS.map(function(){return 3.5;}),type:'line',borderColor:'#f59e0b',borderWidth:2,borderDash:[6,4],pointRadius:0,fill:false,order:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{size:10,family:'Manrope'},boxWidth:10,color:'#64748b'}},
+        tooltip:{callbacks:{label:function(c){if(c.dataset.label==='Meta 3.5')return 'Meta: 3.5';return D[KS[c.dataIndex]].lbl+': '+c.raw.toFixed(2)+'/5';}}}},
+      scales:{y:{min:0,max:5,ticks:{font:{size:10,family:'Manrope'},color:'#64748b'},grid:{color:'rgba(0,0,0,.05)'}},x:{ticks:{font:{size:10,family:'Manrope'},color:'#64748b'},grid:{display:false}}}}
+  });
+}
+
+// ═══ RADAR ════════════════════════════════════════════════════════
+function buildRadarChart(){
+  CH.radar=new Chart(document.getElementById('cRadar').getContext('2d'),{
+    type:'radar',
+    data:{labels:KS.map(function(k){return D[k].lbl;}),datasets:[
+      {label:'Promedio /5',data:KS.map(function(k){return D[k].avg;}),backgroundColor:'rgba(30,111,181,.1)',borderColor:'#1e6fb5',pointBackgroundColor:KS.map(function(k){return D[k].col;}),pointRadius:5,pointBorderWidth:2,pointBorderColor:'#fff',borderWidth:2.5},
+      {label:'Meta 3.5',data:KS.map(function(){return 3.5;}),backgroundColor:'transparent',borderColor:'#f59e0b',pointRadius:0,borderDash:[5,4],borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{size:10,family:'Manrope'},boxWidth:10,color:'#64748b'}}},
+      scales:{r:{min:0,max:5,ticks:{font:{size:9},color:'#94a3b8',stepSize:1,backdropColor:'transparent'},grid:{color:'rgba(0,0,0,.07)'},pointLabels:{font:{size:10,family:'Manrope',weight:'600'},color:'#334155'}}}}
+  });
+}
+
+// ═══ RANKING ══════════════════════════════════════════════════════
+function buildRanking(){
+  if(CH.rankBar)return;
+  var map={};
+  KS.forEach(function(k){Object.entries(D[k].sups).forEach(function(e){if(!map[e[0]])map[e[0]]={t:0,c:0,areas:[]};map[e[0]].t+=e[1].avg;map[e[0]].c++;map[e[0]].areas.push(D[k].lbl);});});
+  var ranked=Object.entries(map).map(function(e){return{s:e[0],avg:+(e[1].t/e[1].c).toFixed(2),n:e[1].c,areas:e[1].areas};}).sort(function(a,b){return b.avg-a.avg;});
+
+  // Full table
+  document.getElementById('rankFullTable').innerHTML='<table><thead><tr><th>#</th><th>Supervisor</th><th>Promedio /5</th><th>Áreas eval.</th><th>Nivel</th><th>Áreas que lo evaluaron</th></tr></thead><tbody>'+
+    ranked.map(function(r,i){var x=scc(r.avg);
+      return '<tr><td style="font-family:var(--M);color:var(--tx3);font-weight:700">'+(i+1)+'</td>'+
+        '<td style="font-weight:700">'+r.s+'</td>'+
+        '<td><span class="sp" style="background:'+x.bg+';color:'+x.c+'">'+r.avg+'</span></td>'+
+        '<td style="font-family:var(--M);text-align:center">'+r.n+'</td>'+
+        '<td>'+plv(r.avg)+'</td>'+
+        '<td style="font-size:10px;color:var(--tx3)">'+r.areas.join(' · ')+'</td></tr>';
+    }).join('')+'</tbody></table><div style="font-size:10px;color:var(--tx3);padding:8px 12px;font-weight:600">'+ranked.length+' supervisores rankeados</div>';
+
+  // Top 15 bar
+  var top15=ranked.slice(0,15);
+  setTimeout(function(){
+    CH.rankBar=new Chart(document.getElementById('cRankBar').getContext('2d'),{
+      type:'bar',
+      data:{labels:top15.map(function(r){return r.s.split(' ')[0]+' '+r.s.split(' ').slice(-1)[0];}),
+        datasets:[{data:top15.map(function(r){return r.avg;}),backgroundColor:top15.map(function(r){return r.avg>=4.0?'#10b981cc':r.avg>=3.0?'#f59e0bcc':'#ef4444cc';}),borderRadius:4,barPercentage:.72}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.raw.toFixed(2)+'/5';}}},
+          annotation:{annotations:{line1:{type:'line',xMin:3.5,xMax:3.5,borderColor:'#f59e0b',borderWidth:1.5,borderDash:[4,3]}}}},
+        scales:{x:{min:0,max:5,ticks:{font:{size:9}},grid:{color:'rgba(0,0,0,.05)'}},y:{ticks:{font:{size:9,family:'Manrope'},color:'#374151'},grid:{display:false}}}}
+    });
+    // Distribution donut
+    var hi=ranked.filter(function(r){return r.avg>=4.0;}).length;
+    var me=ranked.filter(function(r){return r.avg>=3.0&&r.avg<4.0;}).length;
+    var lo=ranked.filter(function(r){return r.avg<3.0;}).length;
+    CH.rankDist=new Chart(document.getElementById('cRankDist').getContext('2d'),{
+      type:'doughnut',
+      data:{labels:['Alto (≥4.0)','Medio (3.0–3.9)','Bajo (<3.0)'],datasets:[{data:[hi,me,lo],backgroundColor:['#10b981cc','#f59e0bcc','#ef4444cc'],borderWidth:2,borderColor:'#fff'}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+        plugins:{legend:{labels:{font:{size:10,family:'Manrope'},boxWidth:10}},
+          tooltip:{callbacks:{label:function(c){return c.label+': '+c.raw+' supervisores ('+Math.round(c.raw/ranked.length*100)+'%)';}}}}}
+    });
+  },60);
+}
+
+// ═══ DRILL ════════════════════════════════════════════════════════
+function drill(){
+  var k=document.getElementById('selA').value;var d=D[k];
+  var x=scc(d.avg);
+  var sups=Object.entries(d.sups).sort(function(a,b){return b[1].avg-a[1].avg;});
+  var qe=Object.entries(d.qa);
+  var qMin=qe.reduce(function(a,b){return b[1]<a[1]?b:a;},qe[0]);
+  var h=Math.max(260,sups.length*24);
+  document.getElementById('drillOut').innerHTML=
+    '<div class="g2" style="margin-bottom:12px">'+
+      '<div class="cc"><div class="cch">'+d.lbl+' — ranking supervisores (promedio /5)</div><div style="position:relative;height:'+h+'px"><canvas id="cDr"></canvas></div></div>'+
+      '<div><div class="cc" style="margin-bottom:10px"><div class="cch">Dimensiones evaluadas</div><div style="position:relative;height:175px"><canvas id="cDrQ"></canvas></div></div>'+
+      '<div class="ins '+(d.avg<3.0?'d':d.avg<3.5?'w':'g')+'" style="margin:0"><div class="it">'+d.lbl+'</div><p>'+d.ana+'</p><p style="margin-top:5px;font-weight:700;color:var(--tx)">⚠ '+d.crit+'</p></div></div></div>'+
+    '<div class="g3">'+
+      '<div class="kcard"><div class="kcl">Válidos</div><div class="kcv" style="color:var(--bl)">'+d.valR+'</div><div class="kcs">evaluaciones con puntaje</div></div>'+
+      '<div class="kcard"><div class="kcl">No conocen</div><div class="kcv" style="color:'+ncc(d.nkP)+'">'+d.nkR+'</div><div class="kcs">'+d.nkP+'% del total</div></div>'+
+      '<div class="kcard"><div class="kcl">Ítem crítico</div><div class="kcv" style="color:var(--rd);font-size:18px">'+qMin[1].toFixed(2)+'/5</div><div class="kcs">'+qMin[0]+'</div></div></div>';
+  if(CH.dr)CH.dr.destroy();if(CH.drQ)CH.drQ.destroy();
+  setTimeout(function(){
+    var cols=sups.map(function(s){return s[1].avg>=4.0?'#10b981cc':s[1].avg>=3.0?'#f59e0bcc':'#ef4444cc';});
+    CH.dr=new Chart(document.getElementById('cDr').getContext('2d'),{
+      type:'bar',
+      data:{labels:sups.map(function(s){return s[0];}),datasets:[{data:sups.map(function(s){return s[1].avg;}),backgroundColor:cols,borderRadius:3,barPercentage:.72}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.raw.toFixed(2)+'/5 ('+sups[c.dataIndex][1].ne+' eval.)';}}}},
+        scales:{x:{min:0,max:5,ticks:{font:{size:9}},grid:{color:'rgba(0,0,0,.05)'}},y:{ticks:{font:{size:9,family:'Manrope'},color:'#374151'},grid:{display:false}}}}
+    });
+    var qCols=qe.map(function(q){return q[1]>=4.0?'#10b981cc':q[1]>=3.0?'#f59e0bcc':'#ef4444cc';});
+    CH.drQ=new Chart(document.getElementById('cDrQ').getContext('2d'),{
+      type:'bar',
+      data:{labels:d.qs,datasets:[{data:qe.map(function(q){return q[1];}),backgroundColor:qCols,borderRadius:4,barPercentage:.72}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return qe[c.dataIndex][0]+': '+c.raw.toFixed(2)+'/5';}}}},
+        scales:{y:{min:0,max:5,ticks:{font:{size:9}}},x:{ticks:{font:{size:9,family:'Manrope'},color:'#374151'},grid:{display:false}}}}
+    });
+  },60);
+}
+
+// ═══ VISIBILIDAD ══════════════════════════════════════════════════
+function buildVis(){
+  if(CH.vis)return;
+  document.getElementById('visCards').innerHTML=KS.map(function(k){
+    var d=D[k];var c=ncc(d.nkP);
+    return '<div class="kcard"><div class="kcl">'+d.lbl+'</div>'+
+      '<div class="kcv" style="color:'+c+'">'+d.nkP+'%</div>'+
+      '<div class="kcs">'+d.nkR+' de '+d.totR+' = No conoce</div>'+
+      '<div class="kcb"><div class="kcf" style="width:'+d.nkP+'%;background:'+c+'"></div></div>'+
+      '<span class="kcd" style="background:var(--w2);color:var(--tx3)">'+d.valR+' válidas · '+d.n_evals+' eval.</span></div>';
+  }).join('');
+  setTimeout(function(){
+    CH.vis=new Chart(document.getElementById('cVis').getContext('2d'),{
+      type:'bar',
+      data:{labels:KS.map(function(k){return D[k].lbl;}),datasets:[{label:'% No conoce',data:KS.map(function(k){return D[k].nkP;}),backgroundColor:KS.map(function(k){return ncc(D[k].nkP)+'cc';}),borderRadius:5,barPercentage:.7}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.raw+'% no conocen';}}}},
+        scales:{y:{min:0,max:55,ticks:{font:{size:10,family:'Manrope'},callback:function(v){return v+'%';}},grid:{color:'rgba(0,0,0,.05)'}},x:{ticks:{font:{size:10,family:'Manrope'}},grid:{display:false}}}}
+    });
+    CH.visS=new Chart(document.getElementById('cVisS').getContext('2d'),{
+      type:'bar',
+      data:{labels:KS.map(function(k){return D[k].lbl;}),datasets:[
+        {label:'Válidas',data:KS.map(function(k){return D[k].valR;}),backgroundColor:'#10b981cc',stack:'s',borderRadius:2},
+        {label:'No conoce',data:KS.map(function(k){return D[k].nkR;}),backgroundColor:'#ef4444cc',stack:'s',borderRadius:2}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{font:{size:10,family:'Manrope'},boxWidth:10}}},
+        scales:{x:{stacked:true,ticks:{font:{size:10,family:'Manrope'}},grid:{display:false}},y:{stacked:true,ticks:{font:{size:9}},grid:{color:'rgba(0,0,0,.05)'}}}}
+    });
+  },60);
+  document.getElementById('visTable').innerHTML='<table><thead><tr><th>Supervisor</th><th>Conocen</th><th>No conocen</th><th>% Cobertura</th><th>Confiabilidad</th></tr></thead><tbody>'+
+    [{s:'Antony Rodriguez',nk:3,t:4},{s:'Gian Pier Girao',nk:3,t:4},{s:'William Vila',nk:3,t:4},{s:'Gustavo Martinez',nk:2,t:4},{s:'Irwin Gutierrez',nk:2,t:4},{s:'Jorge Hernandez',nk:2,t:4},{s:'Benjamin Viera',nk:2,t:4},{s:'Steve Sarmiento',nk:2,t:4}].map(function(r){
+      var cv=Math.round((r.t-r.nk)/r.t*100);
+      var con=cv>=75?'<span class="pl pt">Alta</span>':cv>=50?'<span class="pl pa">Media</span>':'<span class="pl pr">Baja</span>';
+      return '<tr><td><b>'+r.s+'</b></td><td>'+(r.t-r.nk)+' de '+r.t+'</td><td>'+r.nk+'</td><td style="font-family:var(--M);font-weight:700">'+cv+'%</td><td>'+con+'</td></tr>';
+    }).join('')+'</tbody></table>';
+}
+
+// ═══ SUPERVISORES ═════════════════════════════════════════════════
+function buildSup(){
+  var fA=document.getElementById('fA').value;var fO=document.getElementById('fO').value;var fL=document.getElementById('fL').value;
+  var rows=[];var ks=fA==='all'?KS:[fA];
+  ks.forEach(function(k){Object.entries(D[k].sups).forEach(function(e){var l=e[1].avg>=4.0?'h':e[1].avg>=3.0?'m':'l';if(fL==='all'||fL===l)rows.push({s:e[0],avg:e[1].avg,ne:e[1].ne,al:D[k].lbl,col:D[k].col,l:l});});});
+  if(fO==='d')rows.sort(function(a,b){return b.avg-a.avg;});else if(fO==='a')rows.sort(function(a,b){return a.avg-b.avg;});else rows.sort(function(a,b){return a.s.localeCompare(b.s);});
+  var ll={h:'Alto',m:'Medio',l:'Bajo'};
+  document.getElementById('supOut').innerHTML='<table><thead><tr><th>#</th><th>Supervisor</th><th>Área evaluadora</th><th>Promedio /5</th><th>N° Evaluadores</th><th>Nivel</th></tr></thead><tbody>'+
+    rows.map(function(r,i){var x=scc(r.avg);
+      return '<tr><td style="color:var(--tx3);font-family:var(--M)">'+(i+1)+'</td>'+
+        '<td style="font-weight:600">'+r.s+'</td>'+
+        '<td style="color:'+r.col+';font-weight:700;font-size:10px">'+r.al+'</td>'+
+        '<td><span class="sp" style="background:'+x.bg+';color:'+x.c+'">'+r.avg.toFixed(2)+'</span></td>'+
+        '<td style="text-align:center;font-family:var(--M)">'+r.ne+'</td>'+
+        '<td><span class="pl '+(r.l==='h'?'pt':r.l==='m'?'pa':'pr')+'">'+ll[r.l]+'</span></td></tr>';
+    }).join('')+'</tbody></table><div style="font-size:10px;color:var(--tx3);padding:8px 12px;font-weight:600">'+rows.length+' registros</div>';
+}
+
+// ═══ HEATMAP ══════════════════════════════════════════════════════
+function buildHM(){
+  if(document.getElementById('hmTable').innerHTML!=='')return;
+  var allS=new Set();KS.forEach(function(k){Object.keys(D[k].sups).forEach(function(s){allS.add(s);});});
+  var sups=Array.from(allS).sort();
+  var areas=KS.map(function(k){return D[k];});
+  var h='<tr><th>Supervisor</th>'+areas.map(function(a){return '<th>'+a.lbl.replace('Log. ','L.')+'</th>';}).join('')+'<th>Global</th></tr>';
+  sups.forEach(function(s){
+    var tot=0,cnt=0;
+    var cells=areas.map(function(a){var e=a.sups[s];if(!e)return '<td style="background:#edf0f6;color:#94a3b8">—</td>';tot+=e.avg;cnt++;return '<td style="background:'+hcc(e.avg)+';color:#0f172a">'+e.avg.toFixed(1)+'</td>';});
+    var avg=cnt>0?(tot/cnt).toFixed(2):'—';
+    var bg=cnt>0?hcc(tot/cnt):'#edf0f6';
+    h+='<tr><td class="hms">'+s+'</td>'+cells.join('')+'<td style="background:'+bg+';font-weight:800">'+avg+'</td></tr>';
+  });
+  document.getElementById('hmTable').innerHTML=h;
+}
+
+// ═══ MATRIX ═══════════════════════════════════════════════════════
+function buildMatrix(){
+  if(CH.mx)return;
+  var imp={ING:3,SSOMA:5,LOG_C:5,ADM:4,CAL:4,LOG_S:4};
+  setTimeout(function(){
+    CH.mx=new Chart(document.getElementById('cMatrix').getContext('2d'),{
+      type:'bubble',
+      data:{datasets:KS.map(function(k){var d=D[k];return{label:d.lbl,data:[{x:d.avg,y:imp[k],r:Math.max(10,d.nkP/2.5)}],backgroundColor:d.col+'bb',borderColor:d.col,borderWidth:2};})},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{font:{size:10,family:'Manrope'},boxWidth:10}},
+          tooltip:{callbacks:{label:function(c){var k=KS[c.datasetIndex];return[c.dataset.label,'Promedio: '+c.parsed.x.toFixed(2)+'/5','Impacto: '+c.parsed.y+'/5','No-conoce: '+D[k].nkP+'%'];}}}},
+        scales:{x:{min:1.5,max:5.5,title:{display:true,text:'Promedio /5 (escala 1–5)',font:{size:10,family:'Manrope'}},ticks:{font:{size:9}},grid:{color:'rgba(0,0,0,.05)'}},y:{min:2,max:6,title:{display:true,text:'Impacto estratégico',font:{size:10,family:'Manrope'}},ticks:{font:{size:9},stepSize:1},grid:{color:'rgba(0,0,0,.05)'}}}}
+    });
+  },60);
+}
+
+// ═══ REC ══════════════════════════════════════════════════════════
+function buildRec(){
+  if(document.getElementById('recOut').innerHTML!=='')return;
+  var recs=[
+    {a:'Log. Compras',col:'#dc2626',its:['Checklist digital cierre logístico en NISIRA','Responsable de devoluciones por proyecto','Capacitación internamiento — 31 supervisores','Sesión alineación entre 4 evaluadores del área','KPI: % devoluciones completadas a tiempo','Meta Q3: devoluciones 1.99 → 3.5/5']},
+    {a:'Calidad',col:'#d97706',its:['Ciclo mensual lecciones aprendidas por proyecto','KPI: 1 mejora propuesta/supervisor/trimestre','Workshop co-diseño con área de Calidad','B. Viera, Diego Asmat, Erick Jara como modelos','Reconocimiento formal de mejoras implementadas']},
+    {a:'Visibilidad — No-conoce',col:'#7c3aed',its:['Meta año: reducir de 35.2% a ≤20%','Rotación supervisores por áreas soporte 1h/mes','Presentaciones avance en reuniones de área','Sesiones integración trimestrales Op.–Soporte','Prioridad: ING (45.2%) y ADM (45.2%)']},
+    {a:'ING + SSOMA (sostener)',col:'#059669',its:['Reconocimiento público — ING 4.0, SSOMA 4.11','Dennis Saravia (4.7 ING), Jorvin Paredes (4.6) como modelos','Documentar modelo como estándar Friopacking','Replicar prácticas hacia áreas con bajo puntaje','Revisión Q2 con 6 owners de área']}
+  ];
+  document.getElementById('recOut').innerHTML=recs.map(function(r){
+    return '<div class="rc" style="border-top-color:'+r.col+'"><h4 style="color:'+r.col+'">'+r.a+'</h4><ul>'+r.its.map(function(i){return '<li>'+i+'</li>';}).join('')+'</ul></div>';
+  }).join('');
+  // Dev table
+  var map={};
+  KS.forEach(function(k){Object.entries(D[k].sups).forEach(function(e){if(!map[e[0]])map[e[0]]={avgs:[],areas:[]};map[e[0]].avgs.push(e[1].avg);map[e[0]].areas.push({a:D[k].lbl,v:e[1].avg});});});
+  var devSups=Object.entries(map).map(function(e){var g=e[1].avgs.reduce(function(a,b){return a+b;},0)/e[1].avgs.length;var worst=e[1].areas.sort(function(a,b){return a.v-b.v;})[0];return{s:e[0],g:g,worst:worst};}).filter(function(r){return r.g<3.5;}).sort(function(a,b){return a.g-b.g;}).slice(0,10);
+  document.getElementById('devTable').innerHTML='<table><thead><tr><th>Supervisor</th><th>Prom. global</th><th>Área más crítica</th><th>Puntaje área</th><th>Prioridad</th><th>Acción</th></tr></thead><tbody>'+
+    devSups.map(function(r){var x=scc(r.g);var pri=r.g<2.5?'<span class="pl pr">URGENTE</span>':'<span class="pl pa">MEDIA</span>';
+      return '<tr><td style="font-weight:700">'+r.s+'</td>'+
+        '<td><span class="sp" style="background:'+x.bg+';color:'+x.c+'">'+r.g.toFixed(2)+'</span></td>'+
+        '<td style="color:var(--rd);font-weight:700;font-size:10px">'+r.worst.a+'</td>'+
+        '<td><span class="sp" style="background:#fee2e2;color:#991b1b">'+r.worst.v.toFixed(2)+'</span></td>'+
+        '<td>'+pri+'</td>'+
+        '<td style="font-size:10px;color:var(--tx2)">Plan de desarrollo + seguimiento mensual</td></tr>';
+    }).join('')+'</tbody></table>';
+}
+</script>
+</body>
+</html>

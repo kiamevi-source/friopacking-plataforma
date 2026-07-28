@@ -304,6 +304,30 @@
         <i data-lucide="briefcase" class="ic"></i>
         <span>Contratistas</span>
       </a>
+      <a href="#eval-contratistas" class="nav-item" data-section="eval-contratistas">
+        <i data-lucide="clipboard-check" class="ic"></i>
+        <span>Eval. Contratistas</span>
+      </a>
+      <a href="#dash-contratistas" class="nav-item" data-section="dash-contratistas">
+        <i data-lucide="bar-chart-3" class="ic"></i>
+        <span>Dashboard Contratistas</span>
+      </a>
+      <a href="#timeline" class="nav-item" data-section="timeline">
+        <i data-lucide="calendar-range" class="ic"></i>
+        <span>TimeLine Operaciones</span>
+      </a>
+      <a href="#eval360" class="nav-item" data-section="eval360">
+        <i data-lucide="git-compare" class="ic"></i>
+        <span>Evaluación 360°</span>
+      </a>
+      <a href="#captura360" class="nav-item" data-section="captura360">
+        <i data-lucide="clipboard-list" class="ic"></i>
+        <span>Captura 360°</span>
+      </a>
+      <a href="#ficha" class="nav-item" data-section="ficha">
+        <i data-lucide="id-card" class="ic"></i>
+        <span>Ficha del Equipo</span>
+      </a>
       <a href="#supervisores" class="nav-item">
         <i data-lucide="user-check" class="ic"></i>
         <span>Supervisores</span>
@@ -535,6 +559,72 @@
     <!-- ═══════════════ VIEW: SERVICIOS (nativo · portafolio_servicios) ═══════════════ -->
     <div id="view-servicios" style="display:none"></div>
 
+    <!-- ═══════════════ VIEW: EVALUACIÓN CONTRATISTAS (módulo · evaluacion_contratistas) ═══════════════ -->
+    <div id="view-eval-contratistas" style="display:none">
+      <iframe
+        id="eval-contratistas-frame"
+        src="modulos/eval-contratistas.html"
+        title="Evaluación de Contratistas"
+        loading="lazy"
+        style="width:100%;height:calc(100vh - 90px);border:none;border-radius:14px;background:#f5f4f1;box-shadow:0 1px 2px rgba(15,30,53,.04),0 12px 28px -8px rgba(15,30,53,.08);display:block"
+      ></iframe>
+    </div>
+
+    <!-- ═══════════════ VIEW: DASHBOARD CONTRATISTAS (módulo lectura · evaluacion_contratistas) ═══════════════ -->
+    <div id="view-dash-contratistas" style="display:none">
+      <iframe
+        id="dash-contratistas-frame"
+        src="modulos/dashboard-contratistas.html"
+        title="Dashboard de Contratistas"
+        loading="lazy"
+        style="width:100%;height:calc(100vh - 90px);border:none;border-radius:14px;background:#f5f7fa;box-shadow:0 1px 2px rgba(15,30,53,.04),0 12px 28px -8px rgba(15,30,53,.08);display:block"
+      ></iframe>
+    </div>
+
+    <!-- ═══════════════ VIEW: TIMELINE OPERACIONES (módulo editable · proyectos_timeline + asignaciones_timeline) ═══════════════ -->
+    <div id="view-timeline" style="display:none">
+      <iframe
+        id="timeline-frame"
+        src="modulos/timeline-operaciones.html"
+        title="TimeLine Operaciones"
+        loading="lazy"
+        style="width:100%;height:calc(100vh - 90px);border:none;border-radius:14px;background:#f5f7fa;box-shadow:0 1px 2px rgba(15,30,53,.04),0 12px 28px -8px rgba(15,30,53,.08);display:block"
+      ></iframe>
+    </div>
+
+    <!-- ═══════════════ VIEW: REPORTE 360° (módulo lectura · eval360_areas/items/supervisores) ═══════════════ -->
+    <div id="view-eval360" style="display:none">
+      <iframe
+        id="eval360-frame"
+        src="modulos/reporte-360.html"
+        title="Evaluación 360°"
+        loading="lazy"
+        style="width:100%;height:calc(100vh - 90px);border:none;border-radius:14px;background:#f5f7fa;box-shadow:0 1px 2px rgba(15,30,53,.04),0 12px 28px -8px rgba(15,30,53,.08);display:block"
+      ></iframe>
+    </div>
+
+    <!-- ═══════════════ VIEW: CAPTURA 360° (módulo captura · eval360_respuestas → recompute) ═══════════════ -->
+    <div id="view-captura360" style="display:none">
+      <iframe
+        id="captura360-frame"
+        src="modulos/captura-360.html"
+        title="Captura Evaluación 360°"
+        loading="lazy"
+        style="width:100%;height:calc(100vh - 90px);border:none;border-radius:14px;background:#f5f4f1;box-shadow:0 1px 2px rgba(15,30,53,.04),0 12px 28px -8px rgba(15,30,53,.08);display:block"
+      ></iframe>
+    </div>
+
+    <!-- ═══════════════ VIEW: FICHA DEL EQUIPO (módulo editable · supervisores_equipo — instancia propia) ═══════════════ -->
+    <div id="view-ficha" style="display:none">
+      <iframe
+        id="ficha-frame"
+        src="modulos/ficha-equipo.html"
+        title="Ficha del Equipo"
+        loading="lazy"
+        style="width:100%;height:calc(100vh - 90px);border:none;border-radius:14px;background:#060e28;box-shadow:0 1px 2px rgba(15,30,53,.04),0 12px 28px -8px rgba(15,30,53,.08);display:block"
+      ></iframe>
+    </div>
+
     <!-- ═══════════════ VIEW: VISTA (iframe del legacy) ═══════════════ -->
     <div id="view-vista" style="display:none">
       <iframe
@@ -627,7 +717,7 @@
 <script src="js/views/servicios.js?v=20260607a"></script>
 <script src="js/globe.js?v=20260607d"></script>
 <script src="js/globe-exec.js?v=20260607c"></script>
-<script src="js/router-views.js?v=20260607m"></script>
+<script src="js/router-views.js?v=20260728b"></script>
 <script src="js/chatbot.js?v=20260607a"></script>
 
 </body>

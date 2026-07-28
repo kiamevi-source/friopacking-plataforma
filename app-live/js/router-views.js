@@ -32,6 +32,36 @@
       el: document.getElementById('view-servicios'),
       init: () => { if (typeof window.loadServicios === 'function') window.loadServicios(); },
     },
+    // Evaluación de Contratistas (módulo propio embebido · escribe a evaluacion_contratistas)
+    'eval-contratistas': {
+      el: document.getElementById('view-eval-contratistas'),
+      init: () => {},
+    },
+    // Dashboard de Contratistas (módulo lectura · lee evaluacion_contratistas)
+    'dash-contratistas': {
+      el: document.getElementById('view-dash-contratistas'),
+      init: () => {},
+    },
+    // TimeLine Operaciones (módulo editable · proyectos_timeline + asignaciones_timeline)
+    'timeline': {
+      el: document.getElementById('view-timeline'),
+      init: () => {},
+    },
+    // Evaluación 360° (módulo lectura · eval360_areas/items/supervisores)
+    'eval360': {
+      el: document.getElementById('view-eval360'),
+      init: () => {},
+    },
+    // Captura 360° (módulo captura · escribe eval360_respuestas y recalcula agregados)
+    'captura360': {
+      el: document.getElementById('view-captura360'),
+      init: () => {},
+    },
+    // Ficha del Equipo (módulo editable · supervisores_equipo en instancia propia)
+    'ficha': {
+      el: document.getElementById('view-ficha'),
+      init: () => {},
+    },
     // Mapa de Operaciones FrioPacking (Leaflet + clustering)
     mapa: {
       el: document.getElementById('view-globe'),

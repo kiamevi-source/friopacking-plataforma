@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Captura Evaluación 360° — Friopacking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0d1f4e;--navy2:#091540;--teal:#2dd4bf;--teal2:#1bbaa7;--smoke:#f5f4f1;--smoke2:#eceae6;--border:#d4d1ca;--ink:#0d1120;--ink2:#3a3f5c;--muted:#878ca6;--r:8px;--c1:#c0392b;--c2:#d4720a;--c3:#c9a800;--c4:#1a7a38;--c5:#0d8a78;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:"Manrope",sans-serif;background:var(--smoke);color:var(--ink);font-size:15px;line-height:1.55;}
+header{background:linear-gradient(135deg,var(--navy2) 0%,var(--navy) 55%,#142878 100%);position:relative;overflow:hidden;padding:30px 40px 34px;}
+header::after{content:"";position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--teal),var(--teal2));}
+.eyebrow{font-size:10px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:var(--teal);margin-bottom:10px;}
+h1{font-size:clamp(24px,3vw,34px);font-weight:800;color:var(--smoke);line-height:1.1;letter-spacing:-.01em;}
+h1 em{font-style:normal;color:var(--teal);}
+.hdesc{font-size:12.5px;color:rgba(255,255,255,.35);margin-top:8px;font-weight:500;}
+.container{max-width:960px;margin:0 auto;padding:30px 22px 90px;}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);margin-bottom:18px;overflow:hidden;box-shadow:0 2px 14px rgba(13,31,78,.06);}
+.chead{padding:16px 28px;background:var(--smoke);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
+.abar{width:3px;height:34px;border-radius:2px;background:var(--teal);}
+.ctitle{font-size:16px;font-weight:800;color:var(--navy);}
+.csub{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:2px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:22px 28px;}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field label{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);}
+.field input,.field select{width:100%;background:var(--smoke);border:1px solid var(--border);border-radius:var(--r);color:var(--ink);font-family:inherit;font-size:14px;font-weight:500;padding:10px 13px;outline:none;appearance:none;-webkit-appearance:none;}
+.field input:focus,.field select:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(13,31,78,.07);}
+.cbody{padding:6px 28px 20px;}
+.q-row{display:flex;align-items:center;gap:18px;padding:14px 0;border-bottom:1px solid var(--smoke2);flex-wrap:wrap;}
+.q-row:last-child{border-bottom:none;}
+.q-text{flex:1;min-width:180px;font-size:14px;color:var(--ink2);font-weight:600;}
+.sbtns{display:flex;gap:6px;flex-wrap:wrap;}
+.sb{border:1.5px solid var(--border);border-radius:6px;background:var(--smoke);cursor:pointer;font-family:inherit;font-size:12px;font-weight:800;color:var(--muted);padding:9px 14px;transition:all .14s;line-height:1;}
+.sb:hover{border-color:var(--navy);color:var(--navy);}
+.sb.a1{background:var(--c1);border-color:var(--c1);color:#fff;}
+.sb.a2{background:var(--c2);border-color:var(--c2);color:#fff;}
+.sb.a3{background:var(--c3);border-color:var(--c3);color:#fff;}
+.sb.a4{background:var(--c4);border-color:var(--c4);color:#fff;}
+.sb.a5{background:var(--c5);border-color:var(--c5);color:#fff;}
+.sb.nc{padding:9px 12px;}
+.sb.nc.on{background:var(--muted);border-color:var(--muted);color:#fff;}
+.hint{padding:0 28px 18px;font-size:12px;color:var(--muted);}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;}
+.btn{font-family:inherit;font-size:13px;font-weight:800;letter-spacing:.06em;padding:15px 30px;border:1.5px solid transparent;cursor:pointer;border-radius:var(--r);transition:all .15s;}
+.btn-save{background:linear-gradient(135deg,var(--teal),var(--teal2));color:var(--navy);flex:2;min-width:240px;box-shadow:0 6px 22px rgba(13,138,120,.28);}
+.btn-save:hover{transform:translateY(-2px);}
+.btn-save:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+.btn-out{background:#fff;color:var(--ink2);border-color:var(--border);}
+.btn-out:hover{border-color:var(--navy);color:var(--navy);}
+.toast{position:fixed;bottom:26px;right:26px;background:var(--navy);color:var(--smoke);font-size:13px;font-weight:700;padding:13px 20px;border-left:3px solid var(--teal);display:none;z-index:99;box-shadow:0 6px 26px rgba(13,31,78,.22);border-radius:4px;max-width:340px;}
+.toast.show{display:block;}
+.toast.err{border-left-color:var(--c1);}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(13,31,78,.25);border-top-color:var(--navy);border-radius:50%;animation:rot .6s linear infinite;vertical-align:middle;margin-right:7px;}
+@keyframes rot{to{transform:rotate(360deg);}}
+.empty{padding:34px 28px;text-align:center;color:var(--muted);font-size:13px;font-weight:600;}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">KPI 05 · Nivel de Servicio Interno</div>
+  <h1>Captura de <em>Evaluación 360°</em></h1>
+  <div class="hdesc">Un área de soporte califica a un supervisor de Operaciones · escala 1–5 · registro en la plataforma</div>
+</header>
+
+<div class="container">
+  <div class="card">
+    <div class="chead"><div class="abar"></div><div><div class="ctitle">Datos de la evaluación</div><div class="csub">Quién evalúa, a quién y en qué período</div></div></div>
+    <div class="grid">
+      <div class="field"><label>Período</label><input type="month" id="f-per"/></div>
+      <div class="field"><label>Área evaluadora</label><select id="f-area" onchange="renderItems()"><option value="">— Seleccionar área —</option></select></div>
+      <div class="field"><label>Supervisor evaluado</label><select id="f-sup"><option value="">— Seleccionar supervisor —</option></select></div>
+      <div class="field"><label>Evaluador (quién califica)</label><input type="text" id="f-eval" placeholder="Nombre del evaluador"/></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="chead"><div class="abar"></div><div><div class="ctitle" id="items-title">Criterios de evaluación</div><div class="csub">Escala 1 (muy malo) a 5 (excelente) · o "No conoce"</div></div></div>
+    <div class="cbody" id="items-body"><div class="empty">Selecciona un área para ver sus criterios.</div></div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-save" id="btn-save" onclick="guardar()">💾 &nbsp;Guardar evaluación</button>
+    <button class="btn btn-out" onclick="limpiar()">Nueva evaluación</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SB_URL='https://vsploxglutkbeokumunp.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+const H={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'};
+function sbGet(q){return fetch(SB_URL+'/rest/v1/'+q,{headers:H}).then(r=>r.ok?r.json():[]);}
+function sbPost(t,rows){if(!rows.length)return Promise.resolve();return fetch(SB_URL+'/rest/v1/'+t,{method:'POST',headers:{...H,'Prefer':'return=minimal'},body:JSON.stringify(rows)});}
+function sbDel(q){return fetch(SB_URL+'/rest/v1/'+q,{method:'DELETE',headers:{...H,'Prefer':'return=minimal'}});}
+const enc=encodeURIComponent;
+const AREAS={
+  ING:{lbl:'Ingeniería',col:'#3b82f6',imp:3,items:['Seguimiento técnico','Conocimiento técnico','Comunicación oportuna','Aporta mejoras'],qs:['Seguim.','Conoc.','Comun.','Mejoras']},
+  SSOMA:{lbl:'SSOMA',col:'#10b981',imp:5,items:['P1-Riesgos','P2-EPP/Normas','P3-Reportes','P4-Liderazgo','P5-Cumplim.'],qs:['P1','P2','P3','P4','P5']},
+  LOG_C:{lbl:'Log. Compras',col:'#ef4444',imp:5,items:['Solicita anticipado','Planificación','Recepción obra','Devolución al cierre','Internamientos','Atención Almacén'],qs:['Anticip.','Planif.','Recep.','Devoluc.','Interna.','Almacén']},
+  ADM:{lbl:'Administración',col:'#8b5cf6',imp:4,items:['Valorizaciones','Cierre proyectos','Atención ADM','Lineamientos'],qs:['Valoriz.','Cierre','Atención','Linea.']},
+  CAL:{lbl:'Calidad',col:'#f59e0b',imp:4,items:['Resolución problemas','Estándares calidad','Seguimiento/control','Impulsa mejoras'],qs:['Resoluc.','Estánd.','Seguim.','Mejoras']},
+  LOG_S:{lbl:'Log. Servicios',col:'#0891b2',imp:4,items:['Análisis costos','Doc. pagos','Atención general'],qs:['Costos','Doc.pagos','Atención']}
+};
+const SUPS=['Abdon Solorzano','Antero Ávila','Antony Rodriguez','Benjamin Viera','Carmen Priale','Dennis Saravia','Diego Asmat','Dylan Marquina','Erick Jara','Erick Salvador','Fernando Aurazo','Gian Pier Girao','Gustavo Martinez','Irwin Gutierrez','Jean Casas','Jesus Cabrera','Jordy Acosta','Jorge Hernandez','Jorvin Paredes','Juan de Dios Varas','Luis Goycochea','Luis Silva','Patrick Vasquez','Percy Sanchez','Renato Jara','Steve Sarmiento','Victor Flores','Victor Ramirez','Waldir Saldaña','William Vila','Wilson Urbina'];
+let scores={};  // item -> 1..5 | 'nc'
+
+(function init(){
+  const d=new Date();
+  document.getElementById('f-per').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  const aSel=document.getElementById('f-area');
+  Object.keys(AREAS).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=AREAS[k].lbl;aSel.appendChild(o);});
+  const sSel=document.getElementById('f-sup');
+  SUPS.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sSel.appendChild(o);});
+})();
+
+function renderItems(){
+  const k=document.getElementById('f-area').value;
+  scores={};
+  const body=document.getElementById('items-body');
+  const title=document.getElementById('items-title');
+  if(!k){body.innerHTML='<div class="empty">Selecciona un área para ver sus criterios.</div>';title.textContent='Criterios de evaluación';return;}
+  title.textContent='Criterios · '+AREAS[k].lbl;
+  body.innerHTML=AREAS[k].items.map((it,i)=>
+    `<div class="q-row"><div class="q-text">${i+1}. ${it}</div><div class="sbtns" data-item="${encodeURIComponent(it)}">`
+    +[1,2,3,4,5].map(v=>`<button class="sb" data-v="${v}" onclick="setSc(this)">${v}</button>`).join('')
+    +`<button class="sb nc" data-v="nc" onclick="setSc(this)">No conoce</button></div></div>`
+  ).join('');
+}
+function setSc(btn){
+  const g=btn.parentElement;const it=decodeURIComponent(g.dataset.item);const v=btn.dataset.v;
+  g.querySelectorAll('.sb').forEach(b=>b.className='sb'+(b.dataset.v==='nc'?' nc':''));
+  if(v==='nc'){btn.classList.add('nc','on');scores[it]='nc';}
+  else{btn.classList.add('a'+v);scores[it]=parseInt(v);}
+}
+function toast(m,err){const t=document.getElementById('toast');t.textContent=m;t.className='toast show'+(err?' err':'');clearTimeout(window._t);window._t=setTimeout(()=>t.classList.remove('show'),4200);}
+function perISO(){const v=document.getElementById('f-per').value;return v?v+'-01':'';}
+
+async function guardar(){
+  const per=perISO(),area=document.getElementById('f-area').value,sup=document.getElementById('f-sup').value,ev=document.getElementById('f-eval').value.trim();
+  if(!per){toast('Selecciona el período.',true);return;}
+  if(!area){toast('Selecciona el área evaluadora.',true);return;}
+  if(!sup){toast('Selecciona el supervisor evaluado.',true);return;}
+  if(!ev){toast('Ingresa el nombre del evaluador.',true);return;}
+  const items=AREAS[area].items;
+  for(const it of items){if(scores[it]===undefined){toast('Falta calificar: '+it,true);return;}}
+  const btn=document.getElementById('btn-save');btn.disabled=true;btn.innerHTML='<span class="spin"></span>Guardando...';
+  const rows=items.map(it=>({periodo:per,area,supervisor:sup,evaluador:ev,item:it,puntaje:scores[it]==='nc'?null:scores[it],no_conoce:scores[it]==='nc'}));
+  try{
+    // Reemplazar evaluación previa de este evaluador para (período+área+supervisor)
+    await sbDel('eval360_respuestas?periodo=eq.'+per+'&area=eq.'+enc(area)+'&supervisor=eq.'+enc(sup)+'&evaluador=eq.'+enc(ev));
+    await sbPost('eval360_respuestas',rows);
+    await recompute(per);
+    btn.innerHTML='✅ Guardado';
+    toast('Evaluación registrada y agregados recalculados ('+AREAS[area].lbl+' → '+sup+').');
+    setTimeout(()=>{btn.disabled=false;btn.innerHTML='💾 &nbsp;Guardar evaluación';},900);
+  }catch(e){toast('Error al guardar: '+(e.message||e),true);btn.disabled=false;btn.innerHTML='💾 &nbsp;Guardar evaluación';}
+}
+
+// Recalcula los 3 agregados del período a partir de las respuestas crudas
+async function recompute(per){
+  const rows=await sbGet('eval360_respuestas?periodo=eq.'+per+'&select=*');
+  const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+  const r2=v=>Math.round(v*100)/100, r1=v=>Math.round(v*10)/10;
+  const byArea={};rows.forEach(r=>{(byArea[r.area]=byArea[r.area]||[]).push(r);});
+  const A=[],I=[],S=[];
+  Object.keys(byArea).forEach(a=>{
+    const rs=byArea[a],meta=AREAS[a]||{lbl:a,col:'#64748b',imp:3,items:[],qs:[]};
+    const valid=rs.filter(r=>!r.no_conoce&&r.puntaje!=null).map(r=>({...r,puntaje:+r.puntaje}));
+    const nk=rs.filter(r=>r.no_conoce);
+    const supNames=[...new Set(rs.map(r=>r.supervisor))];
+    A.push({periodo:per,area:a,lbl:meta.lbl,col:meta.col,imp:meta.imp,avg:r2(mean(valid.map(r=>r.puntaje))),n:supNames.length,nk_pct:rs.length?r1(nk.length/rs.length*100):0,nk_resp:nk.length,tot_resp:rs.length,val_resp:valid.length,ana:'',crit:''});
+    meta.items.forEach((it,i)=>{const iv=valid.filter(r=>r.item===it);I.push({periodo:per,area:a,item:it,qs:meta.qs[i]||'',puntaje:r2(mean(iv.map(r=>r.puntaje))),orden:i});});
+    supNames.forEach(s=>{const sv=valid.filter(r=>r.supervisor===s);const ne=new Set(rs.filter(r=>r.supervisor===s).map(r=>r.evaluador||'')).size;S.push({periodo:per,area:a,supervisor:s,avg:r2(mean(sv.map(r=>r.puntaje))),ne});});
+  });
+  await sbDel('eval360_areas?periodo=eq.'+per);await sbDel('eval360_items?periodo=eq.'+per);await sbDel('eval360_supervisores?periodo=eq.'+per);
+  await sbPost('eval360_areas',A);await sbPost('eval360_items',I);await sbPost('eval360_supervisores',S);
+}
+
+function limpiar(){
+  document.getElementById('f-sup').value='';document.getElementById('f-eval').value='';
+  document.querySelectorAll('.sb').forEach(b=>b.className='sb'+(b.dataset.v==='nc'?' nc':''));scores={};
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>

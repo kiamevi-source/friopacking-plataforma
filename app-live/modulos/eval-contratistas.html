@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evaluación de Desempeño — Friopacking S.A.C.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:   #0d1f4e;
+  --navy2:  #091540;
+  --teal:   #2dd4bf;
+  --teal2:  #1bbaa7;
+  --smoke:  #f5f4f1;
+  --smoke2: #eceae6;
+  --smoke3: #e0deda;
+  --white:  #ffffff;
+  --border: #d4d1ca;
+  --ink:    #0d1120;
+  --ink2:   #3a3f5c;
+  --muted:  #878ca6;
+  --r:      6px;
+  --c1:#c0392b;--c2:#d4720a;--c3:#c9a800;--c4:#1a7a38;--c5:#0d8a78;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:"Manrope",sans-serif;background:var(--smoke);color:var(--ink);font-size:15px;line-height:1.6;font-weight:400;}
+
+/* HEADER */
+header{background:linear-gradient(135deg,var(--navy2) 0%,var(--navy) 55%,#142878 100%);position:relative;overflow:hidden;}
+header::after{content:"";position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--teal),var(--teal2));}
+.hdr-glow{position:absolute;top:-140px;right:-120px;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(45,212,191,.09) 0%,transparent 65%);pointer-events:none;}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;padding:20px 56px;border-bottom:1px solid rgba(255,255,255,.07);}
+.logo-img{height:30px;filter:brightness(0) invert(1);display:block;}
+.hdr-chip{display:inline-block;background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.28);color:var(--teal);font-size:9.5px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;padding:4px 13px;border-radius:2px;margin-bottom:5px;}
+.hdr-pmo{font-size:12px;color:rgba(255,255,255,.30);letter-spacing:.04em;font-weight:400;}
+.hdr-body{padding:36px 56px 44px;}
+.eyebrow{font-size:10px;font-weight:700;letter-spacing:.30em;text-transform:uppercase;color:var(--teal);margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.eyebrow::after{content:"";width:36px;height:1px;background:rgba(45,212,191,.38);}
+.hdr-body h1{font-family:"Manrope",serif;font-size:clamp(30px,4.5vw,50px);font-weight:700;color:var(--smoke);line-height:1.1;letter-spacing:-.01em;margin-bottom:10px;}
+.hdr-body h1 em{font-style:normal;color:var(--teal);}
+.hdr-desc{font-size:12.5px;color:rgba(255,255,255,.30);font-weight:300;letter-spacing:.05em;}
+
+/* STRIPS */
+.periodo-strip{background:var(--navy2);border-bottom:2px solid var(--smoke3);display:flex;align-items:center;justify-content:space-between;padding:12px 56px;flex-wrap:wrap;gap:10px;}
+.p-item{display:flex;align-items:center;gap:9px;}
+.p-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0;}
+.p-lbl{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.32);}
+.p-val{font-size:12.5px;font-weight:600;color:rgba(255,255,255,.70);letter-spacing:.04em;}
+
+.scale-bar{background:var(--navy2);border-bottom:3px solid var(--smoke3);display:flex;}
+.sc-item{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 8px;border-right:1px solid rgba(255,255,255,.05);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
+.sc-item:last-child{border-right:none;}
+.sc-pip{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.sc-item.lv1{color:rgba(192,57,43,.75);}.sc-item.lv1 .sc-pip{background:#c0392b;}
+.sc-item.lv2{color:rgba(212,114,10,.75);}.sc-item.lv2 .sc-pip{background:#d4720a;}
+.sc-item.lv3{color:rgba(180,148,0,.80);}.sc-item.lv3 .sc-pip{background:#c9a800;}
+.sc-item.lv4{color:rgba(26,122,56,.85);}.sc-item.lv4 .sc-pip{background:#1a7a38;}
+.sc-item.lv5{color:rgba(45,212,191,.85);}.sc-item.lv5 .sc-pip{background:#0d8a78;}
+
+.weights{display:grid;grid-template-columns:repeat(4,1fr);background:var(--navy);}
+.w-cell{padding:20px 28px;border-right:1px solid rgba(255,255,255,.06);}
+.w-cell:last-child{border-right:none;}
+.w-pct{font-family:"Manrope",serif;font-size:32px;font-weight:700;color:var(--teal);line-height:1;}
+.w-name{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.36);margin-top:4px;}
+
+/* CONTAINER */
+.container{max-width:980px;margin:0 auto;padding:34px 22px 80px;}
+
+/* CARD */
+.card{background:var(--white);border:1px solid var(--border);margin-bottom:18px;border-radius:var(--r);overflow:hidden;box-shadow:0 2px 14px rgba(13,31,78,.07);}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:18px 32px;background:var(--smoke);border-bottom:1px solid var(--border);}
+.card-head-l{display:flex;align-items:center;gap:14px;}
+.abar{width:3px;height:38px;border-radius:2px;background:var(--navy);flex-shrink:0;}
+.abar.teal{background:var(--teal);}
+.card-title{font-size:17px;font-weight:700;color:var(--navy);letter-spacing:.01em;}
+.card-sub{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:2px;}
+.avg-box{text-align:right;}
+.avg-lbl{font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);}
+.avg-val{font-family:"Manrope",serif;font-size:28px;font-weight:700;color:var(--navy);line-height:1.1;}
+
+/* FIELDS */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;padding:24px 32px;}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field label{font-size:10px;font-weight:700;letter-spacing:.20em;text-transform:uppercase;color:var(--muted);}
+.sel-wrap{position:relative;}
+.sel-wrap::after{content:"\25BE";position:absolute;right:13px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);font-size:12px;}
+.field input,.sel-wrap select{width:100%;background:var(--smoke);border:1px solid var(--border);border-radius:var(--r);color:var(--ink);font-family:"Manrope",sans-serif;font-size:14.5px;font-weight:400;padding:10px 14px;outline:none;transition:border-color .15s,box-shadow .15s;appearance:none;-webkit-appearance:none;}
+.sel-wrap select{padding-right:32px;}
+.field input:focus,.sel-wrap select:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(13,31,78,.07);}
+.field input[readonly]{color:var(--muted);cursor:default;background:var(--smoke2);}
+
+/* ESPECIALIDAD */
+.espec-section{padding:0 32px 26px;}
+.espec-lbl{font-size:10px;font-weight:700;letter-spacing:.20em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+.espec-grid{display:flex;flex-wrap:wrap;gap:8px;}
+.espec-opt{display:none;}
+.espec-opt+label{display:inline-flex;align-items:center;gap:8px;background:var(--smoke);border:1.5px solid var(--border);border-radius:5px;padding:9px 18px;font-family:"Manrope",sans-serif;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;transition:all .15s;user-select:none;letter-spacing:.02em;}
+.espec-opt+label:hover{border-color:var(--navy);color:var(--navy);background:var(--smoke2);}
+.espec-opt:checked+label{background:var(--navy);color:var(--smoke);border-color:var(--navy);}
+.espec-opt+label .dot{width:7px;height:7px;border-radius:50%;background:var(--border);flex-shrink:0;transition:background .15s;}
+.espec-opt:checked+label .dot{background:var(--teal);}
+
+/* QUESTIONS */
+.card-body{padding:6px 32px 22px;}
+.q-row{display:flex;align-items:center;gap:22px;padding:16px 0;border-bottom:1px solid var(--smoke2);}
+.q-row:last-child{border-bottom:none;padding-bottom:8px;}
+.q-num{font-size:11.5px;font-weight:700;color:var(--muted);width:30px;text-align:right;flex-shrink:0;letter-spacing:.04em;}
+.q-text{flex:1;font-size:14.5px;color:var(--ink2);line-height:1.45;font-weight:400;}
+
+/* SCORE BUTTONS — solo palabras */
+.score-btns{display:flex;gap:6px;flex-shrink:0;}
+.sb{border:1.5px solid var(--border);border-radius:5px;background:var(--smoke);cursor:pointer;transition:all .16s;font-family:"Manrope",sans-serif;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);padding:9px 16px;white-space:nowrap;text-transform:uppercase;line-height:1;}
+.sb:hover{border-color:var(--navy);color:var(--navy);transform:translateY(-2px);box-shadow:0 4px 12px rgba(13,31,78,.12);background:var(--white);}
+.sb.act-1{background:var(--c1);border-color:var(--c1);color:#fff;box-shadow:0 4px 12px rgba(192,57,43,.28);transform:translateY(-1px);}
+.sb.act-2{background:var(--c2);border-color:var(--c2);color:#fff;box-shadow:0 4px 12px rgba(212,114,10,.28);transform:translateY(-1px);}
+.sb.act-3{background:var(--c3);border-color:var(--c3);color:#fff;box-shadow:0 4px 12px rgba(201,168,0,.28);transform:translateY(-1px);}
+.sb.act-4{background:var(--c4);border-color:var(--c4);color:#fff;box-shadow:0 4px 12px rgba(26,122,56,.28);transform:translateY(-1px);}
+.sb.act-5{background:var(--c5);border-color:var(--c5);color:#fff;box-shadow:0 4px 12px rgba(13,138,120,.28);transform:translateY(-1px);}
+.score-input{display:none;}
+
+/* RESULTADO */
+.result-panel{background:var(--navy);border-radius:var(--r);padding:38px 44px;margin-bottom:20px;display:none;position:relative;overflow:hidden;box-shadow:0 14px 52px rgba(13,31,78,.22);}
+.result-panel::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--teal),var(--teal2));}
+.result-panel.visible{display:block;animation:slideIn .32s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.res-eyebrow{font-size:10px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;color:var(--teal);margin-bottom:22px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.08);}
+.res-cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:24px;margin-bottom:30px;}
+.rcat{border-left:2px solid rgba(45,212,191,.25);padding-left:16px;}
+.rcat-lbl{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:5px;}
+.rcat-val{font-family:"Manrope",serif;font-size:34px;font-weight:700;color:var(--smoke);line-height:1;}
+.res-hr{border:none;border-top:1px solid rgba(255,255,255,.08);margin-bottom:28px;}
+.res-final{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:24px;}
+.final-lbl{font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:6px;}
+.final-num{font-family:"Manrope",serif;font-size:84px;font-weight:700;color:var(--smoke);line-height:1;}
+.gauge-track{margin-top:14px;height:3px;background:rgba(255,255,255,.10);border-radius:2px;overflow:hidden;max-width:280px;}
+.gauge-fill{height:100%;border-radius:2px;width:0%;transition:width .6s ease,background .4s ease;}
+.class-tag{border:1.5px solid;padding:14px 34px;font-family:"Manrope",sans-serif;font-size:16px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-align:center;min-width:175px;border-radius:5px;}
+
+/* ACTIONS */
+.actions{display:flex;gap:12px;flex-wrap:wrap;}
+.btn{font-family:"Manrope",sans-serif;font-size:12px;font-weight:700;letter-spacing:.20em;text-transform:uppercase;padding:15px 38px;border:1.5px solid transparent;cursor:pointer;transition:all .15s;background:transparent;border-radius:var(--r);}
+.btn:active{transform:scale(.98);}
+.btn-primary{background:var(--navy);color:var(--smoke);border-color:var(--navy);flex:1;min-width:180px;}
+.btn-primary:hover{background:var(--navy2);}
+.btn-send{background:var(--teal);color:var(--navy);border-color:var(--teal);flex:1;min-width:180px;font-weight:700;}
+.btn-send:hover{background:var(--teal2);border-color:var(--teal2);}
+.btn-outline{background:transparent;color:var(--ink2);border-color:var(--border);}
+.btn-outline:hover{border-color:var(--navy);color:var(--navy);}
+.btn-save{background:linear-gradient(135deg,var(--teal) 0%,var(--teal2) 100%);color:var(--navy);border:none;flex:2;min-width:260px;font-size:14px;font-weight:900;letter-spacing:.18em;padding:18px 48px;box-shadow:0 6px 24px rgba(13,138,120,.30);}
+.btn-save:hover{background:linear-gradient(135deg,var(--teal2) 0%,#0d8a78 100%);box-shadow:0 8px 30px rgba(13,138,120,.40);transform:translateY(-2px);}
+.btn-save:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+.success-bar{display:none;background:#eef9f7;border:1px solid #a3d8d0;border-left:3px solid var(--teal2);padding:14px 22px;font-size:14px;font-weight:600;color:#0d5048;letter-spacing:.02em;margin-bottom:18px;border-radius:var(--r);}
+.success-bar.show{display:block;}
+.toast{position:fixed;bottom:28px;right:28px;background:var(--navy);color:var(--smoke);font-family:"Manrope",sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;padding:13px 22px;border-left:3px solid var(--teal);display:none;z-index:999;box-shadow:0 6px 28px rgba(13,31,78,.24);max-width:340px;border-radius:3px;}
+.toast.show{display:block;animation:fadeUp .22s ease;}
+.toast.err{border-left-color:#c0392b;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(13,31,78,.2);border-top-color:var(--navy);border-radius:50%;animation:rot .6s linear infinite;vertical-align:middle;margin-right:8px;}
+@keyframes rot{to{transform:rotate(360deg);}}
+
+@media(max-width:780px){
+  .hdr-top,.hdr-body,.periodo-strip{padding-left:22px;padding-right:22px;}
+  .weights{grid-template-columns:repeat(2,1fr);}
+  .scale-bar{flex-wrap:wrap;}.sc-item{min-width:50%;}
+  .q-row{flex-direction:column;align-items:flex-start;gap:12px;}
+  .score-btns{flex-wrap:wrap;}
+  .res-final{flex-direction:column;align-items:flex-start;}
+  .final-num{font-size:64px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-glow"></div>
+  <div class="hdr-top">
+    
+    <div>
+      <div class="hdr-chip">Documento Interno Corporativo</div>
+      <div class="hdr-pmo">PMO: Carlos Calderón &nbsp;|&nbsp; Friopacking S.A.C.</div>
+    </div>
+  </div>
+  <div class="hdr-body">
+    <div class="eyebrow">Gestión de Contratistas</div>
+    <h1>Evaluación de <em>Desempeño</em><br>de Contratistas</h1>
+    <p class="hdr-desc">Evaluación ponderada por categorías &nbsp;·&nbsp; Registro automático en la plataforma</p>
+  </div>
+</header>
+
+<div class="periodo-strip">
+  <div class="p-item"><div class="p-dot"></div><span class="p-lbl">Período&nbsp;</span><span class="p-val">Abril 2026</span></div>
+  <div class="p-item"><div class="p-dot"></div><span class="p-lbl">Puntaje máximo&nbsp;</span><span class="p-val">100 puntos</span></div>
+</div>
+
+<div class="scale-bar">
+  <div class="sc-item lv1"><div class="sc-pip"></div>Muy malo</div>
+  <div class="sc-item lv2"><div class="sc-pip"></div>Malo</div>
+  <div class="sc-item lv3"><div class="sc-pip"></div>Regular</div>
+  <div class="sc-item lv4"><div class="sc-pip"></div>Bueno</div>
+  <div class="sc-item lv5"><div class="sc-pip"></div>Excelente</div>
+</div>
+
+<div class="weights">
+  <div class="w-cell"><div class="w-pct">30%</div><div class="w-name">Seguridad</div></div>
+  <div class="w-cell"><div class="w-pct">25%</div><div class="w-name">Cumplimiento</div></div>
+  <div class="w-cell"><div class="w-pct">25%</div><div class="w-name">Calidad</div></div>
+  <div class="w-cell"><div class="w-pct">20%</div><div class="w-name">Gestión</div></div>
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-l"><div class="abar teal"></div><div><div class="card-title">Información General</div><div class="card-sub">Datos del proceso de evaluación</div></div></div>
+    </div>
+    <div class="info-grid">
+      <div class="field">
+        <label>Empresa Contratista</label>
+        <div class="sel-wrap">
+          <select id="contratista" onchange="checkCustom(this)">
+            <option value="">-- Seleccionar empresa --</option>
+            <option>Servicios Industriales MMJ</option><option>Servic León</option><option>Elécfrico</option><option>Metal Fresh</option><option>Climatec</option><option>CCM</option><option>Liao Termic</option><option>Bermac</option><option>R&amp;D</option><option>ELM Electric</option><option>Power Cold</option><option>H&amp;E Energy Solution</option><option>Estructuras Metálicas Uber</option><option>Conciaru</option><option>Prominerc</option><option>J &amp; L</option><option>Decas</option><option>Galtop</option><option>Diagon</option><option>G &amp; S</option><option>Servicios Generales Maria Luisa</option><option>Ylamin</option><option>J &amp; B</option><option>Friotecnic Industrial</option><option>MIG</option><option>V&amp;G</option><option>P Y A</option><option>Store Cold</option><option>SPS Andina</option><option>Sánchez Farfán</option><option>Firmisa</option><option>SAM</option><option>Impromels</option><option>Ariquim</option><option>Top Metal</option><option>Servicios de Montajes Industriales</option><option>YVR</option><option>Albuilding</option><option>Corporación Castro</option><option>Colctecnic</option><option>Multiservicios Cabezas</option><option>Eléctricold</option><option>Corporación J.R.V.E</option>
+            <option value="__otro__">Otro (ingresar manualmente)</option>
+          </select>
+        </div>
+        <input type="text" id="contratista_custom" placeholder="Razón social..." style="display:none;margin-top:8px;"/>
+      </div>
+      <div class="field"><label>Supervisor Evaluador</label><input type="text" id="supervisor" placeholder="Nombres y apellidos completos"/></div>
+      <div class="field"><label>Fecha de Evaluación</label><input type="text" id="fecha" readonly/></div>
+      <div class="field"><label>Período evaluado</label><input type="month" id="f-periodo" onchange="updatePeriodoLabel()"/></div>
+    </div>
+    <div class="espec-section">
+      <div class="espec-lbl">Especialidad del Servicio</div>
+      <div class="espec-grid">
+        <input class="espec-opt" type="radio" name="esp" id="e1" value="Inst. Paneles"><label for="e1"><span class="dot"></span>Inst. Paneles</label>
+        <input class="espec-opt" type="radio" name="esp" id="e2" value="Inst. Mecánica de Cobre"><label for="e2"><span class="dot"></span>Inst. Mecánica de Cobre</label>
+        <input class="espec-opt" type="radio" name="esp" id="e3" value="Inst. Mecánica Tubería de Fe"><label for="e3"><span class="dot"></span>Inst. Mecánica Tubería de Fe</label>
+        <input class="espec-opt" type="radio" name="esp" id="e4" value="Inst. Tubería de Glicol"><label for="e4"><span class="dot"></span>Inst. Tubería de Glicol</label>
+        <input class="espec-opt" type="radio" name="esp" id="e5" value="Inst. Eléctrica"><label for="e5"><span class="dot"></span>Inst. Eléctrica</label>
+        <input class="espec-opt" type="radio" name="esp" id="e6" value="Inst. Aislamiento"><label for="e6"><span class="dot"></span>Inst. Aislamiento</label>
+        <input class="espec-opt" type="radio" name="esp" id="e7" value="OOCC"><label for="e7"><span class="dot"></span>OOCC</label>
+        <input class="espec-opt" type="radio" name="esp" id="e8" value="EEMM"><label for="e8"><span class="dot"></span>EEMM</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-head-l"><div class="abar"></div><div><div class="card-title">I. Seguridad</div><div class="card-sub">Ponderación: 30% del puntaje final</div></div></div><div class="avg-box"><div class="avg-lbl">Promedio</div><div class="avg-val" id="avg_seg">—</div></div></div>
+    <div class="card-body"><div class="q-row">
+        <div class="q-num">1.1</div>
+        <div class="q-text">Aplicación de controles SSOMA en la tarea</div>
+        <div class="score-btns" data-q="q1" data-cat="seg"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q1" type="hidden"/>
+      </div><div class="q-row">
+        <div class="q-num">1.2</div>
+        <div class="q-text">Uso correcto de EPPs (Equipos de Protección Personal)</div>
+        <div class="score-btns" data-q="q2" data-cat="seg"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q2" type="hidden"/>
+      </div><div class="q-row">
+        <div class="q-num">1.3</div>
+        <div class="q-text">Presencia del supervisor contratista en campo</div>
+        <div class="score-btns" data-q="q3" data-cat="seg"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q3" type="hidden"/>
+      </div><div class="q-row">
+        <div class="q-num">1.4</div>
+        <div class="q-text">Orden y limpieza en el área de trabajo</div>
+        <div class="score-btns" data-q="q4" data-cat="seg"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q4" type="hidden"/>
+      </div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-head-l"><div class="abar"></div><div><div class="card-title">II. Cumplimiento de Contrata</div><div class="card-sub">Ponderación: 25% del puntaje final</div></div></div><div class="avg-box"><div class="avg-lbl">Promedio</div><div class="avg-val" id="avg_cum">—</div></div></div>
+    <div class="card-body"><div class="q-row">
+        <div class="q-num">2.1</div>
+        <div class="q-text">La cantidad de personal asignado es acorde a las necesidades del servicio</div>
+        <div class="score-btns" data-q="q5" data-cat="cum"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q5" type="hidden"/>
+      </div><div class="q-row">
+        <div class="q-num">2.2</div>
+        <div class="q-text">El personal técnico cuenta con la especialización y perfil requerido</div>
+        <div class="score-btns" data-q="q6" data-cat="cum"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q6" type="hidden"/>
+      </div><div class="q-row">
+        <div class="q-num">2.3</div>
+        <div class="q-text">Cumple con el horario de trabajo establecido y acordado</div>
+        <div class="score-btns" data-q="q7" data-cat="cum"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q7" type="hidden"/>
+      </div><div class="q-row">
+        <div class="q-num">2.4</div>
+        <div class="q-text">Dispone oportunamente de los materiales necesarios para la ejecución</div>
+        <div class="score-btns" data-q="q8" data-cat="cum"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q8" type="hidden"/>
+      </div><div class="q-row">
+        <div class="q-num">2.5</div>
+        <div class="q-text">Cuenta con las herramientas y equipos adecuados para el servicio</div>
+        <div class="score-btns" data-q="q9" data-cat="cum"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q9" type="hidden"/>
+      </div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-head-l"><div class="abar"></div><div><div class="card-title">III. Calidad del Servicio</div><div class="card-sub">Ponderación: 25% del puntaje final</div></div></div><div class="avg-box"><div class="avg-lbl">Promedio</div><div class="avg-val" id="avg_cal">—</div></div></div>
+    <div class="card-body"><div class="q-row">
+        <div class="q-num">3.1</div>
+        <div class="q-text">Ejecuta las actividades dentro del plazo establecido</div>
+        <div class="score-btns" data-q="q10" data-cat="cal"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q10" type="hidden"/>
+      </div><div class="q-row">
+        <div class="q-num">3.2</div>
+        <div class="q-text">La calidad técnica del trabajo ejecutado cumple con los estándares requeridos</div>
+        <div class="score-btns" data-q="q11" data-cat="cal"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q11" type="hidden"/>
+      </div><div class="q-row">
+        <div class="q-num">3.3</div>
+        <div class="q-text">Corrige de manera oportuna las observaciones y retrabajos identificados</div>
+        <div class="score-btns" data-q="q12" data-cat="cal"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q12" type="hidden"/>
+      </div><div class="q-row">
+        <div class="q-num">3.4</div>
+        <div class="q-text">Atiende adecuadamente las quejas y sugerencias formuladas por la empresa</div>
+        <div class="score-btns" data-q="q13" data-cat="cal"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q13" type="hidden"/>
+      </div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-head-l"><div class="abar"></div><div><div class="card-title">IV. Gestión</div><div class="card-sub">Ponderación: 20% del puntaje final</div></div></div><div class="avg-box"><div class="avg-lbl">Promedio</div><div class="avg-val" id="avg_ges">—</div></div></div>
+    <div class="card-body"><div class="q-row">
+        <div class="q-num">4.1</div>
+        <div class="q-text">El representante participa en las reuniones de coordinación convocadas por la empresa</div>
+        <div class="score-btns" data-q="q14" data-cat="ges"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q14" type="hidden"/>
+      </div><div class="q-row">
+        <div class="q-num">4.2</div>
+        <div class="q-text">Demuestra involucramiento directo en la solución de problemas relevantes del servicio</div>
+        <div class="score-btns" data-q="q15" data-cat="ges"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q15" type="hidden"/>
+      </div><div class="q-row">
+        <div class="q-num">4.3</div>
+        <div class="q-text">Asume responsabilidad directa frente a observaciones del servicio</div>
+        <div class="score-btns" data-q="q16" data-cat="ges"><button class="sb" data-v="1" onclick="setScore(this)">Muy malo</button><button class="sb" data-v="2" onclick="setScore(this)">Malo</button><button class="sb" data-v="3" onclick="setScore(this)">Regular</button><button class="sb" data-v="4" onclick="setScore(this)">Bueno</button><button class="sb" data-v="5" onclick="setScore(this)">Excelente</button></div>
+        <input class="score-input" id="q16" type="hidden"/>
+      </div></div>
+  </div>
+
+  <div class="result-panel" id="resultPanel">
+    <div class="res-eyebrow">Resultado de Evaluación — Abril 2026</div>
+    <div class="res-cats">
+      <div class="rcat"><div class="rcat-lbl">Seguridad 30%</div><div class="rcat-val" id="r_seg">—</div></div>
+      <div class="rcat"><div class="rcat-lbl">Cumplimiento 25%</div><div class="rcat-val" id="r_cum">—</div></div>
+      <div class="rcat"><div class="rcat-lbl">Calidad 25%</div><div class="rcat-val" id="r_cal">—</div></div>
+      <div class="rcat"><div class="rcat-lbl">Gestión 20%</div><div class="rcat-val" id="r_ges">—</div></div>
+    </div>
+    <hr class="res-hr">
+    <div class="res-final">
+      <div><div class="final-lbl">Puntaje Final Ponderado</div><div class="final-num" id="finalScore">—</div><div class="gauge-track"><div class="gauge-fill" id="gaugeFill"></div></div></div>
+      <div class="class-tag" id="classTag">—</div>
+    </div>
+  </div>
+
+  <div class="success-bar" id="successBar">Evaluación registrada correctamente en la plataforma.</div>
+
+  <div class="actions">
+    <button class="btn btn-save" id="btnGuardar" onclick="guardarYEnviar()">💾 &nbsp;Guardar Evaluación</button>
+    <button class="btn btn-outline" onclick="limpiar()">Nueva Evaluación</button>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── Capa de datos: Supabase (instancia PMO) · tabla evaluacion_contratistas ── */
+const SB_URL='https://vsploxglutkbeokumunp.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+const SB_HDR={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+const SCORES={1:20,2:40,3:60,4:80,5:100};
+/* q1..q16 → columnas reales de la tabla, en el MISMO orden del formato */
+const COLS=['ssoma_controles','uso_epps','presencia_supervisor_contratista','orden_limpieza',
+            'personal_acorde','personal_especializado','cumple_horario','dispone_materiales','herramientas_adecuadas',
+            'actividades_plazo','calidad_tecnica','corrige_observaciones','atiende_quejas',
+            'participacion_reuniones','involucramiento','responsabilidad'];
+/* periodo = mes elegido en el selector (la tabla usa tipo date → día 1) */
+function periodoISO(){const v=document.getElementById('f-periodo').value;if(v)return v+'-01';const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';}
+function periodoLbl(){const v=document.getElementById('f-periodo').value;const d=v?new Date(v+'-01T00:00:00'):new Date();const l=d.toLocaleDateString('es-PE',{month:'long',year:'numeric'});return l.charAt(0).toUpperCase()+l.slice(1);}
+function updatePeriodoLabel(){const cap=periodoLbl();const pv=document.querySelector('.periodo-strip .p-val');if(pv)pv.textContent=cap;const re=document.querySelector('.res-eyebrow');if(re)re.textContent='Resultado de Evaluación — '+cap;}
+(function(){
+  const d=new Date();
+  document.getElementById('fecha').value=d.toLocaleDateString('es-PE',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('f-periodo').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  updatePeriodoLabel();
+})();
+function checkCustom(s){const c=document.getElementById('contratista_custom');c.style.display=s.value==='__otro__'?'block':'none';if(s.value!=='__otro__')c.value='';}
+function getContratista(){const s=document.getElementById('contratista');return s.value==='__otro__'?document.getElementById('contratista_custom').value.trim():s.value;}
+function setScore(btn){const g=btn.closest('.score-btns');const v=parseInt(btn.dataset.v);g.querySelectorAll('.sb').forEach(b=>b.className='sb');btn.classList.add('act-'+v);document.getElementById(g.dataset.q).value=SCORES[v];updatePreviews();}
+function getVals(cat){return[...document.querySelectorAll(`.score-btns[data-cat="${cat}"]`)].map(g=>{const v=document.getElementById(g.dataset.q).value;return v?parseFloat(v):NaN;}).filter(v=>!isNaN(v));}
+function getAvg(cat){const v=getVals(cat);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;}
+function updatePreviews(){['seg','cum','cal','ges'].forEach(c=>{const a=getAvg(c);document.getElementById('avg_'+c).textContent=a!==null?a.toFixed(1):'—';});}
+function getEsp(){const r=document.querySelector('input[name="esp"]:checked');return r?r.value:'';}
+function validar(){
+  if(!getContratista()){toast('Seleccione o ingrese el contratista.',true);return false;}
+  if(!document.getElementById('supervisor').value.trim()){toast('Ingrese el nombre del supervisor.',true);return false;}
+  if(!getEsp()){toast('Seleccione la especialidad del servicio.',true);return false;}
+  for(let i=1;i<=16;i++){if(!document.getElementById('q'+i).value){toast('Complete todas las calificaciones.',true);return false;}}
+  return true;
+}
+function clasificar(p){if(p<60)return{txt:'Deficiente',c:'#c0392b'};if(p<75)return{txt:'Regular',c:'#b8900a'};if(p<90)return{txt:'Bueno',c:'#1a7a38'};return{txt:'Excelente',c:'#0d8a78'};}
+async function guardarYEnviar(){
+  if(!validar())return;
+  // Calcular puntajes (idéntico al formato original)
+  const s=getAvg('seg'),c=getAvg('cum'),q=getAvg('cal'),g=getAvg('ges');
+  const fin=s*.30+c*.25+q*.25+g*.20;const fr=Math.round(fin*10)/10;const cl=clasificar(fr);
+  document.getElementById('r_seg').textContent=s.toFixed(1);document.getElementById('r_cum').textContent=c.toFixed(1);
+  document.getElementById('r_cal').textContent=q.toFixed(1);document.getElementById('r_ges').textContent=g.toFixed(1);
+  document.getElementById('finalScore').textContent=fr.toFixed(1);
+  const gf=document.getElementById('gaugeFill');gf.style.width=fr+'%';gf.style.background=cl.c;
+  const ct=document.getElementById('classTag');ct.textContent=cl.txt;ct.style.borderColor=cl.c;ct.style.color=cl.c;
+  document.getElementById('resultPanel').classList.add('visible');
+  document.getElementById('resultPanel').scrollIntoView({behavior:'smooth',block:'start'});
+  // Guardar en Supabase (tabla evaluacion_contratistas)
+  const btn=document.getElementById('btnGuardar');btn.disabled=true;btn.innerHTML='<span class="spin"></span>&nbsp;Guardando...';
+  const row={periodo:periodoISO(),supervisor:document.getElementById('supervisor').value.trim(),contratista:getContratista(),especialidad:getEsp(),
+             prom_seguridad:+s.toFixed(2),prom_cumplimiento:+c.toFixed(2),prom_calidad:+q.toFixed(2),prom_gestion:+g.toFixed(2),
+             puntaje_final:fr,clasificacion:cl.txt};
+  COLS.forEach((col,i)=>{row[col]=parseFloat(document.getElementById('q'+(i+1)).value);});
+  const enc=encodeURIComponent;
+  try{
+    // Anti-duplicado: misma (contratista + periodo + supervisor + especialidad) → actualiza en vez de duplicar
+    const filtro='?contratista=eq.'+enc(row.contratista)+'&periodo=eq.'+row.periodo+'&supervisor=eq.'+enc(row.supervisor)+'&especialidad=eq.'+enc(row.especialidad)+'&select=id';
+    const prev=await fetch(SB_URL+'/rest/v1/evaluacion_contratistas'+filtro,{headers:SB_HDR}).then(r=>r.ok?r.json():[]);
+    let resp;
+    if(Array.isArray(prev)&&prev.length){
+      resp=await fetch(SB_URL+'/rest/v1/evaluacion_contratistas?id=eq.'+prev[0].id,{method:'PATCH',headers:{...SB_HDR,'Prefer':'return=minimal'},body:JSON.stringify(row)});
+    }else{
+      resp=await fetch(SB_URL+'/rest/v1/evaluacion_contratistas',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},body:JSON.stringify(row)});
+    }
+    if(!resp.ok)throw new Error('HTTP '+resp.status+' '+(await resp.text().catch(()=>'')));
+    document.getElementById('successBar').classList.add('show');
+    btn.innerHTML='✅ &nbsp;Evaluación Guardada';
+    toast((Array.isArray(prev)&&prev.length)?'Evaluación actualizada correctamente.':'Evaluación guardada correctamente.');
+  }catch(err){toast('Error al guardar: '+(err.message||err),true);btn.disabled=false;btn.innerHTML='💾 &nbsp;Guardar Evaluación';}
+}
+function limpiar(){
+  document.getElementById('contratista').value='';document.getElementById('contratista_custom').value='';document.getElementById('contratista_custom').style.display='none';
+  document.getElementById('supervisor').value='';document.querySelectorAll('input[name="esp"]').forEach(r=>r.checked=false);
+  document.querySelectorAll('.sb').forEach(b=>b.className='sb');for(let i=1;i<=16;i++)document.getElementById('q'+i).value='';
+  ['seg','cum','cal','ges'].forEach(c=>document.getElementById('avg_'+c).textContent='—');
+  document.getElementById('resultPanel').classList.remove('visible');
+  document.getElementById('successBar').classList.remove('show');
+  const btn=document.getElementById('btnGuardar');btn.disabled=false;btn.innerHTML='💾 &nbsp;Guardar Evaluación';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function toast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');clearTimeout(window._tt);window._tt=setTimeout(()=>t.classList.remove('show'),3800);}
+</script>
+</body>
+</html>
