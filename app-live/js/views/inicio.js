@@ -12,7 +12,7 @@ window.loadDashboard = async function () {
     // Projects activos
     const { data: projs, error: e1 } = await window.sb
       .from('proyectos')
-      .select('id,nombre,estado,fecha_fin_contractual,valorizacion_pct')
+      .select('id,nombre,estado,fecha_fin_contractual,fecha_ini_contractual,valorizacion_pct,supervisor')
       .eq('activo', true);
     if (e1) throw e1;
     if (!projs) throw new Error('No data');
@@ -60,6 +60,7 @@ window.loadDashboard = async function () {
       p._valp = cerrado ? 100 : (lastOk ? last.av : (parseFloat(p.valorizacion_pct) || 0));
       p._lastFecha = last ? last.fecha : '';
       p._repRef = p._lastFecha === refDateStr; // ¿reportó en la fecha de referencia?
+      p._spi = (last && last.spi != null) ? last.spi : null; // SPI del último reporte
     });
 
     // KPI 1 — Sin reporte (solo proyectos en progreso). Réplica de "sin reporte hoy"
@@ -149,6 +150,19 @@ window.loadDashboard = async function () {
 
     // ── Proyectos críticos ──
     renderCriticos(projs, enProgreso, today);
+
+    // ── Requiere tu acción (bandeja de gestión PMO) ──
+    // Kick-offs: "Por Iniciar" cuyo inicio contractual es en ≤14 días.
+    const kickoffList = projs.filter((p) => {
+      if (!/inici/i.test(p.estado || '')) return false;
+      const d = legacyDaysTo(p.fecha_ini_contractual);
+      return d != null && d >= 0 && d <= 14;
+    }).sort((a, b) => legacyDaysTo(a.fecha_ini_contractual) - legacyDaysTo(b.fecha_ini_contractual));
+    // Atraso real de cronograma: SPI del último reporte < 0.85 (proyectos en progreso).
+    const spiCritList = enProgreso
+      .filter((p) => p._spi != null && p._spi < 0.85)
+      .sort((a, b) => (a._spi || 0) - (b._spi || 0));
+    renderBandeja({ sinReporteList, cfVencidasList, valorizacionList, kickoffList, spiCritList });
 
     // ── Detalle clicable de cada KPI (ventana flotante) ──
     buildKpiDetails({
@@ -286,6 +300,64 @@ function renderCriticos(projs, enProgreso, today) {
         </div>
       </div>
       <i data-lucide="chevron-right" class="crit-arrow"></i>
+    </a>`).join('');
+  if (window.lucide) lucide.createIcons();
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   REQUIERE TU ACCIÓN — bandeja de gestión del PMO
+   Convierte los pendientes en tarjetas accionables: cada una con su
+   siguiente acción y el dueño (supervisor) a quién contactar.
+   ════════════════════════════════════════════════════════════════════ */
+function renderBandeja(ctx) {
+  const el = document.getElementById('bandeja-list');
+  if (!el) return;
+  const owner = (p) => (p.supervisor && String(p.supervisor).trim()) ? String(p.supervisor).trim() : null;
+  const items = [];
+  (ctx.cfVencidasList || []).forEach((p) => items.push({
+    sev: 2, tag: 'Cierre vencido', ic: 'calendar-x-2', name: p.nombre,
+    act: 'Reprogramar el cierre o cerrar la obra', owner: owner(p), href: '#valorizacion',
+  }));
+  const cfSet = new Set((ctx.cfVencidasList || []).map((p) => p.id));
+  (ctx.spiCritList || []).forEach((p) => {
+    if (cfSet.has(p.id)) return;
+    items.push({
+      sev: 2, tag: 'Atraso · SPI ' + (p._spi != null ? p._spi.toFixed(2) : '—'), ic: 'trending-down',
+      name: p.nombre, act: 'Revisar el retraso de cronograma', owner: owner(p), href: '#proyectos',
+    });
+  });
+  (ctx.sinReporteList || []).forEach((p) => items.push({
+    sev: 1, tag: 'Sin reporte', ic: 'clipboard-x', name: p.nombre,
+    act: 'Pedir el reporte de hoy', owner: owner(p), href: '#reportes',
+  }));
+  (ctx.valorizacionList || []).forEach((p) => items.push({
+    sev: 1, tag: 'Valorización', ic: 'banknote', name: p.nombre,
+    act: 'Procesar la valorización', owner: owner(p), href: '#valorizacion',
+  }));
+  (ctx.kickoffList || []).forEach((p) => items.push({
+    sev: 0, tag: 'Kick-off', ic: 'rocket', name: p.nombre,
+    act: 'Preparar el arranque · checklist de preparación', owner: owner(p), href: '#proyectos',
+  }));
+  items.sort((a, b) => b.sev - a.sev);
+
+  const count = document.getElementById('bandeja-count');
+  if (count) count.textContent = items.length ? (items.length + ' pendiente' + (items.length > 1 ? 's' : '')) : '';
+
+  if (!items.length) {
+    el.innerHTML = '<div class="home-empty"><i data-lucide="party-popper"></i><span>Sin pendientes de acción · todo al día</span></div>';
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+  const cls = (s) => s >= 2 ? 'crit' : s >= 1 ? 'warn' : 'info';
+  el.innerHTML = items.slice(0, 12).map((it) => `
+    <a href="${it.href}" class="bandeja-item">
+      <span class="bandeja-ic ${cls(it.sev)}"><i data-lucide="${it.ic}"></i></span>
+      <div class="bandeja-b">
+        <div class="bandeja-name">${window.escapeHtml(it.name || '—')}</div>
+        <div class="bandeja-act">→ ${window.escapeHtml(it.act)}</div>
+        ${it.owner ? `<div class="bandeja-owner"><i data-lucide="user"></i>${window.escapeHtml(it.owner)}</div>` : ''}
+      </div>
+      <span class="bandeja-tag ${cls(it.sev)}">${window.escapeHtml(it.tag)}</span>
     </a>`).join('');
   if (window.lucide) lucide.createIcons();
 }

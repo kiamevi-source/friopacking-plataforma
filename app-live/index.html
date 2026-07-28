@@ -437,6 +437,38 @@
       </div>
     </section>
 
+    <!-- ░░░░░░ REQUIERE TU ACCIÓN — bandeja de gestión PMO ░░░░░░ -->
+    <style>
+      .bandeja-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
+      .bandeja-item{display:flex;align-items:flex-start;gap:11px;padding:13px 14px;border:1px solid rgba(15,23,42,.08);border-radius:12px;background:#fff;text-decoration:none;transition:.15s;box-shadow:0 1px 2px rgba(15,30,53,.04)}
+      .bandeja-item:hover{border-color:rgba(46,125,209,.28);box-shadow:0 6px 18px -8px rgba(15,30,53,.18);transform:translateY(-1px)}
+      .bandeja-ic{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+      .bandeja-ic .ic{width:17px;height:17px;stroke-width:2}
+      .bandeja-ic.crit{background:rgba(220,38,38,.10);color:#dc2626}
+      .bandeja-ic.warn{background:rgba(201,136,0,.12);color:#b8830a}
+      .bandeja-ic.info{background:rgba(46,125,209,.10);color:#2266b0}
+      .bandeja-b{flex:1;min-width:0}
+      .bandeja-name{font-size:13.5px;font-weight:700;color:#0f1e35;line-height:1.25}
+      .bandeja-act{font-size:12px;font-weight:600;color:#334155;margin-top:2px}
+      .bandeja-owner{font-size:11px;color:#64748b;margin-top:3px;display:flex;align-items:center;gap:5px}
+      .bandeja-owner .ic{width:12px;height:12px}
+      .bandeja-tag{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:5px;white-space:nowrap;align-self:flex-start}
+      .bandeja-tag.crit{background:rgba(220,38,38,.10);color:#b91c1c}
+      .bandeja-tag.warn{background:rgba(201,136,0,.12);color:#a9761b}
+      .bandeja-tag.info{background:rgba(46,125,209,.10);color:#2266b0}
+      #bandeja-panel .panel-title .ic{color:#c98800}
+    </style>
+    <section class="panel fade-up delay-2" id="bandeja-panel" style="margin-bottom:18px">
+      <div class="panel-header">
+        <div class="panel-title"><i data-lucide="zap" class="ic"></i><span>Requiere tu acción</span></div>
+        <span class="panel-link" id="bandeja-count" style="cursor:default"></span>
+      </div>
+      <p class="panel-desc">Tus pendientes de gestión de hoy — cada uno con su siguiente acción y a quién contactar.</p>
+      <div id="bandeja-list" class="bandeja-list">
+        <div class="home-empty"><i data-lucide="loader"></i><span>Cargando pendientes…</span></div>
+      </div>
+    </section>
+
     <!-- ░░░░░░ GRID PRINCIPAL ░░░░░░ -->
     <div class="home-grid fade-up delay-3">
 
@@ -710,7 +742,7 @@
 <script src="js/core.js"></script>
 <script src="js/router.js"></script>
 <script src="js/nuevo-proyecto.js"></script>
-<script src="js/views/inicio.js"></script>
+<script src="js/views/inicio.js?v=20260728b"></script>
 <script src="js/views/servicios.js?v=20260607a"></script>
 <script src="js/globe.js?v=20260607d"></script>
 <script src="js/globe-exec.js?v=20260607c"></script>
