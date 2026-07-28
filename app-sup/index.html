@@ -11123,10 +11123,22 @@ async function cargarReporteDeHoy() {
   const cod = currentProyecto?.cod || currentProyecto?.nombre;
   const fecha = document.getElementById('rd-fecha')?.value || new Date().toISOString().slice(0,10);
   if (!cod) return false;
+  let serverRow = null, fetchFailed = false;
   try {
     const rows = await sbFetch(`/rest/v1/reportes?cod_proyecto=eq.${encodeURIComponent(cod)}&fecha_reporte=eq.${fecha}&order=id.desc&limit=1`);
-    if (rows && rows.length) { await hidratarReporte(rows[0], cod); return true; }
-  } catch(e) {}
+    if (rows && rows.length) serverRow = rows[0];
+  } catch(e) { fetchFailed = true; }
+  // Borrador local (modo offline): prevalece si el servidor no responde, si aún está pendiente de
+  // subir, o si es más nuevo → así un refresh (con o sin señal) nunca pierde el avance escrito.
+  const local = _getDraftLocal(cod, fecha);
+  const localNewer = (local && serverRow && serverRow.updated_at) ? (local.ts > Date.parse(serverRow.updated_at)) : !!local;
+  if (local && (fetchFailed || local.pending || !serverRow || localNewer)) {
+    await hidratarReporte(local.payload, cod);
+    if (local.pending) setSyncStatus('error', navigator.onLine ? 'Pendiente de subir' : 'Sin señal · guardado aquí');
+    return true;
+  }
+  if (serverRow) { await hidratarReporte(serverRow, cod); return true; }
+  if (local) { await hidratarReporte(local.payload, cod); return true; }
   return false;
 }
 
@@ -11149,54 +11161,66 @@ async function guardarReporte(esDraft = false, silent = false) {
   const fecha = document.getElementById('rd-fecha').value;
   if (!fecha) { if(!silent) showToast('Selecciona la fecha del reporte'); return; }
 
-  const plan  = parseFloat(document.getElementById('rd-plan').value)||0;
-  const real  = +rdEspGlobalAvance().toFixed(1);   // ejecutado = promedio ponderado por peso
-  const realCt = parseFloat(document.getElementById('rd-real-contrata')?.value)||0;
-  const spi   = plan > 0 ? (real/plan).toFixed(2) : '0';
-
-  // Avance + personal por especialidad (bloque nuevo)
-  const avanceEsp = rdEsp.map(r=>({ esp:r.esp, label:r.label, contrata:(r.contrata||'').trim(), peso:parseFloat(r.peso)||0, personal:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
-  const especialidades = {}; let personalTotal = 0;
-  rdEsp.forEach(r=>{ especialidades[r.esp]=parseInt(r.personal)||0; personalTotal+=parseInt(r.personal)||0; });
-
-  // Riesgos
-  const riesgosHoy = riesgosTemp
-    .map(r => ({ nivel: r.nivel || 'MEDIO', descripcion: (r.descripcion || '').trim() }))
-    .filter(r => r.descripcion);
-
-  // Checklist
-  const checklist = RD_CHECKLIST.map((item,i)=>({ item, ok: !!document.getElementById('rd-chk-'+i)?.checked }));
-  const checklistOk = checklist.filter(c=>c.ok).length;
-
-  // Contratas: derivadas del bloque de especialidades (personal va dentro de la contrata)
-  const contratas = rdEsp.filter(r=>r.contrata && r.contrata.trim())
-    .map(r=>({ nombre:r.contrata.trim(), especialidad:r.label, obreros:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
-
-  // ── Firma real: un ENVÍO final (no borrador ni autoguardado) exige firma dibujada.
-  //    Antes se marcaba "Firmado" siempre, aunque el recuadro estuviera vacío. ──
+  // ── Firma real: un ENVÍO final (no borrador ni autoguardado) exige firma dibujada. ──
   if (!esDraft && !silent && !_firmaDirty) {
     showToast('Falta la firma para enviar el reporte. Firma en el recuadro y vuelve a enviar.');
     const cv = document.getElementById('rd-firma-canvas'); if (cv) cv.scrollIntoView({ behavior:'smooth', block:'center' });
     return;
   }
   setSyncStatus('syncing','Guardando…');
-  // Firma
   let firmaUrl = null;
   try { firmaUrl = await subirFirma(); } catch(e){}
-  // Se dibujó la firma pero la subida falló → no guardar como "firmado" en silencio (antes se perdía).
   if (!esDraft && !silent && _firmaDirty && !firmaUrl) {
     showToast('No se pudo subir la firma (revisa tu conexión). El reporte NO se envió; intenta de nuevo.');
     setSyncStatus('error','Firma no subió');
     return;
   }
+  window._lastFirmaUrl = firmaUrl;
+  const payload = _collectReportePayload(esDraft, firmaUrl);
+  _saveDraftLocal(payload, true);   // espejo local ANTES de subir → si se refresca o no hay señal, no se pierde
 
+  try {
+    await sbFetch('/rest/v1/reportes?on_conflict=cod_proyecto,fecha_reporte', {
+      method:'POST',
+      headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body: JSON.stringify(payload)
+    });
+    await persistirHitosYRestricciones(esDraft);
+    _saveDraftLocal(payload, false);  // confirmado en el servidor
+    if(!silent) showToast(esDraft ? 'Borrador guardado ✓' : 'Reporte guardado ✓');
+    setSyncStatus('ok', silent ? 'Autoguardado ✓' : 'Guardado ✓');
+    if(!silent) await cargarDashboard();
+  } catch(e) {
+    _saveDraftLocal(payload, true);   // queda PENDIENTE en este equipo; se subirá al reconectar
+    const off = !navigator.onLine;
+    setSyncStatus('error', off ? 'Sin señal · guardado aquí' : 'Error al guardar');
+    if(!silent) showToast(off
+      ? 'Sin señal: el reporte quedó guardado en este equipo y se subirá solo al reconectar.'
+      : ('Error al guardar: ' + e.message), 4200);
+  }
+}
+
+// ── Payload del reporte (extraído para reusar en el espejo local del modo offline) ──
+function _collectReportePayload(esDraft, firmaUrl){
+  const cod = currentProyecto?.cod || currentProyecto?.nombre;
+  const fecha = document.getElementById('rd-fecha')?.value;
+  const plan  = parseFloat(document.getElementById('rd-plan').value)||0;
+  const real  = +rdEspGlobalAvance().toFixed(1);
+  const realCt = parseFloat(document.getElementById('rd-real-contrata')?.value)||0;
+  const spi   = plan > 0 ? (real/plan).toFixed(2) : '0';
+  const avanceEsp = rdEsp.map(r=>({ esp:r.esp, label:r.label, contrata:(r.contrata||'').trim(), peso:parseFloat(r.peso)||0, personal:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
+  const especialidades = {}; let personalTotal = 0;
+  rdEsp.forEach(r=>{ especialidades[r.esp]=parseInt(r.personal)||0; personalTotal+=parseInt(r.personal)||0; });
+  const riesgosHoy = riesgosTemp.map(r => ({ nivel: r.nivel || 'MEDIO', descripcion: (r.descripcion || '').trim() })).filter(r => r.descripcion);
+  const checklist = RD_CHECKLIST.map((item,i)=>({ item, ok: !!document.getElementById('rd-chk-'+i)?.checked }));
+  const checklistOk = checklist.filter(c=>c.ok).length;
+  const contratas = rdEsp.filter(r=>r.contrata && r.contrata.trim()).map(r=>({ nombre:r.contrata.trim(), especialidad:r.label, obreros:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
   const metaMes = parseFloat(document.getElementById('rd-meta-mes').value)||null;
   const facturado = parseFloat(document.getElementById('rd-facturado').value)||null;
-
-  const payload = {
+  return {
     fecha_reporte: fecha,
     supervisor: currentProyecto?.supervisor || currentUser?.nombre,
-    nombre_proyecto: currentProyecto.nombre,
+    nombre_proyecto: currentProyecto?.nombre,
     cod_proyecto: cod,
     pct_planificado: plan,
     pct_ejecutado: real,
@@ -11215,7 +11239,7 @@ async function guardarReporte(esDraft = false, silent = false) {
     reprogramacion: (function(){
       const on = document.getElementById('rd-repro-chk')?.checked;
       const f  = document.getElementById('rd-repro-fecha')?.value;
-      if (!on || !f) return null;   // sin cambio de fecha → no se registra nada
+      if (!on || !f) return null;
       return {
         fecha_anterior: currentProyecto?.finCont || currentProyecto?.fecha_fin_contractual || null,
         fecha_nueva: f,
@@ -11249,23 +11273,38 @@ async function guardarReporte(esDraft = false, silent = false) {
     firmado: !esDraft && !!firmaUrl,
     enviado: !esDraft
   };
-
-  try {
-    await sbFetch('/rest/v1/reportes?on_conflict=cod_proyecto,fecha_reporte', {
-      method:'POST',
-      headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
-      body: JSON.stringify(payload)
-    });
-    // Persistir avance por hito al Gantt (solo hitos reales) y restricciones a su tabla
-    await persistirHitosYRestricciones(esDraft);
-    if(!silent) showToast(esDraft ? 'Borrador guardado ✓' : 'Reporte guardado ✓');
-    setSyncStatus('ok', silent ? 'Autoguardado ✓' : 'Guardado ✓');
-    if(!silent) await cargarDashboard();
-  } catch(e) {
-    setSyncStatus('error','Error');
-    if(!silent) showToast('Error al guardar: ' + e.message);
-  }
 }
+
+// ── Modo offline: espejo local del borrador + cola de reintento (outbox) ──
+function _draftKey(cod, fecha){ return 'fp_rd_'+String(cod||'').replace(/[^a-zA-Z0-9._-]/g,'_')+'_'+(fecha||''); }
+function _saveDraftLocal(payload, pending){
+  if(!payload || !payload.cod_proyecto || !payload.fecha_reporte) return;
+  try{ localStorage.setItem(_draftKey(payload.cod_proyecto, payload.fecha_reporte), JSON.stringify({ payload, ts: Date.now(), pending: !!pending })); }catch(e){}
+}
+function _getDraftLocal(cod, fecha){ try{ const s=localStorage.getItem(_draftKey(cod,fecha)); return s?JSON.parse(s):null; }catch(e){ return null; } }
+function _mirrorLocal(){
+  const cod=currentProyecto?.cod||currentProyecto?.nombre, fecha=document.getElementById('rd-fecha')?.value;
+  if(!cod||!fecha) return;
+  try{ _saveDraftLocal(_collectReportePayload(true, window._lastFirmaUrl||null), true); }catch(e){}
+}
+async function _flushOutbox(){
+  let flushed=0, keys=[];
+  for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.indexOf('fp_rd_')===0) keys.push(k); }
+  for(const k of keys){
+    let rec; try{ rec=JSON.parse(localStorage.getItem(k)); }catch(e){ continue; }
+    if(!rec || !rec.pending || !rec.payload) continue;
+    try{
+      await sbFetch('/rest/v1/reportes?on_conflict=cod_proyecto,fecha_reporte', { method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}, body: JSON.stringify(rec.payload) });
+      rec.pending=false; localStorage.setItem(k, JSON.stringify(rec)); flushed++;
+    }catch(e){ /* sigue pendiente hasta el próximo intento */ }
+  }
+  if(flushed>0){ setSyncStatus('ok','Sincronizado ✓'); if(typeof showToast==='function') showToast(flushed+' reporte(s) pendiente(s) subido(s) ✓', 2800, 'success'); }
+  return flushed;
+}
+window.addEventListener('online', ()=>{ _flushOutbox(); });
+setInterval(()=>{ if(navigator.onLine) _flushOutbox(); }, 60000);
+setTimeout(()=>{ if(navigator.onLine) _flushOutbox(); }, 4000);   // intento de subida al abrir la app
+window.addEventListener('beforeunload', ()=>{ try{ _mirrorLocal(); }catch(e){} });
 
 // ── Auto-guardado (multi-dispositivo): guarda borrador solo mientras se captura ──
 let _autosaveReady = false, _autosaveTimer = null;
@@ -11273,6 +11312,7 @@ function scheduleAutosave(){
   if (!_autosaveReady || !currentProyecto) return;
   if (!document.getElementById('rd-pane-cap')?.classList.contains('on')) return;      // solo modo Capturar
   if (!document.getElementById('rd-tipo-diario')?.classList.contains('on')) return;   // solo Reporte Diario
+  try{ _mirrorLocal(); }catch(e){}   // espejo local inmediato en cada cambio → un refresh no pierde nada
   clearTimeout(_autosaveTimer);
   setSyncStatus('syncing','Guardando…');
   _autosaveTimer = setTimeout(()=>{ guardarReporte(true, true); }, 6000);
