@@ -1,0 +1,3789 @@
+{
+ "months": [
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio"
+ ],
+ "rows": [
+  {
+   "n": "Cabrera Camacho Jesus Miguel",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": 4.88,
+    "Abril": 4.53,
+    "Mayo": 4.17,
+    "Junio": 4.61
+   },
+   "g": 4.55,
+   "dn": "Jesus Cabrera",
+   "s": "jesus_cabrera",
+   "det": {
+    "Marzo": {
+     "p": 4.88,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       5
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       5
+      ],
+      [
+       "Evaluación PMO",
+       4.52
+      ],
+      [
+       "VISION INTEGRAL",
+       4.52
+      ],
+      [
+       "Plataforma",
+       5
+      ],
+      [
+       "G.PROYECTOS",
+       5
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 4.53,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4.33
+      ],
+      [
+       "Evaluación PMO",
+       4.31
+      ],
+      [
+       "VISION INTEGRAL",
+       4.31
+      ],
+      [
+       "Envío de Informe",
+       5
+      ],
+      [
+       "Contratistas",
+       4.71
+      ],
+      [
+       "G.PROYECTOS",
+       4.86
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 4.17,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación PMO",
+       4.2
+      ],
+      [
+       "Vision Integral",
+       4.2
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "Contratistas",
+       4.69
+      ],
+      [
+       "G. de Proyecto",
+       4.34
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 4.61,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4.33
+      ],
+      [
+       "Evaluación de PMO",
+       5
+      ],
+      [
+       "Vision Integral",
+       5
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "Contratistas",
+       4.87
+      ],
+      [
+       "G. Proyecto",
+       4.43
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Salvador Lizárraga Erick Jesús",
+   "c": "Asistente",
+   "m": {
+    "Marzo": null,
+    "Abril": 4.54,
+    "Mayo": 4.36,
+    "Junio": 4.76
+   },
+   "g": 4.55,
+   "dn": "Erick Jesús Salvador Lizarraga",
+   "s": "erick_jesus_salvador_lizarraga",
+   "det": {
+    "Abril": {
+     "p": 4.54,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación PMO",
+       4.49
+      ],
+      [
+       "VISION INTEGRAL",
+       4.49
+      ],
+      [
+       "Envío de Informe",
+       5
+      ],
+      [
+       "Contratistas",
+       4.85
+      ],
+      [
+       "G.PROYECTOS",
+       4.92
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 4.36,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación PMO",
+       4.7
+      ],
+      [
+       "Vision Integral",
+       4.7
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "Contratistas",
+       4.65
+      ],
+      [
+       "G. de Proyecto",
+       4.33
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 4.76,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       5
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       5
+      ],
+      [
+       "Evaluación de PMO",
+       4.9
+      ],
+      [
+       "Vision Integral",
+       4.9
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "Contratistas",
+       4.97
+      ],
+      [
+       "G. Proyecto",
+       4.49
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Asmat Delgado Juan Diego",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": 4.3,
+    "Abril": 4.54,
+    "Mayo": 4.13,
+    "Junio": 4.71
+   },
+   "g": 4.42,
+   "dn": "Diego Asmat Delgado",
+   "s": "diego_asmat_delgado",
+   "det": {
+    "Marzo": {
+     "p": 4.3,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       4.08
+      ],
+      [
+       "VISION INTEGRAL",
+       4.08
+      ],
+      [
+       "Plataforma",
+       5
+      ],
+      [
+       "G.PROYECTOS",
+       5
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 4.54,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4.33
+      ],
+      [
+       "Evaluación PMO",
+       4.39
+      ],
+      [
+       "VISION INTEGRAL",
+       4.39
+      ],
+      [
+       "Envío de Informe",
+       5
+      ],
+      [
+       "Contratistas",
+       4.61
+      ],
+      [
+       "G.PROYECTOS",
+       4.8
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 4.13,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       3
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       4
+      ],
+      [
+       "Vision Integral",
+       4
+      ],
+      [
+       "Informes Diario",
+       5
+      ],
+      [
+       "G. de Proyecto",
+       5
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 4.71,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       4
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación de PMO",
+       4.9
+      ],
+      [
+       "Vision Integral",
+       4.9
+      ],
+      [
+       "Informes Diario",
+       5
+      ],
+      [
+       "Contratistas",
+       4.97
+      ],
+      [
+       "G. Proyecto",
+       4.99
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Paredes Morales Jorvin Eduardo",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": 4.52,
+    "Abril": 3.76,
+    "Mayo": 4.31,
+    "Junio": 4.54
+   },
+   "g": 4.28,
+   "dn": "Jorvin Paredes Morales",
+   "s": "jorvin_paredes_morales",
+   "det": {
+    "Marzo": {
+     "p": 4.52,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       5
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       5
+      ],
+      [
+       "Evaluación PMO",
+       4.68
+      ],
+      [
+       "VISION INTEGRAL",
+       4.68
+      ],
+      [
+       "Plataforma",
+       4
+      ],
+      [
+       "G.PROYECTOS",
+       4
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 3.76,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       1
+      ],
+      [
+       "ADM",
+       2
+      ],
+      [
+       "Evaluación PMO",
+       4.24
+      ],
+      [
+       "VISION INTEGRAL",
+       4.24
+      ],
+      [
+       "Envío de Informe",
+       4
+      ],
+      [
+       "Contratistas",
+       4.9
+      ],
+      [
+       "G.PROYECTOS",
+       4.45
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 4.31,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       5
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4.67
+      ],
+      [
+       "Evaluación PMO",
+       4.2
+      ],
+      [
+       "Vision Integral",
+       4.2
+      ],
+      [
+       "Informes Diario",
+       3
+      ],
+      [
+       "Contratistas",
+       5
+      ],
+      [
+       "G. de Proyecto",
+       4
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 4.54,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       4
+      ],
+      [
+       "ADM",
+       4.33
+      ],
+      [
+       "Evaluación de PMO",
+       4.8
+      ],
+      [
+       "Vision Integral",
+       4.8
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "Contratistas",
+       4.88
+      ],
+      [
+       "G. Proyecto",
+       4.44
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Jorge Hernandez",
+   "c": "Asistente",
+   "m": {
+    "Marzo": null,
+    "Abril": 4.18,
+    "Mayo": 4.16,
+    "Junio": 4.22
+   },
+   "g": 4.19,
+   "dn": "Jorge Luis Hernandez Yepez",
+   "s": "jorge_luis_hernandez_yepez",
+   "det": {
+    "Abril": {
+     "p": 4.18,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       3.61
+      ],
+      [
+       "VISION INTEGRAL",
+       3.61
+      ],
+      [
+       "Envío de Informe",
+       5
+      ],
+      [
+       "Contratistas",
+       5
+      ],
+      [
+       "G.PROYECTOS",
+       5
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 4.16,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación PMO",
+       4.4
+      ],
+      [
+       "Vision Integral",
+       4.4
+      ],
+      [
+       "Informes Diario",
+       3
+      ],
+      [
+       "Contratistas",
+       5
+      ],
+      [
+       "G. de Proyecto",
+       4
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 4.22,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       2.67
+      ],
+      [
+       "Evaluación de PMO",
+       5
+      ],
+      [
+       "Vision Integral",
+       5
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "Contratistas",
+       5
+      ],
+      [
+       "G. Proyecto",
+       4.5
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Aurazo Alvarado Fernando Miguel",
+   "c": "Asistente",
+   "m": {
+    "Marzo": null,
+    "Abril": 4.35,
+    "Mayo": 4.04,
+    "Junio": 4
+   },
+   "g": 4.13,
+   "dn": "Fernando Aurazo",
+   "s": "fernando_aurazo",
+   "det": {
+    "Abril": {
+     "p": 4.35,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4.33
+      ],
+      [
+       "Evaluación PMO",
+       4.2
+      ],
+      [
+       "VISION INTEGRAL",
+       4.2
+      ],
+      [
+       "Envío de Informe",
+       5
+      ],
+      [
+       "Contratistas",
+       4
+      ],
+      [
+       "G.PROYECTOS",
+       4.5
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 4.04,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación PMO",
+       4.1
+      ],
+      [
+       "Vision Integral",
+       4.1
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "G. de Proyecto",
+       4
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 4,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       4
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación de PMO",
+       4
+      ],
+      [
+       "Vision Integral",
+       4
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "G. Proyecto",
+       4
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Jara Medina Renato Yanpier",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": 3.17,
+    "Abril": 4.4,
+    "Mayo": 4.13,
+    "Junio": 4.44
+   },
+   "g": 4.04,
+   "dn": "Renato Jara Medina",
+   "s": "renato_jara_medina",
+   "det": {
+    "Marzo": {
+     "p": 3.17,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       1
+      ],
+      [
+       "ADM",
+       1.67
+      ],
+      [
+       "Evaluación PMO",
+       3.94
+      ],
+      [
+       "VISION INTEGRAL",
+       3.94
+      ],
+      [
+       "Plataforma",
+       4
+      ],
+      [
+       "G.PROYECTOS",
+       4
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 4.4,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       2
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       3.33
+      ],
+      [
+       "Evaluación PMO",
+       4.47
+      ],
+      [
+       "VISION INTEGRAL",
+       4.47
+      ],
+      [
+       "Envío de Informe",
+       5
+      ],
+      [
+       "G.PROYECTOS",
+       5
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 4.13,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       4.2
+      ],
+      [
+       "Vision Integral",
+       4.2
+      ],
+      [
+       "Informes Diario",
+       5
+      ],
+      [
+       "Contratistas",
+       4.3
+      ],
+      [
+       "G. de Proyecto",
+       4.65
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 4.44,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       4
+      ],
+      [
+       "ADM",
+       3.33
+      ],
+      [
+       "Evaluación de PMO",
+       4.81
+      ],
+      [
+       "Vision Integral",
+       4.81
+      ],
+      [
+       "Informes Diario",
+       5
+      ],
+      [
+       "Contratistas",
+       4.63
+      ],
+      [
+       "G. Proyecto",
+       4.81
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Flores Salazar Victor Javier",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": 3.61,
+    "Abril": 4.31,
+    "Mayo": 3.92,
+    "Junio": 4.26
+   },
+   "g": 4.03,
+   "dn": "Victor Javier Flores Salazar",
+   "s": "victor_javier_flores_salazar",
+   "det": {
+    "Marzo": {
+     "p": 3.61,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       2.67
+      ],
+      [
+       "Evaluación PMO",
+       2.7
+      ],
+      [
+       "VISION INTEGRAL",
+       2.7
+      ],
+      [
+       "Plataforma",
+       5
+      ],
+      [
+       "G.PROYECTOS",
+       5
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 4.31,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       5
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       5
+      ],
+      [
+       "Evaluación PMO",
+       3.82
+      ],
+      [
+       "VISION INTEGRAL",
+       3.82
+      ],
+      [
+       "Envío de Informe",
+       4
+      ],
+      [
+       "Contratistas",
+       4.6
+      ],
+      [
+       "G.PROYECTOS",
+       4.3
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.92,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       3
+      ],
+      [
+       "ADM",
+       3.33
+      ],
+      [
+       "Evaluación PMO",
+       3.75
+      ],
+      [
+       "Vision Integral",
+       3.75
+      ],
+      [
+       "Informes Diario",
+       5
+      ],
+      [
+       "G. de Proyecto",
+       5
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 4.26,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       2.67
+      ],
+      [
+       "Evaluación de PMO",
+       4.56
+      ],
+      [
+       "Vision Integral",
+       4.56
+      ],
+      [
+       "Informes Diario",
+       5
+      ],
+      [
+       "Contratistas",
+       5
+      ],
+      [
+       "G. Proyecto",
+       5
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Rodrigue Meza Antony",
+   "c": "Asistente",
+   "m": {
+    "Marzo": null,
+    "Abril": 4.06,
+    "Mayo": 3.97,
+    "Junio": 4
+   },
+   "g": 4.01,
+   "dn": "Anthony Rodriguez Meza",
+   "s": "anthony_rodriguez_meza",
+   "det": {
+    "Abril": {
+     "p": 4.06,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       3.74
+      ],
+      [
+       "VISION INTEGRAL",
+       3.74
+      ],
+      [
+       "Envío de Informe",
+       5
+      ],
+      [
+       "Contratistas",
+       4.15
+      ],
+      [
+       "G.PROYECTOS",
+       4.58
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.97,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       3
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       3.6
+      ],
+      [
+       "Vision Integral",
+       3.6
+      ],
+      [
+       "Informes Diario",
+       5
+      ],
+      [
+       "G. de Proyecto",
+       5
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 4,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       4
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación de PMO",
+       4
+      ],
+      [
+       "Vision Integral",
+       4
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "G. Proyecto",
+       4
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Silva Davila Luis Esidio",
+   "c": "Asistente",
+   "m": {
+    "Marzo": 3.9,
+    "Abril": 3.99,
+    "Mayo": 3.93,
+    "Junio": 4.1
+   },
+   "g": 3.98,
+   "dn": "Luis Silva Davila",
+   "s": "luis_silva_davila",
+   "det": {
+    "Marzo": {
+     "p": 3.9,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       4
+      ],
+      [
+       "ADM",
+       3.33
+      ],
+      [
+       "Evaluación PMO",
+       2.94
+      ],
+      [
+       "VISION INTEGRAL",
+       2.94
+      ],
+      [
+       "Plataforma",
+       5
+      ],
+      [
+       "G.PROYECTOS",
+       5
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 3.99,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       5
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       5
+      ],
+      [
+       "Evaluación PMO",
+       3.25
+      ],
+      [
+       "VISION INTEGRAL",
+       3.25
+      ],
+      [
+       "Envío de Informe",
+       4
+      ],
+      [
+       "Contratistas",
+       4
+      ],
+      [
+       "G.PROYECTOS",
+       4
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.93,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       3.75
+      ],
+      [
+       "Vision Integral",
+       3.75
+      ],
+      [
+       "Informes Diario",
+       5
+      ],
+      [
+       "Contratistas",
+       4.2
+      ],
+      [
+       "G. de Proyecto",
+       4.6
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 4.1,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación de PMO",
+       4.15
+      ],
+      [
+       "Vision Integral",
+       4.15
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "Contratistas",
+       4.65
+      ],
+      [
+       "G. Proyecto",
+       4.33
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Goycochea Martinez Luis Ricardo",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": null,
+    "Abril": 3.73,
+    "Mayo": 3.79,
+    "Junio": 4.42
+   },
+   "g": 3.98,
+   "dn": "Luis Goycochea Martinez",
+   "s": "luis_goycochea_martinez",
+   "det": {
+    "Abril": {
+     "p": 3.73,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "ADM",
+       3
+      ],
+      [
+       "Evaluación PMO",
+       3.94
+      ],
+      [
+       "VISION INTEGRAL",
+       3.94
+      ],
+      [
+       "Envío de Informe",
+       4
+      ],
+      [
+       "G.PROYECTOS",
+       4
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.79,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4.33
+      ],
+      [
+       "Evaluación PMO",
+       3.8
+      ],
+      [
+       "Vision Integral",
+       3.8
+      ],
+      [
+       "Informes Diario",
+       3
+      ],
+      [
+       "G. de Proyecto",
+       3
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 4.42,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       3
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación de PMO",
+       4.63
+      ],
+      [
+       "Vision Integral",
+       4.63
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "Contratistas",
+       5
+      ],
+      [
+       "G. Proyecto",
+       4.5
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Acosta Valencia Jordy Smith",
+   "c": "Asistente",
+   "m": {
+    "Marzo": null,
+    "Abril": 4.49,
+    "Mayo": 3.26,
+    "Junio": 4.2
+   },
+   "g": 3.98,
+   "dn": "Jordy Acosta",
+   "s": "jordy_acosta",
+   "det": {
+    "Abril": {
+     "p": 4.49,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       4
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación PMO",
+       4.26
+      ],
+      [
+       "VISION INTEGRAL",
+       4.26
+      ],
+      [
+       "Envío de Informe",
+       5
+      ],
+      [
+       "G.PROYECTOS",
+       5
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.26,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       2.45
+      ],
+      [
+       "Vision Integral",
+       2.45
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "G. de Proyecto",
+       4
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 4.2,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       5
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       4
+      ],
+      [
+       "ADM",
+       4.67
+      ],
+      [
+       "Evaluación de PMO",
+       4.1
+      ],
+      [
+       "Vision Integral",
+       4.1
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "G. Proyecto",
+       4
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Avila Sánchez Antero Miguel",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": 3.42,
+    "Abril": 3.83,
+    "Mayo": 3.94,
+    "Junio": 4.55
+   },
+   "g": 3.93,
+   "dn": "Antero Miguel Avila Sánchez",
+   "s": "antero_miguel_avila_sanchez",
+   "det": {
+    "Marzo": {
+     "p": 3.42,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       1
+      ],
+      [
+       "ADM",
+       1.67
+      ],
+      [
+       "Evaluación PMO",
+       3.35
+      ],
+      [
+       "VISION INTEGRAL",
+       3.35
+      ],
+      [
+       "Plataforma",
+       5
+      ],
+      [
+       "G.PROYECTOS",
+       5
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 3.83,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       3.51
+      ],
+      [
+       "VISION INTEGRAL",
+       3.51
+      ],
+      [
+       "Envío de Informe",
+       4
+      ],
+      [
+       "Contratistas",
+       4.4
+      ],
+      [
+       "G.PROYECTOS",
+       4.2
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.94,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación PMO",
+       4
+      ],
+      [
+       "Vision Integral",
+       4
+      ],
+      [
+       "Informes Diario",
+       3
+      ],
+      [
+       "Contratistas",
+       4.5
+      ],
+      [
+       "G. de Proyecto",
+       3.75
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 4.55,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       5
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       5
+      ],
+      [
+       "Evaluación de PMO",
+       4.86
+      ],
+      [
+       "Vision Integral",
+       4.86
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "G. Proyecto",
+       4
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Ramirez Dilas Victor Manuel",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": 4.28,
+    "Abril": 4.57,
+    "Mayo": 3.65,
+    "Junio": 3.13
+   },
+   "g": 3.91,
+   "dn": "Victor Emmanuel Ramirez Dilas",
+   "s": "victor_emmanuel_ramirez_dilas",
+   "det": {
+    "Marzo": {
+     "p": 4.28,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       5
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación PMO",
+       3.52
+      ],
+      [
+       "VISION INTEGRAL",
+       3.52
+      ],
+      [
+       "Plataforma",
+       5
+      ],
+      [
+       "G.PROYECTOS",
+       5
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 4.57,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       5
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       5
+      ],
+      [
+       "Evaluación PMO",
+       4.04
+      ],
+      [
+       "VISION INTEGRAL",
+       4.04
+      ],
+      [
+       "Envío de Informe",
+       5
+      ],
+      [
+       "Contratistas",
+       4.55
+      ],
+      [
+       "G.PROYECTOS",
+       4.78
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.65,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       3
+      ],
+      [
+       "Evaluación PMO",
+       3.9
+      ],
+      [
+       "Vision Integral",
+       3.9
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "Contratistas",
+       4.28
+      ],
+      [
+       "G. de Proyecto",
+       4.14
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 3.13,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       2.33
+      ],
+      [
+       "Evaluación de PMO",
+       2.71
+      ],
+      [
+       "Vision Integral",
+       2.71
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "G. Proyecto",
+       4
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Marquina Rodriguez Dylan Keiner",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": 3.82,
+    "Abril": 4.1,
+    "Mayo": 3.82,
+    "Junio": 3.65
+   },
+   "g": 3.85,
+   "dn": "Dylan Marquina Rodriguez",
+   "s": "dylan_marquina_rodriguez",
+   "det": {
+    "Marzo": {
+     "p": 3.82,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       5
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       5
+      ],
+      [
+       "Evaluación PMO",
+       3.47
+      ],
+      [
+       "VISION INTEGRAL",
+       3.47
+      ],
+      [
+       "Plataforma",
+       3
+      ],
+      [
+       "G.PROYECTOS",
+       3
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 4.1,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       1
+      ],
+      [
+       "ADM",
+       3
+      ],
+      [
+       "Evaluación PMO",
+       4.29
+      ],
+      [
+       "VISION INTEGRAL",
+       4.29
+      ],
+      [
+       "Envío de Informe",
+       5
+      ],
+      [
+       "Contratistas",
+       4.25
+      ],
+      [
+       "G.PROYECTOS",
+       4.63
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.82,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       3.85
+      ],
+      [
+       "Vision Integral",
+       3.85
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "G. de Proyecto",
+       4
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 3.65,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       3
+      ],
+      [
+       "ADM",
+       3.33
+      ],
+      [
+       "Evaluación de PMO",
+       3.48
+      ],
+      [
+       "Vision Integral",
+       3.48
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "G. Proyecto",
+       4
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Priale Romero Carmen Rosa",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": 4.07,
+    "Abril": 4.04,
+    "Mayo": 3.67,
+    "Junio": 3.58
+   },
+   "g": 3.84,
+   "dn": "Carmen Prialé Romero",
+   "s": "carmen_priale_romero",
+   "det": {
+    "Marzo": {
+     "p": 4.07,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       3.13
+      ],
+      [
+       "VISION INTEGRAL",
+       3.13
+      ],
+      [
+       "Plataforma",
+       5
+      ],
+      [
+       "G.PROYECTOS",
+       5
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 4.04,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       4
+      ],
+      [
+       "ADM",
+       3.33
+      ],
+      [
+       "Evaluación PMO",
+       4.01
+      ],
+      [
+       "VISION INTEGRAL",
+       4.01
+      ],
+      [
+       "Envío de Informe",
+       4
+      ],
+      [
+       "Contratistas",
+       5
+      ],
+      [
+       "G.PROYECTOS",
+       4.5
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.67,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       2.67
+      ],
+      [
+       "Evaluación PMO",
+       4.25
+      ],
+      [
+       "Vision Integral",
+       4.25
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "Contratistas",
+       4.3
+      ],
+      [
+       "G. de Proyecto",
+       4.15
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 3.58,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       2.33
+      ],
+      [
+       "Evaluación de PMO",
+       3.89
+      ],
+      [
+       "Vision Integral",
+       3.89
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "Contratistas",
+       4.2
+      ],
+      [
+       "G. Proyecto",
+       4.1
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Chung Torres Walter",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": null,
+    "Abril": null,
+    "Mayo": null,
+    "Junio": 3.83
+   },
+   "g": 3.83,
+   "dn": "Walter Chung",
+   "s": "walter_chung",
+   "det": {
+    "Junio": {
+     "p": 3.83,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       4
+      ],
+      [
+       "ADM",
+       3.33
+      ],
+      [
+       "Evaluación de PMO",
+       4.27
+      ],
+      [
+       "Vision Integral",
+       4.27
+      ],
+      [
+       "Informes Diario",
+       3
+      ],
+      [
+       "Contratistas",
+       4.5
+      ],
+      [
+       "G. Proyecto",
+       3.75
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Asmat Cordova Fernando",
+   "c": "Asistente",
+   "m": {
+    "Marzo": null,
+    "Abril": null,
+    "Mayo": 3.69,
+    "Junio": 3.95
+   },
+   "g": 3.82,
+   "dn": "Fernando Asmat",
+   "s": "fernando_asmat",
+   "det": {
+    "Mayo": {
+     "p": 3.69,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       3.5
+      ],
+      [
+       "Vision Integral",
+       3.5
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "Contratistas",
+       4.07
+      ],
+      [
+       "G. de Proyecto",
+       4.04
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 3.95,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       4
+      ],
+      [
+       "ADM",
+       3.95
+      ],
+      [
+       "Evaluación de PMO",
+       3.9
+      ],
+      [
+       "Vision Integral",
+       3.9
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "G. Proyecto",
+       4
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Girao Ramos GianPier",
+   "c": "Asistente",
+   "m": {
+    "Marzo": null,
+    "Abril": 3.86,
+    "Mayo": 3.81,
+    "Junio": 3.74
+   },
+   "g": 3.8,
+   "dn": "Gianpier Girao",
+   "s": "gianpier_girao",
+   "det": {
+    "Abril": {
+     "p": 3.86,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       3.83
+      ],
+      [
+       "VISION INTEGRAL",
+       3.83
+      ],
+      [
+       "Envío de Informe",
+       4
+      ],
+      [
+       "G.PROYECTOS",
+       4
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.81,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       3
+      ],
+      [
+       "Evaluación PMO",
+       4.4
+      ],
+      [
+       "Vision Integral",
+       4.4
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "G. de Proyecto",
+       4
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 3.74,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       2.67
+      ],
+      [
+       "Evaluación de PMO",
+       3.07
+      ],
+      [
+       "Vision Integral",
+       3.07
+      ],
+      [
+       "Informes Diario",
+       5
+      ],
+      [
+       "G. Proyecto",
+       5
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Urbina Esquen Wilson Jesús",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": 4.34,
+    "Abril": 3.3,
+    "Mayo": 3.79,
+    "Junio": 3.48
+   },
+   "g": 3.73,
+   "dn": "Wilson Jesús Urbina Esquen",
+   "s": "wilson_jesus_urbina_esquen",
+   "det": {
+    "Marzo": {
+     "p": 4.34,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4.67
+      ],
+      [
+       "Evaluación PMO",
+       4.43
+      ],
+      [
+       "VISION INTEGRAL",
+       4.43
+      ],
+      [
+       "Plataforma",
+       4
+      ],
+      [
+       "G.PROYECTOS",
+       4
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 3.3,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       1
+      ],
+      [
+       "ADM",
+       2
+      ],
+      [
+       "Evaluación PMO",
+       4.39
+      ],
+      [
+       "VISION INTEGRAL",
+       4.39
+      ],
+      [
+       "Envío de Informe",
+       2
+      ],
+      [
+       "Contratistas",
+       4.3
+      ],
+      [
+       "G.PROYECTOS",
+       3.15
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.79,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación PMO",
+       4
+      ],
+      [
+       "Vision Integral",
+       4
+      ],
+      [
+       "Informes Diario",
+       2
+      ],
+      [
+       "Contratistas",
+       4.3
+      ],
+      [
+       "G. de Proyecto",
+       3.15
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 3.48,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       3
+      ],
+      [
+       "ADM",
+       2.67
+      ],
+      [
+       "Evaluación de PMO",
+       3.95
+      ],
+      [
+       "Vision Integral",
+       3.95
+      ],
+      [
+       "Informes Diario",
+       3
+      ],
+      [
+       "Contratistas",
+       4.17
+      ],
+      [
+       "G. Proyecto",
+       3.59
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Vila Lujan Williams",
+   "c": "Asistente",
+   "m": {
+    "Marzo": null,
+    "Abril": 4.01,
+    "Mayo": 3.38,
+    "Junio": 3.75
+   },
+   "g": 3.71,
+   "dn": "Williams Vila",
+   "s": "williams_vila",
+   "det": {
+    "Abril": {
+     "p": 4.01,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4.33
+      ],
+      [
+       "Evaluación PMO",
+       3.8
+      ],
+      [
+       "VISION INTEGRAL",
+       3.8
+      ],
+      [
+       "Envío de Informe",
+       4
+      ],
+      [
+       "G.PROYECTOS",
+       4
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.38,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación PMO",
+       3.7
+      ],
+      [
+       "Vision Integral",
+       3.7
+      ],
+      [
+       "Informes Diario",
+       2
+      ],
+      [
+       "G. de Proyecto",
+       2
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 3.75,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       4
+      ],
+      [
+       "ADM",
+       4.33
+      ],
+      [
+       "Evaluación de PMO",
+       4.19
+      ],
+      [
+       "Vision Integral",
+       4.19
+      ],
+      [
+       "Informes Diario",
+       3
+      ],
+      [
+       "G. Proyecto",
+       3
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Vasquez Zavaleta Patrick Gianmarco",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": 3.84,
+    "Abril": 3.83,
+    "Mayo": 3.44,
+    "Junio": 3.53
+   },
+   "g": 3.66,
+   "dn": "Patrick Vasquez",
+   "s": "patrick_vasquez",
+   "det": {
+    "Marzo": {
+     "p": 3.84,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       2.67
+      ],
+      [
+       "Evaluación PMO",
+       3.61
+      ],
+      [
+       "VISION INTEGRAL",
+       3.61
+      ],
+      [
+       "Plataforma",
+       5
+      ],
+      [
+       "G.PROYECTOS",
+       5
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 3.83,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4.33
+      ],
+      [
+       "Evaluación PMO",
+       3.27
+      ],
+      [
+       "VISION INTEGRAL",
+       3.27
+      ],
+      [
+       "Envío de Informe",
+       4
+      ],
+      [
+       "G.PROYECTOS",
+       4
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.44,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4
+      ],
+      [
+       "Evaluación PMO",
+       3.85
+      ],
+      [
+       "Vision Integral",
+       3.85
+      ],
+      [
+       "Informes Diario",
+       2
+      ],
+      [
+       "G. de Proyecto",
+       2
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 3.53,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       4
+      ],
+      [
+       "ADM",
+       4.33
+      ],
+      [
+       "Evaluación de PMO",
+       3.69
+      ],
+      [
+       "Vision Integral",
+       3.69
+      ],
+      [
+       "Informes Diario",
+       2
+      ],
+      [
+       "Contratistas",
+       3.77
+      ],
+      [
+       "G. Proyecto",
+       2.88
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Sarmiento Chavez Steve Anthony",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": 3.14,
+    "Abril": 3.61,
+    "Mayo": 3.93,
+    "Junio": 3.41
+   },
+   "g": 3.52,
+   "dn": "Steve Sarmiento Chavez",
+   "s": "steve_sarmiento_chavez",
+   "det": {
+    "Marzo": {
+     "p": 3.14,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       1
+      ],
+      [
+       "ADM",
+       1.67
+      ],
+      [
+       "Evaluación PMO",
+       2.24
+      ],
+      [
+       "VISION INTEGRAL",
+       2.24
+      ],
+      [
+       "Plataforma",
+       5
+      ],
+      [
+       "G.PROYECTOS",
+       5
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 3.61,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       1
+      ],
+      [
+       "ADM",
+       3
+      ],
+      [
+       "Evaluación PMO",
+       3.61
+      ],
+      [
+       "VISION INTEGRAL",
+       3.61
+      ],
+      [
+       "Envío de Informe",
+       4
+      ],
+      [
+       "G.PROYECTOS",
+       4
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.93,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       4.67
+      ],
+      [
+       "Evaluación PMO",
+       3.95
+      ],
+      [
+       "Vision Integral",
+       3.95
+      ],
+      [
+       "Informes Diario",
+       2
+      ],
+      [
+       "Contratistas",
+       3.75
+      ],
+      [
+       "G. de Proyecto",
+       2.88
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 3.41,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       2.33
+      ],
+      [
+       "Evaluación de PMO",
+       3.91
+      ],
+      [
+       "Vision Integral",
+       3.91
+      ],
+      [
+       "Informes Diario",
+       3
+      ],
+      [
+       "Contratistas",
+       4.3
+      ],
+      [
+       "G. Proyecto",
+       3.65
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Solorzano Toscano Abdon Junior",
+   "c": "Asistente",
+   "m": {
+    "Marzo": 3.15,
+    "Abril": 3.56,
+    "Mayo": 2.96,
+    "Junio": 3.3
+   },
+   "g": 3.24,
+   "dn": "Abdón Solórzano",
+   "s": "abdon_solorzano",
+   "det": {
+    "Marzo": {
+     "p": 3.15,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       1
+      ],
+      [
+       "ADM",
+       1.67
+      ],
+      [
+       "Evaluación PMO",
+       2.25
+      ],
+      [
+       "VISION INTEGRAL",
+       2.25
+      ],
+      [
+       "Plataforma",
+       5
+      ],
+      [
+       "G.PROYECTOS",
+       5
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 3.56,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       1
+      ],
+      [
+       "ADM",
+       2.5
+      ],
+      [
+       "Evaluación PMO",
+       3.8
+      ],
+      [
+       "VISION INTEGRAL",
+       3.8
+      ],
+      [
+       "Envío de Informe",
+       4
+      ],
+      [
+       "G.PROYECTOS",
+       4
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 2.96,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       1
+      ],
+      [
+       "ADM",
+       2.33
+      ],
+      [
+       "Evaluación PMO",
+       4.1
+      ],
+      [
+       "Vision Integral",
+       4.1
+      ],
+      [
+       "Informes Diario",
+       2
+      ],
+      [
+       "G. de Proyecto",
+       2
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 3.3,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       2
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       2.67
+      ],
+      [
+       "Evaluación de PMO",
+       2.95
+      ],
+      [
+       "Vision Integral",
+       2.95
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "G. Proyecto",
+       4
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Casas Roncal Jean Percy",
+   "c": "Supervisor",
+   "m": {
+    "Marzo": 2.13,
+    "Abril": 3.5,
+    "Mayo": 3.33,
+    "Junio": 2.87
+   },
+   "g": 2.96,
+   "dn": "Jean Percy Casas Roncal",
+   "s": "jean_percy_casas_roncal",
+   "det": {
+    "Marzo": {
+     "p": 2.13,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       1.8
+      ],
+      [
+       "VISION INTEGRAL",
+       1.8
+      ],
+      [
+       "Plataforma",
+       1
+      ],
+      [
+       "G.PROYECTOS",
+       1
+      ]
+     ]
+    },
+    "Abril": {
+     "p": 3.5,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       3
+      ],
+      [
+       "Gestión de Consumos",
+       3
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       5
+      ],
+      [
+       "ADM",
+       3.67
+      ],
+      [
+       "Evaluación PMO",
+       2.75
+      ],
+      [
+       "VISION INTEGRAL",
+       2.75
+      ],
+      [
+       "Envío de Informe",
+       4
+      ],
+      [
+       "Contratistas",
+       4.13
+      ],
+      [
+       "G.PROYECTOS",
+       4.07
+      ]
+     ]
+    },
+    "Mayo": {
+     "p": 3.33,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       5
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       1
+      ],
+      [
+       "ADM",
+       2.33
+      ],
+      [
+       "Evaluación PMO",
+       3.7
+      ],
+      [
+       "Vision Integral",
+       3.7
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "Contratistas",
+       4.25
+      ],
+      [
+       "G. de Proyecto",
+       4.13
+      ]
+     ]
+    },
+    "Junio": {
+     "p": 2.87,
+     "c": [
+      [
+       "Gestión de Internamiento",
+       4
+      ],
+      [
+       "Gestión de Consumos",
+       1
+      ],
+      [
+       "Valorización Proyectada vs Real",
+       2
+      ],
+      [
+       "ADM",
+       2.33
+      ],
+      [
+       "Evaluación de PMO",
+       2.67
+      ],
+      [
+       "Vision Integral",
+       2.67
+      ],
+      [
+       "Informes Diario",
+       4
+      ],
+      [
+       "Contratistas",
+       2.77
+      ],
+      [
+       "G. Proyecto",
+       3.39
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "n": "Raul Manay",
+   "c": "Supervisor",
+   "m": {},
+   "g": null,
+   "dn": "Raul Manay",
+   "det": {},
+   "s": "raul_manay"
+  },
+  {
+   "n": "Cesar Caleb Calderón",
+   "c": "Asistente",
+   "m": {},
+   "g": null,
+   "dn": "Cesar Caleb Calderón",
+   "det": {},
+   "s": "cesar_caleb_calderon"
+  },
+  {
+   "n": "Jose Andres Raymundo",
+   "c": "Asistente",
+   "m": {},
+   "g": null,
+   "dn": "Jose Andres Raymundo",
+   "det": {},
+   "s": "jose_andres_raymundo"
+  },
+  {
+   "n": "Bruno Mendoza",
+   "c": "Asistente",
+   "m": {},
+   "g": null,
+   "dn": "Bruno Mendoza",
+   "det": {},
+   "s": "bruno_mendoza"
+  },
+  {
+   "n": "Carlos Gustavo Rojo Marmolejo",
+   "c": "Asistente",
+   "m": {},
+   "g": null,
+   "dn": "Carlos Gustavo Rojo Marmolejo",
+   "det": {},
+   "s": "carlos_gustavo_rojo_marmolejo"
+  }
+ ]
+}
