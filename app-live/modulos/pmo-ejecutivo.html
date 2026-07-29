@@ -379,7 +379,7 @@ table.dbt tr:hover td{background:#FAFAF7;}
   <div class="modal">
     <h3 id="m-title">Agregar Registro</h3>
     <div class="fgrid">
-      <div class="fgrp full"><label>Cliente / Proyecto</label><input id="f-cli" placeholder="Nombre del proyecto"></div>
+      <div class="fgrp full"><label>Cliente / Proyecto</label><input id="f-cli" list="pmo-proyectos" placeholder="Elige un proyecto de la lista…" onchange="autoZona()" autocomplete="off"><datalist id="pmo-proyectos"></datalist></div>
       <div class="fgrp"><label>Zona</label><select id="f-zona"><option>Centro</option><option>Norte</option><option>Sur</option></select></div>
       <div class="fgrp"><label>Estado</label><select id="f-est"><option>Activo</option><option>Por Iniciar</option><option>Finalizado</option><option>En Pausa</option></select></div>
       <div class="fgrp full"><label>Persona (vacío = Sin Asignar)</label><input id="f-per" list="pmo-roster" placeholder="Nombre completo"><datalist id="pmo-roster"></datalist></div>
@@ -1328,6 +1328,24 @@ loadData().then(()=>{refreshAll();rVD();});
 /* Fuente única de personas: sugerencias desde supervisores_equipo (roster) */
 fetch(SB_URL+'/rest/v1/supervisores_equipo?select=n&order=n.asc',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
   .then(r=>r.ok?r.json():[]).then(rows=>{const dl=document.getElementById('pmo-roster');rows.forEach(x=>{const o=document.createElement('option');o.value=x.n;dl.appendChild(o);});}).catch(()=>{});
+
+/* Fuente única de proyectos: el campo "Cliente / Proyecto" sale de la tabla proyectos (PMO).
+   Al elegir un proyecto se autocompleta su zona → dirigir asignaciones sobre proyectos reales. */
+const PROY_ZONA={};
+fetch(SB_URL+'/rest/v1/proyectos?select=nombre,zona&activo=eq.true&order=nombre',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+  .then(r=>r.ok?r.json():[]).then(rows=>{
+    const dl=document.getElementById('pmo-proyectos');
+    rows.forEach(x=>{ if(!x.nombre) return; const o=document.createElement('option'); o.value=x.nombre; dl.appendChild(o); if(x.zona) PROY_ZONA[x.nombre.trim().toLowerCase()]=x.zona; });
+  }).catch(()=>{});
+function autoZona(){
+  const nombre=(document.getElementById('f-cli').value||'').trim().toLowerCase();
+  const z=PROY_ZONA[nombre]; if(!z) return;
+  const sel=document.getElementById('f-zona');
+  // casa sin distinguir mayúsculas con las opciones existentes (Centro/Norte/Sur) para no duplicar
+  const match=[...sel.options].find(o=>o.value.toLowerCase()===z.trim().toLowerCase());
+  if(match){ sel.value=match.value; return; }
+  const o=document.createElement('option');o.value=z;o.text=z;sel.appendChild(o);sel.value=z;
+}
 rVD();
 
 // ── RELOJ ──
