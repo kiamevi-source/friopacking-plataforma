@@ -602,8 +602,9 @@ function buildGanttSup(rows,ord){
       const clr=isUArow?'#EF4444':(paused?'#9CA3AF':projColor(p.key));
       const topPx=5+idx*26;
       const tipD=`${p.cli}|${p.zona}|${isUArow?'Sin Asignar':k}|${fD(pD(p.ini))}|${fD(pD(p.fin))}|${p.cargo}`;
-      h+=`<div class="bar${isUArow?' unassigned':''}${paused?' paused':''}"
-        style="left:${pos.l};width:${pos.w};background:${clr};top:${topPx}px;height:20px;font-size:9px;transform:none;border-radius:4px;"
+      const eid=(DB.find(x=>x.cli===p.cli&&x.zona===p.zona&&(isUArow?isUA(x):x.per===k))||{}).id;
+      h+=`<div class="bar${isUArow?' unassigned':''}${paused?' paused':''}" data-eid="${eid??''}"
+        style="left:${pos.l};width:${pos.w};background:${clr};top:${topPx}px;height:20px;font-size:9px;transform:none;border-radius:4px;cursor:pointer;"
         data-tip="${tipD}" onmouseenter="showTip(event,this)" onmouseleave="hideTip()">${p.cli}</div>`;
     });
     h+='</td></tr>';
@@ -710,8 +711,8 @@ function buildGanttCli(rows,ord){
       const label=ua?`⚠ vacante`:r.per.split(' ')[0];
       const topPx=7+idx*22;
       const tipD=`${r.cli}|${r.zona}|${ua?'Sin Asignar':r.per}|${fD(pD(r.ini))}|${fD(pD(r.fin))}|${r.cargo}`;
-      h+=`<div class="bar${ua?' unassigned':''}${paused?' paused':''}"
-        style="left:${pos.l};width:${pos.w};background:${clr};top:${topPx}px;height:19px;font-size:9px;transform:none;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.2);"
+      h+=`<div class="bar${ua?' unassigned':''}${paused?' paused':''}" data-eid="${r.id??''}"
+        style="left:${pos.l};width:${pos.w};background:${clr};top:${topPx}px;height:19px;font-size:9px;transform:none;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:pointer;"
         data-tip="${tipD}" onmouseenter="showTip(event,this)" onmouseleave="hideTip()">${label}</div>`;
     });
     h+='</td></tr>';
@@ -1346,6 +1347,11 @@ function autoZona(){
   if(match){ sel.value=match.value; return; }
   const o=document.createElement('option');o.value=z;o.text=z;sel.appendChild(o);sel.value=z;
 }
+/* Gantt editable: clic en una barra abre el editor de ESE registro (dirigir en 1 clic) */
+document.addEventListener('click',e=>{
+  const bar=e.target.closest('.bar[data-eid]'); if(!bar) return;
+  const id=parseInt(bar.getAttribute('data-eid'),10); if(!isNaN(id)) openM(id);
+});
 rVD();
 
 // ── RELOJ ──
