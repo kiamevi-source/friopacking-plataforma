@@ -284,6 +284,7 @@ table.dbt tr:hover td{background:#FAFAF7;}
   <div class="tab" onclick="sw('gantt-cli',this)">🏢 Gantt Cliente</div>
   <div class="tab" onclick="sw('avail',this)">📅 Disponibilidad</div>
   <div class="tab" onclick="sw('org',this)">🗂 Organigrama</div>
+  <div class="tab" onclick="sw('dir',this)">🎯 Dirección</div>
   <div class="tab" onclick="sw('db',this)">🗄 Base de Datos</div>
 </div>
 
@@ -292,6 +293,15 @@ table.dbt tr:hover td{background:#FAFAF7;}
 <!-- ═══ VISTA EJECUTIVA (DUEÑO) ═══ -->
 <div class="pane active" id="pane-dueno">
   <div class="vd-wrap" id="vd-out"></div>
+</div>
+
+<!-- ═══ DIRECCIÓN DE PROYECTOS (editable → escribe en proyectos, fuente única) ═══ -->
+<div class="pane" id="pane-dir">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+    <div style="font-size:13px;color:var(--muted);max-width:640px;">Asigna <b>supervisor</b> y cambia el <b>estado</b> de cada obra. Se guarda al instante en <b>proyectos</b> — es lo que ve el supervisor en su app. Cerrar una obra la deja en 100% automáticamente.</div>
+    <input id="dir-srch" placeholder="🔍 Buscar obra o supervisor…" oninput="rDIR()" style="margin-left:auto;font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;">
+  </div>
+  <div id="dir-out"></div>
 </div>
 
 <!-- ═══ GANTT SUPERVISOR ═══ -->
@@ -1047,6 +1057,53 @@ function clrF(scope){
   if(scope==='gc'){['gc-zona','gc-est'].forEach(x=>sv(x,''));sv('gc-ord','asc');sv('gc-srch','');rGC();}
 }
 
+// ══════════════ DIRECCIÓN DE PROYECTOS (escribe en proyectos, fuente única) ══════════════
+const DIR_ESTADOS=['Por Iniciar','En progreso','En Puesta en Marcha','Con obs','Levantamiento de obs','Pendiente Valorización','Suspendido','Cerrado','Cerrado con observaciones'];
+function sbPatch(id,patch){
+  return fetch(SB_URL+'/rest/v1/proyectos?id=eq.'+id,{method:'PATCH',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify(patch)});
+}
+function rDIR(){
+  const out=document.getElementById('dir-out'); if(!out) return;
+  const q=(document.getElementById('dir-srch')?.value||'').trim().toLowerCase();
+  const list=PROYS.filter(p=>!q||(p.nombre||'').toLowerCase().includes(q)||(p.supervisor||'').toLowerCase().includes(q));
+  const estOpts=(cur)=>{const arr=(cur&&!DIR_ESTADOS.includes(cur))?[cur,...DIR_ESTADOS]:DIR_ESTADOS;return arr.map(e=>`<option ${e===cur?'selected':''}>${e}</option>`).join('');};
+  const supOpts=(email)=>{
+    const inRoster=ROSTER.some(r=>r.email===email);
+    let h=`<option value="">— Sin asignar —</option>`;
+    ROSTER.forEach(r=>{ if(!r.email) return; h+=`<option value="${r.email}" ${r.email===email?'selected':''}>${r.n}</option>`; });
+    if(email&&!inRoster) h=`<option value="${email}" selected>${email} (fuera de roster)</option>`+h;
+    return h;
+  };
+  let h=`<table class="gtbl" style="width:100%;font-size:12px;"><thead><tr>
+    <th class="lh" style="text-align:left;">OBRA</th><th style="text-align:left;">ESTADO</th><th style="text-align:left;">SUPERVISOR (dirige)</th><th>ZONA</th></tr></thead><tbody>`;
+  list.forEach(p=>{
+    h+=`<tr>
+      <td style="padding:7px 10px;"><b>${p.nombre||'(sin nombre)'}</b><div style="font-size:10px;color:var(--muted);">${p.cod_proyecto||''}</div></td>
+      <td><select onchange="cambiarEstado(${p.id},this.value)" style="font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:7px;font-family:inherit;">${estOpts(p.estado)}</select></td>
+      <td><select onchange="asignarSup(${p.id},this.value)" style="font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:7px;font-family:inherit;min-width:200px;">${supOpts(p.supervisor_email)}</select></td>
+      <td style="text-align:center;color:var(--muted);">${p.zona||'—'}</td>
+    </tr>`;
+  });
+  h+=`</tbody></table><div style="margin-top:8px;font-size:11px;color:var(--muted);">${list.length} obra(s) activa(s) · los cambios se guardan al instante en <b>proyectos</b>.</div>`;
+  out.innerHTML=h;
+}
+function asignarSup(id,email){
+  const r=ROSTER.find(x=>x.email===email);
+  const patch={supervisor_email:email||null};
+  if(email){ if(r) patch.supervisor=r.n; } else { patch.supervisor=null; }
+  sbPatch(id,patch).then(res=>{ if(!res.ok) throw 0;
+    const p=PROYS.find(x=>x.id===id);
+    if(p){ p.supervisor_email=email||null; if(!email) p.supervisor=null; else if(r) p.supervisor=r.n; }
+    toast(email?('Asignado a '+(r?r.n:email)):'Supervisor quitado');
+  }).catch(()=>toast('Error al asignar'));
+}
+function cambiarEstado(id,estado){
+  sbPatch(id,{estado}).then(res=>{ if(!res.ok) throw 0;
+    const p=PROYS.find(x=>x.id===id); if(p) p.estado=estado;
+    toast('Estado → '+estado+(/cerrad/i.test(estado)?' · avance 100%':''));
+  }).catch(()=>toast('Error al cambiar estado'));
+}
+
 function sw(id,el){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
@@ -1057,6 +1114,7 @@ function sw(id,el){
   if(id==='gantt-cli') rGC();
   if(id==='avail') rAV();
   if(id==='org') rORG();
+  if(id==='dir') rDIR();
   if(id==='db') rDB();
 }
 
@@ -1327,16 +1385,19 @@ document.getElementById('hdate').textContent=TODAY.toLocaleDateString('es-PE',{w
 document.getElementById('av-date').valueAsDate=TODAY;
 loadData().then(()=>{refreshAll();rVD();});
 /* Fuente única de personas: sugerencias desde supervisores_equipo (roster) */
-fetch(SB_URL+'/rest/v1/supervisores_equipo?select=n&order=n.asc',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
-  .then(r=>r.ok?r.json():[]).then(rows=>{const dl=document.getElementById('pmo-roster');rows.forEach(x=>{const o=document.createElement('option');o.value=x.n;dl.appendChild(o);});}).catch(()=>{});
+let ROSTER=[];
+fetch(SB_URL+'/rest/v1/supervisores_equipo?select=n,email&order=n.asc',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+  .then(r=>r.ok?r.json():[]).then(rows=>{ROSTER=rows;const dl=document.getElementById('pmo-roster');rows.forEach(x=>{const o=document.createElement('option');o.value=x.n;dl.appendChild(o);});if(document.getElementById('pane-dir')?.classList.contains('active'))rDIR();}).catch(()=>{});
 
-/* Fuente única de proyectos: el campo "Cliente / Proyecto" sale de la tabla proyectos (PMO).
+/* Fuente única de proyectos: el campo "Cliente / Proyecto" y la vista Dirección salen de la tabla proyectos (PMO).
    Al elegir un proyecto se autocompleta su zona → dirigir asignaciones sobre proyectos reales. */
-const PROY_ZONA={};
-fetch(SB_URL+'/rest/v1/proyectos?select=nombre,zona&activo=eq.true&order=nombre',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+const PROY_ZONA={}; let PROYS=[];
+fetch(SB_URL+'/rest/v1/proyectos?select=id,cod_proyecto,nombre,supervisor,supervisor_email,estado,zona,activo&activo=eq.true&order=nombre',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
   .then(r=>r.ok?r.json():[]).then(rows=>{
+    PROYS=rows;
     const dl=document.getElementById('pmo-proyectos');
     rows.forEach(x=>{ if(!x.nombre) return; const o=document.createElement('option'); o.value=x.nombre; dl.appendChild(o); if(x.zona) PROY_ZONA[x.nombre.trim().toLowerCase()]=x.zona; });
+    if(document.getElementById('pane-dir')?.classList.contains('active')) rDIR();
   }).catch(()=>{});
 function autoZona(){
   const nombre=(document.getElementById('f-cli').value||'').trim().toLowerCase();
