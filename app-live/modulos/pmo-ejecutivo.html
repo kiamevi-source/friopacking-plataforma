@@ -286,6 +286,7 @@ table.dbt tr:hover td{background:#FAFAF7;}
   <div class="tab" onclick="sw('carga',this)">📊 Carga x Sup.</div>
   <div class="tab" onclick="sw('org',this)">🗂 Organigrama</div>
   <div class="tab" onclick="sw('dir',this)">🎯 Dirección</div>
+  <div class="tab" onclick="sw('bita',this)">📝 Bitácora</div>
   <div class="tab" onclick="sw('db',this)">🗄 Base de Datos</div>
 </div>
 
@@ -309,6 +310,12 @@ table.dbt tr:hover td{background:#FAFAF7;}
 <div class="pane" id="pane-carga">
   <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Cuántas obras activas tiene cada supervisor. Úsalo con la pestaña <b>Dirección</b> para balancear: mueve obras de un supervisor sobrecargado a uno disponible.</div>
   <div id="carga-out"></div>
+</div>
+
+<!-- ═══ BITÁCORA DE DECISIONES (rastro de cada acción de mando) ═══ -->
+<div class="pane" id="pane-bita">
+  <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Registro automático de las decisiones tomadas desde el centro de mando: reasignaciones de supervisor y cambios de estado, con el antes → después.</div>
+  <div id="bita-out"></div>
 </div>
 
 <!-- ═══ GANTT SUPERVISOR ═══ -->
@@ -1036,6 +1043,9 @@ function saveRec(){
   const per=v('f-per').trim()||'Sin Asignar';
   const rec={cli:v('f-cli').trim(),zona:v('f-zona'),est:v('f-est'),per,cargo:v('f-cargo').trim()||'Sin Asignar',ini:v('f-ini'),fin:v('f-fin')};
   if(!rec.cli||!rec.ini||!rec.fin){toast('Completa los campos requeridos');return;}
+  // Alerta de choque de fechas: la persona ya está ocupada en un rango que se cruza
+  const choques=DB.filter(r=>r.id!==editId && rec.per!=='Sin Asignar' && r.per===rec.per && r.ini && r.fin && rec.ini<=r.fin && r.ini<=rec.fin);
+  if(choques.length && !confirm('⚠ '+rec.per+' ya está asignado en fechas que se cruzan:\n'+choques.map(c=>'• '+c.cli+'  ('+c.ini+' → '+c.fin+')').join('\n')+'\n\n¿Asignar de todas formas?')) return;
   if(editId){const i=DB.findIndex(x=>x.id===editId);DB[i]={...rec,id:editId};toast('Actualizado');}
   else{rec.id=Math.max(0,...DB.map(x=>x.id))+1;DB.push(rec);toast('Agregado');}
   closeM();refreshAll();
@@ -1114,20 +1124,46 @@ function rCARGA(){
   h+=`</tbody></table><div style="margin-top:8px;font-size:11px;color:var(--muted);">Rojo = 4+ obras (sobrecargado) · Ámbar = 3 · Verde = disponible. Fuente: <b>proyectos</b> (obras activas).</div>`;
   out.innerHTML=h;
 }
+// ── Bitácora de decisiones: cada acción de mando deja rastro en bitacora_pmo ──
+function logBitacora(accion,proyecto,detalle){
+  fetch(SB_URL+'/rest/v1/bitacora_pmo',{method:'POST',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify({accion,proyecto,detalle,usuario:'PMO'})}).catch(()=>{});
+  if(document.getElementById('pane-bita')?.classList.contains('active')) setTimeout(rBITA,350);
+}
+function rBITA(){
+  const out=document.getElementById('bita-out'); if(!out) return;
+  out.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px;">Cargando…</div>';
+  fetch(SB_URL+'/rest/v1/bitacora_pmo?select=ts,accion,proyecto,detalle,usuario&order=ts.desc&limit=150',{headers:SB_H})
+    .then(r=>r.ok?r.json():[]).then(rows=>{
+      let h=`<table class="gtbl" style="width:100%;font-size:12px;"><thead><tr><th class="lh" style="text-align:left;">FECHA · HORA</th><th style="text-align:left;">ACCIÓN</th><th style="text-align:left;">OBRA</th><th style="text-align:left;">DETALLE</th><th>QUIÉN</th></tr></thead><tbody>`;
+      rows.forEach(r=>{
+        const d=new Date(r.ts);
+        const fh=isNaN(d)?r.ts:d.toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+        h+=`<tr><td style="padding:6px 10px;white-space:nowrap;color:var(--muted);">${fh}</td><td style="font-weight:600;">${r.accion||''}</td><td>${r.proyecto||''}</td><td>${r.detalle||''}</td><td style="text-align:center;color:var(--muted);">${r.usuario||''}</td></tr>`;
+      });
+      h+=`</tbody></table><div style="margin-top:8px;font-size:11px;color:var(--muted);">${rows.length} decisión(es) · registro automático de reasignaciones y cambios de estado.</div>`;
+      out.innerHTML=h;
+    }).catch(()=>{out.innerHTML='<div style="color:#DC2626;font-size:12px;padding:8px;">No se pudo cargar la bitácora.</div>';});
+}
 function asignarSup(id,email){
   const r=ROSTER.find(x=>x.email===email);
+  const p0=PROYS.find(x=>x.id===id);
+  const prevSup=p0?(p0.supervisor||'Sin asignar'):'—', nom=p0?p0.nombre:('#'+id);
   const patch={supervisor_email:email||null};
   if(email){ if(r) patch.supervisor=r.n; } else { patch.supervisor=null; }
   sbPatch(id,patch).then(res=>{ if(!res.ok) throw 0;
-    const p=PROYS.find(x=>x.id===id);
-    if(p){ p.supervisor_email=email||null; if(!email) p.supervisor=null; else if(r) p.supervisor=r.n; }
+    if(p0){ p0.supervisor_email=email||null; if(!email) p0.supervisor=null; else if(r) p0.supervisor=r.n; }
+    const nuevo=email?(r?r.n:email):'Sin asignar';
     toast(email?('Asignado a '+(r?r.n:email)):'Supervisor quitado');
+    if(prevSup!==nuevo) logBitacora('Reasignar supervisor',nom,prevSup+' → '+nuevo);
   }).catch(()=>toast('Error al asignar'));
 }
 function cambiarEstado(id,estado){
+  const p0=PROYS.find(x=>x.id===id);
+  const prevE=p0?(p0.estado||'—'):'—', nom=p0?p0.nombre:('#'+id);
   sbPatch(id,{estado}).then(res=>{ if(!res.ok) throw 0;
-    const p=PROYS.find(x=>x.id===id); if(p) p.estado=estado;
+    if(p0) p0.estado=estado;
     toast('Estado → '+estado+(/cerrad/i.test(estado)?' · avance 100%':''));
+    if(prevE!==estado) logBitacora('Cambiar estado',nom,prevE+' → '+estado+(/cerrad/i.test(estado)?' (avance 100%)':''));
   }).catch(()=>toast('Error al cambiar estado'));
 }
 
@@ -1143,6 +1179,7 @@ function sw(id,el){
   if(id==='org') rORG();
   if(id==='carga') rCARGA();
   if(id==='dir') rDIR();
+  if(id==='bita') rBITA();
   if(id==='db') rDB();
 }
 
