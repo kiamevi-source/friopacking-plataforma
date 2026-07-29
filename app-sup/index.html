@@ -3567,11 +3567,13 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       <span>Costos</span>
       <span class="tab-badge hidden"></span>
     </button>
-    <button class="nav-tab" data-tab="imports" onclick="showTab('imports')">
+    <!-- Tab "Imports" oculto: el importador de presupuesto se movió a Costos (embebido).
+         Reactivar este botón cuando exista el importador de Nisira (multi-destino). -->
+    <!--<button class="nav-tab" data-tab="imports" onclick="showTab('imports')">
       <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
       <span>Imports</span>
       <span class="tab-badge hidden"></span>
-    </button>
+    </button>-->
     <button class="nav-tab" data-tab="facturas" onclick="showTab('facturas')">
       <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/><line x1="9" y1="9" x2="11" y2="9"/></svg></span>
       <span>Facturas</span>
@@ -4419,6 +4421,16 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
     <!-- ══ COSTOS & MÁRGENES · Fase 3 #4 ══ -->
     <div class="tab-content" id="tab-costos">
 
+      <!-- Importador de presupuesto embebido (movido acá desde el ex-tab Imports).
+           El #imp-pres-card se inyecta en #costos-import-host en runtime. -->
+      <details id="costos-import-wrap" style="margin-bottom:14px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);overflow:hidden">
+        <summary style="cursor:pointer;padding:12px 16px;font-size:13px;font-weight:600;color:var(--text);list-style:none;display:flex;align-items:center;gap:8px;user-select:none">
+          <svg style="width:16px;height:16px;color:var(--teal-600)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Importar / actualizar presupuesto
+        </summary>
+        <div id="costos-import-host" style="padding:0 4px 4px"></div>
+      </details>
+
       <!-- Estado vacío (sin proyecto / sin datos) -->
       <div id="costos-noproj" class="hidden">
         <div class="sec-card">
@@ -4435,8 +4447,8 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
           <div class="sec-body" style="text-align:center;padding:40px 20px;color:var(--text-2)">
             <svg style="width:48px;height:48px;color:var(--text-3);margin-bottom:12px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No hay presupuesto cargado para este proyecto</div>
-            <div style="font-size:12px;margin-bottom:14px">Subí el Excel de la propuesta económica desde el tab <b>Imports</b>.</div>
-            <button class="btn btn-primary btn-sm" onclick="showTab('imports')">→ Ir a Imports</button>
+            <div style="font-size:12px;margin-bottom:14px">Importá el Excel de la propuesta económica aquí mismo.</div>
+            <button class="btn btn-primary btn-sm" onclick="abrirImportPresupuesto()">⬆ Importar presupuesto</button>
           </div>
         </div>
       </div>
@@ -13170,6 +13182,8 @@ let _dashSources = null;
 
       // Invalidar cache del tab Costos para que muestre los datos nuevos
       try{ if(typeof window._invalidateCostosCache === 'function') window._invalidateCostosCache(); }catch(e){}
+      // El importador está embebido en Costos → recargar la vista para mostrar el presupuesto recién subido.
+      try{ if(typeof window.loadCostos === 'function') window.loadCostos(true); }catch(e){}
 
       // ─── AUTO-VINCULAR licitaciones del Gantt con partidas del presupuesto ───
       // (la fn SQL hace match por keyword: NH3, Glicol, paneles, lonas, etc.)
@@ -13205,8 +13219,23 @@ let _dashSources = null;
     }
   };
 
+  // ── Abrir el importador embebido desde Costos ───────────────────
+  window.abrirImportPresupuesto = function(){
+    const wrap = document.getElementById('costos-import-wrap');
+    if(wrap) wrap.open = true;
+    if(typeof refreshProjectIndicator === 'function') refreshProjectIndicator();
+    if(wrap && wrap.scrollIntoView) wrap.scrollIntoView({ behavior:'smooth', block:'start' });
+  };
+
   // ── Wire up drag&drop + file input ───────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
+    // Embeber el importador de presupuesto dentro de Costos (movido desde el ex-tab Imports).
+    try {
+      const card = document.getElementById('imp-pres-card');
+      const host = document.getElementById('costos-import-host');
+      if(card && host && card.parentElement !== host) host.appendChild(card);
+    } catch(e){}
+
     const drop = document.getElementById('imp-pres-drop');
     const file = document.getElementById('imp-pres-file');
     if(!drop || !file) return;
@@ -13237,7 +13266,7 @@ let _dashSources = null;
   const _origShowTab_imp = window.showTab;
   window.showTab = function(tab){
     if(typeof _origShowTab_imp === 'function') _origShowTab_imp(tab);
-    if(tab === 'imports') refreshProjectIndicator();
+    if(tab === 'costos') refreshProjectIndicator();
   };
   const _origCargarProyecto = window.cargarProyecto;
   window.cargarProyecto = function(...args){
