@@ -283,6 +283,7 @@ table.dbt tr:hover td{background:#FAFAF7;}
   <div class="tab" onclick="sw('gantt-sup',this)">📊 Gantt Supervisor</div>
   <div class="tab" onclick="sw('gantt-cli',this)">🏢 Gantt Cliente</div>
   <div class="tab" onclick="sw('avail',this)">📅 Disponibilidad</div>
+  <div class="tab" onclick="sw('carga',this)">📊 Carga x Sup.</div>
   <div class="tab" onclick="sw('org',this)">🗂 Organigrama</div>
   <div class="tab" onclick="sw('dir',this)">🎯 Dirección</div>
   <div class="tab" onclick="sw('db',this)">🗄 Base de Datos</div>
@@ -302,6 +303,12 @@ table.dbt tr:hover td{background:#FAFAF7;}
     <input id="dir-srch" placeholder="🔍 Buscar obra o supervisor…" oninput="rDIR()" style="margin-left:auto;font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;">
   </div>
   <div id="dir-out"></div>
+</div>
+
+<!-- ═══ CARGA POR SUPERVISOR (sobre tu personal, desde proyectos) ═══ -->
+<div class="pane" id="pane-carga">
+  <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Cuántas obras activas tiene cada supervisor. Úsalo con la pestaña <b>Dirección</b> para balancear: mueve obras de un supervisor sobrecargado a uno disponible.</div>
+  <div id="carga-out"></div>
 </div>
 
 <!-- ═══ GANTT SUPERVISOR ═══ -->
@@ -1087,6 +1094,26 @@ function rDIR(){
   h+=`</tbody></table><div style="margin-top:8px;font-size:11px;color:var(--muted);">${list.length} obra(s) activa(s) · los cambios se guardan al instante en <b>proyectos</b>.</div>`;
   out.innerHTML=h;
 }
+function rCARGA(){
+  const out=document.getElementById('carga-out'); if(!out) return;
+  const byKey={};
+  PROYS.forEach(p=>{ const k=p.supervisor_email||('name:'+(p.supervisor||'')); (byKey[k]=byKey[k]||[]).push(p); });
+  const rows=ROSTER.filter(r=>r.email).map(r=>({n:r.n,obras:byKey[r.email]||[]}));
+  // supervisores con obras que NO están en el roster
+  Object.keys(byKey).forEach(k=>{ if(!ROSTER.some(r=>r.email===k)){ const list=byKey[k]; const nm=list[0].supervisor||k.replace('name:',''); if(nm) rows.push({n:nm+' (fuera de roster)',obras:list}); } });
+  rows.sort((a,b)=>b.obras.length-a.obras.length);
+  const maxC=Math.max(1,...rows.map(r=>r.obras.length));
+  let h=`<table class="gtbl" style="width:100%;font-size:12px;"><thead><tr><th class="lh" style="text-align:left;">SUPERVISOR</th><th style="text-align:left;">CARGA (obras activas)</th><th style="text-align:left;">OBRAS</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const c=r.obras.length;
+    const clr=c===0?'#CBD5E1':c>=4?'#DC2626':c>=3?'#D97706':'#1565C0';
+    const bar=`<div style="display:flex;align-items:center;gap:8px;"><div style="height:10px;width:${Math.round(c/maxC*120)}px;min-width:${c?6:2}px;background:${clr};border-radius:5px;"></div><b>${c}</b>${c===0?'<span style="color:#059669;font-size:10px;font-weight:700;margin-left:4px;">DISPONIBLE</span>':''}</div>`;
+    const obras=r.obras.map(o=>`<span style="display:inline-block;background:#f1f5f9;border:1px solid var(--border);border-radius:6px;padding:1px 7px;margin:1px;font-size:10px;">${o.nombre}</span>`).join('')||'<span style="color:var(--muted);font-size:11px;">—</span>';
+    h+=`<tr><td style="padding:7px 10px;font-weight:600;">${r.n}</td><td style="min-width:175px;">${bar}</td><td>${obras}</td></tr>`;
+  });
+  h+=`</tbody></table><div style="margin-top:8px;font-size:11px;color:var(--muted);">Rojo = 4+ obras (sobrecargado) · Ámbar = 3 · Verde = disponible. Fuente: <b>proyectos</b> (obras activas).</div>`;
+  out.innerHTML=h;
+}
 function asignarSup(id,email){
   const r=ROSTER.find(x=>x.email===email);
   const patch={supervisor_email:email||null};
@@ -1114,6 +1141,7 @@ function sw(id,el){
   if(id==='gantt-cli') rGC();
   if(id==='avail') rAV();
   if(id==='org') rORG();
+  if(id==='carga') rCARGA();
   if(id==='dir') rDIR();
   if(id==='db') rDB();
 }
@@ -1387,7 +1415,7 @@ loadData().then(()=>{refreshAll();rVD();});
 /* Fuente única de personas: sugerencias desde supervisores_equipo (roster) */
 let ROSTER=[];
 fetch(SB_URL+'/rest/v1/supervisores_equipo?select=n,email&order=n.asc',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
-  .then(r=>r.ok?r.json():[]).then(rows=>{ROSTER=rows;const dl=document.getElementById('pmo-roster');rows.forEach(x=>{const o=document.createElement('option');o.value=x.n;dl.appendChild(o);});if(document.getElementById('pane-dir')?.classList.contains('active'))rDIR();}).catch(()=>{});
+  .then(r=>r.ok?r.json():[]).then(rows=>{ROSTER=rows;const dl=document.getElementById('pmo-roster');rows.forEach(x=>{const o=document.createElement('option');o.value=x.n;dl.appendChild(o);});if(document.getElementById('pane-dir')?.classList.contains('active'))rDIR();if(document.getElementById('pane-carga')?.classList.contains('active'))rCARGA();}).catch(()=>{});
 
 /* Fuente única de proyectos: el campo "Cliente / Proyecto" y la vista Dirección salen de la tabla proyectos (PMO).
    Al elegir un proyecto se autocompleta su zona → dirigir asignaciones sobre proyectos reales. */
@@ -1398,6 +1426,7 @@ fetch(SB_URL+'/rest/v1/proyectos?select=id,cod_proyecto,nombre,supervisor,superv
     const dl=document.getElementById('pmo-proyectos');
     rows.forEach(x=>{ if(!x.nombre) return; const o=document.createElement('option'); o.value=x.nombre; dl.appendChild(o); if(x.zona) PROY_ZONA[x.nombre.trim().toLowerCase()]=x.zona; });
     if(document.getElementById('pane-dir')?.classList.contains('active')) rDIR();
+    if(document.getElementById('pane-carga')?.classList.contains('active')) rCARGA();
   }).catch(()=>{});
 function autoZona(){
   const nombre=(document.getElementById('f-cli').value||'').trim().toLowerCase();
