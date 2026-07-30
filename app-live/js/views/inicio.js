@@ -9,17 +9,27 @@ window.loadDashboard = async function () {
   try {
     const today = new Date();
 
-    // Projects activos
+    // Todos los proyectos reales del PMO.
+    // NOTA: la columna booleana `activo` está desalineada del estado (marca
+    // proyectos "Cerrado" como activos y oculta proyectos "En progreso"), por
+    // eso NO se filtra por ella: el ESTADO es la fuente de verdad. El indicador
+    // "Proyectos activos" del hero se deriva por estado de ejecución (activosList).
     const { data: projs, error: e1 } = await window.sb
       .from('proyectos')
-      .select('id,nombre,estado,fecha_fin_contractual,fecha_ini_contractual,valorizacion_pct,supervisor')
-      .eq('activo', true);
+      .select('id,nombre,estado,fecha_fin_contractual,fecha_ini_contractual,valorizacion_pct,supervisor');
     if (e1) throw e1;
     if (!projs) throw new Error('No data');
 
     // Subset: solo proyectos "En progreso" (misma lógica que legacy.activeP())
     const enProgreso = projs.filter(
       (p) => (p.estado || '').trim().toLowerCase() === 'en progreso'
+    );
+
+    // "Proyectos activos" (hero) = proyectos EN EJECUCIÓN por estado real:
+    // "En progreso" + "En Puesta en Marcha". No usa la bandera `activo`.
+    const EJECUCION = ['en progreso', 'en puesta en marcha'];
+    const activosList = projs.filter(
+      (p) => EJECUCION.includes((p.estado || '').trim().toLowerCase())
     );
 
     // Reportes (histórico completo, no-draft) — para derivar avance y "último reporte"
@@ -134,7 +144,7 @@ window.loadDashboard = async function () {
     renderComplianceAlerts(complianceAlerts);
 
     // ── Hero stats (alto nivel) ──
-    setNum('stat-activos', projs.length);
+    setNum('stat-activos', activosList.length);
     // Por vencer ≤30 días — MISMA definición que la vista Alertas (proximos30):
     // SOLO proyectos en progreso, con avance < 99%, y el mismo cálculo de días
     // que el legacy (fecha a mediodía + Math.round) para que los números coincidan.
@@ -166,7 +176,7 @@ window.loadDashboard = async function () {
 
     // ── Detalle clicable de cada KPI (ventana flotante) ──
     buildKpiDetails({
-      projs,
+      projs: activosList,
       porVencer30List,
       sinReporteList,
       valorizacionList,
@@ -174,8 +184,9 @@ window.loadDashboard = async function () {
       alerts: complianceAlerts.filter((a) => a.type === 'crit' || a.type === 'warn'),
     });
     // Desglose de la cartera activa por estado (registra sus detalles DESPUÉS
-    // de buildKpiDetails para que no los sobreescriba).
-    renderEstadoSplit(projs);
+    // de buildKpiDetails para que no los sobreescriba). Usa la cartera en
+    // ejecución (activosList) para que el total coincida con "Proyectos activos".
+    renderEstadoSplit(activosList);
     initKpiPopover();
 
     // ── Última sincronización ──
