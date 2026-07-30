@@ -290,7 +290,13 @@
         <i data-lucide="folder" class="ic"></i>
         <span>Reportes</span>
       </a>
-      <!-- Equipos y Contratistas movidos dentro de cada proyecto (modal) -->
+      <!-- Contratistas viven dentro de cada proyecto (modal). Equipos vuelve como
+           módulo global (vista + carga + KPIs vía #equipos → renderEquiposPremium),
+           y además sigue por-proyecto en la pestaña del modal. -->
+      <a href="#equipos" class="nav-item">
+        <i data-lucide="package" class="ic"></i>
+        <span>Equipos</span>
+      </a>
       <a href="#servicios" class="nav-item">
         <i data-lucide="layers" class="ic"></i>
         <span>Servicios (Contratistas)</span>
