@@ -1752,8 +1752,8 @@ function _pcCompact(s){return _pcNorm(s).replace(/\b(DEL|DE|EL|LA|LAS|LOS|Y)\b/g
 function renderModalContratistas(p){
   const body=$('#modal-body'); if(!body) return;
   const paint=(rows)=>{
-    const pnC=_pcCompact(p.name);
-    const mine=rows.filter(r=>{const cC=_pcCompact(r.cliente);return cC && pnC.startsWith(cC);});
+    const pn=_pcNorm(p.name);
+    const mine=rows.filter(r=>_pcNorm(r.cliente)===pn);
     let inner;
     if(!mine.length){
       inner=`<div style="padding:40px;text-align:center;color:var(--muted)"><div style="font-size:32px;margin-bottom:8px">🔧</div><div>Sin contratistas registrados para <b>${p.name}</b> en el portafolio de servicios.</div></div>`;
