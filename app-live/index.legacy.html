@@ -1117,7 +1117,7 @@ async function initFromSupabase(){
       // los botones Norte/Centro/Sur vacían la grilla (nunca hay match).
       const _zc=String(_zonaRaw).trim().toUpperCase();
       const zona=_zc==='NORTE'?'Norte':_zc==='CENTRO'?'Centro':_zc==='SUR'?'Sur':_zonaRaw;
-      const _cfForEstado=(_sp?_sp.cf:'')||p.fecha_fin_contractual||'';
+      const _cfForEstado=p.fecha_fin_contractual||(_sp?_sp.cf:'')||'';
       const displayEstado=computeDisplayEstado(p.estado,spiVal,_cfForEstado,valp);
       const lastRep=reps[reps.length-1];
       // Fecha real recibida (incluye días planos que el dedup excluyó de la curva)
