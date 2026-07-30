@@ -1748,11 +1748,12 @@ function renderModalView(){
 /* ====== MODAL CONTRATISTAS (portafolio_servicios de PMO, por cliente/obra) ====== */
 let _PORTAFOLIO=null;
 function _pcNorm(s){return (s||'').toString().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();}
+function _pcCompact(s){return _pcNorm(s).replace(/\b(DEL|DE|EL|LA|LAS|LOS|Y)\b/g,' ').replace(/[^A-Z0-9]/g,'');}
 function renderModalContratistas(p){
   const body=$('#modal-body'); if(!body) return;
   const paint=(rows)=>{
-    const pn=_pcNorm(p.name), pw=pn.split(/[\s\/]+/)[0];
-    const mine=rows.filter(r=>{const c=_pcNorm(r.cliente);return c && (pn.startsWith(c)||c.includes(pw));});
+    const pnC=_pcCompact(p.name);
+    const mine=rows.filter(r=>{const cC=_pcCompact(r.cliente);return cC && pnC.startsWith(cC);});
     let inner;
     if(!mine.length){
       inner=`<div style="padding:40px;text-align:center;color:var(--muted)"><div style="font-size:32px;margin-bottom:8px">🔧</div><div>Sin contratistas registrados para <b>${p.name}</b> en el portafolio de servicios.</div></div>`;
