@@ -722,6 +722,7 @@ input[type=date]{font-family:inherit;color:var(--ink);background:transparent;bor
       <div class="modal-tab" data-mv="vault">📂 Documentos</div>
       <div class="modal-tab" data-mv="galeria">🖼️ Galería</div>
       <div class="modal-tab" data-mv="equipos">📦 Equipos</div>
+      <div class="modal-tab" data-mv="contratistas">🔧 Contratistas</div>
       <div class="modal-tab" data-mv="comments">💬 Comentarios</div>
     </div>
     <div class="modal-body" id="modal-body"></div>
@@ -1742,6 +1743,42 @@ function renderModalView(){
   if(curMV==='galeria')renderModalGaleria(p);
   if(curMV==='comments')renderModalComments(p);
   if(curMV==='equipos')renderModalEquipos(p);
+  if(curMV==='contratistas')renderModalContratistas(p);
+}
+/* ====== MODAL CONTRATISTAS (portafolio_servicios de PMO, por cliente/obra) ====== */
+let _PORTAFOLIO=null;
+function _pcNorm(s){return (s||'').toString().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();}
+function renderModalContratistas(p){
+  const body=$('#modal-body'); if(!body) return;
+  const paint=(rows)=>{
+    const pn=_pcNorm(p.name), pw=pn.split(/[\s\/]+/)[0];
+    const mine=rows.filter(r=>{const c=_pcNorm(r.cliente);return c && (pn.startsWith(c)||c.includes(pw));});
+    let inner;
+    if(!mine.length){
+      inner=`<div style="padding:40px;text-align:center;color:var(--muted)"><div style="font-size:32px;margin-bottom:8px">🔧</div><div>Sin contratistas registrados para <b>${p.name}</b> en el portafolio de servicios.</div></div>`;
+    } else {
+      const estClr={'Proceso':'#2563EB','Concluido':'#059669','Por Iniciar':'#6B7280','Cierre':'#D97706'};
+      const tr=mine.slice().sort((a,b)=>(a.especialidad||'').localeCompare(b.especialidad||'')).map(r=>{
+        const clr=estClr[r.estado]||'#6B7280';
+        return `<tr>
+          <td style="padding:10px 14px;font-weight:600;border-bottom:1px solid var(--line,#e6edf5)">${r.especialidad||'—'}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid var(--line,#e6edf5)">${r.contratista||'—'}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid var(--line,#e6edf5)">${r.situacion||'—'}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid var(--line,#e6edf5)"><span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;color:#fff;background:${clr}">${r.estado||'—'}</span></td>
+        </tr>`;}).join('');
+      inner=`<div style="padding:4px 0 2px;color:var(--muted);font-size:13px">${mine.length} contratista(s) en <b>${p.name}</b> · cruce Especialidad → Contratista</div>
+        <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13px">
+          <thead><tr style="text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">
+            <th style="padding:8px 14px">Especialidad</th><th style="padding:8px 14px">Contratista</th><th style="padding:8px 14px">Situación</th><th style="padding:8px 14px">Estado</th>
+          </tr></thead><tbody>${tr}</tbody></table>`;
+    }
+    body.innerHTML=`<div class="mview on" id="mv-contratistas" style="padding:16px 20px">${inner}</div>`;
+  };
+  if(_PORTAFOLIO){paint(_PORTAFOLIO);return;}
+  body.innerHTML=`<div class="mview on" style="padding:40px;text-align:center;color:var(--muted)">Cargando contratistas…</div>`;
+  fetch(_SB_URL+'/rest/v1/portafolio_servicios?select=cliente,especialidad,contratista,situacion,estado',{headers:{apikey:_SB_KEY,Authorization:'Bearer '+_SB_KEY}})
+    .then(r=>r.ok?r.json():[]).then(rows=>{_PORTAFOLIO=rows;paint(rows);})
+    .catch(()=>{body.innerHTML='<div class="mview on" style="padding:40px;text-align:center;color:#DC2626">No se pudo cargar el portafolio de contratistas.</div>';});
 }
 
 function renderModalResumen(p){
