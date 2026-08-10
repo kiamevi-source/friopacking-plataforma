@@ -1107,7 +1107,13 @@ async function initFromSupabase(){
       const _esCerrado=(p.estado||'').toLowerCase().includes('cerrado');
       // Si el último reporte tiene av=0 y spi=0 → dato inválido, usar ZIP como fallback
       const _lastOk=last&&(last.av>0||last.spi>0);
-      const valp=_esCerrado?100:(_lastOk?last.av:(_sp&&_sp.valp>0?_sp.valp:parseFloat(p.valorizacion_pct)||0));
+      // Override manual de avance (columna proyectos.avance_manual). Si está definido
+      // manda sobre el avance automático; si es NULL/'' se usa la fuente Supabase normal.
+      // No desconecta el avance de Supabase: solo tiene prioridad cuando existe.
+      const _avManRaw=(p.avance_manual===0||p.avance_manual)?parseFloat(p.avance_manual):NaN;
+      const _avMan=isNaN(_avManRaw)?null:Math.max(0,Math.min(100,_avManRaw));
+      const _avAuto=_esCerrado?100:(_lastOk?last.av:(_sp&&_sp.valp>0?_sp.valp:parseFloat(p.valorizacion_pct)||0));
+      const valp=_avMan!=null?_avMan:_avAuto;
       const planPct=_esCerrado?100:(_lastOk&&last.plan>0?last.plan:(_sp&&_sp.plan>0?_sp.plan:valp)||valp);
       const spiVal=_lastOk&&last.spi?last.spi:(planPct>0?Math.round(valp/planPct*100)/100:1.0);
       const tipo=TIPO_FIX[p.categoria]||p.categoria||'Refrigeración';
@@ -1139,6 +1145,7 @@ async function initFromSupabase(){
         desfase_dias:last?.desfase_dias!=null?last.desfase_dias:null,
         lat:p.lat?parseFloat(p.lat):null,lng:p.lng?parseFloat(p.lng):null,
         estado:displayEstado,_dbEstado:p.estado||'En progreso',
+        avance_manual:_avMan,_avAuto:_avAuto,
         _real:valp,_plan:planPct,_spi:spiVal,_dbId:p.id,_fromDB:true,
         _cf:(_sp?_sp.cf:'')||p.fecha_fin_contractual||'',
         _rf:(_sp?_sp.rf:'')||p.fecha_fin_proyectada||'',
@@ -18591,6 +18598,49 @@ function renderExecutive(p){
   }
 }
 
+/* ─── Editor de avance manual ───
+   Sobrescribe el avance del proyecto sin desconectar la fuente Supabase:
+   guarda en proyectos.avance_manual. Vacío / "auto" → vuelve al avance automático. */
+async function editAvanceManual(){
+  const p = (W.curProject) || _resolveProject();
+  if(!p){ showToast('No hay proyecto abierto','warn',3000); return; }
+  if(!p._dbId){ showToast('Este proyecto no está en Supabase; no se puede ajustar','warn',4000); return; }
+  const auto = (Number(p._avAuto)||0).toFixed(1);
+  const actual = p.avance_manual!=null ? String(p.avance_manual) : '';
+  const msg = `Avance manual de "${p.name}" (0–100 %).\n\n`+
+              `Avance automático de Supabase: ${auto}%\n`+
+              (p.avance_manual!=null?`Avance manual actual: ${p.avance_manual}%\n`:'')+
+              `\nDeja el campo vacío (o escribe "auto") para volver al avance automático.`;
+  const raw = prompt(msg, actual);
+  if(raw===null) return; // cancelado
+  const txt = raw.trim().toLowerCase();
+  let val;
+  if(txt==='' || txt==='auto'){ val=null; }
+  else{
+    const n = parseFloat(raw.replace(',','.'));
+    if(isNaN(n) || n<0 || n>100){ showToast('Valor inválido: usa un número entre 0 y 100','warn',4000); return; }
+    val = Math.round(n*10)/10;
+  }
+  try{
+    const db = getSB();
+    if(!db){ showToast('Sin conexión Supabase','alert',4000); return; }
+    const {error} = await db.from('proyectos').update({avance_manual:val}).eq('id', p._dbId);
+    if(error) throw error;
+    // Actualizar el objeto en memoria y recomputar el avance mostrado
+    p.avance_manual = val;
+    const newValp = (val!=null) ? val : (Number(p._avAuto)||0);
+    p.valp = newValp; p._real = newValp;
+    // Re-render del modal y de toda la vista (grilla, mapa, KPIs)
+    try{ if(typeof W.renderModalView==='function') W.renderModalView(); else renderExecutive(p); }catch(e){}
+    try{ if(typeof renderAll==='function') renderAll(); }catch(e){}
+    showToast(val!=null?`Avance ajustado a ${val}% (manual)`:'Avance restaurado al automático de Supabase','ok',4000);
+  }catch(e){
+    console.error('avance_manual save:',e);
+    showToast('Error al guardar el avance: '+(e.message||'desconocido'),'alert',5000);
+  }
+}
+W.editAvanceManual = editAvanceManual;
+
 /* Minimal guaranteed-render fallback */
 function _renderExecutiveSimple(p, err){
   const body = _$('#modal-body'); if(!body) return;
@@ -18771,9 +18821,12 @@ function _renderExecutiveFull(p){
     <!-- KPI Pulse Grid -->
     <div class="exc-kpis">
       <div class="exc-kpi ${gap<-2?'alert':gap>2?'ok':'info'}">
-        <div class="exc-kpi-l">▮ Avance Real</div>
+        <div class="exc-kpi-l" style="display:flex;align-items:center;gap:6px;justify-content:space-between">
+          <span>▮ Avance Real ${p.avance_manual!=null?'<span title="Avance ajustado manualmente" style="font-size:8px;letter-spacing:.05em;background:#0d9488;color:#fff;padding:1px 5px;border-radius:8px;vertical-align:middle">MANUAL</span>':''}</span>
+          <button onclick="editAvanceManual()" title="Ajustar avance manualmente" style="all:unset;cursor:pointer;font-size:11px;color:#64748b;padding:0 2px">✎</button>
+        </div>
         <div class="exc-kpi-v" data-count="${real.toFixed(1)}">0.0%</div>
-        <div class="exc-kpi-sub ${gap>=0?'up':'down'}">${gap>=0?'▲':'▼'} ${Math.abs(gap).toFixed(1)} pts vs plan</div>
+        <div class="exc-kpi-sub ${gap>=0?'up':'down'}">${p.avance_manual!=null?`manual · auto ${(Number(p._avAuto)||0).toFixed(1)}%`:`${gap>=0?'▲':'▼'} ${Math.abs(gap).toFixed(1)} pts vs plan`}</div>
         ${_spark(realSpark)}
       </div>
       <div class="exc-kpi info">

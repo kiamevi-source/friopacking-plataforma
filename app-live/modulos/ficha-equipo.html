@@ -388,6 +388,19 @@ tr.rk-top td{background:rgba(232,199,102,.05);}
         <div class="fld"><label>Experiencia</label><select id="e_ex"><option>Menos de 1 año</option><option>1 Año</option><option>+ de 3 Años</option><option>+ de 4 Años</option><option>+ de 5 Años</option></select></div>
         <div class="fld"><label>Portafolio gestionado</label><input id="e_dg" placeholder="$ +1.5 M"></div>
         <div class="fld full"><label>Experiencia (separada por coma)</label><input id="e_specs" placeholder="Amoniaco, Freón, Cobre, PVC…"></div>
+        <div class="msub">Herramientas · Nivel (define el rating FIFA)</div>
+        <div class="fld"><label>AutoCAD</label><select id="e_ac" class="lvl"></select></div>
+        <div class="fld"><label>MS Project</label><select id="e_ms" class="lvl"></select></div>
+        <div class="fld"><label>Power BI</label><select id="e_pb" class="lvl"></select></div>
+        <div class="fld"><label>Inglés</label><select id="e_ig" class="lvl"></select></div>
+        <div class="fld"><label>Office</label><select id="e_wd" class="lvl"></select></div>
+        <div class="msub">Competencias · Evaluación (0–5, radar de la ficha)</div>
+        <div class="fld full"><label>Rating general (0–5 → define el OVR grande de la ficha)</label><input id="e_gen" type="number" min="0" max="5" step="0.1" placeholder="Vacío = OVR se calcula por herramientas + experiencia"></div>
+        <div class="fld"><label>G. Proyecto</label><input id="e_gp" type="number" min="0" max="5" step="0.5" placeholder="0–5"></div>
+        <div class="fld"><label>Valorizaciones</label><input id="e_val" type="number" min="0" max="5" step="0.5" placeholder="0–5"></div>
+        <div class="fld"><label>Atención Áreas</label><input id="e_area" type="number" min="0" max="5" step="0.5" placeholder="0–5"></div>
+        <div class="fld"><label>Calidad</label><input id="e_cal" type="number" min="0" max="5" step="0.5" placeholder="0–5"></div>
+        <div class="fld"><label>Gestión Req</label><input id="e_req" type="number" min="0" max="5" step="0.5" placeholder="0–5"></div>
         <div class="msub">Proyectos & refrigerante</div>
         <div class="fld full"><div id="e_projs"></div><button class="addp" type="button" onclick="addProj()">+ Agregar proyecto</button></div>
       </div>
@@ -827,6 +840,11 @@ function openEdit(i){
   setSel('e_cg',p.cg);setSel('e_sd',p.sd);setSel('e_fm',p.fm);setSel('e_gr',p.gr);
   setSel('e_ex',p.ex);
   $('e_dg').value=p.dg||''; $('e_specs').value=p.specs||'';
+  // Herramientas (nivel) — alimentan el rating FIFA
+  setSel('e_ac',p.ac);setSel('e_ms',p.ms);setSel('e_pb',p.pb);setSel('e_ig',p.ig);setSel('e_wd',p.wd);
+  // Competencias (0–5) — radar de la ficha
+  {const c=p.competencias||{};const sv=(id,v)=>$(id).value=(v===0||v?v:'');
+   sv('e_gen',c.general);sv('e_gp',c.gp);sv('e_val',c.val);sv('e_area',c.area);sv('e_cal',c.cal);sv('e_req',c.req);}
   setPV(p.photo||'', ini(p.n)||'—');
   renderProj(Array.isArray(p.proyectos)?p.proyectos:[]);
   $('ov').classList.add('on');
@@ -839,8 +857,18 @@ function readProj(){return [...document.querySelectorAll('#e_projs .projrow')].m
 function addProj(){$('e_projs').insertAdjacentHTML('beforeend',projRow());}
 async function saveData(){
   const g=id=>$(id).value.trim();
+  // Competencias 0–5 → jsonb. MERGE sobre las existentes para no perder claves
+  // que el editor no expone (com, seg, y cualquier otra). Vacío = se elimina esa clave.
+  const _cmp=Object.assign({}, (editIdx>=0 && people[editIdx].competencias) || {});
+  [['general','e_gen'],['gp','e_gp'],['val','e_val'],['area','e_area'],['cal','e_cal'],['req','e_req']].forEach(([k,id])=>{
+    const v=$(id).value.trim();
+    if(v===''){ delete _cmp[k]; }
+    else{ const n=Math.max(0,Math.min(5,parseFloat(v.replace(',','.')))); if(!isNaN(n)) _cmp[k]=n; }
+  });
   const row={n:g('e_n'),cg:g('e_cg'),sd:g('e_sd'),fm:g('e_fm'),gr:g('e_gr'),ex:g('e_ex'),
     dg:g('e_dg'),specs:g('e_specs'),
+    ac:g('e_ac'),ms:g('e_ms'),pb:g('e_pb'),ig:g('e_ig'),wd:g('e_wd'),
+    competencias:_cmp,
     proyectos:readProj()};
   if(pendPhoto!==undefined) row.photo=pendPhoto;
   if(!row.n){toast('El nombre es requerido');return;}
