@@ -1147,7 +1147,7 @@ async function initFromSupabase(){
         estado:displayEstado,_dbEstado:p.estado||'En progreso',
         avance_manual:_avMan,_avAuto:_avAuto,
         _real:valp,_plan:planPct,_spi:spiVal,_dbId:p.id,_fromDB:true,
-        _cf:(_sp?_sp.cf:'')||p.fecha_fin_contractual||'',
+        _cf:p.fecha_fin_contractual||(last?.fecha_fin_cont)||(_sp?_sp.cf:'')||'', // Supabase manda; el ZIP estático (junio) solo es fallback → evita falsos "CF vencido"
         _rf:(_sp?_sp.rf:'')||p.fecha_fin_proyectada||'',
         _ci:(_sp?_sp.ci:'')||p.fecha_ini_contractual||p.fecha_inicio||'',
         _spiFact:_sp?(_sp.fact||0):0,_spiVenta:_sp?(_sp.venta||0):0,
