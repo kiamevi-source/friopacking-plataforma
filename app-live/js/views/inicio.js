@@ -25,12 +25,11 @@ window.loadDashboard = async function () {
       (p) => (p.estado || '').trim().toLowerCase() === 'en progreso'
     );
 
-    // "Proyectos activos" (hero) = proyectos EN EJECUCIÓN por estado real:
-    // "En progreso" + "En Puesta en Marcha". No usa la bandera `activo`.
-    const EJECUCION = ['en progreso', 'en puesta en marcha'];
-    const activosList = projs.filter(
-      (p) => EJECUCION.includes((p.estado || '').trim().toLowerCase())
-    );
+    // "Proyectos activos" (hero) = DEFINICIÓN CANÓNICA ÚNICA (decisión Kiara
+    // 2026-08-12): SOLO estado "En progreso". No usa la bandera `activo`.
+    // Debe coincidir con legacy.activeP(), el Mapa y el resto de módulos.
+    // (Antes sumaba también "En Puesta en Marcha" → daba un número distinto.)
+    const activosList = enProgreso;
 
     // Reportes (histórico completo, no-draft) — para derivar avance y "último reporte"
     // EXACTAMENTE como la vista Alertas (legacy), y que los KPIs coincidan.
