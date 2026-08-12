@@ -1100,9 +1100,10 @@ async function initFromSupabase(){
       const _sp=_staticProj.find(function(x){
         if(x.name===p.nombre)return true;
         if(x.name_v3&&x.name_v3===p.nombre)return true;
-        // nombre normalizado incluye alguna palabra del nombre Supabase
+        // Igualdad normalizada EXACTA (NO substring): el includes cruzaba
+        // AGROBERRIES ↔ AGROBERRIES VIRÚ y arrastraba datos de junio ajenos.
         var xn=_normNm(x.name),xv=x.name_v3?_normNm(x.name_v3):"";
-        return xn===_nm||xv===_nm||xn.includes(_nm)||_nm.includes(xn);
+        return xn===_nm||xv===_nm;
       });
       const _esCerrado=(p.estado||'').toLowerCase().includes('cerrado');
       // Si el último reporte tiene av=0 y spi=0 → dato inválido, usar ZIP como fallback
@@ -1112,9 +1113,14 @@ async function initFromSupabase(){
       // No desconecta el avance de Supabase: solo tiene prioridad cuando existe.
       const _avManRaw=(p.avance_manual===0||p.avance_manual)?parseFloat(p.avance_manual):NaN;
       const _avMan=isNaN(_avManRaw)?null:Math.max(0,Math.min(100,_avManRaw));
-      const _avAuto=_esCerrado?100:(_lastOk?last.av:(_sp&&_sp.valp>0?_sp.valp:parseFloat(p.valorizacion_pct)||0));
+      // Avance automático: reporte manda; sin reporte usa valorizacion_pct de
+      // Supabase (incluido 0 como valor válido); el ZIP de junio solo si Supabase es null.
+      const _vlzSb=(p.valorizacion_pct!=null&&p.valorizacion_pct!=='')?parseFloat(p.valorizacion_pct):null;
+      const _avAuto=_esCerrado?100:(_lastOk?last.av:(_vlzSb!=null?_vlzSb:(_sp&&_sp.valp>0?_sp.valp:0)));
       const valp=_avMan!=null?_avMan:_avAuto;
-      const planPct=_esCerrado?100:(_lastOk&&last.plan>0?last.plan:(_sp&&_sp.plan>0?_sp.plan:valp)||valp);
+      // Plan: reporte manda; sin reporte = valp (SPI neutral). Ya NO se inyecta el
+      // plan estático de junio (generaba brechas/SPI falsos en proyectos sin reporte).
+      const planPct=_esCerrado?100:(_lastOk&&last.plan>0?last.plan:valp);
       const spiVal=_lastOk&&last.spi?last.spi:(planPct>0?Math.round(valp/planPct*100)/100:1.0);
       const tipo=TIPO_FIX[p.categoria]||p.categoria||'Refrigeración';
       const _zonaRaw=p.zona||(p.departamento&&['LAMBAYEQUE','LA LIBERTAD','PIURA','ANCASH','TUMBES','CAJAMARCA'].includes(p.departamento)?'Norte':p.departamento&&['LIMA','JUNIN'].includes(p.departamento)?'Centro':'Sur')||'Norte';
@@ -1135,7 +1141,7 @@ async function initFromSupabase(){
         name:p.nombre,sup:p.supervisor||'',asist:p.asistente||'',
         dep:p.departamento||'',prov:p.provincia||'',dist:p.distrito||'',
         tipo,zona,
-        venta:parseFloat(p.venta)||(_sp?_sp.venta:0)||0,fact:(_sp&&_sp.fact>0?_sp.fact:parseFloat(p.facturado)||0),
+        venta:parseFloat(p.venta)||(_sp?_sp.venta:0)||0,fact:(p.facturado!=null&&p.facturado!==''?parseFloat(p.facturado):(_sp&&_sp.fact>0?_sp.fact:0))||0,
         valp,plan:planPct,spi:spiVal,
         ci:last?.fecha_ini_cont||p.fecha_ini_contractual||p.fecha_inicio||'',
         cf:last?.fecha_fin_cont||p.fecha_fin_contractual||p.fecha_fin||'',
@@ -1149,8 +1155,8 @@ async function initFromSupabase(){
         _real:valp,_plan:planPct,_spi:spiVal,_dbId:p.id,_fromDB:true,
         _cf:p.fecha_fin_contractual||(last?.fecha_fin_cont)||(_sp?_sp.cf:'')||'', // Supabase manda; el ZIP estático (junio) solo es fallback → evita falsos "CF vencido"
         _rf:(last?.fecha_fin_proy)||p.fecha_fin_contractual||(_sp?_sp.rf:'')||'', // fecha fin proyectada: reporte del supervisor manda; sin proyección → contractual (Supabase); ZIP estático solo último fallback → evita falso "cierre vencido"
-        _ci:(_sp?_sp.ci:'')||p.fecha_ini_contractual||p.fecha_inicio||'',
-        _spiFact:_sp?(_sp.fact||0):0,_spiVenta:_sp?(_sp.venta||0):0,
+        _ci:p.fecha_ini_contractual||p.fecha_inicio||(_sp?_sp.ci:'')||'', // Supabase manda; ZIP estático solo fallback
+        _spiFact:(p.facturado!=null&&p.facturado!==''?parseFloat(p.facturado):(_sp?_sp.fact:0))||0,_spiVenta:(parseFloat(p.venta)||(_sp?_sp.venta:0))||0, // facturación/SPI del heatmap desde Supabase, no del ZIP
         personal_total:lastPers,contratas_activas:lastContratas,
         _lastReportDate:lastRepFecha,_reportedToday:reportedToday,
         _cod:p.cod_proyecto||''
