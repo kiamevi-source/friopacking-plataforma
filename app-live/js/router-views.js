@@ -32,6 +32,11 @@
       el: document.getElementById('view-servicios'),
       init: () => {},  // ahora es el módulo Dashboard de Servicios v4 (iframe), no la vista nativa
     },
+    // Licitaciones (módulo editable · lic_* en PMO — cockpit de Operaciones/Carlos)
+    licitaciones: {
+      el: document.getElementById('view-licitaciones'),
+      init: () => {},
+    },
     // Evaluación de Contratistas (módulo propio embebido · escribe a evaluacion_contratistas)
     'eval-contratistas': {
       el: document.getElementById('view-eval-contratistas'),

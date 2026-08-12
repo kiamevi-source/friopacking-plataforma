@@ -173,6 +173,7 @@
 
     <button class="nav-item active" data-view="resumen"><svg data-lucide="layout-dashboard"></svg>Resumen</button>
     <button class="nav-item" data-view="informe"><svg data-lucide="clipboard-list"></svg>Informe diario</button>
+    <button class="nav-item" data-view="licitaciones"><svg data-lucide="gavel"></svg>Licitaciones</button>
     <button class="nav-item" data-view="factura"><svg data-lucide="receipt"></svg>Facturación</button>
     <button class="nav-item" data-view="docs"><svg data-lucide="folder-up"></svg>Documentos</button>
 
@@ -208,6 +209,37 @@
           <button class="btn ghost" data-go="docs"><svg data-lucide="upload"></svg>Subir documento</button>
         </div>
       </div>
+    </section>
+
+    <!-- LICITACIONES (invitaciones recibidas · lee/escribe lic_* en PMO) -->
+    <section class="view" id="v-licitaciones">
+      <style>
+        #v-licitaciones .lz-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow-sm);margin-bottom:12px;cursor:pointer;transition:.16s}
+        #v-licitaciones .lz-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:#cfe0ff}
+        #v-licitaciones .lz-cod{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:600;color:var(--teal)}
+        #v-licitaciones .lz-name{font-size:16px;font-weight:800;color:var(--ink);margin-top:2px}
+        #v-licitaciones .lz-meta{display:flex;flex-wrap:wrap;gap:5px 16px;margin-top:9px;font-size:12.5px;color:var(--muted);font-weight:600}
+        #v-licitaciones .lz-meta svg{width:14px;height:14px;vertical-align:-2px;margin-right:3px}
+        #v-licitaciones .lz-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;padding:4px 11px;border-radius:20px}
+        #v-licitaciones .b-inv{background:#dbeafe;color:#2266b0}.b-conf{background:#cffafe;color:#0e7490}.b-prep{background:#fef3c7;color:#b45309}.b-env{background:var(--ok-bg);color:var(--ok)}.b-no{background:var(--danger-bg);color:var(--danger)}
+        #v-licitaciones .lz-status{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:700;margin-bottom:14px}
+        #v-licitaciones .lz-tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+        #v-licitaciones .lz-tbl th,#v-licitaciones .lz-tbl td{padding:9px 11px;border-bottom:1px solid var(--line);text-align:left}
+        #v-licitaciones .lz-tbl thead th{background:var(--bg2);font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+        #v-licitaciones .lz-tbl td.n,#v-licitaciones .lz-tbl th.n{text-align:right;font-variant-numeric:tabular-nums;font-family:'JetBrains Mono',monospace}
+        #v-licitaciones .lz-tbl input{width:120px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-family:'JetBrains Mono',monospace;text-align:right;font-size:13px}
+        #v-licitaciones .lz-tot td{background:var(--bg2);font-weight:800}
+        #v-licitaciones .lz-alcance{font-size:13.5px;color:#334155;white-space:pre-wrap;line-height:1.6}
+        #v-licitaciones .lz-q{background:#f0fbf9;border-left:3px solid var(--teal);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+        #v-licitaciones .lz-q .qq{font-weight:700;color:#134e4a;font-size:13px}
+        #v-licitaciones .lz-q .qa{font-size:12.5px;color:#0f766e;margin-top:4px}
+      </style>
+      <div class="page-head">
+        <h1 class="page-title font-display">Licitaciones</h1>
+        <p class="page-sub">Invitaciones que te ha enviado Operaciones. Revisa el expediente, consulta y envía tu oferta en el formato único.</p>
+      </div>
+      <div id="lz-contratos"></div>
+      <div id="lz-root"><div class="empty">Cargando invitaciones…</div></div>
     </section>
 
     <!-- INFORME DIARIO -->
@@ -255,6 +287,7 @@
         <form id="form-factura">
           <div class="form-grid">
             <div class="fld"><label>N° de factura</label><input type="text" id="fac-num" placeholder="F001-0001" required></div>
+            <div class="fld"><label>Contrato adjudicado <span style="color:var(--muted);font-weight:500">(opcional)</span></label><select id="fac-contrato"><option value="">— Sin contrato / suelta —</option></select></div>
             <div class="fld"><label>Proyecto / obra</label><select id="fac-proyecto" required><option value="">Cargando proyectos…</option></select></div>
             <div class="fld"><label>Monto (USD)</label><input type="number" id="fac-monto" min="0" step="0.01" placeholder="0.00" required></div>
             <div class="fld"><label>Fecha de emisión</label><input type="date" id="fac-fecha" required></div>
@@ -464,13 +497,17 @@
   }
   formFac.addEventListener('submit', async function(e){
     e.preventDefault();
+    var contratoSel = $('#fac-contrato');
+    var contratoOpt = contratoSel && contratoSel.value ? contratoSel.options[contratoSel.selectedIndex] : null;
     var payload = {
       num: $('#fac-num').value.trim(),
       proyecto: $('#fac-proyecto').value.trim(),
       monto: parseFloat($('#fac-monto').value)||0,
       fecha: $('#fac-fecha').value,
       estado: $('#fac-estado').value,
-      contrata: USER_EMAIL || null
+      contrata: USER_EMAIL || null,
+      contrato_codigo: contratoSel ? (contratoSel.value || null) : null,
+      licitacion_codigo: contratoOpt ? (contratoOpt.getAttribute('data-lic') || null) : null
     };
     if(!payload.num || !payload.proyecto || !payload.monto){ toast('Datos incompletos','Completa N°, proyecto y monto'); return; }
     if(!sb){ toast('Sin conexión','No se pudo conectar a Supabase'); return; }
@@ -495,7 +532,7 @@
     facturas.unshift(fac);
     facPending = []; renderFacPending();
     formFac.reset(); $('#fac-fecha').value = new Date().toISOString().slice(0,10);
-    renderFacturas(); renderDocs(); renderResumen();
+    renderFacturas(); renderDocs(); renderResumen(); renderContratos();
     toast('Factura enviada al supervisor', fac.num + ' · ' + money2(fac.monto) + (subidos?(' · '+subidos+' doc(s)'):''));
   });
   async function delFactura(id){
@@ -503,7 +540,7 @@
     var res = await sb.from('contratas_facturas').delete().eq('id', id);
     if(res.error){ toast('No se pudo eliminar', res.error.message); return; }
     facturas = facturas.filter(function(x){ return x.id!==id; });
-    renderFacturas(); renderResumen();
+    renderFacturas(); renderResumen(); renderContratos();
   }
   function renderFacturas(){
     $('#fac-count').textContent = facturas.length;
@@ -624,6 +661,186 @@
     }catch(e){ console.warn('loadProyectos', e); }
   }
 
+  // ══════════════ LICITACIONES (invitaciones · PMO vía gsb) ══════════════
+  var LZ = { invit:[], lics:[], cur:null, contratos:[] };
+
+  // ── Contratos adjudicados a esta contrata (PMO) + saldo vs facturas (Contratas) ──
+  async function loadContratos(){
+    if(!gsb || !USER_EMAIL) return;
+    try{
+      var r = await gsb.from('lic_adjudicaciones').select('*').ilike('email', USER_EMAIL).order('fecha',{ascending:false});
+      LZ.contratos = r.data || [];
+    }catch(e){ console.warn('contratos', e); LZ.contratos = []; }
+    // poblar selector de factura
+    var sel = $('#fac-contrato');
+    if(sel){
+      var prev = sel.value;
+      sel.innerHTML = '<option value="">— Sin contrato / suelta —</option>' + LZ.contratos.map(function(a){
+        return '<option value="'+esc(a.contrato_codigo||'')+'" data-lic="'+esc(a.licitacion_codigo||'')+'">'+esc(a.contrato_codigo||'(sin código)')+' · '+esc(a.contratista||'')+'</option>';
+      }).join('');
+      if(prev) sel.value = prev;
+    }
+    renderContratos();
+  }
+  function facturadoDe(codigo){ return facturas.filter(function(f){ return f.contrato_codigo===codigo; }).reduce(function(s,f){ return s+(Number(f.monto)||0); },0); }
+  function renderContratos(){
+    var box = $('#lz-contratos'); if(!box) return;
+    if(!LZ.contratos.length){ box.innerHTML=''; return; }
+    box.innerHTML = '<div class="panel" style="margin-bottom:14px"><div class="panel-h"><h3>Mis contratos</h3><span class="count">'+LZ.contratos.length+'</span></div>'+
+      LZ.contratos.map(function(a){
+        var adj=Number(a.monto_adjudicado||0); var fac=facturadoDe(a.contrato_codigo); var saldo=adj-fac; var pct=adj?Math.min(100,Math.round(fac/adj*100)):0;
+        return '<div style="border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:10px">'+
+          '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><div style="font-weight:800;font-size:14px;color:var(--ink)">'+esc(a.contrato_codigo||'(sin código)')+'</div><div style="font-size:12px;color:var(--muted);font-weight:600">Licitación '+esc(a.licitacion_codigo||'—')+'</div></div>'+
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 6px">'+
+            '<div><div style="font-size:11px;color:var(--muted);font-weight:700">Adjudicado</div><div style="font-size:16px;font-weight:800">'+lzMoney(adj,'PEN')+'</div></div>'+
+            '<div><div style="font-size:11px;color:var(--muted);font-weight:700">Facturado</div><div style="font-size:16px;font-weight:800;color:var(--teal)">'+lzMoney(fac,'PEN')+'</div></div>'+
+            '<div><div style="font-size:11px;color:var(--muted);font-weight:700">Saldo</div><div style="font-size:16px;font-weight:800;color:'+(saldo>0?'var(--blue)':'var(--danger)')+'">'+lzMoney(saldo,'PEN')+'</div></div>'+
+          '</div>'+
+          '<div style="height:8px;border-radius:6px;background:var(--bg2);overflow:hidden"><div style="height:100%;width:'+pct+'%;border-radius:6px;background:linear-gradient(90deg,var(--teal),var(--blue))"></div></div>'+
+          '<div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:4px">'+pct+'% facturado</div>'+
+        '</div>';
+      }).join('')+'</div>';
+    if(window.lucide) lucide.createIcons();
+  }
+  function lzMoney(n,cur){ n=Number(n||0); var s=cur==='USD'?'$':'S/ '; return s+n.toLocaleString('es-PE',{maximumFractionDigits:0}); }
+  var LZ_FLOW=['Borrador','Preparación','Publicada','Invitaciones','Ofertas','Evaluación','Adjudicación','Contratada','Cerrada'];
+  function lzBadge(est){ var m={'Invitado':'b-inv','Confirmó':'b-conf','Preparando':'b-prep','Oferta enviada':'b-env','No participa':'b-no'}; return '<span class="lz-badge '+(m[est]||'b-inv')+'">'+esc(est)+'</span>'; }
+
+  async function loadLicitaciones(){
+    var root = $('#lz-root'); if(!root) return;
+    if(!gsb){ root.innerHTML='<div class="empty">Sin conexión al sistema de licitaciones.</div>'; return; }
+    if(!USER_EMAIL){ root.innerHTML='<div class="empty">Inicia sesión desde el portal para ver tus invitaciones.</div>'; return; }
+    try{
+      var inv = await gsb.from('lic_invitados').select('*').ilike('email', USER_EMAIL);
+      LZ.invit = inv.data || [];
+      if(!LZ.invit.length){ root.innerHTML='<div class="empty">Aún no tienes invitaciones a licitación.<br><span style="font-size:12px;color:var(--muted)">Cuando Operaciones te invite, aparecerá aquí.</span></div>'; return; }
+      var ids = LZ.invit.map(function(v){ return v.licitacion_id; });
+      var lc = await gsb.from('lic_licitaciones').select('*').in('id', ids);
+      LZ.lics = lc.data || [];
+      renderLzInbox();
+    }catch(e){ console.warn('licitaciones', e); root.innerHTML='<div class="empty">No se pudieron cargar las licitaciones.<br><span style="font-size:12px">'+esc(String(e.message||e))+'</span></div>'; }
+  }
+  function renderLzInbox(){
+    var root=$('#lz-root');
+    var cards = LZ.invit.map(function(v){
+      var L = LZ.lics.find(function(x){ return x.id===v.licitacion_id; }); if(!L) return '';
+      return '<div class="lz-card" data-lz="'+L.id+'">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'+
+          '<div><div class="lz-cod">'+esc(L.codigo)+'</div><div class="lz-name">'+esc(L.nombre)+'</div></div>'+lzBadge(v.estado)+
+        '</div>'+
+        '<div class="lz-meta">'+
+          '<span><svg data-lucide="building-2"></svg>'+esc(L.proyecto||L.cliente||'—')+'</span>'+
+          '<span><svg data-lucide="wrench"></svg>'+esc(L.especialidad||'—')+'</span>'+
+          '<span><svg data-lucide="calendar-clock"></svg>Cierre: '+fmtDate(L.fecha_limite)+'</span>'+
+          '<span><svg data-lucide="wallet"></svg>Ref. '+lzMoney(L.presupuesto_base,L.moneda)+'</span>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+    root.innerHTML = '<div class="panel" style="padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);font-weight:600"><svg data-lucide="inbox" style="width:16px;height:16px"></svg>'+LZ.invit.length+' invitación(es) · haz clic para ver el detalle y ofertar</div>'+cards;
+    root.querySelectorAll('[data-lz]').forEach(function(c){ c.addEventListener('click', function(){ openLic(c.dataset.lz); }); });
+    if(window.lucide) lucide.createIcons();
+  }
+
+  async function openLic(id){
+    var root=$('#lz-root'); root.innerHTML='<div class="empty">Cargando…</div>';
+    try{
+      var L=(await gsb.from('lic_licitaciones').select('*').eq('id',id).single()).data;
+      var partidas=(await gsb.from('lic_partidas').select('*').eq('licitacion_id',id).order('orden')).data||[];
+      var planos=(await gsb.from('lic_planos').select('*').eq('licitacion_id',id)).data||[];
+      var adendas=(await gsb.from('lic_adendas').select('*').eq('licitacion_id',id).order('numero')).data||[];
+      var consultas=(await gsb.from('lic_consultas').select('*').eq('licitacion_id',id).order('created_at')).data||[];
+      var invit=(await gsb.from('lic_invitados').select('*').eq('licitacion_id',id).ilike('email',USER_EMAIL).maybeSingle()).data;
+      var oferta=(await gsb.from('lic_ofertas').select('*').eq('licitacion_id',id).ilike('email',USER_EMAIL).maybeSingle()).data;
+      var ofItems=[]; if(oferta){ ofItems=(await gsb.from('lic_oferta_items').select('*').eq('oferta_id',oferta.id)).data||[]; }
+      LZ.cur={ L:L, partidas:partidas, planos:planos, adendas:adendas, consultas:consultas, invit:invit, oferta:oferta, ofItems:ofItems };
+      renderLic();
+    }catch(e){ console.warn(e); root.innerHTML='<div class="empty">No se pudo abrir la licitación.</div>'; }
+  }
+
+  function renderLic(){
+    var c=LZ.cur, L=c.L, root=$('#lz-root');
+    var pubQ = c.consultas.filter(function(q){ return q.publica && q.respuesta; });
+    var enviada = c.invit && c.invit.estado==='Oferta enviada';
+    var puFor=function(pid){ if(c.oferta){ var it=c.ofItems.find(function(x){return x.partida_id===pid;}); if(it) return it.pu; } var p=c.partidas.find(function(x){return x.id===pid;}); return p?p.pu_base:0; };
+    root.innerHTML =
+      '<button class="btn ghost" id="lz-back" style="margin-bottom:12px"><svg data-lucide="arrow-left"></svg>Volver a mis invitaciones</button>'+
+      '<div class="panel">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">'+
+          '<div><div class="lz-cod">'+esc(L.codigo)+'</div><div class="lz-name" style="font-size:19px">'+esc(L.nombre)+'</div>'+
+          '<div class="lz-meta"><span><svg data-lucide="building-2"></svg>'+esc(L.proyecto||L.cliente||'—')+'</span><span><svg data-lucide="map-pin"></svg>'+esc(L.ubicacion||'—')+'</span><span><svg data-lucide="calendar-clock"></svg>Cierre: '+fmtDate(L.fecha_limite)+'</span><span><svg data-lucide="clock"></svg>Plazo req.: '+(L.plazo_dias||'—')+' días</span></div></div>'+
+          '<div>'+(c.invit?lzBadge(c.invit.estado):'')+'</div>'+
+        '</div>'+
+      '</div>'+
+      // participación
+      (!enviada ? '<div class="panel"><div class="panel-h"><h3>Tu participación</h3></div><div style="display:flex;gap:10px;flex-wrap:wrap">'+
+        '<button class="btn" id="lz-confirm"><svg data-lucide="check"></svg>Confirmar participación</button>'+
+        '<button class="btn ghost" id="lz-decline"><svg data-lucide="x"></svg>No participaré</button></div></div>' : '')+
+      // alcance
+      '<div class="panel"><div class="panel-h"><h3>Alcance</h3></div><div class="lz-alcance">'+esc(L.alcance_desc||'—')+'</div>'+
+        (L.exclusiones?'<div style="margin-top:10px;font-size:12.5px;color:var(--muted)"><b>Exclusiones:</b> '+esc(L.exclusiones)+'</div>':'')+
+        (L.entregables?'<div style="margin-top:6px;font-size:12.5px;color:var(--muted)"><b>Entregables:</b> '+esc(L.entregables)+'</div>':'')+'</div>'+
+      // planos
+      (c.planos.length?'<div class="panel"><div class="panel-h"><h3>Planos</h3></div>'+c.planos.map(function(p){ return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px"><span><b>'+esc(p.codigo)+'</b> · '+esc(p.nombre)+'</span><span style="color:var(--muted);font-weight:700">'+esc(p.rev_vigente||'')+'</span></div>'; }).join('')+'</div>':'')+
+      // adendas
+      (c.adendas.length?'<div class="panel"><div class="panel-h"><h3>Adendas</h3></div>'+c.adendas.map(function(a){ return '<div style="padding:8px 0;border-bottom:1px solid var(--line)"><div style="font-weight:800;font-size:13px">Adenda N° '+a.numero+' · '+esc(a.titulo||'')+'</div><div style="font-size:12.5px;color:var(--muted);margin-top:2px">'+esc(a.cambios||'')+'</div></div>'; }).join('')+'</div>':'')+
+      // consultas
+      '<div class="panel"><div class="panel-h"><h3>Consultas y respuestas</h3></div>'+
+        (pubQ.length?pubQ.map(function(q){ return '<div class="lz-q"><div class="qq">'+esc(q.pregunta)+'</div><div class="qa"><b>Respuesta:</b> '+esc(q.respuesta)+'</div></div>'; }).join(''):'<div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Aún no hay respuestas oficiales publicadas.</div>')+
+        '<div style="display:flex;gap:8px;margin-top:8px"><input id="lz-qtext" placeholder="Escribe una consulta a Operaciones…" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-family:inherit;font-size:13px"><button class="btn" id="lz-qsend"><svg data-lucide="send"></svg>Enviar</button></div></div>'+
+      // formato único / oferta
+      '<div class="panel"><div class="panel-h"><h3>'+(c.oferta?'Tu oferta':'Enviar oferta — formato único')+'</h3></div>'+
+        (c.partidas.length?'<table class="lz-tbl"><thead><tr><th>Partida</th><th class="n">Cant.</th><th class="n">Unid.</th><th class="n">P.U. ('+L.moneda+')</th><th class="n">Parcial</th></tr></thead><tbody id="lz-items">'+
+          c.partidas.map(function(p){ var pu=puFor(p.id); return '<tr data-pid="'+p.id+'" data-cant="'+(p.cantidad||0)+'"><td><b>'+esc(p.codigo)+'</b> · '+esc(p.descripcion)+'</td><td class="n">'+Number(p.cantidad||0)+'</td><td class="n">'+esc(p.unidad||'')+'</td><td class="n"><input class="lz-pu" type="number" value="'+pu+'"'+(enviada?' disabled':'')+'></td><td class="n lz-parc">'+lzMoney(Number(p.cantidad||0)*Number(pu||0),L.moneda)+'</td></tr>'; }).join('')+
+          '</tbody><tfoot><tr class="lz-tot"><td colspan="4" style="text-align:right">TOTAL OFERTA</td><td class="n" id="lz-total">'+lzMoney(0,L.moneda)+'</td></tr></tfoot></table>'+
+          '<div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap">'+
+            '<label style="font-size:12.5px;font-weight:700;color:var(--muted)">Plazo ofertado (días): <input id="lz-plazo" type="number" value="'+(c.oferta&&c.oferta.plazo_dias||L.plazo_dias||'')+'" style="width:90px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-family:inherit"'+(enviada?' disabled':'')+'></label>'+
+            (enviada?'<span class="lz-badge b-env"><svg data-lucide="check" style="width:13px;height:13px"></svg>Oferta enviada</span>':'<button class="btn" id="lz-send-of"><svg data-lucide="send"></svg>'+(c.oferta?'Actualizar oferta':'Enviar oferta')+'</button>')+
+          '</div>'
+        :'<div class="empty">Esta licitación aún no tiene partidas para cotizar.</div>')+
+      '</div>';
+    if(window.lucide) lucide.createIcons();
+
+    $('#lz-back').onclick=function(){ renderLzInbox(); };
+    var cf=$('#lz-confirm'); if(cf) cf.onclick=function(){ setInvEstado('Confirmó','Participación confirmada'); };
+    var dc=$('#lz-decline'); if(dc) dc.onclick=function(){ setInvEstado('No participa','Registrado: no participarás'); };
+    var qs=$('#lz-qsend'); if(qs) qs.onclick=sendConsulta;
+    var so=$('#lz-send-of'); if(so) so.onclick=sendOferta;
+    // recálculo total
+    function recalc(){ var tot=0; document.querySelectorAll('#lz-items tr').forEach(function(tr){ var pu=Number(tr.querySelector('.lz-pu').value||0); var cant=Number(tr.dataset.cant||0); var parc=pu*cant; tr.querySelector('.lz-parc').textContent=lzMoney(parc,L.moneda); tot+=parc; }); var el=$('#lz-total'); if(el) el.textContent=lzMoney(tot,L.moneda); }
+    document.querySelectorAll('.lz-pu').forEach(function(i){ i.addEventListener('input',recalc); }); recalc();
+  }
+
+  async function setInvEstado(est,msg){
+    var c=LZ.cur; if(!c.invit){ toast('Sin invitación',''); return; }
+    try{ await gsb.from('lic_invitados').update({ estado:est, confirmado_at:(est==='Confirmó'?new Date().toISOString():null) }).eq('id',c.invit.id);
+      await gsb.from('lic_eventos').insert({ licitacion_id:c.L.id, usuario:USER_EMAIL, accion:'Participación', detalle:(c.invit.contratista||USER_EMAIL)+': '+est });
+      toast(msg,''); openLic(c.L.id);
+    }catch(e){ toast('Error',String(e.message||e)); }
+  }
+  async function sendConsulta(){
+    var c=LZ.cur; var t=($('#lz-qtext').value||'').trim(); if(!t){ toast('Escribe tu consulta',''); return; }
+    try{ await gsb.from('lic_consultas').insert({ licitacion_id:c.L.id, contratista:(c.invit&&c.invit.contratista)||USER_EMAIL, email:USER_EMAIL, pregunta:t, estado:'Pendiente' });
+      await gsb.from('lic_eventos').insert({ licitacion_id:c.L.id, usuario:USER_EMAIL, accion:'Consulta', detalle:t.slice(0,80) });
+      toast('Consulta enviada','Operaciones la responderá'); openLic(c.L.id);
+    }catch(e){ toast('Error',String(e.message||e)); }
+  }
+  async function sendOferta(){
+    var c=LZ.cur, L=c.L;
+    var items=[], total=0;
+    document.querySelectorAll('#lz-items tr').forEach(function(tr){ var pu=Number(tr.querySelector('.lz-pu').value||0); var cant=Number(tr.dataset.cant||0); items.push({ partida_id:tr.dataset.pid, pu:pu, cantidad:cant }); total+=pu*cant; });
+    var plazo = $('#lz-plazo').value?Number($('#lz-plazo').value):null;
+    var nombre=(c.invit&&c.invit.contratista)||USER_EMAIL;
+    try{
+      var ofId;
+      if(c.oferta){ ofId=c.oferta.id; await gsb.from('lic_ofertas').update({ monto_total:total, plazo_dias:plazo, estado:'Enviada', enviada_at:new Date().toISOString() }).eq('id',ofId); await gsb.from('lic_oferta_items').delete().eq('oferta_id',ofId); }
+      else { var of=await gsb.from('lic_ofertas').insert({ licitacion_id:L.id, contratista:nombre, email:USER_EMAIL, monto_total:total, plazo_dias:plazo, moneda:L.moneda, estado:'Enviada', validacion:{economica:'ok',formato:'ok',tecnica:'pend',cronograma:'pend',garantias:'pend',documentos:'pend'}, enviada_at:new Date().toISOString() }).select().single(); ofId=of.data.id; }
+      if(items.length) await gsb.from('lic_oferta_items').insert(items.map(function(it){ it.oferta_id=ofId; return it; }));
+      if(c.invit) await gsb.from('lic_invitados').update({ estado:'Oferta enviada' }).eq('id',c.invit.id);
+      await gsb.from('lic_eventos').insert({ licitacion_id:L.id, usuario:USER_EMAIL, accion:'Oferta recibida', detalle:nombre+': '+lzMoney(total,L.moneda) });
+      toast('Oferta enviada', lzMoney(total,L.moneda)); openLic(L.id);
+    }catch(e){ toast('Error al enviar',String(e.message||e)); }
+  }
+
   // ── Init ──
   renderInformes(); renderFacturas(); renderDocs(); renderResumen();
   loadProyectos();
@@ -642,7 +859,8 @@
     USER_EMAIL = email;
     try{ localStorage.setItem('fp_ct_name', email); }catch(e){}
     setIdentity(email);
-    await Promise.all([ loadInformes(), loadFacturas(), loadDocs() ]);
+    await Promise.all([ loadInformes(), loadFacturas(), loadDocs(), loadLicitaciones() ]);
+    await loadContratos();
     renderResumen();
   })();
 })();
