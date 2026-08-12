@@ -243,7 +243,14 @@
   function enter() {
     active = true;
     wireModes();
-    showExec(); // arranca siempre en Vista Ejecutiva (storytelling)
+    // Esperar la data viva de Supabase (FrioMap.ready) antes de armar el globo,
+    // para que los marcadores por departamento y los KPIs salgan de datos reales.
+    const go = () => showExec(); // arranca siempre en Vista Ejecutiva (storytelling)
+    if (window.FrioMap && window.FrioMap.ready) {
+      Promise.resolve(window.FrioMap.ready()).finally(go);
+    } else {
+      go();
+    }
   }
   function leave() {
     active = false;

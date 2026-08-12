@@ -24,41 +24,85 @@
     gray:  '#7E8BA3',  // En pausa
   };
 
-  // ── Cartera real de proyectos FrioPacking (Perú) ──
-  const PROJECTS = [
-    { id:'agroberries', nombre:'AGROBERRIES', sup:'Diego Asmat', dep:'Lambayeque', prov:'Lambayeque', ciudad:'Olmos', zona:'Norte', lat:-5.8573, lng:-79.7736, ventas:641560.13, fact:323383.61, avance:53.7, spi:1.0, estado:'EN PLAN', tipo:'Refrigeración' },
-    { id:'agrofloral', nombre:'AGROFLORAL', sup:'Luis Goycochea', dep:'Lima', prov:'Cañete', ciudad:'San Vicente de Cañete', zona:'Centro', lat:-13.076, lng:-76.389, ventas:520799.42, fact:415687.02, avance:87.1, spi:0.98, estado:'EN PLAN', tipo:'Mecánica' },
-    { id:'arafoods', nombre:'ARAFOODS', sup:'Steve Sarmiento', dep:'Ancash', prov:'Casma', ciudad:'Casma', zona:'Norte', lat:-9.4754, lng:-78.2897, ventas:805597.47, fact:632370.43, avance:98.4, spi:1.0, estado:'EN PLAN', tipo:'Refrigeración' },
-    { id:'berry-harvest', nombre:'BERRY HARVEST', sup:'Irwin Gutierrez', dep:'Lambayeque', prov:'Lambayeque', ciudad:'Olmos', zona:'Norte', lat:-6.0173, lng:-79.6127, ventas:347856.25, fact:130401.3, avance:38.9, spi:0.88, estado:'LEVE ATRASO', tipo:'Refrigeración' },
-    { id:'bomarea', nombre:'BOMAREA', sup:'Jorvin Paredes', dep:'Lambayeque', prov:'Lambayeque', ciudad:'Olmos', zona:'Norte', lat:-6.1773, lng:-79.7736, ventas:1500000, fact:300000, avance:7.3, spi:0.96, estado:'EN PLAN', tipo:'Civil' },
-    { id:'delice', nombre:'DELICE', sup:'Wilson Urbina', dep:'Lima', prov:'Lima', ciudad:'Lurín', zona:'Centro', lat:-12.2759, lng:-76.8736, ventas:360886.11, fact:175954.12, avance:88.2, spi:0.95, estado:'LEVE ATRASO', tipo:'Packing' },
-    { id:'frusan', nombre:'FRUSAN', sup:'Victor Ramirez', dep:'Lambayeque', prov:'Lambayeque', ciudad:'Olmos', zona:'Norte', lat:-6.0173, lng:-79.9345, ventas:4008997.04, fact:3536984.79, avance:90.3, spi:0.95, estado:'LEVE ATRASO', tipo:'Refrigeración' },
-    { id:'imbarex', nombre:'IMBAREX', sup:'Jean Percy Casas', dep:'Ica', prov:'Pisco', ciudad:'Humay', zona:'Sur', lat:-13.635, lng:-76.002, ventas:853450, fact:406535, avance:82.8, spi:0.97, estado:'EN PLAN', tipo:'Packing' },
-    { id:'qpack', nombre:'QPACK', sup:'Jesus Cabrera', dep:'La Libertad', prov:'Ascope', ciudad:'Casa Grande', zona:'Norte', lat:-7.7548, lng:-79.1951, ventas:2856251.96, fact:2242724.21, avance:43.5, spi:0.82, estado:'ATRASADO', tipo:'Packing' },
-    { id:'santa-sofia', nombre:'SANTA SOFIA', sup:'Steve Sarmiento', dep:'Ica', prov:'Ica', ciudad:'Subtanjalla', zona:'Sur', lat:-14.0842, lng:-75.7481, ventas:545000, fact:245250, avance:77.7, spi:0.93, estado:'LEVE ATRASO', tipo:'Packing' },
-    { id:'smartpacking', nombre:'SMARTPACKING', sup:'Erick Salvador', dep:'La Libertad', prov:'Virú', ciudad:'Virú', zona:'Norte', lat:-8.2522, lng:-78.7537, ventas:75700.16, fact:22710.05, avance:62.8, spi:1.0, estado:'EN PLAN', tipo:'Packing' },
-    { id:'ta-export', nombre:'TA EXPORT', sup:'Patrick Vasquez', dep:'Ica', prov:'Ica', ciudad:'Salas', zona:'Sur', lat:-14.1742, lng:-75.6936, ventas:1460000.01, fact:722375.36, avance:46.8, spi:0.82, estado:'ATRASADO', tipo:'Refrigeración' },
-    { id:'tal-sa', nombre:'TAL SA', sup:'Dennis Saravia', dep:'La Libertad', prov:'Trujillo', ciudad:'Salaverry', zona:'Norte', lat:-8.227, lng:-78.964, ventas:1700000, fact:425000, avance:63.0, spi:1.0, estado:'EN PLAN', tipo:'Civil' },
-    { id:'talsa-pto-morin', nombre:'TALSA PTO. MORIN', sup:'Antero Ávila', dep:'La Libertad', prov:'Virú', ciudad:'Virú', zona:'Norte', lat:-8.4122, lng:-78.592, ventas:352587.8, fact:105776.36, avance:81.0, spi:1.01, estado:'EN PLAN', tipo:'Mecánica' },
-    { id:'torre-blanca', nombre:'TORRE BLANCA', sup:'Waldir Saldaña', dep:'Lima', prov:'Huaral', ciudad:'Chancay', zona:'Centro', lat:-11.5619, lng:-77.2683, ventas:718498.3, fact:292015.43, avance:58.7, spi:0.95, estado:'EN PLAN', tipo:'Refrigeración' },
-    { id:'tyt', nombre:'TyT', sup:'Luis Silva', dep:'Lima', prov:'Huaral', ciudad:'Huaral', zona:'Centro', lat:-11.1053, lng:-77.2067, ventas:227719.49, fact:136631.69, avance:47.6, spi:0.99, estado:'EN PLAN', tipo:'Refrigeración' },
-    { id:'vanguard-prosembra', nombre:'VANGUARD/PROSEMBRA', sup:'Victor Flores', dep:'Ica', prov:'Pisco', ciudad:'Tupac Amaru Inca', zona:'Sur', lat:-13.805, lng:-76.235, ventas:3551664.97, fact:2754312.12, avance:99.5, spi:0.99, estado:'EN PLAN', tipo:'Packing' },
-    { id:'viveros-el-tambo', nombre:'VIVEROS EL TAMBO', sup:'Dylan Marquina', dep:'Piura', prov:'Piura', ciudad:'Piura', zona:'Norte', lat:-5.1945, lng:-80.6328, ventas:216754.9, fact:0, avance:27.7, spi:0.92, estado:'LEVE ATRASO', tipo:'Civil' },
-    { id:'camposol', nombre:'CAMPOSOL', sup:'Renato Jara', dep:'La Libertad', prov:'Virú', ciudad:'Chao', zona:'Norte', lat:-8.5349, lng:-78.9017, ventas:497385.27, fact:99477.05, avance:13.0, spi:0.87, estado:'LEVE ATRASO', tipo:'Refrigeración' },
-    { id:'reiter', nombre:'REITER', sup:'Gustavo Martinez', dep:'Ica', prov:'Chincha', ciudad:'San Antonio', zona:'Norte', lat:-13.25, lng:-76.15, ventas:110710, fact:33213, avance:22.5, spi:1.42, estado:'ADELANTADO', tipo:'Packing' },
-    { id:'diamond', nombre:'DIAMOND', sup:'Sin asignar', dep:'La Libertad', prov:'Trujillo', ciudad:'Trujillo', zona:'Norte', lat:-8.115, lng:-79.029, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Packing' },
-    { id:'branchout', nombre:'BRANCHOUT', sup:'Sin asignar', dep:'Lima', prov:'Lima', ciudad:'Lima', zona:'Centro', lat:-11.886, lng:-77.043, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Refrigeración' },
-    { id:'oslo', nombre:'OSLO', sup:'Sin asignar', dep:'Lima', prov:'Lima', ciudad:'Lima', zona:'Centro', lat:-11.9966, lng:-76.8874, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Refrigeración' },
-    { id:'tal-acopio', nombre:'TAL ACOPIO', sup:'Sin asignar', dep:'La Libertad', prov:'Virú', ciudad:'Virú', zona:'Norte', lat:-8.5722, lng:-78.7537, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Civil' },
-    { id:'prolan', nombre:'PROLAN', sup:'Sin asignar', dep:'Lima', prov:'Lima', ciudad:'Lima', zona:'Centro', lat:-12.1754, lng:-76.9468, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Mecánica' },
-    { id:'rintisa', nombre:'RINTISA', sup:'Sin asignar', dep:'Lima', prov:'Lima', ciudad:'Lima', zona:'Centro', lat:-12.1754, lng:-77.1392, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Mecánica' },
-    { id:'agrokasa', nombre:'AGROKASA', sup:'Sin asignar', dep:'Ica', prov:'Ica', ciudad:'Ica', zona:'Sur', lat:-13.9081, lng:-75.7286, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Refrigeración' },
-    { id:'icyp', nombre:'ICYP', sup:'Sin asignar', dep:'Ica', prov:'Ica', ciudad:'Ica', zona:'Sur', lat:-14.2281, lng:-75.7286, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Mecánica' },
-    { id:'arca-continental', nombre:'ARCA CONTINENTAL', sup:'Sin asignar', dep:'Lambayeque', prov:'Chiclayo', ciudad:'Chiclayo', zona:'Norte', lat:-6.7714, lng:-79.8409, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Refrigeración' },
-    { id:'viru', nombre:'VIRÚ', sup:'Sin asignar', dep:'La Libertad', prov:'Virú', ciudad:'Virú', zona:'Norte', lat:-8.4122, lng:-78.9154, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Refrigeración' },
-    { id:'agrolatina', nombre:'AGROLATINA', sup:'Sin asignar', dep:'Ica', prov:'Nazca', ciudad:'Nazca', zona:'Sur', lat:-14.8294, lng:-74.9286, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Refrigeración' },
-    { id:'aib', nombre:'AIB', sup:'Sin asignar', dep:'Lima', prov:'Lima', ciudad:'Lima', zona:'Centro', lat:-11.9966, lng:-77.1986, ventas:0, fact:0, avance:0, spi:1, estado:'PAUSA', tipo:'Mecánica' },
-  ];
+  // ── Cartera de proyectos: se llena EN VIVO desde Supabase (ver loadData) ──
+  // Antes era una foto estática de junio. Ahora el array arranca vacío y se
+  // muta con los proyectos "En progreso" reales + su avance del último reporte.
+  // IMPORTANTE: mutar (push), NO reasignar, para no romper window.FrioMap.data.
+  const PROJECTS = [];
+
+  // Normalización de tipo de obra (categoria en Supabase)
+  const TIPO_FIX = {
+    'Refrigeracion':'Refrigeración','Refrigeración':'Refrigeración',
+    'Civil':'Civil','Mecanica':'Mecánica','Mecánica':'Mecánica','Packing':'Packing',
+  };
+  // Color/estado de salud derivado del SPI (los activos son todos "En progreso"
+  // en Supabase, así que el semáforo del mapa sale del ritmo, no del estado DB).
+  function healthEstado(spi) {
+    const s = parseFloat(spi) || 1;
+    if (s >= 1.05) return 'ADELANTADO';
+    if (s >= 0.95) return 'EN PLAN';
+    if (s >= 0.85) return 'LEVE ATRASO';
+    return 'ATRASADO';
+  }
+  function slug(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'proj';
+  }
+
+  // ── Carga en vivo desde Supabase (cliente del shell: window.sb) ──
+  let dataReady = null;
+  async function loadData() {
+    const sb = window.sb;
+    if (!sb) return false;
+    try {
+      // Cartera activa = estado 'En progreso' (definición canónica única)
+      const { data: projs, error } = await sb.from('proyectos')
+        .select('id,nombre,supervisor,departamento,provincia,distrito,zona,lat,lng,venta,facturado,valorizacion_pct,categoria,estado,cod_proyecto,avance_manual')
+        .eq('estado', 'En progreso');
+      if (error || !projs) return false;
+      // Último reporte por proyecto → avance físico + SPI reales
+      const { data: reps } = await sb.from('reportes')
+        .select('nombre_proyecto,cod_proyecto,fecha_reporte,pct_ejecutado,spi')
+        .order('fecha_reporte', { ascending: false });
+      const lastByName = {}, lastByCod = {};
+      (reps || []).forEach(r => {
+        if (r.nombre_proyecto && !lastByName[r.nombre_proyecto]) lastByName[r.nombre_proyecto] = r;
+        if (r.cod_proyecto && !lastByCod[r.cod_proyecto]) lastByCod[r.cod_proyecto] = r;
+      });
+      const rows = projs.filter(p => p.lat != null && p.lng != null).map(p => {
+        const last = (p.cod_proyecto && lastByCod[p.cod_proyecto]) || lastByName[p.nombre] || null;
+        const avAuto = last && last.pct_ejecutado != null ? parseFloat(last.pct_ejecutado)
+                     : (parseFloat(p.valorizacion_pct) || 0);
+        const avMan = (p.avance_manual != null && p.avance_manual !== '') ? parseFloat(p.avance_manual) : null;
+        const spi = last && last.spi != null ? parseFloat(last.spi) : 1;
+        return {
+          id: slug(p.cod_proyecto || p.nombre),
+          nombre: p.nombre,
+          sup: p.supervisor || 'Sin asignar',
+          dep: p.departamento || '', prov: p.provincia || '', ciudad: p.distrito || '',
+          zona: p.zona || '',
+          lat: parseFloat(p.lat), lng: parseFloat(p.lng),
+          ventas: parseFloat(p.venta) || 0, fact: parseFloat(p.facturado) || 0,
+          avance: Math.max(0, Math.min(100, (avMan != null ? avMan : avAuto) || 0)),
+          spi: spi,
+          estado: healthEstado(spi),
+          tipo: TIPO_FIX[p.categoria] || p.categoria || 'Refrigeración',
+        };
+      });
+      PROJECTS.length = 0;
+      PROJECTS.push(...rows);
+      recomputeBounds();
+      if (mounted && map) { addMarkers(); fillKpis(); if (PROJECTS.length) map.fitBounds(PERU_BOUNDS, { padding: [40, 40] }); }
+      return true;
+    } catch (e) {
+      console.warn('[FrioMap] loadData falló:', e);
+      return false;
+    }
+  }
+  function ensureData() {
+    if (!dataReady) dataReady = loadData();
+    return dataReady;
+  }
 
   function estadoColor(est) {
     return est === 'EN PLAN'     ? C.teal
@@ -100,13 +144,16 @@
   const markers = {};   // id → L.marker
   let streetLayer = null, satLayer = null, satLabels = null, currentBase = 'street';
 
-  const PERU_BOUNDS = (function () {
+  // Encuadre por defecto = Perú completo; se recalcula cuando llega la data.
+  let PERU_BOUNDS = L.latLngBounds([-18.6, -81.6], [-3.2, -68.4]);
+  function recomputeBounds() {
+    if (!PROJECTS.length) return;
     const lats = PROJECTS.map(p => p.lat), lngs = PROJECTS.map(p => p.lng);
-    return L.latLngBounds(
+    PERU_BOUNDS = L.latLngBounds(
       [Math.min(...lats) - 0.6, Math.min(...lngs) - 0.6],
       [Math.max(...lats) + 0.6, Math.max(...lngs) + 0.6]
     );
-  })();
+  }
 
   // ── Iconos de marcador (pin de obra) ──
   function markerIcon(p, on) {
@@ -252,6 +299,23 @@
       currentBase === 'sat' ? 'Calles' : 'Satélite';
   }
 
+  // ── (Re)construir marcadores desde PROJECTS (al init y al recargar data viva) ──
+  function addMarkers() {
+    if (!cluster) return;
+    cluster.clearLayers();
+    for (const k in markers) delete markers[k];
+    PROJECTS.forEach(p => {
+      const m = L.marker([p.lat, p.lng], { icon: markerIcon(p, false), proj: p });
+      m.bindTooltip(
+        `<b>${p.nombre}</b><span>${p.ciudad} · ${estadoLabel(p.estado)}</span>`,
+        { direction: 'top', offset: [0, -10], className: 'fp-tt', opacity: 1 }
+      );
+      m.on('click', () => focusProject(p));
+      markers[p.id] = m;
+      cluster.addLayer(m);
+    });
+  }
+
   // ── Inicialización del mapa ──
   function initMap() {
     const el = document.getElementById('globe-canvas');
@@ -278,16 +342,7 @@
       iconCreateFunction: clusterIcon,
     });
 
-    PROJECTS.forEach(p => {
-      const m = L.marker([p.lat, p.lng], { icon: markerIcon(p, false), proj: p });
-      m.bindTooltip(
-        `<b>${p.nombre}</b><span>${p.ciudad} · ${estadoLabel(p.estado)}</span>`,
-        { direction: 'top', offset: [0, -10], className: 'fp-tt', opacity: 1 }
-      );
-      m.on('click', () => focusProject(p));
-      markers[p.id] = m;
-      cluster.addLayer(m);
-    });
+    addMarkers();
     map.addLayer(cluster);
 
     // tooltip agregado al pasar sobre un cluster
@@ -347,20 +402,28 @@
   // ── Montaje (perezoso): se llama al entrar a #mapa ──
   function mount() {
     active = true;
-    if (!mounted) {
-      const ok = initMap();
-      if (!ok) { setTimeout(mount, 250); return; } // esperar a Leaflet
-      mounted = true;
-      fillKpis();
-      wireToolbar();
-      // el contenedor estaba oculto → recalcular tamaño
-      setTimeout(() => { if (map) { map.invalidateSize(); map.fitBounds(PERU_BOUNDS, { padding: [40, 40] }); } }, 60);
-    } else {
-      setTimeout(() => { if (map) map.invalidateSize(); }, 60);
-    }
+    // Asegurar que la data viva de Supabase esté cargada antes de construir.
+    ensureData().finally(() => {
+      if (!mounted) {
+        const ok = initMap();
+        if (!ok) { setTimeout(mount, 250); return; } // esperar a Leaflet
+        mounted = true;
+        fillKpis();
+        wireToolbar();
+        // el contenedor estaba oculto → recalcular tamaño
+        setTimeout(() => { if (map) { map.invalidateSize(); map.fitBounds(PERU_BOUNDS, { padding: [40, 40] }); } }, 60);
+      } else {
+        setTimeout(() => { if (map) map.invalidateSize(); }, 60);
+      }
+    });
   }
 
   function setActive(on) { active = on; }
 
-  window.FrioMap = { mount, setActive, focus: focusProject, focusDept, data: PROJECTS, instance: () => map };
+  window.FrioMap = {
+    mount, setActive, focus: focusProject, focusDept, data: PROJECTS,
+    ready: ensureData,
+    reload: () => { dataReady = loadData(); return dataReady; },
+    instance: () => map,
+  };
 })();
