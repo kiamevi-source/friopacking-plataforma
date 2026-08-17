@@ -226,6 +226,84 @@ table.tbl input.num{text-align:right;font-family:'JetBrains Mono',monospace}
 .pill-tabbtn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 .diffpos{color:#0f7a54;font-weight:700}.diffneg{color:#c0453b;font-weight:700}
 .badge-win{background:linear-gradient(135deg,#fde68a,#fbbf24);color:#7c2d12;font-size:10px;font-weight:800;padding:2px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.04em}
+
+/* ══════════════ Rediseño ejecutivo · pantalla de lista (centro de control) ══════════════ */
+#app{--l:#e9ecf1;--l2:#f1f3f7;--mut:#6b7280;--mut2:#9aa3b2}
+.lc-head3{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-bottom:20px;border-bottom:1px solid var(--l);margin-bottom:24px}
+.lc-h1b{font-size:27px;font-weight:800;letter-spacing:-.8px;color:var(--navy);line-height:1}
+.lc-subb{font-size:13.5px;color:var(--mut);font-weight:500;margin-top:7px}
+.lc-actions2{display:flex;gap:10px}
+
+/* Resumen ejecutivo — franja horizontal única */
+.exec{display:flex;flex-wrap:wrap;background:var(--surf);border:1px solid var(--l);border-radius:14px;margin-bottom:14px;overflow:hidden}
+.exec-item{flex:1;min-width:140px;padding:18px 22px;border-right:1px solid var(--l2);cursor:pointer;transition:background .14s;position:relative}
+.exec-item:last-child{border-right:none}
+.exec-item:hover{background:#fafbfc}
+.exec-item.on{background:rgba(62,203,176,.07)}
+.exec-item.on::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--teal)}
+.exec-n{font-size:32px;font-weight:700;letter-spacing:-1px;color:var(--navy);line-height:1;font-variant-numeric:tabular-nums;font-family:'JetBrains Mono',ui-monospace,monospace}
+.exec-l{font-size:12px;font-weight:600;color:var(--mut);margin-top:9px;letter-spacing:.01em}
+.exec-money{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin:0 2px 24px;font-size:13.5px;color:var(--mut);font-weight:500}
+.exec-money b{color:var(--navy);font-weight:800}
+.exec-money .sep{color:var(--mut2)}
+
+/* Barra de alertas compacta */
+.alertbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:22px}
+.alert-chip{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#475569;background:var(--surf);border:1px solid var(--l);border-radius:999px;padding:7px 14px;cursor:pointer;transition:.14s}
+.alert-chip:hover{border-color:#cbd5e1;background:#fafbfc}
+.alert-chip.on{color:#fff;border-color:var(--navy);background:var(--navy)}
+.alert-chip .adot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--mut2)}
+.alert-chip.warn .adot,.alert-chip.warn2 .adot{background:var(--amber)}
+.alert-chip.crit .adot{background:var(--red)}
+.alert-chip.ok .adot{background:var(--green)}
+.alert-chip.on .adot{background:#fff}
+.alert-clear{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--mut);background:none;border:none;cursor:pointer;padding:6px 8px}
+.alert-clear:hover{color:var(--navy)}.alert-clear i{width:13px;height:13px}
+
+/* Toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.tb-search{position:relative;flex:1;min-width:200px;max-width:360px}
+.tb-search i{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--mut2)}
+.tb-search input{width:100%;height:38px;padding:0 12px 0 34px;border:1px solid var(--l);border-radius:10px;font-family:inherit;font-size:13px;font-weight:500;color:var(--navy);background:var(--surf)}
+.tb-sel{height:38px;padding:0 12px;border:1px solid var(--l);border-radius:10px;font-family:inherit;font-size:12.5px;font-weight:600;color:#475569;background:var(--surf)}
+.tb-search input:focus,.tb-sel:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(62,203,176,.14)}
+.tb-count{margin-left:auto;font-size:12.5px;color:var(--mut);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* Lista ejecutiva — protagonista */
+.ltable{background:var(--surf);border:1px solid var(--l);border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.03)}
+.lrow{display:grid;grid-template-columns:minmax(0,2.5fr) 1fr 1.5fr 1.15fr;gap:22px;align-items:center;padding:17px 22px;border-bottom:1px solid var(--l2);cursor:pointer;transition:background .12s}
+.lrow:last-child{border-bottom:none}
+.lrow:hover{background:#fafbfd}
+.lrow-main{min-width:0}
+.lrow-cod{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--mut2);letter-spacing:.02em}
+.lrow-name{font-size:15.5px;font-weight:700;color:var(--navy);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px}
+.lrow-meta{font-size:12.5px;color:var(--mut);font-weight:500;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lrow-monto{text-align:right;font-size:15.5px;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums;letter-spacing:-.3px;line-height:1.1}
+.lrow-monto small{display:block;font-size:10.5px;font-weight:600;color:var(--mut2);letter-spacing:0;margin-top:3px;text-transform:none}
+.lrow-prog{min-width:0}
+.pbar{height:5px;border-radius:3px;background:var(--l);overflow:hidden}
+.pbar>i{display:block;height:100%;border-radius:3px;background:var(--teal);transition:width .5s}
+.pbar.warn>i{background:var(--amber)}
+.pbar.crit>i{background:var(--red)}
+.lrow-sub{display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-size:11.5px;color:var(--mut);font-weight:600}
+.lrow-sub .c-warn{color:var(--amber)}
+.lrow-sub .c-crit{color:var(--red)}
+.lrow-right{display:flex;justify-content:flex-end}
+.pill2{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#334155;background:#f3f5f8;border-radius:999px;padding:5px 12px;white-space:nowrap}
+.pill2 .d{width:7px;height:7px;border-radius:50%;background:var(--mut2)}
+.pill2.teal .d{background:var(--teal)}
+.pill2.slate .d{background:#94a3b8}
+.pill2.ok{color:#15803d;background:rgba(22,163,74,.09)}
+.pill2.ok .d{background:var(--green)}
+.pill2.crit{color:#b91c1c;background:rgba(220,38,38,.08)}
+.pill2.crit .d{background:var(--red)}
+
+@media(max-width:880px){
+  .lrow{grid-template-columns:1fr auto;gap:12px 14px}
+  .lrow-monto{text-align:left}
+  .lrow-right{order:2;align-self:start}
+  .lrow-prog{grid-column:1/-1;order:3}
+}
 </style>
 </head>
 <body>
@@ -330,107 +408,133 @@ function computeKpis(){
     proxCierre:proxCierre.length, retraso:vencidas.length, pendEval:pendEval.length, docInc:docInc.length };
 }
 
-// ══════════════ VISTA: LISTA + DASHBOARD ══════════════
+// ══════════════ VISTA: LISTA (centro de control) ══════════════
+function isAdj(l){ return !!STATE.adj[l.id] || l.estado==='Contratada' || l.estado==='Cerrada'; }
+function matchGroup(l,g){
+  var d=daysTo(l.fecha_limite);
+  switch(g){
+    case 'activas':      return !isAdj(l) && ['Publicada','Invitaciones','Ofertas','Evaluación','Adjudicación'].indexOf(l.estado)>=0;
+    case 'eval':         return l.estado==='Evaluación';
+    case 'pendadj':      return l.estado==='Adjudicación' && !STATE.adj[l.id];
+    case 'adjudicadas':  return isAdj(l);
+    case 'porvencer':    return d!==null && d>=0 && d<=7 && OPEN_STATES.indexOf(l.estado)>=0;
+    case 'vencidas':     return d!==null && d<0 && !isAdj(l) && ['Cerrada','Desierta','Borrador'].indexOf(l.estado)<0;
+    case 'docinc':       return !!STATE.docIncompleta[l.id];
+    default:             return true;
+  }
+}
+function montoDe(l){ var a=STATE.adj[l.id]; return Number(a?a.monto_adjudicado:l.presupuesto_base)||0; }
+function sortLics(arr){
+  var s=STATE.sort||'cierre'; var a=arr.slice();
+  if(s==='monto'){ a.sort(function(x,y){ return montoDe(y)-montoDe(x); }); }
+  else if(s==='estado'){ a.sort(function(x,y){ return FLOW.indexOf(x.estado)-FLOW.indexOf(y.estado); }); }
+  else { a.sort(function(x,y){ var dx=daysTo(x.fecha_limite), dy=daysTo(y.fecha_limite); if(dx===null&&dy===null) return 0; if(dx===null) return 1; if(dy===null) return -1; return dx-dy; }); }
+  return a;
+}
+function moneyExec(n,cur){ n=Number(n||0); var s=cur==='USD'?'$':'S/ '; var a=Math.abs(n); var sign=n<0?'−':''; if(a>=1e6) return sign+s+(a/1e6).toFixed(2)+' M'; if(a>=1e3) return sign+s+Math.round(a/1e3)+' K'; return sign+s+a.toLocaleString('es-PE'); }
+function execItem(g,n,label,active){
+  return '<div class="exec-item'+(active===g?' on':'')+'" data-group="'+g+'">'+
+    '<div class="exec-n">'+String(n).padStart(2,'0')+'</div>'+
+    '<div class="exec-l">'+esc(label)+'</div></div>';
+}
+function alertChip(g,tone,text,active){
+  return '<button class="alert-chip '+tone+(active===g?' on':'')+'" data-group="'+g+'"><span class="adot"></span>'+esc(text)+'</button>';
+}
+
 function renderList(){
   STATE.view='list';
-  var k = computeKpis();
+  var k=computeKpis();
+  var f=STATE.filter;
   var app=$('#app');
-  var lics = STATE.lics.filter(function(l){
-    if(STATE.filter.est && l.estado!==STATE.filter.est) return false;
-    if(STATE.filter.q){ var q=STATE.filter.q.toLowerCase(); if((l.nombre+' '+l.codigo+' '+(l.proyecto||'')+' '+(l.cliente||'')).toLowerCase().indexOf(q)<0) return false; }
+  // conteos por grupo (coinciden con lo que filtra cada clic)
+  var cnt={activas:0,eval:0,pendadj:0,adjudicadas:0,porvencer:0,vencidas:0,docinc:0};
+  STATE.lics.forEach(function(l){ for(var g in cnt){ if(matchGroup(l,g)) cnt[g]++; } });
+
+  var lics=STATE.lics.filter(function(l){
+    if(f.est && l.estado!==f.est) return false;
+    if(f.group && !matchGroup(l,f.group)) return false;
+    if(f.q){ var q=f.q.toLowerCase(); if((l.nombre+' '+l.codigo+' '+(l.proyecto||'')+' '+(l.cliente||'')+' '+(l.especialidad||'')+' '+(l.ubicacion||'')).toLowerCase().indexOf(q)<0) return false; }
     return true;
   });
+  lics=sortLics(lics);
+  var activeFilter=!!(f.est||f.group);
+  var clearBtn=activeFilter?'<button class="alert-clear" id="clear-f"><i data-lucide="x"></i>Quitar filtro</button>':'';
+
+  // barra de alertas — solo lo que existe
+  var alerts=[];
+  if(cnt.porvencer) alerts.push(alertChip('porvencer','warn', cnt.porvencer+' próximo'+(cnt.porvencer>1?'s':'')+' cierre'+(cnt.porvencer>1?'s':''), f.group));
+  if(cnt.vencidas)  alerts.push(alertChip('vencidas','crit', cnt.vencidas+' licitación'+(cnt.vencidas>1?'es':'')+' vencida'+(cnt.vencidas>1?'s':''), f.group));
+  if(cnt.docinc)    alerts.push(alertChip('docinc','warn2', cnt.docinc+' con documentación incompleta', f.group));
+  var alertbar=(alerts.length?alerts.join(''):'<span class="alert-chip ok" style="cursor:default"><span class="adot"></span>Sin alertas críticas</span>')+clearBtn;
+
   app.innerHTML =
-    '<div class="lc-head">'+
-      '<div>'+
-        '<span class="lc-eyebrow"><span class="dot"></span>Contratistas · Gestión de Licitaciones</span>'+
-        '<h1 class="lc-h1">Licitaciones</h1>'+
-        '<div class="lc-sub">'+STATE.lics.length+' licitaciones · datos en vivo de Supabase (PMO) · responsable '+esc(USER)+'</div>'+
-      '</div>'+
-      '<div class="lc-actions">'+
+    '<div class="lc-head3">'+
+      '<div><h1 class="lc-h1b">Licitaciones</h1><div class="lc-subb">Gestión y seguimiento de procesos de contratación</div></div>'+
+      '<div class="lc-actions2">'+
         '<button class="btn" id="btn-refresh"><i data-lucide="refresh-cw"></i>Actualizar</button>'+
         '<button class="btn btn-primary" id="btn-new"><i data-lucide="plus"></i>Nueva licitación</button>'+
       '</div>'+
     '</div>'+
-    // KPIs
-    '<div class="kgrid">'+
-      kc({tl:'#2266b0',ico:'blue',icon:'folder-open',num:k.abiertas,lbl:'Abiertas',sub:'Publicadas · Invitaciones · Ofertas'})+
-      kc({tl:'#7c3aed',ico:'purple',icon:'scale',num:k.enEval,lbl:'En evaluación',sub:'Con ofertas por evaluar'})+
-      kc({tl:'#c2410c',ico:'orange',icon:'gavel',num:k.pendAdj,lbl:'Pend. adjudicación',sub:'Esperando decisión'})+
-      kc({tl:'#0f7a54',ico:'green',icon:'badge-check',num:k.adjudicadas,lbl:'Adjudicadas',sub:'Con contratista ganador'})+
+    '<div class="exec">'+
+      execItem('activas', cnt.activas, 'Licitaciones activas', f.group)+
+      execItem('eval', cnt.eval, 'En evaluación', f.group)+
+      execItem('pendadj', cnt.pendadj, 'Pendiente de adjudicación', f.group)+
+      execItem('adjudicadas', cnt.adjudicadas, 'Adjudicadas', f.group)+
     '</div>'+
-    '<div class="kgrid" style="grid-template-columns:repeat(3,1fr)">'+
-      kc({tl:'#dc2626',ico:'red',icon:'calendar-x-2',num:k.vencidas,lbl:'Vencidas',sub:'Cierre pasado sin adjudicar'})+
-      kc({tl:'#0ea5a4',ico:'brand',icon:'trending-up',num:moneyK(k.montoProceso,'PEN'),lbl:'Monto en proceso',sub:'Presupuesto base en curso'})+
-      kc({tl:'#0f7a54',ico:'green',icon:'wallet',num:moneyK(k.montoAdj,'PEN'),lbl:'Monto adjudicado',sub:'Total contratado'})+
+    '<div class="exec-money">'+
+      '<span><b>'+moneyExec(k.montoProceso,'PEN')+'</b> en procesos</span>'+
+      '<span class="sep">·</span>'+
+      '<span><b>'+moneyExec(k.montoAdj,'PEN')+'</b> adjudicado</span>'+
     '</div>'+
-    // Alertas
-    '<div class="secttl"><i data-lucide="bell-ring" style="width:14px;height:14px;color:#d69e2e"></i>Requiere atención</div>'+
-    '<div class="alerts">'+
-      alertBox(k.proxCierre, 'Próximos cierres', '≤ 7 días', k.proxCierre?'warn':'ok')+
-      alertBox(k.retraso, 'Con retraso', 'cierre vencido', k.retraso?'crit':'ok')+
-      alertBox(k.pendEval, 'Pend. de evaluación', 'ofertas recibidas', k.pendEval?'info':'ok')+
-      alertBox(k.docInc, 'Documentación incompleta', 'ofertas con faltantes', k.docInc?'warn':'ok')+
+    '<div class="alertbar">'+alertbar+'</div>'+
+    '<div class="toolbar">'+
+      '<div class="tb-search"><i data-lucide="search"></i><input type="text" id="f-q" placeholder="Buscar licitación…" value="'+esc(f.q)+'"></div>'+
+      '<select id="f-est" class="tb-sel"><option value="">Todos los estados</option>'+FLOW.concat(['Desierta']).map(function(e){return '<option value="'+e+'"'+(f.est===e?' selected':'')+'>'+e+'</option>';}).join('')+'</select>'+
+      '<select id="f-sort" class="tb-sel">'+[['cierre','Orden · cierre'],['monto','Orden · monto'],['estado','Orden · estado']].map(function(o){return '<option value="'+o[0]+'"'+((STATE.sort||'cierre')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'+
+      '<span class="tb-count">'+lics.length+' de '+STATE.lics.length+'</span>'+
     '</div>'+
-    // Filtros + lista
-    '<div class="secttl" style="margin-top:24px"><i data-lucide="list" style="width:14px;height:14px"></i>Todas las licitaciones</div>'+
-    '<div class="ctrls">'+
-      '<input type="text" id="f-q" placeholder="Buscar por código, nombre, proyecto…" value="'+esc(STATE.filter.q)+'">'+
-      '<select id="f-est"><option value="">Todos los estados</option>'+
-        FLOW.concat(['Desierta']).map(function(e){ return '<option value="'+e+'"'+(STATE.filter.est===e?' selected':'')+'>'+e+'</option>'; }).join('')+
-      '</select>'+
-    '</div>'+
-    (lics.length ? '<div class="lgrid">'+lics.map(licCard).join('')+'</div>'
+    (lics.length ? '<div class="ltable">'+lics.map(licRow).join('')+'</div>'
       : '<div class="empty"><i data-lucide="inbox"></i>No hay licitaciones con estos filtros</div>');
   icons();
 
   $('#btn-refresh').onclick=boot;
   $('#btn-new').onclick=openCreate;
-  $('#f-q').oninput=function(e){ STATE.filter.q=e.target.value; renderList(); var i=$('#f-q'); if(i){ i.focus(); var v=i.value.length; i.setSelectionRange(v,v);} };
-  $('#f-est').onchange=function(e){ STATE.filter.est=e.target.value; renderList(); };
+  $('#f-q').oninput=function(e){ f.q=e.target.value; renderList(); var i=$('#f-q'); if(i){ i.focus(); var v=i.value.length; i.setSelectionRange(v,v);} };
+  $('#f-est').onchange=function(e){ f.est=e.target.value; f.group=''; renderList(); };
+  $('#f-sort').onchange=function(e){ STATE.sort=e.target.value; renderList(); };
+  var cf=$('#clear-f'); if(cf) cf.onclick=function(){ f.est=''; f.group=''; renderList(); };
+  document.querySelectorAll('[data-group]').forEach(function(el){ el.onclick=function(){ var g=el.getAttribute('data-group'); f.group=(f.group===g?'':g); f.est=''; renderList(); }; });
   document.querySelectorAll('[data-lic]').forEach(function(el){ el.onclick=function(){ openDetail(el.getAttribute('data-lic')); }; });
 }
 
-function kc(o){
-  var CM={brand:['#0ea5a4','#ccfbf1'],blue:['#3b82f6','#dbeafe'],amber:['#f59e0b','#fef3c7'],green:['#10b981','#d1fae5'],red:['#ef4444','#fee2e2'],purple:['#8b5cf6','#ede9fe'],orange:['#f97316','#fed7aa'],gray:['#64748b','#f1f5f9']};
-  var c=CM[o.ico]||CM.brand;
-  return '<div class="kc"><div class="tl" style="background:'+o.tl+'"></div>'+
-    '<div class="ico" style="background:'+c[1]+';color:'+c[0]+'"><i data-lucide="'+o.icon+'"></i></div>'+
-    '<div class="num" style="color:'+c[0]+'">'+o.num+'</div>'+
-    '<div class="lbl">'+esc(o.lbl)+'</div>'+(o.sub?'<div class="sub">'+esc(o.sub)+'</div>':'')+'</div>';
-}
-function alertBox(n,l,s,cls){ return '<div class="alert '+cls+'"><div class="an">'+n+'</div><div class="al">'+esc(l)+' · <span style="color:#94a3b8;font-weight:600">'+esc(s)+'</span></div></div>'; }
-
-function licCard(l){
+function licRow(l){
   var adj=STATE.adj[l.id];
   var d=daysTo(l.fecha_limite);
-  var dtxt = d===null?'sin fecha límite':(d<0?Math.abs(d)+'d vencida':d+'d al cierre');
-  var of=STATE.ofertasCount[l.id]||0, inv=STATE.invCount[l.id]||0;
-  return '<div class="lcard" data-lic="'+l.id+'">'+
-    '<div class="lcard-top">'+
-      '<div><div class="lcard-cod">'+esc(l.codigo)+'</div><div class="lcard-name">'+esc(l.nombre)+'</div></div>'+
-      '<span class="est '+estClass(l.estado)+'">'+esc(l.estado)+'</span>'+
+  var idx=FLOW.indexOf(l.estado); if(idx<0) idx=0;
+  var pct=Math.round(idx/(FLOW.length-1)*100);
+  var closed=['Cerrada','Desierta'].indexOf(l.estado)>=0;
+  var overdue = d!==null && d<0 && !isAdj(l) && !closed;
+  var soon = d!==null && d>=0 && d<=7 && OPEN_STATES.indexOf(l.estado)>=0;
+  var progCls = overdue?'crit':(soon?'warn':'');
+  var cierre = d===null?'sin cierre':(isAdj(l)?'adjudicada':(d<0?Math.abs(d)+'d vencida':d+'d al cierre'));
+  var cierreCls = overdue?'c-crit':(soon?'c-warn':'');
+  var inv=STATE.invCount[l.id]||0, of=STATE.ofertasCount[l.id]||0;
+  var isA=isAdj(l);
+  var estLabel=adj?'Adjudicada':l.estado;
+  var tone=isA?'ok':(l.estado==='Desierta'?'crit':(['Borrador','Preparación'].indexOf(l.estado)>=0?'slate':'teal'));
+  return '<div class="lrow" data-lic="'+l.id+'">'+
+    '<div class="lrow-main">'+
+      '<div class="lrow-cod">'+esc(l.codigo)+'</div>'+
+      '<div class="lrow-name">'+esc(l.nombre)+'</div>'+
+      '<div class="lrow-meta">'+esc(l.proyecto||l.cliente||'—')+'  ·  '+esc(l.especialidad||'—')+'  ·  '+esc(l.ubicacion||l.zona||'—')+'</div>'+
     '</div>'+
-    '<div class="lcard-meta">'+
-      '<span><i data-lucide="building-2"></i>'+esc(l.proyecto||l.cliente||'—')+'</span>'+
-      '<span><i data-lucide="wrench"></i>'+esc(l.especialidad||'—')+'</span>'+
-      '<span><i data-lucide="map-pin"></i>'+esc(l.ubicacion||l.zona||'—')+'</span>'+
+    '<div class="lrow-monto">'+moneyExec(adj?adj.monto_adjudicado:l.presupuesto_base,l.moneda)+'<small>'+(adj?'adjudicado':'presupuesto')+'</small></div>'+
+    '<div class="lrow-prog">'+
+      '<div class="pbar '+progCls+'"><i style="width:'+pct+'%"></i></div>'+
+      '<div class="lrow-sub"><span>'+inv+' invit · '+of+' of.</span><span class="'+cierreCls+'">'+esc(cierre)+'</span></div>'+
     '</div>'+
-    miniFlow(l.estado)+
-    '<div class="lcard-foot">'+
-      '<div><span class="lcard-monto">'+money(adj?adj.monto_adjudicado:l.presupuesto_base,l.moneda)+'</span> <small>'+(adj?'adjudicado':'presupuesto')+'</small></div>'+
-      '<div style="display:flex;align-items:center;gap:10px;font-size:11.5px;color:#64748b;font-weight:700">'+
-        '<span title="Invitados"><i data-lucide="users" style="width:13px;height:13px;vertical-align:-2px"></i> '+inv+'</span>'+
-        '<span title="Ofertas"><i data-lucide="file-text" style="width:13px;height:13px;vertical-align:-2px"></i> '+of+'</span>'+
-        '<span style="color:'+(d!==null&&d<0?'#c0453b':'#94a3b8')+'">'+esc(dtxt)+'</span>'+
-      '</div>'+
-    '</div>'+
+    '<div class="lrow-right"><span class="pill2 '+tone+'"><span class="d"></span>'+esc(estLabel)+'</span></div>'+
   '</div>';
-}
-function miniFlow(estado){
-  var i = FLOW.indexOf(estado); if(i<0) i=0;
-  var pct = Math.round(i/(FLOW.length-1)*100);
-  return '<div class="bar" style="margin-top:11px"><i style="width:'+pct+'%;background:linear-gradient(90deg,var(--teal),var(--brand))"></i></div>';
 }
 
 // ══════════════ CREAR LICITACIÓN ══════════════
