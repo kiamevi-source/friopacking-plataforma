@@ -15515,7 +15515,7 @@ console.log('%c OK PMO v14.5 — Light Mode PMO ejecutivo','background:#F0FDFA;c
 'use strict';
 // Renderer FINAL de Valorización: lee las tablas reales de Supabase y gana
 // sobre las ~6 versiones legacy apiladas (VMAYO/VR/VP/v5). Aislado a propósito.
-var VS={lineas:[],cobros:[],loaded:false,loading:false};
+var VS={lineas:[],cobros:[],loaded:false,loading:false,failed:false};
 function _u(v){v=+v;if(v==null||isNaN(v))return '$0';var a=Math.abs(v),s=(v<0?'-':'')+'$';if(a>=1e6)return s+(a/1e6).toFixed(2)+'M';if(a>=1e3)return s+Math.round(a/1e3)+'K';return s+Math.round(a);}
 function _esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function _sum(a,k){return a.reduce(function(s,x){return s+(+x[k]||0);},0);}
@@ -15523,21 +15523,31 @@ function _sum(a,k){return a.reduce(function(s,x){return s+(+x[k]||0);},0);}
 // listo dentro del iframe — ese era el motivo del "Cargando…" infinito).
 var _VU='https://vsploxglutkbeokumunp.supabase.co';
 var _VK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+// Carga ONE-SHOT y guardada. Al terminar (éxito o error) llama _render UNA vez.
+// NO hay recursión ni setInterval → no puede colgar.
 async function _load(force){
-  if(VS.loaded&&!force)return; if(VS.loading)return; VS.loading=true;
+  if(VS.loading) return;
+  if(VS.loaded && !force) return;
+  VS.loading=true; VS.failed=false;
   try{
     var H={apikey:_VK,Authorization:'Bearer '+_VK};
     var lr=await fetch(_VU+'/rest/v1/valorizacion_lineas?select=*',{headers:H});
     var cr=await fetch(_VU+'/rest/v1/valorizacion_cobros?select=*',{headers:H});
     VS.lineas=lr.ok?(await lr.json()):[];
     VS.cobros=cr.ok?(await cr.json()):[];
-    VS.loaded=VS.lineas.length>0;   // si falló, queda false y el auto-sanador reintenta
-  }catch(e){console.warn('[valorizacion] load',e);}
+    VS.loaded=VS.lineas.length>0; VS.failed=!VS.loaded;
+  }catch(e){ VS.failed=true; console.warn('[valorizacion] load',e); }
   VS.loading=false;
+  try{ _render(); }catch(e){}
 }
 function _render(){
   var el=document.getElementById('v-valorizacion'); if(!el)return;
-  if(!VS.loaded){ el.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted,#64748b)">Cargando valorización…</div>'; _load().then(_render); return; }
+  if(VS.loading){ el.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted,#64748b)">Cargando valorización…</div>'; return; }
+  if(!VS.loaded){
+    if(VS.failed){ el.innerHTML='<div style="padding:36px;text-align:center;color:#c1272d">No se pudo cargar la valorización. <button class="btn" onclick="W._valRefresh()">Reintentar</button></div>'; return; }
+    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted,#64748b)">Cargando valorización…</div>';
+    _load(); return;   // dispara la carga UNA vez (guardada); _load re-pinta al terminar
+  }
   var L=VS.lineas,C=VS.cobros;
   var byEst=function(e){return L.filter(function(x){return x.estado===e;});};
   var val=byEst('Valorizado'),pre=byEst('Presentado'),pen=byEst('Pendiente');
@@ -15558,14 +15568,20 @@ function _render(){
   h+='<div style="background:'+C_+';border:1px solid '+LN+';border-radius:10px;padding:14px 16px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:'+MU+';margin-bottom:10px">Cuentas por cobrar · '+_u(saldoTot)+' total · '+venc.length+' con +90 días</div><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'+['Cliente','Supervisor','Saldo','Días','Últ. factura'].map(th).join('')+'</tr></thead><tbody>'+cv.map(function(x){var d=+x.dias||0,col=d>90?'#c1272d':d>30?'#e67e22':MU;return '<tr><td style="padding:6px 8px;border-bottom:1px solid '+LN+';max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:'+IN+'">'+_esc(x.cliente)+'</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+'">'+_esc(x.supervisor||'—')+'</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+';font-weight:700">'+_u(+x.saldo_pendiente||0)+'</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+';color:'+col+';font-weight:700">'+d+'d</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+';color:'+MU+'">'+(x.ultima_factura||'—')+'</td></tr>';}).join('')+'</tbody></table></div>';
   el.innerHTML=h;
 }
-W._valRefresh=function(){VS.loaded=false;_load(true).then(_render);};
+W._valRefresh=function(){ VS.loaded=false; VS.failed=false; _load(true); };
 W._valImport=function(){alert('Importador de Excel: próximo paso. Por ahora la data se carga y ya se ve aquí.');};
-/* Registrar como renderer FINAL (gana sobre VMAYO/VR/VP/v5).
-   Re-aseguramos en timers porque alguna capa legacy re-registra tarde. */
-/* ⛔ DESACTIVADO (colgaba la plataforma): NO auto-registrar ni auto-sanar.
-   Se deja el renderer legacy activo. _render queda disponible SOLO para pruebas
-   manuales vía window._valRenderV6(). Sin timers, sin setInterval, sin loops. */
 W._valRenderV6=_render;
+/* Registro SEGURO: sólo re-asigna el renderer en unos pocos setTimeout FINITOS
+   (NO setInterval) para sobrevivir a los overrides tardíos del legacy. La carga
+   es one-shot y guardada, así que este bloque no puede colgar la plataforma. */
+function _valRegister(){
+  try{W.renderValorizacionPremium=_render;}catch(e){}
+  try{W.renderValorizacion=_render;}catch(e){}
+  if(W.VIEW_RENDERERS) W.VIEW_RENDERERS.valorizacion=_render;
+  if(W.viewRenderers) W.viewRenderers.valorizacion=_render;
+}
+_valRegister();
+[0,300,1000,2500,5000].forEach(function(ms){ setTimeout(_valRegister,ms); });
 console.log('%c✅ Valorización v6 · Supabase (fuente única)','background:#0D9488;color:#fff;padding:3px 12px;border-radius:6px;font-size:11px');
 })(window);
 </script>
