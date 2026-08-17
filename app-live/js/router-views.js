@@ -25,12 +25,50 @@
   const vistaEl = document.getElementById('view-vista');
   const iframe  = document.getElementById('vista-frame');
 
+  // ── Grupo "Contratistas": 10 sub-vistas bajo un solo ítem del rail ──
+  // 8 viven dentro del módulo servicios-v5 (una sola carga de iframe, se le
+  // pide la vista con setView); 2 son módulos aparte con su propio iframe.
+  const CT_MODULO = {
+    'ct-resumen':        'ejecutiva',
+    'ct-operativa':      'operativa',
+    'ct-matriz':         'matriz',
+    'ct-gantt':          'gantt',
+    'ct-urgentes':       'urgentes',
+    'ct-disponibilidad': 'disponibilidad',
+    'ct-editor':         'editor',
+    'ct-universo':       'universo',
+  };
+  const CT_DEFAULT = 'ct-resumen';
+
+  // Pide una vista al módulo de servicios; espera a que exponga setView.
+  function gotoServiciosView(vista) {
+    const frame = document.getElementById('servicios-frame');
+    if (!frame) return;
+    let tries = 0;
+    (function intenta() {
+      let win = null;
+      try { win = frame.contentWindow; } catch (e) { /* same-origin */ }
+      if (win && typeof win.setView === 'function') { win.setView(vista); return; }
+      if (tries++ < 40) setTimeout(intenta, 100);   // 4 s máx
+    })();
+  }
+
   // ── Vistas nativas (no usan el iframe legacy) ──
   // key de hash → { el: contenedor, init: fn que renderiza (idempotente) }
   const NATIVE_VIEWS = {
     servicios: {
       el: document.getElementById('view-servicios'),
-      init: () => {},  // ahora es el módulo Dashboard de Servicios v4 (iframe), no la vista nativa
+      init: () => gotoServiciosView(CT_MODULO[CT_DEFAULT]),
+    },
+    // Evaluación y Dashboard de contratistas: módulos propios, ahora colgados
+    // del mismo grupo del rail.
+    'ct-evaluacion': {
+      el: document.getElementById('view-eval-contratistas'),
+      init: () => {},
+    },
+    'ct-dashboard': {
+      el: document.getElementById('view-dash-contratistas'),
+      init: () => {},
     },
     // Licitaciones (módulo editable · lic_* en PMO — cockpit de Operaciones/Carlos)
     licitaciones: {
@@ -74,6 +112,15 @@
       deinit: () => { if (window.FrioGlobe) window.FrioGlobe.leave(); },
     },
   };
+
+  // Las 8 vistas internas comparten el contenedor del módulo: cambiar de una a
+  // otra NO recarga el iframe, solo le pide otra pantalla.
+  Object.keys(CT_MODULO).forEach((hash) => {
+    NATIVE_VIEWS[hash] = {
+      el: document.getElementById('view-servicios'),
+      init: () => gotoServiciosView(CT_MODULO[hash]),
+    };
+  });
 
   let iframeReady = false;
   let pendingView = null;
@@ -516,12 +563,35 @@
   // ── Actualizar estado activo en sidebar y tabs ──
   function updateActive(name) {
     document.querySelectorAll('.nav-item, .tab-item').forEach(el => {
+      // El padre del grupo no se marca por su href (apunta a la sub-vista por
+      // defecto); se marca abajo, solo si alguno de sus hijos está activo.
+      if (el.classList.contains('nav-parent')) return;
       const dataSection = el.dataset.section;
       const href = (el.getAttribute('href') || '').replace('#', '');
       const matches = dataSection === name || href === name;
       el.classList.toggle('active', matches);
     });
+
+    // Abrir el grupo que contiene la vista actual y cerrar los demás.
+    document.querySelectorAll('.nav-group').forEach(grp => {
+      const dentro = !!grp.querySelector('.nav-child.active');
+      grp.classList.toggle('open', dentro);
+      const padre = grp.querySelector('.nav-parent');
+      if (padre) padre.classList.toggle('active', dentro);
+    });
   }
+
+  // ── Contadores que publica el módulo (antes iban a su rail propio) ──
+  window.addEventListener('message', (ev) => {
+    const d = ev.data;
+    if (!d || d.tipo !== 'servicios:badges') return;
+    const set = (id, v) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = (v === 0 || v) ? String(v) : '';
+    };
+    set('nav-ct-urgentes', d.sinContratar);
+    set('nav-ct-universo', d.contratistas);
+  });
 
   // ── Ocultar todas las vistas nativas registradas ──
   function hideNativeViews() {

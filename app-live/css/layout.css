@@ -96,6 +96,65 @@
 }
 .nav-item .ic { width: 18px; height: 18px; flex-shrink: 0; stroke-width: 1.7; }
 
+/* ── Grupo desplegable (Contratistas) ───────────────────────────────
+   Un solo lugar donde mirar: las vistas del módulo cuelgan del rail en
+   vez de tener su propia barra dentro del iframe. ─────────────────── */
+.nav-group { margin-bottom: 2px; }
+.nav-parent .chev {
+  margin-left: auto; width: 15px; height: 15px;
+  transition: transform .22s cubic-bezier(.4,0,.2,1);
+  opacity: .55;
+}
+.nav-group.open .nav-parent .chev { transform: rotate(180deg); opacity: .9; }
+/* El padre se marca cuando alguno de sus hijos está activo, pero sin la
+   barrita lateral: esa es solo del ítem realmente seleccionado. */
+.nav-group.open > .nav-parent { color: #e8ecf3; }
+.nav-group.open > .nav-parent.active::before { display: none; }
+
+.nav-sub {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height .26s cubic-bezier(.4,0,.2,1), opacity .18s ease;
+}
+.nav-group.open .nav-sub {
+  max-height: 520px;   /* holgado: 10 sub-items + 2 títulos caben de sobra */
+  opacity: 1;
+  padding: 2px 0 6px;
+}
+
+.nav-sub-label {
+  padding: 8px 14px 4px 40px;
+  font-size: 9.5px; font-weight: 800; letter-spacing: 1.1px;
+  color: #475569; text-transform: uppercase;
+}
+.nav-item.nav-child {
+  padding: 7px 14px 7px 40px;
+  font-size: 12.5px; font-weight: 500;
+  margin-bottom: 0;
+}
+.nav-item.nav-child::after {
+  content: ''; position: absolute;
+  left: 25px; top: 0; bottom: 0;
+  width: 1px; background: rgba(255,255,255,.07);
+}
+.nav-item.nav-child.active { background: rgba(62,203,176,.10); color: #3ECBB0; font-weight: 700; }
+.nav-item.nav-child.active::after { background: #3ECBB0; width: 2px; left: 25px; }
+.nav-item.nav-child.active::before { display: none; }
+
+.nav-count {
+  margin-left: auto;
+  font-size: 10px; font-weight: 800;
+  padding: 1px 7px; border-radius: 10px;
+  background: rgba(239,68,68,.20); color: #fca5a5;
+}
+.nav-count:empty { display: none; }
+.nav-count.brand { background: rgba(62,203,176,.16); color: #7ee0ce; }
+
+/* Rail plegado: el submenú estorba, se oculta. */
+.sidebar.collapsed .nav-sub,
+.sidebar.collapsed .nav-parent .chev { display: none; }
+
 .user-card {
   display: flex; align-items: center; gap: 10px;
   padding: 10px; border-radius: 10px;

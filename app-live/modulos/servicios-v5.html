@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FRIOPACKING — PMO Enterprise v3</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+--bg:#f4f6f9;--surface:#ffffff;--surface2:#f8fafc;--surface3:#f1f5f9;--border:#e5e7eb;--border2:#d1d5db;
+--t1:#0f172a;--t2:#475569;--t3:#94a3b8;--t4:#cbd5e1;
+--navy:#0a1f63;--navy-d:#071440;--navy-l:#e7eaf5;
+--brand:#2fbfae;--brand-l:#dcf6f2;--brand-m:#a8e8df;--brand-d:#127a6e;
+--blue:#3b82f6;--blue-l:#dbeafe;--blue-d:#1e40af;
+--amber:#f59e0b;--amber-l:#fef3c7;--amber-d:#b45309;
+--green:#10b981;--green-l:#d1fae5;--green-d:#047857;
+--red:#ef4444;--red-l:#fee2e2;--red-d:#b91c1c;
+--purple:#8b5cf6;--purple-l:#ede9fe;--purple-d:#6d28d9;
+--orange:#f97316;--orange-l:#fed7aa;
+--pink:#ec4899;--pink-l:#fce7f3;
+--gray:#64748b;--gray-l:#f1f5f9;
+--shadow:0 1px 2px rgba(15,23,42,.06),0 1px 1px rgba(15,23,42,.04);
+--shadow-md:0 4px 12px -2px rgba(15,23,42,.08),0 2px 4px -1px rgba(15,23,42,.04);
+--shadow-lg:0 10px 24px -6px rgba(15,23,42,.10),0 4px 8px -2px rgba(15,23,42,.05);
+}
+body{background:var(--bg);color:var(--t1);font-family:'Poppins','Segoe UI',system-ui,-apple-system,sans-serif;font-size:13px;-webkit-font-smoothing:antialiased}
+/* Embebido: el módulo ocupa todo el iframe y hace su propio scroll vertical. */
+html,body{height:100%}
+.main{height:100%;overflow-y:auto;background:var(--bg)}
+
+/* LAYOUT */
+.page{display:none;padding:22px 24px}
+.page.active{display:block}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:16px;flex-wrap:wrap}
+.ph-title{font-size:22px;font-weight:700;color:var(--t1);letter-spacing:-.4px}
+.ph-sub{font-size:13px;color:var(--t2);margin-top:4px;font-weight:500}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s;border:1px solid var(--border);background:var(--surface);color:var(--t2)}
+.btn:hover{background:var(--surface2);border-color:var(--border2);color:var(--t1)}
+.btn.primary{background:var(--brand-d);color:#fff;border-color:var(--brand-d)}
+.btn.primary:hover{background:var(--navy);border-color:var(--navy)}
+.btn i{font-size:14px}
+
+/* TABS */
+.tabs{display:inline-flex;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px;box-shadow:var(--shadow)}
+.tab{padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;transition:.15s;display:flex;align-items:center;gap:6px}
+.tab:hover{color:var(--t1)}
+.tab.active{background:var(--brand-d);color:#fff;box-shadow:0 2px 4px rgba(18,122,110,.3)}
+.tab i{font-size:14px}
+
+/* SECTION TITLES (uppercase tiny labels) */
+.sec-label{font-size:10.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1.4px;margin:18px 0 12px;display:flex;align-items:center;gap:8px}
+.sec-label::after{content:"";flex:1;height:1px;background:var(--border)}
+
+/* KPI CARDS — corporate style */
+.kpi-grid-10{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:8px}
+@media(max-width:1500px){.kpi-grid-10{grid-template-columns:repeat(5,1fr)}}
+@media(max-width:1200px){.kpi-grid-10{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.kpi-grid-10{grid-template-columns:repeat(2,1fr)}}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi-c{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:.18s}
+.kpi-c:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-color:var(--border2)}
+.kpi-top-line{position:absolute;top:0;left:0;right:0;height:3px;border-radius:14px 14px 0 0}
+.kpi-ico-sq{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px}
+.kpi-badge{position:absolute;top:13px;right:13px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.3px}
+.kpi-num{font-size:32px;font-weight:800;line-height:1;letter-spacing:-1px}
+.kpi-num.md{font-size:26px}
+.kpi-lbl{font-size:10.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-top:9px}
+.kpi-sub{font-size:11.5px;color:var(--t2);margin-top:6px;font-weight:500}
+.kpi-bar{margin-top:10px;height:5px;border-radius:5px;background:var(--gray-l);overflow:hidden}
+.kpi-bar-fill{height:100%;border-radius:5px;transition:.5s}
+
+/* ============ HERO KPIs (Gerencial / Alto Impacto) ============ */
+.hero-grid{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:1200px){.hero-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:760px){.hero-grid{grid-template-columns:1fr;}}
+.hero-c{position:relative;border-radius:18px;padding:22px 24px;overflow:hidden;box-shadow:0 4px 14px -4px rgba(15,23,42,.10),0 2px 4px -2px rgba(15,23,42,.06);min-height:200px;display:flex;flex-direction:column}
+.hero-c.h-brand{background:linear-gradient(135deg,#0a1f63 0%,#127a6e 55%,#2fbfae 100%);color:#fff}
+.hero-c.h-success{background:linear-gradient(135deg,#065f46 0%,#10b981 100%);color:#fff}
+.hero-c.h-danger{background:linear-gradient(135deg,#991b1b 0%,#ef4444 100%);color:#fff}
+.hero-c.h-warn{background:linear-gradient(135deg,#92400e 0%,#f59e0b 100%);color:#fff}
+.hero-c.h-dark{background:linear-gradient(135deg,#071440 0%,#0a1f63 100%);color:#fff}
+.hero-c::before{content:"";position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none}
+.hero-c::after{content:"";position:absolute;bottom:-60px;left:-60px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none}
+.hero-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;position:relative;z-index:1}
+.hero-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;opacity:.92}
+.hero-ico{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.18);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.hero-num{font-size:64px;font-weight:800;line-height:1;letter-spacing:-2.5px;position:relative;z-index:1;margin-top:6px;font-variant-numeric:tabular-nums}
+.hero-num.smaller{font-size:52px;letter-spacing:-2px}
+.hero-sub{font-size:13.5px;margin-top:8px;opacity:.92;font-weight:500;line-height:1.45;position:relative;z-index:1}
+.hero-foot{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.20);display:flex;gap:18px;position:relative;z-index:1}
+.hero-foot-item{flex:1;min-width:0}
+.hf-num{font-size:21px;font-weight:800;line-height:1;letter-spacing:-.6px;font-variant-numeric:tabular-nums}
+.hf-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;opacity:.85;margin-top:4px}
+/* Stacked bar inside hero */
+.hero-stack{margin-top:14px;height:8px;border-radius:8px;background:rgba(255,255,255,.22);overflow:hidden;display:flex;position:relative;z-index:1}
+.hero-stack-seg{height:100%;transition:.4s}
+.hero-stack-leg{display:flex;gap:14px;margin-top:8px;font-size:11px;font-weight:600;position:relative;z-index:1}
+.hero-stack-leg .dot-s{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px}
+.hero-pulse{animation:hero-pulse 1.6s ease-in-out infinite}
+@keyframes hero-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.78;transform:scale(1.04)}}
+
+/* Strip KPIs (smaller, after heroes) */
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:10px}
+@media(max-width:1300px){.kpi-strip{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.kpi-strip{grid-template-columns:repeat(2,1fr)}}
+.kpi-strip-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+@media(max-width:1100px){.kpi-strip-4{grid-template-columns:repeat(2,1fr)}}
+
+/* Urgentes badges/cards */
+.urg-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:.15s;display:flex;align-items:center;gap:12px;border-left:4px solid var(--gray)}
+.urg-card.urg-crit{border-left-color:var(--red);background:linear-gradient(90deg,#fef2f2 0%,#fff 60%)}
+.urg-card.urg-high{border-left-color:var(--amber);background:linear-gradient(90deg,#fffbeb 0%,#fff 60%)}
+.urg-card.urg-med{border-left-color:var(--orange)}
+.urg-card.urg-low{border-left-color:var(--gray)}
+.urg-card:hover{transform:translateX(2px);box-shadow:var(--shadow-md)}
+.urg-days{flex-shrink:0;text-align:center;min-width:64px;padding:6px 10px;border-radius:10px;background:var(--surface2);border:1px solid var(--border)}
+.urg-days.d-crit{background:var(--red-l);border-color:#fecaca;color:var(--red-d)}
+.urg-days.d-high{background:var(--amber-l);border-color:#fde68a;color:var(--amber-d)}
+.urg-days.d-med{background:var(--orange-l);border-color:#fdba74;color:#9a3412}
+.urg-days .ud-n{font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.urg-days .ud-l{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-top:2px;opacity:.85}
+.urg-info{flex:1;min-width:0}
+.urg-cli{font-size:14px;font-weight:700;color:var(--t1);letter-spacing:-.2px}
+.urg-meta{font-size:11.5px;color:var(--t2);margin-top:3px;font-weight:500;display:flex;flex-wrap:wrap;gap:9px}
+.urg-meta span{display:inline-flex;align-items:center;gap:4px}
+.urg-meta i{font-size:13px;color:var(--t3)}
+.urg-right{flex-shrink:0;text-align:right;min-width:120px}
+.urg-status{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:4px 10px;border-radius:14px;display:inline-block}
+.urg-status.s-licit{background:var(--purple-l);color:var(--purple-d)}
+.urg-status.s-pend{background:#fce7f3;color:#9d174d}
+.urg-status.s-vencido{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5}
+.urg-prop{font-size:11px;color:var(--t3);margin-top:4px;font-weight:500}
+.urg-prop strong{color:var(--t2);font-weight:600}
+
+/* SECTIONS */
+.section{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+.sec-head{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sec-title{font-size:13.5px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:9px;letter-spacing:-.1px}
+.sec-title i{font-size:16px;color:var(--brand)}
+.sec-extra{font-size:11.5px;color:var(--t3);font-weight:500}
+.sec-body{padding:18px 20px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g23{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:14px}
+@media(max-width:1100px){.g2,.g3,.g23{grid-template-columns:1fr}}
+
+/* TAGS / CHIPS */
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.t-proceso{background:var(--blue-l);color:var(--blue-d)}
+.t-cierre{background:var(--amber-l);color:var(--amber-d)}
+.t-concluido{background:var(--green-l);color:var(--green-d)}
+.t-porinicia{background:#f1f5f9;color:var(--t2)}
+.t-licitacion{background:var(--purple-l);color:var(--purple-d)}
+.t-pendiente{background:#fce7f3;color:#9d174d}
+.t-contratado{background:var(--green-l);color:var(--green-d)}
+.t-ocupada{background:var(--red-l);color:var(--red-d)}
+.t-disponible{background:var(--green-l);color:var(--green-d)}
+.t-asignada{background:var(--amber-l);color:var(--amber-d)}
+.t-comprometida{background:var(--purple-l);color:var(--purple-d)}
+.t-sinuso{background:#f1f5f9;color:var(--t2)}
+
+.risk{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
+.r0{background:var(--green-l);color:var(--green-d)}
+.r1{background:var(--amber-l);color:var(--amber-d)}
+.r2{background:var(--red-l);color:var(--red-d)}
+
+/* TABLES */
+table{width:100%;border-collapse:collapse}
+thead th{font-size:10.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;padding:11px 14px;text-align:left;background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--t2);font-size:12.5px;vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#fafbfc}
+td.bold{color:var(--t1);font-weight:600}
+
+/* BARS */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bar-lbl{width:130px;font-size:12px;color:var(--t1);font-weight:500;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;background:#f1f5f9;border-radius:20px;height:10px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:20px;transition:.5s;position:relative}
+.bar-fill-num{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;color:#fff;line-height:1}
+.bar-pct{width:42px;text-align:right;font-size:12px;font-weight:700;color:var(--t1)}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block}
+.d-green{background:var(--green)}
+.d-amber{background:var(--amber)}
+.d-red{background:var(--red)}
+.d-blue{background:var(--blue)}
+.d-purple{background:var(--purple)}
+.d-gray{background:var(--gray)}
+.d-orange{background:var(--orange)}
+.d-pink{background:var(--pink)}
+
+/* ALERTS */
+.alert-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.alert-row:last-child{border-bottom:none}
+.alert-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.a-red{background:var(--red-l);color:var(--red-d)}
+.a-amber{background:var(--amber-l);color:var(--amber-d)}
+.a-blue{background:var(--blue-l);color:var(--blue-d)}
+.alert-title{font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:3px}
+.alert-desc{font-size:11.5px;color:var(--t2);line-height:1.45}
+
+/* FORM */
+input[type=text],input[type=date],select{background:var(--surface);border:1px solid var(--border2);border-radius:8px;color:var(--t1);padding:8px 12px;font-size:12.5px;outline:none;transition:.15s;font-family:inherit}
+input:focus,select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(47,191,174,.16)}
+.frow{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.frow select{min-width:160px}
+.frow input{min-width:200px}
+
+/* GANTT */
+.gantt-bar{position:absolute;top:50%;transform:translateY(-50%);height:22px;border-radius:6px;font-size:10px;font-weight:600;color:#fff;padding:0 8px;display:flex;align-items:center;white-space:nowrap;overflow:hidden;cursor:pointer;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.gantt-bar:hover{filter:brightness(1.08);transform:translateY(-50%) scale(1.01);box-shadow:0 4px 12px rgba(0,0,0,.18);z-index:3}
+.gantt-bar.pending{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.25) 0,rgba(255,255,255,.25) 4px,transparent 4px,transparent 8px) !important;border:1.5px dashed rgba(255,255,255,.85)}
+.gantt-bar.urgent{box-shadow:0 0 0 2px var(--red),0 0 8px rgba(239,68,68,.55) !important;animation:pulseUrgent 2s ease-in-out infinite}
+@keyframes pulseUrgent{0%,100%{box-shadow:0 0 0 2px var(--red),0 0 8px rgba(239,68,68,.45)}50%{box-shadow:0 0 0 2px var(--red),0 0 14px rgba(239,68,68,.85)}}
+.today-line{position:absolute;top:0;bottom:0;width:2px;background:var(--red);opacity:.6;z-index:5;pointer-events:none}
+.today-label{position:absolute;top:2px;font-size:9px;font-weight:700;color:#fff;background:var(--red);padding:2px 5px;border-radius:3px;transform:translateX(-50%);white-space:nowrap;z-index:6}
+.multi-badge{background:linear-gradient(135deg,var(--amber),var(--orange));color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:.3px}
+
+/* GANTT legend */
+.gantt-legend{display:flex;gap:14px;margin-bottom:12px;font-size:11.5px;color:var(--t2);flex-wrap:wrap;align-items:center;padding:11px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow)}
+.gantt-legend-item{display:flex;align-items:center;gap:6px;font-weight:500}
+.gantt-legend-sw{width:18px;height:9px;border-radius:3px;display:inline-block}
+.gantt-legend-sw.striped{background-image:repeating-linear-gradient(135deg,#94a3b8 0,#94a3b8 3px,transparent 3px,transparent 6px),linear-gradient(#cbd5e1,#cbd5e1);border:1px dashed #94a3b8}
+.gantt-legend-sw.urgent-sw{background:var(--red);box-shadow:0 0 0 1.5px #fff,0 0 0 3px var(--red)}
+
+/* MATRIX */
+.mx-table{border-collapse:collapse;min-width:700px;width:100%}
+.mx-table th{font-size:10.5px;font-weight:700;color:var(--t2);padding:10px 12px;border:1px solid var(--border);background:var(--surface2);text-align:center;white-space:nowrap}
+.mx-table th.rh{text-align:left;min-width:140px}
+.mx-table td{padding:8px 10px;border:1px solid var(--border);text-align:center;font-size:11.5px;vertical-align:middle}
+.mx-table tr:hover td{background:#fafbfc}
+
+/* AVAIL CARDS */
+.avail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.avail-c{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+.avail-c-title{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.avail-c ul{list-style:none;max-height:280px;overflow-y:auto}
+.avail-c li{padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--t2);display:flex;align-items:center;gap:7px}
+.avail-c li:last-child{border-bottom:none}
+.avail-c li small{color:var(--t3);font-size:10.5px;margin-left:auto}
+
+/* CHAT */
+.chat-outer{display:flex;flex-direction:column;height:480px}
+.chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:82%}
+.msg.bot{align-self:flex-start}
+.msg.user{align-self:flex-end}
+.msg-bubble{padding:11px 15px;border-radius:12px;font-size:12.5px;line-height:1.55}
+.msg.bot .msg-bubble{background:var(--surface2);color:var(--t1);border:1px solid var(--border);border-bottom-left-radius:3px}
+.msg.user .msg-bubble{background:var(--brand-d);color:#fff;border-bottom-right-radius:3px}
+.msg-ts{font-size:10px;color:var(--t3);margin-top:3px;padding:0 3px}
+.chat-quick{padding:8px 14px 2px;display:flex;flex-wrap:wrap;gap:6px}
+.quick-btn{background:var(--surface);border:1px solid var(--border2);color:var(--t2);padding:6px 11px;border-radius:20px;font-size:11px;cursor:pointer;transition:.15s;font-weight:500}
+.quick-btn:hover{background:var(--brand-l);border-color:var(--brand);color:var(--brand-d)}
+.chat-inp-row{padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px}
+.chat-inp{flex:1;background:var(--surface);border:1px solid var(--border2);border-radius:8px;color:var(--t1);padding:9px 14px;font-size:13px;outline:none}
+.chat-inp:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(47,191,174,.16)}
+.send-btn{background:var(--brand-d);color:#fff;border:none;border-radius:8px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px}
+.send-btn:hover{background:var(--navy)}
+
+/* CODE */
+pre{font-family:'Cascadia Code','Consolas',monospace;font-size:11.5px;line-height:1.6;color:#0c4a6e;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:12px;overflow-x:auto;margin:0}
+.dax-block{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
+.dax-name{font-size:12px;font-weight:700;color:var(--t1);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+
+/* CENTER LABEL ON DONUT */
+.donut-wrap{position:relative;height:200px}
+.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.donut-center-num{font-size:24px;font-weight:800;color:var(--t1);line-height:1}
+.donut-center-lbl{font-size:9.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+
+/* PILL counters */
+.pill-stat{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;background:var(--surface2);border:1px solid var(--border);color:var(--t1)}
+.pill-stat strong{font-size:14px;font-weight:800}
+
+/* small list */
+.mini-list{display:flex;flex-direction:column;gap:8px}
+.mini-list-item{display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);font-size:12px}
+.mini-list-item .name{flex:1;color:var(--t1);font-weight:500}
+.mini-list-item .bar-mini{flex:1.2;background:#e5e7eb;border-radius:10px;height:18px;overflow:hidden;position:relative}
+.mini-list-item .bar-mini-fill{height:100%;border-radius:10px;display:flex;align-items:center;padding-left:7px;color:#fff;font-size:10.5px;font-weight:700}
+.mini-list-item .num{font-weight:700;color:var(--t1);width:24px;text-align:right}
+
+/* EDITOR DE DATOS */
+.editor-input{width:100%;min-width:110px;border:1px solid transparent;background:transparent;padding:6px 7px;border-radius:6px;font-size:12px;color:var(--t1);font-family:inherit;outline:none}
+.editor-input:hover{border-color:var(--border2);background:var(--surface2)}
+.editor-input:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 2px rgba(47,191,174,.15)}
+select.editor-input{cursor:pointer}
+#editorBody td{padding:4px 6px}
+.editor-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.editor-saved{font-size:11px;color:var(--t3);font-weight:500}
+</style>
+</head>
+<body>
+<!-- Sin topbar ni sidebar propios: este módulo vive embebido en el Centro de
+     Control, que ya aporta la marca y el rail de navegación. El shell decide
+     qué vista mostrar llamando a window.setView(nombre). -->
+<div class="main">
+
+<!-- EJECUTIVA -->
+<div class="page active" id="page-ejecutiva">
+  <div class="ph">
+    <div>
+      <div class="ph-title">Resumen</div>
+      <div class="ph-sub">KPIs del portafolio, demanda por especialidad y riesgo multi-cliente</div>
+    </div>
+    <button class="btn primary"><i class="ti ti-refresh"></i>Actualizar</button>
+  </div>
+
+  <div class="sec-label"><i class="ti ti-stars"></i>Indicadores Clave del Portafolio</div>
+  <div class="hero-grid" id="kpi-hero"></div>
+
+  <div class="sec-label"><i class="ti ti-activity"></i>Estado Operacional</div>
+  <div class="kpi-strip" id="kpi-op"></div>
+
+  <div class="sec-label"><i class="ti ti-users-group"></i>Recursos &amp; Cobertura</div>
+  <div class="kpi-strip-4" id="kpi-rec"></div>
+
+  <!-- ── Antes era la "Vista PMO", una pestaña aparte que repetía la mitad
+       de estos KPIs. Ahora es la segunda mitad de este mismo Resumen. ── -->
+<div class="sec-label"><i class="ti ti-tool"></i>Demanda por Especialidad</div>
+  <div class="section">
+    <div class="sec-head">
+      <div class="sec-title"><i class="ti ti-chart-bar"></i>Servicios por especialidad — desglose contractual</div>
+      <div class="sec-extra">Verde = Contratado · Ámbar = Pendiente · Morado = Licitación</div>
+    </div>
+    <div class="sec-body" id="demEsps"></div>
+  </div>
+
+  <div class="g2">
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-users"></i>Cobertura — Contratistas por Especialidad</div></div>
+      <div class="sec-body" id="cobEsps"></div>
+    </div>
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-alert-triangle"></i>Riesgo Multi-Cliente</div></div>
+      <div class="sec-body" id="multiClienteList"></div>
+    </div>
+  </div>
+
+  <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-building-skyscraper"></i>Clientes por Volumen de Servicios</div></div>
+    <div class="sec-body"><div style="position:relative;height:240px"><canvas id="chCliPMO" role="img" aria-label="Servicios por cliente"></canvas></div></div>
+  </div>
+
+  <div class="sec-label"><i class="ti ti-chart-pie"></i>Distribución Operativa</div>
+  <div class="g3">
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-chart-donut-3"></i>Estado de Servicios</div></div>
+      <div class="sec-body">
+        <div class="donut-wrap">
+          <canvas id="chEstados" role="img" aria-label="Estado de servicios"></canvas>
+          <div class="donut-center"><div class="donut-center-num" id="dEstNum">0</div><div class="donut-center-lbl">Total</div></div>
+        </div>
+        <div id="legEstados" style="display:flex;flex-direction:column;gap:6px;margin-top:14px"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-file-check"></i>Situación Contractual</div></div>
+      <div class="sec-body">
+        <div class="donut-wrap">
+          <canvas id="chContrat" role="img" aria-label="Situación contractual"></canvas>
+          <div class="donut-center"><div class="donut-center-num" id="dContPct">0%</div><div class="donut-center-lbl">Contrat.</div></div>
+        </div>
+        <div id="legContrat" style="display:flex;flex-direction:column;gap:6px;margin-top:14px"></div>
+        <div style="display:flex;gap:10px;margin-top:14px">
+          <div style="flex:1;text-align:center;background:var(--brand-l);border:1px solid var(--brand-m);border-radius:10px;padding:10px"><div style="font-size:18px;font-weight:800;color:var(--brand-d)" id="contAv">0%</div><div style="font-size:10px;font-weight:700;color:var(--brand-d);text-transform:uppercase;letter-spacing:.7px;margin-top:3px">Avance</div></div>
+          <div style="flex:1;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px"><div style="font-size:18px;font-weight:800;color:var(--t1)" id="contClis">0</div><div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;margin-top:3px">Clientes</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-tool"></i>Especialidades</div><div class="sec-extra">Contratado vs Pendiente</div></div>
+      <div class="sec-body">
+        <div style="position:relative;height:240px"><canvas id="chEspecialidades" role="img" aria-label="Especialidades"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-label"><i class="ti ti-users-group"></i>Contratistas &amp; Clientes</div>
+  <div class="section">
+    <div class="sec-head"><div class="sec-title"><i class="ti ti-building-community"></i>Proyectos por Contratista — Contratados</div><div class="sec-extra">Solo servicios Contratado · Clientes distintos a la derecha</div></div>
+    <div class="sec-body" id="proyPorCont"></div>
+  </div>
+
+  <div class="sec-label"><i class="ti ti-alert-octagon"></i>Riesgos &amp; Carga de Equipo</div>
+  <div class="g2">
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-alert-triangle"></i>Panel de Riesgo Multi-Cliente</div></div>
+      <div class="sec-body" id="panelRiesgo"></div>
+    </div>
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-user-check"></i>Carga por Supervisor</div></div>
+      <div class="sec-body" id="supCargaEjec"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PMO -->
+<!-- EDITOR DE DATOS -->
+<div class="page" id="page-editor">
+  <div class="ph">
+    <div><div class="ph-title">Editor de Datos</div><div class="ph-sub">Edita, agrega, elimina o importa servicios desde aquí · Todas las vistas se recalculan al instante</div></div>
+    <div class="editor-toolbar">
+      <span class="editor-saved" id="editorSaved"></span>
+      <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportFile(event)">
+      <button class="btn" onclick="document.getElementById('importFile').click()"><i class="ti ti-file-upload"></i>Importar Excel</button>
+      <button class="btn" onclick="exportExcel()"><i class="ti ti-file-download"></i>Exportar Excel</button>
+      <button class="btn" onclick="reloadFromSupabase()"><i class="ti ti-refresh"></i>Recargar</button>
+      <button class="btn primary" onclick="addRow()"><i class="ti ti-plus"></i>Nuevo Servicio</button>
+    </div>
+  </div>
+
+  <div id="editorMsg"></div>
+
+  <div style="background:var(--blue-l);border:1px solid #93c5fd;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue-d);display:flex;align-items:center;gap:9px">
+    <i class="ti ti-cloud-check" style="font-size:16px;flex-shrink:0"></i>
+    <div>Los cambios se guardan <strong>al instante en Supabase</strong> (tabla <code>portafolio_servicios</code>) y se reflejan en la pestaña <strong>Contratistas</strong> de cada proyecto. El <strong>Cliente</strong> debe coincidir exacto con el nombre del proyecto para que aparezca ahí.</div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head"><div class="sec-title"><i class="ti ti-table"></i>Servicios (editable)</div><div id="editorCount" style="font-size:11.5px;color:var(--t3);font-weight:500"></div></div>
+    <div style="overflow-x:auto"><table><thead><tr>
+      <th style="min-width:150px">Cliente / Proyecto</th><th style="width:70px">Fase</th><th style="min-width:160px">Especialidad</th><th>Situación</th><th>Estado</th>
+      <th style="min-width:140px">Supervisor</th><th style="min-width:130px">Contratista</th><th>Inicio</th><th>Fin</th><th></th>
+    </tr></thead><tbody id="editorBody"></tbody></table></div>
+  </div>
+  <datalist id="dl-esp"></datalist>
+  <datalist id="dl-sup"></datalist>
+  <datalist id="dl-con"></datalist>
+  <datalist id="dl-cli"></datalist>
+  <datalist id="dl-proy"></datalist>
+  <datalist id="dl-fase"></datalist>
+</div>
+
+<!-- OPERATIVA -->
+<div class="page" id="page-operativa">
+  <div class="ph"><div><div class="ph-title">Vista Operativa</div><div class="ph-sub">Detalle completo de servicios con indicadores de riesgo</div></div></div>
+  <div class="frow">
+    <select id="opFiltEst" onchange="renderOperativa()"><option value="">Todos los estados</option></select>
+    <select id="opFiltEsp" onchange="renderOperativa()"><option value="">Todas las especialidades</option></select>
+    <select id="opFiltSup" onchange="renderOperativa()"><option value="">Todos los supervisores</option></select>
+    <select id="opFiltSit" onchange="renderOperativa()"><option value="">Toda situación contractual</option></select>
+    <input type="text" id="opSearch" placeholder="Buscar cliente o contratista…" oninput="renderOperativa()">
+  </div>
+  <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-table"></i>Tabla de Servicios</div><div id="opCount" style="font-size:11.5px;color:var(--t3);font-weight:500"></div></div>
+    <div style="overflow-x:auto"><table><thead><tr>
+      <th>Cliente</th><th>Contratista</th><th>Especialidad</th><th>Situación</th><th>Estado</th>
+      <th>Supervisor</th><th>Inicio</th><th>Fin</th><th>Días Rest.</th><th>Riesgo</th>
+    </tr></thead><tbody id="opBody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- UNIVERSO -->
+<div class="page" id="page-universo">
+  <div class="ph"><div><div class="ph-title">Universo de Contratistas</div><div class="ph-sub">Clasificación operativa completa · Riesgo calculado por clientes simultáneos</div></div></div>
+  <div class="frow">
+    <select id="uFiltSt" onchange="renderUniverso()"><option value="">Todos los estados</option></select>
+    <select id="uFiltEsp" onchange="renderUniverso()"><option value="">Todas las especialidades</option></select>
+    <input type="text" id="uSearch" placeholder="Buscar contratista…" oninput="renderUniverso()">
+  </div>
+  <div class="kpi-grid" id="kpi-univ"></div>
+  <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-users"></i>Directorio Operativo Completo</div><div id="univCount" style="font-size:11.5px;color:var(--t3);font-weight:500"></div></div>
+    <div style="overflow-x:auto"><table><thead><tr>
+      <th>Contratista</th><th>Estado Operativo</th><th>Riesgo Multi-Cliente</th>
+      <th>Clientes Activos</th><th>Especialidades</th><th>Activos</th><th>Futuros</th><th>Próx. Fin</th>
+    </tr></thead><tbody id="univBody"></tbody></table>
+  </div></div>
+</div>
+
+<!-- MATRIZ -->
+<div class="page" id="page-matriz">
+  <div class="ph"><div><div class="ph-title">Matriz Operativa</div><div class="ph-sub">Cruce Cliente × Especialidad → Contratista asignada</div></div></div>
+  <div class="frow">
+    <input type="text" id="matSearch" placeholder="Buscar cliente…" oninput="renderMatriz()">
+    <select id="matFiltEst" onchange="renderMatriz()"><option value="">Todos los estados</option><option value="activo">Solo activos</option><option value="futuro">Solo futuros</option></select>
+  </div>
+  <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-layout-grid"></i>Matriz Cliente × Especialidad</div><div class="sec-extra">Color = estado del servicio</div></div>
+    <div class="sec-body" style="overflow-x:auto"><div id="matrizContainer"></div></div>
+  </div>
+</div>
+
+<!-- GANTT -->
+<div class="page" id="page-gantt">
+  <div class="ph">
+    <div><div class="ph-title">Gantt Gerencial</div><div class="ph-sub">Vista temporal de servicios · Doble agrupación: por Contratista o por Cliente</div></div>
+    <div class="tabs" id="ganttTabs">
+      <div class="tab active" onclick="setGanttView('contratista',this)"><i class="ti ti-tool"></i>Por Contratista</div>
+      <div class="tab" onclick="setGanttView('cliente',this)"><i class="ti ti-building"></i>Por Cliente</div>
+    </div>
+  </div>
+  <div class="frow">
+    <select id="gfCont" onchange="renderGantt()"><option value="">Todas las contratistas</option></select>
+    <select id="gfEsp" onchange="renderGantt()"><option value="">Todas las especialidades</option></select>
+    <select id="gfEst" onchange="renderGantt()"><option value="">Todos los estados</option></select>
+    <select id="gfCli" onchange="renderGantt()"><option value="">Todos los clientes</option></select>
+    <select id="gfSit" onchange="renderGantt()"><option value="">Toda situación</option></select>
+  </div>
+  <div class="gantt-legend">
+    <span style="font-weight:700;color:var(--t3);font-size:10.5px;text-transform:uppercase;letter-spacing:.6px">Leyenda:</span>
+    <span class="gantt-legend-item"><span class="gantt-legend-sw" style="background:#3b82f6"></span>Proceso</span>
+    <span class="gantt-legend-item"><span class="gantt-legend-sw" style="background:#f59e0b"></span>Cierre</span>
+    <span class="gantt-legend-item"><span class="gantt-legend-sw" style="background:#10b981"></span>Concluido</span>
+    <span class="gantt-legend-item"><span class="gantt-legend-sw" style="background:#9ca3af"></span>Por Iniciar (Contratado)</span>
+    <span class="gantt-legend-item"><span class="gantt-legend-sw striped"></span>Pendiente / Licitación (Solo Propuesto)</span>
+    <span class="gantt-legend-item"><span class="gantt-legend-sw urgent-sw" style="background:#ef4444"></span>⏰ ≤10 días por terminar</span>
+    <span class="gantt-legend-item"><span class="multi-badge">⚠ MULTI</span>Multi-cliente simultáneo</span>
+  </div>
+  <div class="section"><div style="overflow-x:auto"><div id="ganttWrap"></div></div></div>
+</div>
+
+<!-- URGENTES SIN CONTRATAR -->
+<div class="page" id="page-urgentes">
+  <div class="ph">
+    <div><div class="ph-title">Próximos a Vencer sin Contratar</div><div class="ph-sub">Servicios en Pendiente / Licitación ordenados por proximidad de inicio o fin · Riesgo PMO crítico</div></div>
+    <div class="tabs" id="urgTabs">
+      <div class="tab active" onclick="setUrgView('inicio',this)"><i class="ti ti-flag-3"></i>Por Inicio</div>
+      <div class="tab" onclick="setUrgView('fin',this)"><i class="ti ti-flag-check"></i>Por Fin</div>
+    </div>
+  </div>
+
+  <!-- Hero summary cards -->
+  <div class="hero-grid">
+    <div class="hero-c h-danger">
+      <div class="hero-head">
+        <div class="hero-label">Sin Contratista · Inicio Crítico</div>
+        <div class="hero-ico hero-pulse"><i class="ti ti-alert-octagon"></i></div>
+      </div>
+      <div class="hero-num" id="urgKPI-critico">0</div>
+      <div class="hero-sub">Inicio en ≤ 14 días o ya iniciado sin contratar</div>
+      <div class="hero-foot">
+        <div class="hero-foot-item"><div class="hf-num" id="urgKPI-vencidos">0</div><div class="hf-lbl">Ya Iniciados</div></div>
+        <div class="hero-foot-item"><div class="hf-num" id="urgKPI-7d">0</div><div class="hf-lbl">Inicio ≤7d</div></div>
+        <div class="hero-foot-item"><div class="hf-num" id="urgKPI-14d">0</div><div class="hf-lbl">Inicio ≤14d</div></div>
+      </div>
+    </div>
+    <div class="hero-c h-warn">
+      <div class="hero-head">
+        <div class="hero-label">Pendiente · Por Contratar</div>
+        <div class="hero-ico"><i class="ti ti-hourglass"></i></div>
+      </div>
+      <div class="hero-num" id="urgKPI-pend">0</div>
+      <div class="hero-sub">Servicios en gestión de propuesta</div>
+      <div class="hero-foot">
+        <div class="hero-foot-item"><div class="hf-num" id="urgKPI-30d">0</div><div class="hf-lbl">Inicio ≤30d</div></div>
+        <div class="hero-foot-item"><div class="hf-num" id="urgKPI-60d">0</div><div class="hf-lbl">Inicio ≤60d</div></div>
+      </div>
+    </div>
+    <div class="hero-c h-dark">
+      <div class="hero-head">
+        <div class="hero-label">Licitación Abierta</div>
+        <div class="hero-ico"><i class="ti ti-gavel"></i></div>
+      </div>
+      <div class="hero-num" id="urgKPI-licit">0</div>
+      <div class="hero-sub">Procesos de licitación en curso</div>
+      <div class="hero-foot">
+        <div class="hero-foot-item"><div class="hf-num" id="urgKPI-licitClis">0</div><div class="hf-lbl">Clientes</div></div>
+        <div class="hero-foot-item"><div class="hf-num" id="urgKPI-licitEsp">0</div><div class="hf-lbl">Especialidades</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="frow">
+    <select id="urgFiltSit" onchange="renderUrgentes()"><option value="">Toda situación</option><option value="Pendiente">Pendiente</option><option value="Licitación">Licitación</option></select>
+    <select id="urgFiltCli" onchange="renderUrgentes()"><option value="">Todos los clientes</option></select>
+    <select id="urgFiltEsp" onchange="renderUrgentes()"><option value="">Todas las especialidades</option></select>
+    <select id="urgFiltSup" onchange="renderUrgentes()"><option value="">Todos los supervisores</option></select>
+  </div>
+
+  <div class="sec-label" id="urgSecLbl"><i class="ti ti-list"></i>Servicios Ordenados por Proximidad de Inicio</div>
+  <div id="urgList" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<!-- DISPONIBILIDAD -->
+<div class="page" id="page-disponibilidad">
+  <div class="ph"><div><div class="ph-title">Consulta de Disponibilidad</div><div class="ph-sub">Estado real de contratistas para cualquier fecha · Considera Contratado + Licitación + Pendiente</div></div></div>
+  <div class="section"><div class="sec-head"><div class="sec-title"><i class="ti ti-calendar-search"></i>Fecha de Consulta</div></div>
+    <div class="sec-body" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+      <div><label style="font-size:11px;font-weight:700;color:var(--t3);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.6px">Selecciona una fecha</label><input type="date" id="fechaQ" style="width:200px"></div>
+      <button class="btn primary" onclick="queryDate()"><i class="ti ti-search"></i>Consultar</button>
+      <button class="btn" onclick="setToday()"><i class="ti ti-calendar-today"></i>Hoy</button>
+    </div>
+  </div>
+  <div id="dispResult"></div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+/* ===========================================================
+   FRIOPACKING PMO — DATA
+   - Actualizado desde Excel 02.08.2026 (65 servicios activos)
+   - Concluidos excluidos del tablero
+   =========================================================== */
+let DATA=[
+{c:'AGROBERRIES VIRÚ',fa:'',e:'Mecánica',sit:'Pendiente',est:'Por Iniciar',sup:'Sin Asignar',con:'YLA',ini:'2026-09-29',fin:'2027-02-05'},
+{c:'AGROBERRIES VIRÚ',fa:'',e:'Paneles',sit:'Pendiente',est:'Por Iniciar',sup:'Sin Asignar',con:'R&D',ini:'2026-10-28',fin:'2026-12-24'},
+{c:'AGROBERRIES VIRÚ',fa:'',e:'Eléctrico',sit:'Pendiente',est:'Por Iniciar',sup:'Sin Asignar',con:'MMJ',ini:'2026-09-29',fin:'2027-02-05'},
+{c:'DROKASA PISCO',fa:'',e:'Paneles',sit:'Contratado',est:'Por Iniciar',sup:'Luis Silva',con:'Niquin',ini:'2026-08-10',fin:'2026-08-05'},
+{c:'DROKASA PISCO',fa:'',e:'Mecánica',sit:'Contratado',est:'Por Iniciar',sup:'Luis Silva',con:'Niquin',ini:'2026-08-10',fin:'2026-08-05'},
+{c:'DROKASA PISCO',fa:'',e:'Lonas',sit:'Contratado',est:'Por Iniciar',sup:'Luis Silva',con:'Niquin',ini:'2026-08-10',fin:'2026-08-05'},
+{c:'DROKASA PISCO',fa:'',e:'Aislamiento',sit:'Contratado',est:'Por Iniciar',sup:'Luis Silva',con:'Niquin',ini:'2026-08-10',fin:'2026-08-05'},
+{c:'DROKASA PISCO',fa:'',e:'Eléctrico',sit:'Contratado',est:'Por Iniciar',sup:'Luis Silva',con:'Niquin',ini:'2026-08-10',fin:'2026-08-05'},
+{c:'AGROLATINA NAZCA',fa:'',e:'Eléctrico',sit:'Contratado',est:'Por Iniciar',sup:'Luis Goycochea',con:'V&G',ini:'2026-08-03',fin:'2026-09-15'},
+{c:'AGROLATINA NAZCA',fa:'',e:'Mecánica',sit:'Contratado',est:'Proceso',sup:'Luis Goycochea',con:'Metalfresh',ini:'2026-07-15',fin:'2026-09-15'},
+{c:'AGROLATINA NAZCA',fa:'',e:'Lonas',sit:'Contratado',est:'Por Iniciar',sup:'Luis Goycochea',con:'Servic León',ini:'2026-08-03',fin:'2026-09-15'},
+{c:'AGROLATINA NAZCA',fa:'',e:'Aislamiento',sit:'Contratado',est:'Por Iniciar',sup:'Luis Goycochea',con:'Liao Termic',ini:'2026-08-03',fin:'2026-09-15'},
+{c:'AGROLATINA NAZCA',fa:'',e:'Paneles',sit:'Contratado',est:'Proceso',sup:'Luis Goycochea',con:'Metalfresh',ini:'2026-07-05',fin:'2026-08-30'},
+{c:'AGROLATINA NAZCA',fa:'',e:'Hvac',sit:'Pendiente',est:'Por Iniciar',sup:'Luis Goycochea',con:'Servic León',ini:'2026-07-15',fin:'2026-09-15'},
+{c:'AIB CHINCHA',fa:'',e:'EEMM',sit:'Licitación',est:'Por Iniciar',sup:'Carlos Renato',con:'Petty',ini:'2026-08-24',fin:'2026-07-21'},
+{c:'AIB CHINCHA',fa:'',e:'Instalación Electromecánica',sit:'Pendiente',est:'Por Iniciar',sup:'Carlos Renato',con:'Friotecnic',ini:'2026-08-24',fin:'2026-08-08'},
+{c:'AIB CHINCHA',fa:'',e:'Instalación Electromecánica',sit:'Pendiente',est:'Por Iniciar',sup:'Carlos Renato',con:'Friotecnic',ini:'2026-08-24',fin:'2026-08-14'},
+{c:'AIB CHINCHA',fa:'',e:'Paneles',sit:'Licitación',est:'Por Iniciar',sup:'Carlos Renato',con:'Climatec',ini:'2026-08-24',fin:'2026-07-30'},
+{c:'BERRY HARVEST',fa:'',e:'Campamento',sit:'Contratado',est:'Proceso',sup:'Erick Jara',con:'Prominerc',ini:'2026-03-01',fin:'2026-08-30'},
+{c:'BOMAREA',fa:'I',e:'Aislamiento',sit:'Contratado',est:'Proceso',sup:'Jorvin Paredes',con:'SAM',ini:'2026-05-15',fin:'2026-08-30'},
+{c:'BOMAREA',fa:'I',e:'Lonas',sit:'Contratado',est:'Proceso',sup:'Jorvin Paredes',con:'J&B',ini:'2026-05-15',fin:'2026-08-30'},
+{c:'BOMAREA',fa:'I',e:'Mecánica',sit:'Contratado',est:'Proceso',sup:'Jorvin Paredes',con:'Pedro Tineo',ini:'2026-05-18',fin:'2026-08-30'},
+{c:'BOMAREA',fa:'I',e:'Eléctrico',sit:'Contratado',est:'Proceso',sup:'Jorvin Paredes',con:'H&E',ini:'2026-06-01',fin:'2026-08-30'},
+{c:'BOMAREA',fa:'I',e:'Paneles',sit:'Contratado',est:'Proceso',sup:'Jorvin Paredes',con:'J&B',ini:'2026-04-15',fin:'2026-08-30'},
+{c:'BOMAREA',fa:'II',e:'Aislamiento',sit:'Pendiente',est:'Por Iniciar',sup:'Jorvin Paredes',con:'SAM',ini:'2026-08-18',fin:'2026-10-30'},
+{c:'BOMAREA',fa:'II',e:'Mecánica',sit:'Pendiente',est:'Por Iniciar',sup:'Jorvin Paredes',con:'YLA',ini:'2026-08-18',fin:'2026-10-30'},
+{c:'BOMAREA',fa:'II',e:'Eléctrico',sit:'Pendiente',est:'Por Iniciar',sup:'Jorvin Paredes',con:'H&E',ini:'2026-08-18',fin:'2026-10-30'},
+{c:'BOMAREA',fa:'II',e:'Paneles',sit:'Contratado',est:'Por Iniciar',sup:'Jorvin Paredes',con:'J&B',ini:'2026-08-03',fin:'2026-10-30'},
+{c:'PAMPA BAJA II',fa:'',e:'Paneles',sit:'Contratado',est:'Por Iniciar',sup:'Dylan Marquina',con:'Store Cold',ini:'2026-08-10',fin:'2026-09-10'},
+{c:'PAMPA BAJA II',fa:'',e:'Mecánica',sit:'Contratado',est:'Por Iniciar',sup:'Dylan Marquina',con:'Firmisa',ini:'2026-08-10',fin:'2026-10-14'},
+{c:'PAMPA BAJA II',fa:'',e:'Aislamiento',sit:'Contratado',est:'Por Iniciar',sup:'Dylan Marquina',con:'Firmisa',ini:'2026-08-10',fin:'2026-10-10'},
+{c:'PAMPA BAJA II',fa:'',e:'Eléctrico',sit:'Pendiente',est:'Por Iniciar',sup:'Dylan Marquina',con:'Store Cold',ini:'2026-08-28',fin:'2026-10-03'},
+{c:'PROAGRO',fa:'',e:'Lonas',sit:'Contratado',est:'Por Iniciar',sup:'Benjamin Viera',con:'Climatec',ini:'2026-07-30',fin:'2026-10-30'},
+{c:'PROAGRO',fa:'',e:'Gasificado',sit:'Contratado',est:'Por Iniciar',sup:'Benjamin Viera',con:'Climatec',ini:'2026-09-28',fin:'2026-10-28'},
+{c:'PROAGRO',fa:'',e:'Montaje de EEMM',sit:'Contratado',est:'Por Iniciar',sup:'Benjamin Viera',con:'Uber Villalva',ini:'2026-08-03',fin:'2026-08-28'},
+{c:'PROAGRO',fa:'',e:'Paneles',sit:'Contratado',est:'Por Iniciar',sup:'Benjamin Viera',con:'Climatec',ini:'2026-07-05',fin:'2026-10-30'},
+{c:'PROAGRO',fa:'',e:'Mecánica',sit:'Contratado',est:'Por Iniciar',sup:'Benjamin Viera',con:'Decas',ini:'2026-08-08',fin:'2026-10-30'},
+{c:'PROAGRO',fa:'',e:'Aislamiento',sit:'Pendiente',est:'Por Iniciar',sup:'Benjamin Viera',con:'Aister',ini:'2026-08-25',fin:'2026-10-10'},
+{c:'PROAGRO',fa:'',e:'Eléctrico',sit:'Pendiente',est:'Por Iniciar',sup:'Benjamin Viera',con:'Elm Eléctric',ini:'2026-07-30',fin:'2026-10-30'},
+{c:'LARAN',fa:'',e:'Reubicación de Equipos',sit:'Contratado',est:'Por Iniciar',sup:'Walter Chung',con:'A&R',ini:'2026-06-05',fin:'2026-06-18'},
+{c:'LARAN',fa:'',e:'Instalación Electromecánica',sit:'Contratado',est:'Por Iniciar',sup:'Walter Chung',con:'J&L',ini:'2026-06-30',fin:'2026-10-16'},
+{c:'LARAN',fa:'',e:'Rack Acumulativo',sit:'Contratado',est:'Por Iniciar',sup:'Walter Chung',con:'P Y A',ini:'2026-07-02',fin:'2026-07-15'},
+{c:'LARAN',fa:'',e:'EEMM',sit:'Contratado',est:'Por Iniciar',sup:'Walter Chung',con:'Uber Villalva',ini:'2026-06-30',fin:'2026-10-16'},
+{c:'LARAN',fa:'',e:'Paneles',sit:'Contratado',est:'Por Iniciar',sup:'Walter Chung',con:'J&L',ini:'2026-06-15',fin:'2026-08-31'},
+{c:'LARAN',fa:'',e:'Instalación Electromecánica',sit:'Contratado',est:'Por Iniciar',sup:'Walter Chung',con:'Planner Control',ini:'2026-06-30',fin:'2026-10-16'},
+{c:'QALI FRUITS',fa:'',e:'EEMM',sit:'Contratado',est:'Proceso',sup:'Wilson Urbina',con:'Albuilding',ini:'2026-07-01',fin:'2026-08-10'},
+{c:'QALI FRUITS',fa:'',e:'OOCC',sit:'Contratado',est:'Proceso',sup:'Wilson Urbina',con:'Conciarun',ini:'2026-06-01',fin:'2026-08-30'},
+{c:'QALI FRUITS',fa:'',e:'Paneles',sit:'Contratado',est:'Por Iniciar',sup:'Wilson Urbina',con:'Arquin',ini:'2026-07-20',fin:'2026-09-08'},
+{c:'QALI FRUITS',fa:'',e:'Mecánica',sit:'Contratado',est:'Por Iniciar',sup:'Wilson Urbina',con:'Arquin',ini:'2026-07-20',fin:'2026-09-08'},
+{c:'QALI FRUITS',fa:'',e:'Eléctrico',sit:'Contratado',est:'Por Iniciar',sup:'Wilson Urbina',con:'Arquin',ini:'2026-07-20',fin:'2026-09-08'},
+{c:'QALI FRUITS',fa:'',e:'Aislamiento',sit:'Contratado',est:'Por Iniciar',sup:'Wilson Urbina',con:'Arquin',ini:'2026-07-20',fin:'2026-09-08'},
+{c:'QPACK',fa:'',e:'Aislamiento',sit:'Contratado',est:'Cierre',sup:'Jesus Cabrera',con:'SAM',ini:'2026-04-15',fin:'2026-06-25'},
+{c:'QPACK',fa:'',e:'Paneles',sit:'Contratado',est:'Cierre',sup:'Jesus Cabrera',con:'R&D',ini:'2026-03-20',fin:'2026-06-30'},
+{c:'QPACK',fa:'',e:'Lonas',sit:'Contratado',est:'Cierre',sup:'Jesus Cabrera',con:'R&D',ini:'2026-03-20',fin:'2026-06-30'},
+{c:'QPACK',fa:'',e:'Gasificado',sit:'Contratado',est:'Cierre',sup:'Jesus Cabrera',con:'Servic León',ini:'2026-03-20',fin:'2026-06-30'},
+{c:'QPACK',fa:'',e:'Eléctrico',sit:'Contratado',est:'Cierre',sup:'Jesus Cabrera',con:'H&E',ini:'2026-04-08',fin:'2026-06-30'},
+{c:'QPACK',fa:'',e:'Mecánica',sit:'Contratado',est:'Cierre',sup:'Jesus Cabrera',con:'Decas',ini:'2026-03-23',fin:'2026-06-30'},
+{c:'RINTISA',fa:'',e:'Instalación Electromecánica',sit:'Contratado',est:'Por Iniciar',sup:'Steve Sarmiento',con:'Danny Montoya',ini:'2026-07-05',fin:'2026-09-09'},
+{c:'TORRE BLANCA',fa:'',e:'Mecánica',sit:'Contratado',est:'Cierre',sup:'Luis Silva',con:'Metalfresh',ini:'2026-04-15',fin:'2026-06-16'},
+{c:'TORRE BLANCA',fa:'',e:'Paneles',sit:'Contratado',est:'Cierre',sup:'Luis Silva',con:'Metalfresh',ini:'2026-03-18',fin:'2026-05-30'},
+{c:'TORRE BLANCA',fa:'',e:'Obras Civiles',sit:'Contratado',est:'Cierre',sup:'Luis Silva',con:'Javier del Pozo',ini:'2026-02-09',fin:'2026-05-30'},
+{c:'TORRE BLANCA',fa:'',e:'Eléctrico',sit:'Contratado',est:'Proceso',sup:'Luis Silva',con:'G&S',ini:'2026-04-20',fin:'2026-06-16'},
+{c:'DROKASA ICA',fa:'',e:'Paneles',sit:'Contratado',est:'Por Iniciar',sup:'Antony Rodriguez',con:'Sps Andina',ini:'2026-08-10',fin:'2026-08-05'},
+{c:'DROKASA ICA',fa:'',e:'Instalación Electromecánica',sit:'Contratado',est:'Por Iniciar',sup:'Antony Rodriguez',con:'Sps Andina',ini:'2026-08-10',fin:'2026-08-05'},
+{c:'DROKASA ICA',fa:'',e:'Lonas',sit:'Contratado',est:'Por Iniciar',sup:'Antony Rodriguez',con:'Sps Andina',ini:'2026-08-10',fin:'2026-08-05'},
+];
+/* El seed de arriba es solo el arranque instantáneo / fallback sin red.
+   La verdad vive en Supabase (portafolio_servicios) y se carga en el INIT. */
+
+/* Fecha real de hoy (mediodía, para que las restas de días no bailen por zona
+   horaria). Antes estaba congelada al 02-08-2026, la fecha del Excel; ahora el
+   dato viene en vivo de Supabase, así que los vencimientos deben correr solos. */
+const TODAY=(()=>{const d=new Date();d.setHours(12,0,0,0);return d;})();
+const ISO_HOY=TODAY.toISOString().slice(0,10);
+const pd=s=>{if(!s||s==='—')return null;try{return new Date(s+'T12:00:00');}catch(e){return null;}};
+const fm=d=>{if(!d)return '—';return d.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'2-digit'});};
+const daysDiff=d=>{if(!d)return null;return Math.round((d-TODAY)/86400000);};
+/* Chip de fase: BOMAREA I y BOMAREA II son el mismo proyecto, distinta etapa */
+const faseChip=p=>p&&p.fa?` <span style="display:inline-block;background:var(--navy-l);color:var(--navy);font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:5px;vertical-align:middle;letter-spacing:.4px">FASE ${p.fa}</span>`:'';
+/* Chart.js reusa el <canvas>: hay que destruir la instancia previa antes de
+   redibujar, si no revienta con "Canvas is already in use" al recargar datos. */
+function mkChart(id,cfg){
+  const el=document.getElementById(id);
+  if(!el)return null;
+  const prev=(window.Chart&&Chart.getChart)?Chart.getChart(el):null;
+  if(prev)prev.destroy();
+  return new Chart(el,cfg);
+}
+const ACTIVE=['Proceso','Cierre'];
+const FUTURE=['Por Iniciar'];
+const CONTRACTED_SIT=['Contratado'];
+const PENDING_SIT=['Pendiente','Licitación'];
+
+let projects,allConts,allEsps,allSups,allClis,allEsts,allSits;
+function rebuildDerived(){
+  projects=DATA.filter(r=>r.est!=='Concluído').map(r=>({...r,iniD:pd(r.ini),finD:pd(r.fin)}));
+  allConts=[...new Set(projects.map(p=>p.con).filter(c=>c&&c!=='—'))].sort();
+  allEsps=[...new Set(projects.map(p=>p.e))].sort();
+  allSups=[...new Set(projects.map(p=>p.sup))].sort();
+  allClis=[...new Set(projects.map(p=>p.c))].sort();
+  allEsts=[...new Set(projects.map(p=>p.est))];
+  allSits=[...new Set(projects.map(p=>p.sit))];
+}
+
+/* ===========================================================
+   RISK ENGINE — MULTI-CLIENT (CORRECT)
+   =========================================================== */
+function getActiveClients(cont,date){
+  return[...new Set(projects.filter(p=>
+    p.con===cont&&ACTIVE.includes(p.est)&&CONTRACTED_SIT.includes(p.sit)&&
+    p.iniD&&p.finD&&p.iniD<=date&&p.finD>=date
+  ).map(p=>p.c))];
+}
+function getRisk(cont,date){date=date||TODAY;const n=getActiveClients(cont,date).length;return n>=3?2:n>=2?1:0;}
+function rLabel(n){return['Normal','⚠ Alerta Multi-Cliente','🔴 Riesgo Crítico'][n];}
+function rClass(n){return['r0','r1','r2'][n];}
+
+/* ===========================================================
+   AVAILABILITY ENGINE — CORRECTED
+   - A contractor is NOT free if they have ANY assignment (Contratado, Licitación or Pendiente) overlapping the date
+   - This fixes the A&R/Prolan bug where Licitación was treated as "Libre"
+   =========================================================== */
+function getAssignmentsOnDate(cont,date){
+  return projects.filter(p=>p.con===cont&&p.iniD&&p.finD&&p.iniD<=date&&p.finD>=date);
+}
+function getContractedAssignmentsOnDate(cont,date){
+  return projects.filter(p=>p.con===cont&&CONTRACTED_SIT.includes(p.sit)&&ACTIVE.includes(p.est)&&p.iniD&&p.finD&&p.iniD<=date&&p.finD>=date);
+}
+function getProposedAssignmentsOnDate(cont,date){
+  return projects.filter(p=>p.con===cont&&PENDING_SIT.includes(p.sit)&&p.iniD&&p.finD&&p.iniD<=date&&p.finD>=date);
+}
+
+function classifyOp(cont){
+  const ps=projects.filter(p=>p.con===cont);
+  if(!ps.length)return'SIN USO EN CARTERA';
+  if(getContractedAssignmentsOnDate(cont,TODAY).length>0)return'OCUPADA';
+  if(getProposedAssignmentsOnDate(cont,TODAY).length>0)return'COMPROMETIDA';
+  if(ps.some(p=>p.iniD>TODAY&&CONTRACTED_SIT.includes(p.sit)))return'ASIGNADA PRÓXIMAMENTE';
+  if(ps.some(p=>p.iniD>TODAY&&PENDING_SIT.includes(p.sit)))return'COMPROMETIDA';
+  return'DISPONIBLE';
+}
+
+/* El topbar propio se eliminó: la fecha la muestra el header del Centro de Control. */
+
+/* ===========================================================
+   KPI CARD BUILDER — Corporate Style with badge
+   =========================================================== */
+function kpiC(opts){
+  const {label,value,sub,color,icon,bar}=opts;
+  const cm={
+    brand:['#127a6e','#dcf6f2'],blue:['#3b82f6','#dbeafe'],amber:['#f59e0b','#fef3c7'],
+    green:['#10b981','#d1fae5'],red:['#ef4444','#fee2e2'],purple:['#8b5cf6','#ede9fe'],
+    orange:['#f97316','#fed7aa'],dark:['#374151','#e5e7eb'],pink:['#ec4899','#fce7f3'],gray:['#64748b','#f1f5f9']
+  };
+  const[c,bg]=cm[color]||cm.brand;
+  const isLong=String(value).length>4;
+  return`<div class="kpi-c">
+    <div class="kpi-top-line" style="background:${c}"></div>
+    <div class="kpi-badge" style="background:${bg};color:${c}">${value}</div>
+    <div class="kpi-ico-sq" style="background:${bg};color:${c}"><i class="ti ${icon}"></i></div>
+    <div class="kpi-num${isLong?' md':''}" style="color:${c}">${value}</div>
+    <div class="kpi-lbl">${label}</div>
+    ${sub?`<div class="kpi-sub">${sub}</div>`:''}
+    ${bar!=null?`<div class="kpi-bar"><div class="kpi-bar-fill" style="width:${bar}%;background:${c}"></div></div>`:''}
+  </div>`;
+}
+
+/* Renderer por vista. "ejecutiva" (Resumen) absorbió la antigua Vista PMO,
+   así que pinta las dos mitades. */
+const RENDERERS={
+  ejecutiva:()=>{initEjecutiva();renderPMO();},
+  operativa:renderOperativa,
+  universo:renderUniverso,
+  matriz:renderMatriz,
+  gantt:renderGantt,
+  urgentes:renderUrgentes,
+  disponibilidad:()=>{},
+  editor:renderEditor
+};
+
+/* Única entrada de navegación: la llama el rail del Centro de Control.
+   El módulo ya no tiene menú propio. */
+function setView(id){
+  id=(id||'ejecutiva').trim();
+  const page=document.getElementById('page-'+id);
+  if(!page){console.warn('[servicios] vista desconocida:',id);return false;}
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  page.classList.add('active');
+  const el=document.querySelector('.main');
+  if(el)el.scrollTop=0;
+  try{(RENDERERS[id]||function(){})();}catch(e){console.warn('[servicios] render '+id+':',e);}
+  return true;
+}
+window.setView=setView;
+/* Compat: quedan onclick="nav(...)" en algunos botones internos. */
+function nav(id){return setView(id);}
+window.nav=nav;
+
+/* Los contadores ya no van a un rail propio: se los pasamos al shell para que
+   los pinte en sus sub-items (Universo · Sin contratar). */
+function publicarBadges(contratistas,sinContratar){
+  try{
+    if(window.parent&&window.parent!==window){
+      window.parent.postMessage({tipo:'servicios:badges',contratistas:contratistas,sinContratar:sinContratar},'*');
+    }
+  }catch(e){}
+}
+
+function populateFilters(){
+  const resetSel=(id)=>{const el=document.getElementById(id);if(!el)return;while(el.options.length>1)el.remove(1);};
+  ['opFiltEst','opFiltEsp','opFiltSup','opFiltSit','uFiltSt','uFiltEsp','gfCont','gfEsp','gfEst','gfCli','gfSit','urgFiltCli','urgFiltEsp','urgFiltSup'].forEach(resetSel);
+  const add=(id,opts)=>{const el=document.getElementById(id);if(!el)return;opts.forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=o;el.appendChild(op);});};
+  add('opFiltEst',allEsts);add('opFiltEsp',allEsps);add('opFiltSup',allSups);add('opFiltSit',allSits);
+  add('uFiltSt',['OCUPADA','DISPONIBLE','ASIGNADA PRÓXIMAMENTE','COMPROMETIDA','SIN USO EN CARTERA']);add('uFiltEsp',allEsps);
+  add('gfCont',allConts);add('gfEsp',allEsps);add('gfEst',allEsts);add('gfCli',allClis);add('gfSit',allSits);
+  add('urgFiltCli',allClis);add('urgFiltEsp',allEsps);add('urgFiltSup',allSups);
+}
+
+/* ===========================================================
+   VISTA EJECUTIVA — REDISEÑADA CORPORATIVA
+   =========================================================== */
+function initEjecutiva(){
+  // Counters
+  const totalServ=projects.length;
+  const totalClis=allClis.length;
+  const totalConts=allConts.length;
+  const totalEsps=allEsps.length;
+  const totalSups=allSups.length;
+  const contratados=projects.filter(p=>CONTRACTED_SIT.includes(p.sit)).length;
+  const pendientes=projects.filter(p=>p.sit==='Pendiente').length;
+  const licitacion=projects.filter(p=>p.sit==='Licitación').length;
+  const sinContratar=pendientes+licitacion;
+  const enProceso=projects.filter(p=>p.est==='Proceso').length;
+  const enCierre=projects.filter(p=>p.est==='Cierre').length;
+  const porIniciar=projects.filter(p=>p.est==='Por Iniciar').length;
+  const enEjec=enProceso;
+  const riesgoFecha7=projects.filter(p=>{const d=daysDiff(p.finD);return d!==null&&d>=0&&d<=7&&ACTIVE.includes(p.est);}).length;
+  const riesgoFecha30=projects.filter(p=>{const d=daysDiff(p.finD);return d!==null&&d>=0&&d<=30&&ACTIVE.includes(p.est);}).length;
+  const pctAvance=totalServ?Math.round(contratados/totalServ*100):0;
+  const pctPend=totalServ?Math.round(pendientes/totalServ*100):0;
+  const pctLicit=totalServ?Math.round(licitacion/totalServ*100):0;
+  // No contratados próximos a vencer (sin contratar y fin ≤30d)
+  const noContratProx=projects.filter(p=>PENDING_SIT.includes(p.sit)&&p.iniD&&daysDiff(p.iniD)<=30).length;
+  // Contractors with multiple projects
+  const contCounts={};projects.forEach(p=>{if(p.con&&p.con!=='—')contCounts[p.con]=(contCounts[p.con]||0)+1;});
+  const contsMultiProy=Object.values(contCounts).filter(n=>n>1).length;
+  const contsMultiCli=allConts.filter(c=>getActiveClients(c,TODAY).length>=2).length;
+
+  const crit=allConts.filter(c=>getRisk(c)===2).length;
+  const alrt=allConts.filter(c=>getRisk(c)===1).length;
+  const totalUrg=allConts.filter(c=>getRisk(c)===2||getRisk(c)===1).length;
+  publicarBadges(totalConts,noContratProx);
+  const _nbAl=document.getElementById('nb-alertas');if(_nbAl)_nbAl.textContent=crit+alrt;
+  // Nav badge para nueva pestaña
+  const nbUrg=document.getElementById('nb-urgentes');
+  if(nbUrg)nbUrg.textContent=noContratProx;
+
+  // ===== HERO KPIs (3 large cards) =====
+  document.getElementById('kpi-hero').innerHTML=`
+    <!-- Hero 1: Portafolio Activo -->
+    <div class="hero-c h-brand">
+      <div class="hero-head">
+        <div class="hero-label">Portafolio Activo</div>
+        <div class="hero-ico"><i class="ti ti-briefcase"></i></div>
+      </div>
+      <div class="hero-num">${totalServ}</div>
+      <div class="hero-sub">servicios activos en gestión</div>
+      <div class="hero-foot">
+        <div class="hero-foot-item"><div class="hf-num">${totalClis}</div><div class="hf-lbl">Clientes</div></div>
+        <div class="hero-foot-item"><div class="hf-num">${totalConts}</div><div class="hf-lbl">Contratistas</div></div>
+        <div class="hero-foot-item"><div class="hf-num">${totalEsps}</div><div class="hf-lbl">Especialidades</div></div>
+      </div>
+    </div>
+
+    <!-- Hero 2: Salud Contractual -->
+    <div class="hero-c h-success">
+      <div class="hero-head">
+        <div class="hero-label">Salud Contractual</div>
+        <div class="hero-ico"><i class="ti ti-file-check"></i></div>
+      </div>
+      <div class="hero-num">${pctAvance}<span style="font-size:32px;font-weight:700;opacity:.9">%</span></div>
+      <div class="hero-sub">Servicios contratados · ${contratados}/${totalServ}</div>
+      <div class="hero-stack">
+        <div class="hero-stack-seg" style="width:${pctAvance}%;background:#86efac"></div>
+        <div class="hero-stack-seg" style="width:${pctPend}%;background:#fcd34d"></div>
+        <div class="hero-stack-seg" style="width:${pctLicit}%;background:#c4b5fd"></div>
+      </div>
+      <div class="hero-stack-leg">
+        <span><span class="dot-s" style="background:#86efac"></span>Contratado ${contratados}</span>
+        <span><span class="dot-s" style="background:#fcd34d"></span>Pendiente ${pendientes}</span>
+        <span><span class="dot-s" style="background:#c4b5fd"></span>Licitación ${licitacion}</span>
+      </div>
+    </div>
+
+    <!-- Hero 3: Urgencias -->
+    <div class="hero-c ${riesgoFecha7>0?'h-danger':'h-dark'}">
+      <div class="hero-head">
+        <div class="hero-label">Urgencias Operativas</div>
+        <div class="hero-ico ${riesgoFecha7>0?'hero-pulse':''}"><i class="ti ti-alert-octagon"></i></div>
+      </div>
+      <div class="hero-num smaller">${riesgoFecha7}</div>
+      <div class="hero-sub">Vencen en ≤ 7 días (en ejecución)</div>
+      <div class="hero-foot">
+        <div class="hero-foot-item"><div class="hf-num">${riesgoFecha30}</div><div class="hf-lbl">Vencen ≤30d</div></div>
+        <div class="hero-foot-item"><div class="hf-num">${noContratProx}</div><div class="hf-lbl">Sin Contrato ≤30d</div></div>
+        <div class="hero-foot-item"><div class="hf-num">${totalUrg}</div><div class="hf-lbl">Multi-Cliente</div></div>
+      </div>
+    </div>
+  `;
+
+  // ===== STRIP 1: Estado Operacional (5 KPIs) =====
+  document.getElementById('kpi-op').innerHTML=[
+    kpiC({label:'En Ejecución',value:enEjec,color:'blue',icon:'ti-settings',sub:'En campo ahora'}),
+    kpiC({label:'En Cierre / Obs',value:enCierre,color:'amber',icon:'ti-alert-triangle',sub:'Requieren atención'}),
+    kpiC({label:'Por Iniciar',value:porIniciar,color:'orange',icon:'ti-rocket',sub:'Próximo arranque'}),
+    kpiC({label:'Pendientes',value:pendientes,color:'pink',icon:'ti-hourglass',sub:`${pctPend}% del total`}),
+    kpiC({label:'En Licitación',value:licitacion,color:'purple',icon:'ti-gavel',sub:'En evaluación'}),
+  ].join('');
+
+  // ===== STRIP 2: Recursos & Cobertura (4 KPIs) =====
+  document.getElementById('kpi-rec').innerHTML=[
+    kpiC({label:'Contratistas',value:totalConts,color:'brand',icon:'ti-tower',sub:''}),
+    kpiC({label:'Multi-Cliente',value:contsMultiCli,color:'red',icon:'ti-users',sub:'Contratistas con ≥2 clientes'}),
+    kpiC({label:'Clientes',value:totalClis,color:'dark',icon:'ti-building-skyscraper',sub:`${totalEsps} especialidades`}),
+    kpiC({label:'Supervisores',value:totalSups,color:'green',icon:'ti-user-shield',sub:''}),
+  ].join('');
+
+  // Donut: Estado de Servicios
+  const estC={};allEsts.forEach(e=>{estC[e]=projects.filter(p=>p.est===e).length;});
+  const estCol={Proceso:'#3b82f6',Cierre:'#f59e0b',Concluído:'#0f172a','Por Iniciar':'#f97316'};
+  const eK=Object.keys(estC).filter(k=>estC[k]>0);
+  document.getElementById('dEstNum').textContent=totalServ;
+  mkChart('chEstados',{type:'doughnut',data:{labels:eK,datasets:[{data:eK.map(k=>estC[k]),backgroundColor:eK.map(k=>estCol[k]||'#94a3b8'),borderWidth:3,borderColor:'#fff',hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false},tooltip:{backgroundColor:'#fff',titleColor:'#0f172a',bodyColor:'#475569',borderColor:'#e5e7eb',borderWidth:1,padding:10,titleFont:{weight:700,size:12},bodyFont:{size:12}}}}});
+  const leg=document.getElementById('legEstados');leg.innerHTML='';
+  eK.forEach(k=>{leg.innerHTML+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;justify-content:space-between"><div style="display:flex;align-items:center;gap:7px"><span style="width:10px;height:10px;border-radius:3px;background:${estCol[k]||'#94a3b8'}"></span><span style="color:var(--t2);font-weight:500">${k}</span></div><strong style="color:var(--t1);font-weight:700">${estC[k]}</strong></div>`;});
+
+  // Donut: Situación Contractual
+  document.getElementById('dContPct').textContent=pctAvance+'%';
+  document.getElementById('contAv').textContent=pctAvance+'%';
+  document.getElementById('contClis').textContent=totalClis;
+  mkChart('chContrat',{type:'doughnut',data:{labels:['Contratado','Pendiente'],datasets:[{data:[contratados,sinContratar],backgroundColor:['#2fbfae','#f59e0b'],borderWidth:3,borderColor:'#fff',hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false},tooltip:{backgroundColor:'#fff',titleColor:'#0f172a',bodyColor:'#475569',borderColor:'#e5e7eb',borderWidth:1,padding:10}}}});
+  document.getElementById('legContrat').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;justify-content:space-between"><div style="display:flex;align-items:center;gap:7px"><span style="width:10px;height:10px;border-radius:3px;background:#2fbfae"></span><span style="color:var(--t2);font-weight:500">Contratado</span></div><strong style="color:var(--t1);font-weight:700">${contratados}</strong></div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;justify-content:space-between"><div style="display:flex;align-items:center;gap:7px"><span style="width:10px;height:10px;border-radius:3px;background:#f59e0b"></span><span style="color:var(--t2);font-weight:500">Pendiente</span></div><strong style="color:var(--t1);font-weight:700">${sinContratar}</strong></div>`;
+
+  // Especialidades chart: Contratado vs Pendiente
+  const espData={};allEsps.forEach(e=>{espData[e]={c:0,p:0};});
+  projects.forEach(p=>{if(CONTRACTED_SIT.includes(p.sit))espData[p.e].c++;else if(PENDING_SIT.includes(p.sit))espData[p.e].p++;});
+  const sortedEsps=Object.entries(espData).sort((a,b)=>(b[1].c+b[1].p)-(a[1].c+a[1].p)).slice(0,10);
+  mkChart('chEspecialidades',{
+    type:'bar',
+    data:{labels:sortedEsps.map(x=>x[0].length>14?x[0].slice(0,13)+'…':x[0]),datasets:[
+      {label:'Contratado',data:sortedEsps.map(x=>x[1].c),backgroundColor:'#2fbfae',borderRadius:6,borderSkipped:false,barPercentage:.85,categoryPercentage:.7},
+      {label:'Pendiente',data:sortedEsps.map(x=>x[1].p),backgroundColor:'#f59e0b',borderRadius:6,borderSkipped:false,barPercentage:.85,categoryPercentage:.7}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',align:'end',labels:{boxWidth:10,boxHeight:10,padding:12,font:{size:11,weight:600},color:'#475569'}},tooltip:{backgroundColor:'#fff',titleColor:'#0f172a',bodyColor:'#475569',borderColor:'#e5e7eb',borderWidth:1,padding:10,callbacks:{title:(t)=>sortedEsps[t[0].dataIndex][0]}}},scales:{x:{ticks:{color:'#94a3b8',font:{size:9.5},maxRotation:35,minRotation:25},grid:{display:false}},y:{ticks:{color:'#94a3b8',font:{size:10},stepSize:5},grid:{color:'#f1f5f9'},beginAtZero:true}}}
+  });
+
+  // Proyectos por Contratista — SOLO CONTRATADO (todo lo confirmado)
+  const palette=['#2fbfae','#f59e0b','#8b5cf6','#3b82f6','#ec4899','#10b981','#06b6d4','#f97316','#a855f7'];
+  const contratadoCount={},contratadoClis={};
+  projects.filter(p=>p.sit==='Contratado').forEach(p=>{
+    if(!p.con||p.con==='—')return;
+    contratadoCount[p.con]=(contratadoCount[p.con]||0)+1;
+    if(!contratadoClis[p.con])contratadoClis[p.con]=new Set();
+    contratadoClis[p.con].add(p.c);
+  });
+  const sortedCC=Object.entries(contratadoCount).map(([n,v])=>({n,proy:v,cli:contratadoClis[n].size})).sort((a,b)=>b.proy-a.proy||b.cli-a.cli);
+  const maxCC=sortedCC[0]?.proy||1;
+  document.getElementById('proyPorCont').innerHTML=sortedCC.length?sortedCC.map((x,i)=>{
+    const pct=(x.proy/maxCC*100);
+    const cliBadge=x.cli>=3?'background:#fef2f2;color:#991b1b;border:1px solid #fca5a5':x.cli===2?'background:#fffbeb;color:#92400e;border:1px solid #fde68a':'background:#e9f9f6;color:#127a6e;border:1px solid #a8e8df';
+    return`<div style="display:flex;align-items:center;gap:12px;margin-bottom:9px;font-size:12.5px">
+      <div style="width:130px;color:var(--t1);font-weight:600;text-align:right;flex-shrink:0">${x.n}</div>
+      <div style="flex:1;background:#f1f5f9;border-radius:10px;height:22px;overflow:hidden;position:relative">
+        <div style="height:100%;width:${pct}%;background:${palette[i%palette.length]};border-radius:10px;display:flex;align-items:center;justify-content:flex-start;padding-left:10px;transition:.3s">
+          <span style="font-size:11.5px;color:#fff;font-weight:700">${x.proy} servicios</span>
+        </div>
+      </div>
+      <div style="width:90px;text-align:right;flex-shrink:0"><span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:10px;${cliBadge}">${x.cli} cliente${x.cli!==1?'s':''}</span></div>
+    </div>`;
+  }).join(''):`<div style="color:var(--t3);font-size:12.5px;padding:24px 0;text-align:center">Sin contratistas con servicios contratados</div>`;
+
+  // Panel de Riesgo Multi-Cliente
+  const rCrit=allConts.filter(c=>getRisk(c)===2);
+  const rAlt=allConts.filter(c=>getRisk(c)===1);
+  let ph='';
+  rCrit.forEach(c=>{const cls=getActiveClients(c,TODAY);ph+=`<div class="alert-row"><div class="alert-ico a-red"><i class="ti ti-alert-triangle"></i></div><div><div class="alert-title">🔴 ${c} — Riesgo Crítico</div><div class="alert-desc">${cls.length} clientes simultáneos: ${cls.join(', ')}</div></div></div>`;});
+  rAlt.forEach(c=>{const cls=getActiveClients(c,TODAY);ph+=`<div class="alert-row"><div class="alert-ico a-amber"><i class="ti ti-alert-circle"></i></div><div><div class="alert-title">⚠ ${c} — Alerta Multi-Cliente</div><div class="alert-desc">2 clientes: ${cls.join(', ')}</div></div></div>`;});
+  if(!rCrit.length&&!rAlt.length)ph=`<div style="color:var(--t3);font-size:12.5px;padding:24px 0;text-align:center"><i class="ti ti-circle-check" style="color:var(--green);font-size:24px;display:block;margin-bottom:8px"></i> Sin riesgos multi-cliente hoy</div>`;
+  document.getElementById('panelRiesgo').innerHTML=ph;
+
+  // Carga por Supervisor
+  const supC={};projects.forEach(p=>{supC[p.sup]=(supC[p.sup]||0)+1;});
+  const maxS=Math.max(...Object.values(supC));
+  document.getElementById('supCargaEjec').innerHTML=Object.entries(supC).sort((a,b)=>b[1]-a[1]).map(([s,n])=>{const p=Math.round(n/maxS*100);const col=p>75?'var(--red)':p>50?'var(--amber)':'var(--green)';return`<div class="bar-row"><div class="bar-lbl">${s}</div><div class="bar-track"><div class="bar-fill" style="width:${p}%;background:${col}"></div></div><div class="bar-pct" style="color:${col}">${n}</div></div>`;}).join('');
+}
+
+/* ===========================================================
+   PMO VIEW
+   =========================================================== */
+function renderPMO(){
+  // Por cada especialidad: total servicios, contratados, pendientes, licitación, contratistas distintos
+  const esp={};
+  allEsps.forEach(e=>{
+    const ps=projects.filter(p=>p.e===e);
+    const cs=[...new Set(ps.map(p=>p.con).filter(c=>c&&c!=='—'))];
+    const contratados=ps.filter(p=>p.sit==='Contratado').length;
+    const pendientes=ps.filter(p=>p.sit==='Pendiente').length;
+    const licitacion=ps.filter(p=>p.sit==='Licitación').length;
+    esp[e]={total:ps.length,contratados,pendientes,licitacion,conts:cs,nconts:cs.length};
+  });
+  const sorted=Object.entries(esp).sort((a,b)=>b[1].total-a[1].total);
+
+  // KPIs gerenciales — concretos y accionables
+  const totalEsp=allEsps.length;
+  const espMasDem=sorted[0];
+  const espSinContrato=sorted.filter(e=>e[1].pendientes+e[1].licitacion>0).length;
+  const espBajaCobertura=sorted.filter(e=>e[1].nconts<=1).length;
+  const totalConContratista=projects.filter(p=>p.con&&p.con!=='—').length;
+  const promConPorEsp=totalEsp?(Object.values(esp).reduce((s,v)=>s+v.nconts,0)/totalEsp).toFixed(1):0;
+
+  document.getElementById('kpi-pmo').innerHTML=[
+    kpiC({label:'Especialidades',value:totalEsp,color:'brand',icon:'ti-tool',sub:`${promConPorEsp} contratistas/especialidad`}),
+    kpiC({label:'Más Demandada',value:espMasDem?espMasDem[0]:'—',color:'purple',icon:'ti-star',sub:`${espMasDem?espMasDem[1].total:0} servicios totales`}),
+    kpiC({label:'Con Pendientes',value:espSinContrato,color:'amber',icon:'ti-hourglass',sub:'Falta contratar al menos 1'}),
+    kpiC({label:'Baja Cobertura',value:espBajaCobertura,color:'red',icon:'ti-alert-triangle',sub:'≤1 contratista distinto'}),
+  ].join('');
+
+  // Demanda por Especialidad — barras apiladas claras
+  document.getElementById('demEsps').innerHTML=sorted.map(([e,v])=>{
+    const max=sorted[0][1].total||1;
+    const wTot=Math.max(15,(v.total/max)*100);
+    const pctC=v.total?(v.contratados/v.total*100):0;
+    const pctP=v.total?(v.pendientes/v.total*100):0;
+    const pctL=v.total?(v.licitacion/v.total*100):0;
+    return`<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+        <div style="font-size:13px;color:var(--t1);font-weight:600;display:flex;align-items:center;gap:8px">${e}<span style="font-size:11px;color:var(--t3);font-weight:500">· ${v.nconts} contratistas</span></div>
+        <div style="font-size:12px;color:var(--t2);font-weight:600"><strong style="color:var(--t1);font-size:14px">${v.total}</strong> servicios</div>
+      </div>
+      <div style="display:flex;height:22px;border-radius:7px;overflow:hidden;background:var(--surface3);width:${wTot}%;min-width:80px;box-shadow:inset 0 1px 2px rgba(0,0,0,.04)">
+        ${v.contratados?`<div style="width:${pctC}%;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10.5px;font-weight:700">${v.contratados>0?v.contratados:''}</div>`:''}
+        ${v.pendientes?`<div style="width:${pctP}%;background:linear-gradient(135deg,#f59e0b,#d97706);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10.5px;font-weight:700">${v.pendientes>0?v.pendientes:''}</div>`:''}
+        ${v.licitacion?`<div style="width:${pctL}%;background:linear-gradient(135deg,#8b5cf6,#7c3aed);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10.5px;font-weight:700">${v.licitacion>0?v.licitacion:''}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Cobertura — qué contratistas atienden cada especialidad
+  document.getElementById('cobEsps').innerHTML=sorted.map(([e,v])=>{
+    const dotCls=v.nconts<=1?'r2':v.nconts<=2?'r1':'r0';
+    const lbl=v.nconts<=1?'Riesgo':v.nconts<=2?'Limitado':'OK';
+    return`<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px">
+      <span class="risk ${dotCls}" style="font-size:10px;min-width:54px;text-align:center">${v.nconts} · ${lbl}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:3px">${e}</div>
+        <div style="font-size:11px;color:var(--t3);line-height:1.5">${v.conts.length?v.conts.join(' · '):'<em>sin contratista asignado</em>'}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Riesgo Multi-Cliente
+  const mc=allConts.map(c=>({c,r:getRisk(c),cls:getActiveClients(c,TODAY)})).filter(x=>x.r>0).sort((a,b)=>b.r-a.r);
+  document.getElementById('multiClienteList').innerHTML=mc.length?mc.map(x=>`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><span class="risk ${rClass(x.r)}">${rLabel(x.r)}</span><div><div style="font-size:12.5px;font-weight:600;color:var(--t1)">${x.c}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${x.cls.join(' · ')}</div></div></div>`).join(''):`<div style="color:var(--t3);font-size:12px;padding:24px 0;text-align:center"><i class="ti ti-circle-check" style="color:var(--green);font-size:24px;display:block;margin-bottom:8px"></i> Sin conflictos multi-cliente hoy</div>`;
+
+  // Clientes por volumen
+  const cc={};projects.forEach(p=>{cc[p.c]=(cc[p.c]||0)+1;});
+  const tc=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  if(window._chCliPMO)window._chCliPMO.destroy();
+  window._chCliPMO=mkChart('chCliPMO',{type:'bar',data:{labels:tc.map(c=>c[0]),datasets:[{label:'Servicios',data:tc.map(c=>c[1]),backgroundColor:'rgba(47,191,174,.8)',borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#fff',titleColor:'#0f172a',bodyColor:'#475569',borderColor:'#e5e7eb',borderWidth:1}},scales:{x:{ticks:{color:'#94a3b8',font:{size:10},maxRotation:40},grid:{display:false}},y:{ticks:{color:'#94a3b8',font:{size:10}},grid:{color:'#f1f5f9'}}}}});
+}
+
+/* ===========================================================
+   OPERATIVA
+   =========================================================== */
+function renderOperativa(){
+  const fe=document.getElementById('opFiltEst').value,fesp=document.getElementById('opFiltEsp').value,fsup=document.getElementById('opFiltSup').value,fsit=document.getElementById('opFiltSit').value,fq=(document.getElementById('opSearch').value||'').toLowerCase();
+  let rows=projects.filter(p=>(!fe||p.est===fe)&&(!fesp||p.e===fesp)&&(!fsup||p.sup===fsup)&&(!fsit||p.sit===fsit)&&(!fq||p.c.toLowerCase().includes(fq)||(p.con||'').toLowerCase().includes(fq)));
+  document.getElementById('opCount').textContent=`${rows.length} servicios`;
+  const stTag=s=>({Proceso:'t-proceso',Cierre:'t-cierre',Concluído:'t-concluido','Por Iniciar':'t-porinicia',Licitación:'t-licitacion',Pendiente:'t-pendiente'}[s]||'t-porinicia');
+  const sitTag=s=>({Contratado:'t-contratado',Pendiente:'t-pendiente',Licitación:'t-licitacion'}[s]||'t-porinicia');
+  document.getElementById('opBody').innerHTML=rows.map(p=>{const d=daysDiff(p.finD);const r=p.con&&p.con!=='—'?getRisk(p.con):0;const dc=d!==null&&d<=7?'var(--red)':d!==null&&d<=14?'var(--amber)':'var(--t3)';return`<tr><td class="bold">${p.c}${faseChip(p)}</td><td>${p.con||'—'}</td><td>${p.e}</td><td><span class="tag ${sitTag(p.sit)}">${p.sit}</span></td><td><span class="tag ${stTag(p.est)}">${p.est}</span></td><td style="font-size:11.5px">${p.sup}</td><td style="font-size:11.5px">${fm(p.iniD)}</td><td style="font-size:11.5px">${fm(p.finD)}</td><td style="font-size:11.5px;font-weight:700;color:${dc}">${d!==null?d+'d':'—'}</td><td>${r>0?`<span class="risk ${rClass(r)}" style="font-size:10px">${['','⚠','🔴'][r]}</span>`:'<span style="color:var(--t3);font-size:11px">—</span>'}</td></tr>`;}).join('');
+}
+
+/* ===========================================================
+   UNIVERSO
+   =========================================================== */
+function renderUniverso(){
+  const fst=document.getElementById('uFiltSt').value,fesp=document.getElementById('uFiltEsp').value,fq=(document.getElementById('uSearch').value||'').toLowerCase();
+  let rows=allConts;
+  if(fst)rows=rows.filter(c=>classifyOp(c)===fst);
+  if(fesp)rows=rows.filter(c=>projects.some(p=>p.con===c&&p.e===fesp));
+  if(fq)rows=rows.filter(c=>c.toLowerCase().includes(fq));
+  document.getElementById('univCount').textContent=`${rows.length} contratistas`;
+  const disp=allConts.filter(c=>classifyOp(c)==='DISPONIBLE').length;
+  const ocup=allConts.filter(c=>classifyOp(c)==='OCUPADA').length;
+  const compr=allConts.filter(c=>classifyOp(c)==='COMPROMETIDA').length;
+  const crit=allConts.filter(c=>getRisk(c)===2).length;
+  document.getElementById('kpi-univ').innerHTML=[
+    kpiC({label:'Total',value:allConts.length,color:'brand',icon:'ti-users'}),
+    kpiC({label:'Ocupadas',value:ocup,color:'red',icon:'ti-user-check'}),
+    kpiC({label:'Comprometidas',value:compr,color:'purple',icon:'ti-user-question',sub:'Pendiente/Licitación'}),
+    kpiC({label:'Disponibles',value:disp,color:'green',icon:'ti-user-plus'}),
+    kpiC({label:'Riesgo Crítico',value:crit,color:'red',icon:'ti-alert-triangle'}),
+  ].join('');
+  const opTC=op=>({'OCUPADA':'t-ocupada','DISPONIBLE':'t-disponible','ASIGNADA PRÓXIMAMENTE':'t-asignada','COMPROMETIDA':'t-comprometida','SIN USO EN CARTERA':'t-sinuso'}[op]||'t-sinuso');
+  document.getElementById('univBody').innerHTML=rows.map(c=>{const op=classifyOp(c);const r=getRisk(c);const cla=getActiveClients(c,TODAY);const ps=projects.filter(p=>p.con===c);const esps=[...new Set(ps.map(p=>p.e))];const actP=ps.filter(p=>ACTIVE.includes(p.est)&&CONTRACTED_SIT.includes(p.sit)).length;const futP=ps.filter(p=>p.iniD>TODAY).length;const fins=ps.map(p=>p.finD).filter(Boolean).sort((a,b)=>a-b);return`<tr><td class="bold">${c}</td><td><span class="tag ${opTC(op)}">${op}</span></td><td><span class="risk ${rClass(r)}">${rLabel(r)}</span>${cla.length?`<div style="font-size:10.5px;color:var(--t3);margin-top:3px">${cla.join(' · ')}</div>`:''}</td><td style="text-align:center;font-weight:700;color:${cla.length>=2?'var(--red)':cla.length?'var(--amber)':'var(--t3)'}">${cla.length||'—'}</td><td style="font-size:11px">${esps.slice(0,3).join(', ')}</td><td style="text-align:center">${actP||'—'}</td><td style="text-align:center">${futP||'—'}</td><td style="font-size:11.5px">${fm(fins.length?fins[fins.length-1]:null)}</td></tr>`;}).join('');
+}
+
+/* ===========================================================
+   MATRIZ
+   =========================================================== */
+function renderMatriz(){
+  const fq=(document.getElementById('matSearch').value||'').toLowerCase();
+  const fest=document.getElementById('matFiltEst').value;
+  const cliRows=allClis.filter(c=>!fq||c.toLowerCase().includes(fq));
+  const usedEsps=[...new Set(projects.filter(p=>{if(fest==='activo')return ACTIVE.includes(p.est);if(fest==='futuro')return FUTURE.includes(p.est);return true;}).map(p=>p.e))].sort();
+  const bc=est=>({Proceso:'#3b82f6',Cierre:'#f59e0b',Concluído:'#0f172a','Por Iniciar':'#f97316'}[est]||'#94a3b8');
+  let html=`<table class="mx-table"><thead><tr><th class="rh">Cliente</th>`;
+  usedEsps.forEach(e=>{html+=`<th>${e}</th>`;});
+  html+=`<th>Total</th></tr></thead><tbody>`;
+  cliRows.forEach(cli=>{
+    const cp=projects.filter(p=>p.c===cli&&(!fest||(fest==='activo'?ACTIVE.includes(p.est):FUTURE.includes(p.est))));
+    if(!cp.length)return;
+    html+=`<tr><td class="bold" style="text-align:left">${cli}</td>`;
+    usedEsps.forEach(esp=>{const m=cp.filter(p=>p.e===esp);if(!m.length){html+=`<td><span style="color:var(--t4)">—</span></td>`;}else{const f=m[0];const col=bc(f.est);const isPending=PENDING_SIT.includes(f.sit);const style=isPending?`background:repeating-linear-gradient(135deg,${col}11,${col}11 3px,${col}33 3px,${col}33 6px);color:${col};border:1px dashed ${col}66`:`background:${col}22;color:${col};border:1px solid ${col}44`;html+=`<td><span style="display:inline-block;padding:3px 9px;border-radius:10px;font-size:10.5px;font-weight:700;${style}">${f.con||'—'}</span></td>`;}});
+    html+=`<td style="text-align:center;font-weight:700;color:var(--brand)">${cp.length}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById('matrizContainer').innerHTML=html;
+}
+
+/* ===========================================================
+   GANTT — Doble vista (Por Contratista / Por Cliente)
+   - Pendiente/Licitación: barra rayada (solo propuesto)
+   - ≤10 días: borde rojo pulsante
+   =========================================================== */
+let ganttView='contratista';
+function setGanttView(v,el){
+  ganttView=v;
+  document.querySelectorAll('#ganttTabs .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderGantt();
+}
+function renderGantt(){
+  const gfc=document.getElementById('gfCont').value,gfe=document.getElementById('gfEsp').value,gfes=document.getElementById('gfEst').value,gfcl=document.getElementById('gfCli').value,gfsit=document.getElementById('gfSit').value;
+  const minD=new Date('2026-02-01T00:00:00'),maxD=new Date('2027-03-01T00:00:00'),totalMs=maxD-minD;
+  const pctTime=d=>Math.max(0,Math.min(100,(d-minD)/totalMs*100));
+  const months=['Feb\'26','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic','Ene\'27','Feb\'27'];
+  const mDs=[new Date(2026,1,1),new Date(2026,2,1),new Date(2026,3,1),new Date(2026,4,1),new Date(2026,5,1),new Date(2026,6,1),new Date(2026,7,1),new Date(2026,8,1),new Date(2026,9,1),new Date(2026,10,1),new Date(2026,11,1),new Date(2027,0,1),new Date(2027,1,1)];
+  const filtered=projects.filter(p=>p.iniD&&p.finD&&(!gfc||p.con===gfc)&&(!gfe||p.e===gfe)&&(!gfes||p.est===gfes)&&(!gfcl||p.c===gfcl)&&(!gfsit||p.sit===gfsit));
+
+  // Bar color logic — checks STATE (est) then risk
+  const barCol=p=>{
+    if(p.con&&p.con!=='—'&&getRisk(p.con)===2)return'#ef4444';
+    return{Proceso:'#3b82f6',Cierre:'#f59e0b',Concluído:'#10b981','Por Iniciar':'#9ca3af',Licitación:'#8b5cf6',Pendiente:'#94a3b8'}[p.est]||'#94a3b8';
+  };
+  const isPending=p=>PENDING_SIT.includes(p.sit);
+  const isUrgent=p=>{const d=daysDiff(p.finD);return d!==null&&d>=0&&d<=10&&ACTIVE.includes(p.est)&&CONTRACTED_SIT.includes(p.sit);};
+
+  const LABEL_W=240,todayP=pctTime(TODAY);
+  let html=`<div style="min-width:1000px">`;
+  // Header row with months
+  const headerLabel=ganttView==='contratista'?'Contratista / Cliente / Especialidad':'Cliente / Especialidad / Contratista';
+  html+=`<div style="display:grid;grid-template-columns:${LABEL_W}px 1fr;background:var(--surface2);border-bottom:2px solid var(--border2);position:sticky;top:0;z-index:10">
+    <div style="padding:12px 14px;font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.7px">${headerLabel}</div>
+    <div style="position:relative;overflow:hidden">${mDs.slice(0,-1).map((d,i)=>{const lft=pctTime(d);const ww=pctTime(mDs[i+1]||maxD)-lft;return`<div style="position:absolute;left:${lft}%;width:${ww}%;font-size:10px;font-weight:700;color:var(--t3);text-align:center;padding:12px 0;border-left:1px solid var(--border);text-transform:uppercase;letter-spacing:.4px">${months[i]}</div>`;}).join('')}</div>
+  </div>`;
+
+  if(ganttView==='contratista'){
+    // Group: Contratista -> Cliente
+    const grouped={};
+    filtered.forEach(p=>{const k=p.con||'—';if(!grouped[k])grouped[k]={};if(!grouped[k][p.c])grouped[k][p.c]=[];grouped[k][p.c].push(p);});
+    Object.keys(grouped).sort().forEach(cont=>{
+      const cliMap=grouped[cont];const numCl=Object.keys(cliMap).length;const contR=cont!=='—'?getRisk(cont):0;const isMulti=getActiveClients(cont,TODAY).length>=2;
+      html+=`<div style="border-bottom:2px solid #e5e7eb">
+        <div style="display:grid;grid-template-columns:${LABEL_W}px 1fr;background:${isMulti?'#fef3c7':'#f0fdfa'};border-bottom:1px solid var(--border)">
+          <div style="padding:11px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><i class="ti ti-tool" style="color:var(--brand);font-size:14px"></i><span style="font-size:13px;font-weight:700;color:var(--t1)">${cont}</span><span style="font-size:10.5px;color:var(--t3);font-weight:500">${numCl} cli</span>${isMulti?`<span class="multi-badge">⚠ MULTI</span>`:''}${contR>=2?`<span class="risk r2" style="font-size:10px">Crítico</span>`:''}</div>
+          <div style="position:relative;padding:11px 0"><div class="today-line" style="left:${todayP}%"><div class="today-label" style="left:50%">HOY</div></div></div>
+        </div>`;
+      Object.keys(cliMap).sort().forEach(cli=>{
+        cliMap[cli].forEach(p=>{
+          const lft=pctTime(p.iniD),rgt=pctTime(p.finD),ww=Math.max(.3,rgt-lft);
+          const pendCls=isPending(p)?' pending':'';
+          const urgCls=isUrgent(p)?' urgent':'';
+          html+=`<div style="display:grid;grid-template-columns:${LABEL_W}px 1fr;border-bottom:1px solid #f3f4f6">
+            <div style="padding:7px 12px 7px 32px"><div style="font-size:12px;font-weight:600;color:var(--t1)">${cli}</div><div style="font-size:10.5px;color:var(--t3)">${p.e} · <span style="color:${isPending(p)?'var(--amber-d)':'var(--t3)'};font-weight:${isPending(p)?'700':'500'}">${p.sit}</span></div></div>
+            <div style="position:relative;min-height:40px">
+              <div class="today-line" style="left:${todayP}%"></div>
+              <div class="gantt-bar${pendCls}${urgCls}" style="left:${lft}%;width:${ww}%;background:${barCol(p)}" title="${cont} | ${cli} | ${p.e} | ${p.sit} · ${p.est} | ${fm(p.iniD)}→${fm(p.finD)}">${p.e}${isUrgent(p)?' ⏰':''}</div>
+            </div>
+          </div>`;
+        });
+      });
+      html+=`</div>`;
+    });
+  } else {
+    // Group: Cliente -> Especialidad/Contratista
+    const grouped={};
+    filtered.forEach(p=>{if(!grouped[p.c])grouped[p.c]=[];grouped[p.c].push(p);});
+    Object.keys(grouped).sort().forEach(cli=>{
+      const items=grouped[cli];
+      const totSv=items.length;
+      const contrat=items.filter(p=>CONTRACTED_SIT.includes(p.sit)).length;
+      const pend=items.filter(p=>PENDING_SIT.includes(p.sit)).length;
+      const pctCli=Math.round(contrat/totSv*100);
+      html+=`<div style="border-bottom:2px solid #e5e7eb">
+        <div style="display:grid;grid-template-columns:${LABEL_W}px 1fr;background:#e9f9f6;border-bottom:1px solid var(--border)">
+          <div style="padding:11px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><i class="ti ti-building" style="color:var(--brand);font-size:14px"></i><span style="font-size:13px;font-weight:700;color:var(--t1)">${cli}</span><span style="font-size:10.5px;color:var(--t3);font-weight:500">${totSv} svc · ${pctCli}% contrat.</span>${pend>0?`<span style="background:var(--amber-l);color:var(--amber-d);font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:5px">${pend} pend</span>`:''}</div>
+          <div style="position:relative;padding:11px 0"><div class="today-line" style="left:${todayP}%"><div class="today-label" style="left:50%">HOY</div></div></div>
+        </div>`;
+      items.sort((a,b)=>a.iniD-b.iniD).forEach(p=>{
+        const lft=pctTime(p.iniD),rgt=pctTime(p.finD),ww=Math.max(.3,rgt-lft);
+        const pendCls=isPending(p)?' pending':'';
+        const urgCls=isUrgent(p)?' urgent':'';
+        html+=`<div style="display:grid;grid-template-columns:${LABEL_W}px 1fr;border-bottom:1px solid #f3f4f6">
+          <div style="padding:7px 12px 7px 32px"><div style="font-size:12px;font-weight:600;color:var(--t1)">${p.e}</div><div style="font-size:10.5px;color:var(--t3)">${p.con||'—'} · <span style="color:${isPending(p)?'var(--amber-d)':'var(--t3)'};font-weight:${isPending(p)?'700':'500'}">${p.sit}</span></div></div>
+          <div style="position:relative;min-height:40px">
+            <div class="today-line" style="left:${todayP}%"></div>
+            <div class="gantt-bar${pendCls}${urgCls}" style="left:${lft}%;width:${ww}%;background:${barCol(p)}" title="${cli} | ${p.e} | ${p.con||'—'} | ${p.sit} · ${p.est} | ${fm(p.iniD)}→${fm(p.finD)}">${p.con||p.e}${isUrgent(p)?' ⏰':''}</div>
+          </div>
+        </div>`;
+      });
+      html+=`</div>`;
+    });
+  }
+  html+=`</div>`;
+  document.getElementById('ganttWrap').innerHTML=html||`<div style="padding:30px;text-align:center;color:var(--t3)">Sin servicios con los filtros seleccionados</div>`;
+}
+
+/* ===========================================================
+   URGENTES SIN CONTRATAR — pendiente/licitación próximos a vencer
+   =========================================================== */
+let urgView='inicio'; // 'inicio' or 'fin'
+function setUrgView(v,el){
+  urgView=v;
+  document.querySelectorAll('#urgTabs .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('urgSecLbl').innerHTML=`<i class="ti ti-list"></i>Servicios Ordenados por Proximidad de ${v==='inicio'?'Inicio':'Fin'}`;
+  renderUrgentes();
+}
+
+function renderUrgentes(){
+  // Filtra solo Pendiente/Licitación
+  const fSit=document.getElementById('urgFiltSit')?.value||'';
+  const fCli=document.getElementById('urgFiltCli')?.value||'';
+  const fEsp=document.getElementById('urgFiltEsp')?.value||'';
+  const fSup=document.getElementById('urgFiltSup')?.value||'';
+
+  let lista=projects.filter(p=>PENDING_SIT.includes(p.sit));
+
+  // KPIs (sobre el total no filtrado para que no varíen)
+  const todos=lista;
+  const totalPend=todos.filter(p=>p.sit==='Pendiente').length;
+  const totalLicit=todos.filter(p=>p.sit==='Licitación').length;
+  const vencidos=todos.filter(p=>p.iniD&&daysDiff(p.iniD)<0).length;
+  const ini7=todos.filter(p=>p.iniD&&daysDiff(p.iniD)>=0&&daysDiff(p.iniD)<=7).length;
+  const ini14=todos.filter(p=>p.iniD&&daysDiff(p.iniD)>=0&&daysDiff(p.iniD)<=14).length;
+  const ini30=todos.filter(p=>p.iniD&&daysDiff(p.iniD)>=0&&daysDiff(p.iniD)<=30).length;
+  const ini60=todos.filter(p=>p.iniD&&daysDiff(p.iniD)>=0&&daysDiff(p.iniD)<=60).length;
+  const critTotal=vencidos+ini14;
+
+  const licitClis=new Set(todos.filter(p=>p.sit==='Licitación').map(p=>p.c)).size;
+  const licitEsp=new Set(todos.filter(p=>p.sit==='Licitación').map(p=>p.e)).size;
+
+  document.getElementById('urgKPI-critico').textContent=critTotal;
+  document.getElementById('urgKPI-vencidos').textContent=vencidos;
+  document.getElementById('urgKPI-7d').textContent=ini7;
+  document.getElementById('urgKPI-14d').textContent=ini14;
+  document.getElementById('urgKPI-pend').textContent=totalPend;
+  document.getElementById('urgKPI-30d').textContent=ini30;
+  document.getElementById('urgKPI-60d').textContent=ini60;
+  document.getElementById('urgKPI-licit').textContent=totalLicit;
+  document.getElementById('urgKPI-licitClis').textContent=licitClis;
+  document.getElementById('urgKPI-licitEsp').textContent=licitEsp;
+
+  // Aplica filtros adicionales
+  if(fSit)lista=lista.filter(p=>p.sit===fSit);
+  if(fCli)lista=lista.filter(p=>p.c===fCli);
+  if(fEsp)lista=lista.filter(p=>p.e===fEsp);
+  if(fSup)lista=lista.filter(p=>p.sup===fSup);
+
+  // Ordena por inicio o fin
+  const dateKey=urgView==='inicio'?'iniD':'finD';
+  lista.sort((a,b)=>{
+    const da=a[dateKey],db=b[dateKey];
+    if(!da&&!db)return 0;
+    if(!da)return 1;
+    if(!db)return -1;
+    return da-db;
+  });
+
+  // Render
+  if(lista.length===0){
+    document.getElementById('urgList').innerHTML=`<div style="padding:30px;text-align:center;color:var(--t3);background:var(--surface);border-radius:14px;border:1px solid var(--border)"><i class="ti ti-circle-check" style="color:var(--green);font-size:32px;display:block;margin-bottom:10px"></i>Sin servicios con los filtros seleccionados</div>`;
+    return;
+  }
+
+  document.getElementById('urgList').innerHTML=lista.map(p=>{
+    const dIni=p.iniD?daysDiff(p.iniD):null;
+    const dFin=p.finD?daysDiff(p.finD):null;
+    const refD=urgView==='inicio'?dIni:dFin;
+    let urgCls='urg-low',dCls='';
+    if(refD===null){urgCls='urg-low';dCls='';}
+    else if(refD<0){urgCls='urg-crit';dCls='d-crit';}
+    else if(refD<=7){urgCls='urg-crit';dCls='d-crit';}
+    else if(refD<=14){urgCls='urg-high';dCls='d-high';}
+    else if(refD<=30){urgCls='urg-med';dCls='d-med';}
+    else{urgCls='urg-low';dCls='';}
+
+    const statusCls=p.sit==='Licitación'?'s-licit':'s-pend';
+    const dDisplay=refD===null?'—':(refD<0?Math.abs(refD)+'d':refD+'d');
+    const dLabel=refD===null?'sin fecha':(refD<0?(urgView==='inicio'?'iniciado':'vencido'):(urgView==='inicio'?'al inicio':'al fin'));
+
+    const vencidoBadge=(urgView==='inicio'&&dIni!==null&&dIni<0)?`<div class="urg-status s-vencido" style="margin-top:4px"><i class="ti ti-flag-exclamation" style="font-size:11px;vertical-align:-1px"></i> YA INICIADO</div>`:'';
+
+    return`<div class="urg-card ${urgCls}">
+      <div class="urg-days ${dCls}">
+        <div class="ud-n">${dDisplay}</div>
+        <div class="ud-l">${dLabel}</div>
+      </div>
+      <div class="urg-info">
+        <div class="urg-cli">${p.c} <span style="font-size:12px;color:var(--t3);font-weight:600">·</span> <span style="font-size:13px;color:var(--t2);font-weight:600">${p.e}</span></div>
+        <div class="urg-meta">
+          <span><i class="ti ti-calendar-event"></i>Inicio: ${fm(p.iniD)}</span>
+          <span><i class="ti ti-calendar-check"></i>Fin: ${fm(p.finD)}</span>
+          <span><i class="ti ti-user-shield"></i>${p.sup}</span>
+        </div>
+      </div>
+      <div class="urg-right">
+        <span class="urg-status ${statusCls}">${p.sit}</span>
+        ${vencidoBadge}
+        <div class="urg-prop">Propuesto: <strong>${p.con||'—'}</strong></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ===========================================================
+   DISPONIBILIDAD — CORREGIDO
+   - Ahora considera Licitación / Pendiente como NO LIBRE
+   - Esto soluciona el bug A&R/Prolan
+   =========================================================== */
+function setToday(){document.getElementById('fechaQ').value=ISO_HOY;queryDate();}
+function queryDate(){
+  const v=document.getElementById('fechaQ').value;if(!v)return;
+  const f=new Date(v+'T12:00:00');
+  const fs=f.toLocaleDateString('es-PE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+  // OCUPADAS: Contratado + en ejecución activa cubriendo la fecha
+  const ocupItems=allConts.map(c=>{
+    const asn=getContractedAssignmentsOnDate(c,f);
+    return asn.length?{c,clis:[...new Set(asn.map(a=>a.c))],sit:'Contratado'}:null;
+  }).filter(Boolean);
+
+  // COMPROMETIDAS: Licitación o Pendiente (propuestas — no asignadas oficialmente, no se pueden considerar 100% libres)
+  const comprItems=allConts.map(c=>{
+    const asn=getProposedAssignmentsOnDate(c,f);
+    if(!asn.length)return null;
+    // skip if also ocupada (ya contadas arriba)
+    if(ocupItems.find(x=>x.c===c))return null;
+    return{c,clis:[...new Set(asn.map(a=>a.c))],sit:asn[0].sit};
+  }).filter(Boolean);
+
+  // LIBRES: ni ocupadas, ni comprometidas en esa fecha
+  const ocupSet=new Set(ocupItems.map(x=>x.c));
+  const comprSet=new Set(comprItems.map(x=>x.c));
+  const libres=allConts.filter(c=>!ocupSet.has(c)&&!comprSet.has(c));
+
+  // CON PRÓX. OBRA: tiene proyecto futuro a partir de la fecha
+  const conSig=allConts.filter(c=>projects.some(p=>p.con===c&&p.iniD&&p.iniD>f));
+
+  // MULTI-CLIENTE: contratistas con 2+ clientes simultáneos contratados/activos
+  const mc=allConts.filter(c=>getActiveClients(c,f).length>=2);
+
+  const cardOcup=(t,items,ic,col)=>`<div class="avail-c"><div class="avail-c-title" style="color:${col}"><i class="ti ${ic}"></i>${t} (${items.length})</div><ul>${items.length?items.map(i=>`<li><span class="dot" style="background:${col}"></span><span>${i.c}</span><small>${i.clis.join(' · ')}</small></li>`).join(''):'<li style="color:var(--t3)">Ninguna</li>'}</ul></div>`;
+  const cardCompr=(t,items,ic,col)=>`<div class="avail-c"><div class="avail-c-title" style="color:${col}"><i class="ti ${ic}"></i>${t} (${items.length})</div><ul>${items.length?items.map(i=>`<li><span class="dot" style="background:${col}"></span><span>${i.c}</span><small>${i.sit} · ${i.clis.join(', ')}</small></li>`).join(''):'<li style="color:var(--t3)">Ninguna</li>'}</ul></div>`;
+  const cardSimple=(t,arr,ic,col)=>`<div class="avail-c"><div class="avail-c-title" style="color:${col}"><i class="ti ${ic}"></i>${t} (${arr.length})</div><ul>${arr.length?arr.map(i=>`<li><span class="dot" style="background:${col}"></span>${i}</li>`).join(''):'<li style="color:var(--t3)">Ninguna</li>'}</ul></div>`;
+
+  document.getElementById('dispResult').innerHTML=`
+    <div class="section">
+      <div class="sec-head"><div class="sec-title"><i class="ti ti-calendar-event"></i>Resultado: ${fs}</div><div class="sec-extra">Total contratistas: ${allConts.length}</div></div>
+      <div class="sec-body">
+        <div style="background:var(--blue-l);border:1px solid #93c5fd;border-radius:10px;padding:11px 14px;margin-bottom:14px;font-size:12px;color:var(--blue-d);display:flex;align-items:center;gap:9px">
+          <i class="ti ti-info-circle" style="font-size:16px"></i>
+          <div><strong>Lógica corregida:</strong> ahora <em>"Comprometidas"</em> también incluye contratistas con asignaciones en <strong>Licitación</strong> o <strong>Pendiente</strong> cubriendo la fecha (no aparecen como Libres). Ejemplo: A&amp;R en Prolan ya no aparece como Libre.</div>
+        </div>
+        <div class="avail-grid">
+          ${cardOcup('Ocupadas (Contratado activo)',ocupItems,'ti-user-check','var(--red)')}
+          ${cardCompr('Comprometidas (Pendiente / Licitación)',comprItems,'ti-user-question','var(--purple)')}
+          ${cardSimple('Libres',libres,'ti-user-plus','var(--green)')}
+          ${cardSimple('Con próxima obra (a futuro)',conSig,'ti-calendar-plus','var(--blue)')}
+          ${cardSimple('Multi-Cliente ⚠',mc,'ti-alert-circle','var(--amber)')}
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ===========================================================
+   EDITOR DE DATOS — CRUD + Import/Export Excel + Persistencia en Supabase
+   =========================================================== */
+const escAttr=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const normTxt=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+function selOptions(list,cur){return list.map(o=>`<option value="${escAttr(o)}" ${o===cur?'selected':''}>${o}</option>`).join('');}
+
+/* ---------------------------------------------------------------
+   PERSISTENCIA · Supabase PMO · tabla portafolio_servicios
+   Fuente única: lo que se edita aquí es lo que ve la pestaña
+   "Contratistas" de cada proyecto en Gerencia.
+   --------------------------------------------------------------- */
+const SV_URL='https://vsploxglutkbeokumunp.supabase.co';
+const SV_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+const SV_HDR=extra=>Object.assign({apikey:SV_KEY,Authorization:'Bearer '+SV_KEY,'Content-Type':'application/json'},extra||{});
+const SV_TABLE=SV_URL+'/rest/v1/portafolio_servicios';
+let SV_ONLINE=false;
+
+/* fila Supabase -> fila del tablero */
+const svToRow=r=>({id:r.id,c:r.cliente||'',fa:r.fase||'',e:r.especialidad||'',sit:r.situacion||'',est:r.estado||'',sup:r.supervisor||'',con:r.contratista||'',ini:r.fecha_inicio||'',fin:r.fecha_fin||''});
+/* fila del tablero -> fila Supabase */
+const rowToSv=r=>({cliente:r.c,fase:r.fa||null,especialidad:r.e,situacion:r.sit,estado:r.est,supervisor:r.sup,contratista:r.con,fecha_inicio:r.ini,fecha_fin:r.fin});
+/* campo del tablero -> columna de Supabase */
+const SV_FIELD={c:'cliente',fa:'fase',e:'especialidad',sit:'situacion',est:'estado',sup:'supervisor',con:'contratista',ini:'fecha_inicio',fin:'fecha_fin'};
+
+function svStamp(txt,err){
+  const el=document.getElementById('editorSaved');
+  if(!el)return;
+  el.textContent=txt||('Guardado '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}));
+  el.style.color=err?'var(--red-d)':'';
+}
+function svBadge(){
+  const el=document.getElementById('svStatus');
+  if(!el)return;
+  el.innerHTML=SV_ONLINE
+    ? '<span class="live-dot"></span>Supabase en vivo'
+    : '<span class="live-dot" style="background:#f59e0b"></span>Sin conexión · datos locales';
+  el.style.background=SV_ONLINE?'var(--green-l)':'var(--amber-l)';
+  el.style.borderColor=SV_ONLINE?'#6ee7b7':'#fde68a';
+  el.style.color=SV_ONLINE?'#065f46':'var(--amber-d)';
+}
+
+function loadFromSupabase(){
+  return fetch(SV_TABLE+'?select=*&order=cliente.asc,especialidad.asc',{headers:SV_HDR()})
+    .then(r=>r.ok?r.json():Promise.reject(new Error('HTTP '+r.status)))
+    .then(rows=>{
+      if(Array.isArray(rows)&&rows.length){DATA=rows.map(svToRow);SV_ONLINE=true;}
+      return SV_ONLINE;
+    })
+    .catch(()=>{SV_ONLINE=false;return false;});
+}
+function reloadFromSupabase(){
+  svStamp('Recargando…');
+  return loadFromSupabase().then(ok=>{
+    refreshAll();svBadge();
+    if(ok)showImportMsg(`Recargado desde Supabase · ${DATA.length} servicios.`,'ok');
+    else showImportMsg('No se pudo contactar Supabase. Se muestra la copia local del tablero (solo lectura).','warn');
+  });
+}
+
+/* ---- Escrituras · una fila = una llamada, se guarda al instante ---- */
+function svPatch(row,field,value){
+  if(!SV_ONLINE||row.id==null){svStamp('Sin conexión · cambio NO guardado',true);return;}
+  const col=SV_FIELD[field];if(!col)return;
+  const val=(value===''&&col==='fase')?null:value;
+  fetch(SV_TABLE+'?id=eq.'+row.id,{method:'PATCH',headers:SV_HDR({Prefer:'return=minimal'}),body:JSON.stringify({[col]:val})})
+    .then(r=>{r.ok?svStamp():svStamp('No se pudo guardar',true);})
+    .catch(()=>svStamp('No se pudo guardar',true));
+}
+function svInsert(row){
+  if(!SV_ONLINE){svStamp('Sin conexión · no se creó el servicio',true);return Promise.resolve(null);}
+  return fetch(SV_TABLE,{method:'POST',headers:SV_HDR({Prefer:'return=representation'}),body:JSON.stringify(rowToSv(row))})
+    .then(r=>r.ok?r.json():Promise.reject(new Error('HTTP '+r.status)))
+    .then(rows=>{const nuevo=Array.isArray(rows)?rows[0]:rows;if(nuevo)row.id=nuevo.id;svStamp();return row;})
+    .catch(()=>{svStamp('No se pudo crear el servicio',true);return null;});
+}
+function svDelete(row){
+  if(!SV_ONLINE||row.id==null)return Promise.resolve(false);
+  return fetch(SV_TABLE+'?id=eq.'+row.id,{method:'DELETE',headers:SV_HDR({Prefer:'return=minimal'})})
+    .then(r=>{if(r.ok){svStamp();return true;}svStamp('No se pudo eliminar',true);return false;})
+    .catch(()=>{svStamp('No se pudo eliminar',true);return false;});
+}
+/* Reemplaza en Supabase los servicios de los clientes listados (import de Excel).
+   Inserta primero y borra después: si el insert falla, no se pierde nada. */
+function svReplaceClients(clientes,filas){
+  if(!SV_ONLINE||!filas.length)return Promise.resolve(false);
+  const enScope=`cliente=in.(${clientes.map(c=>'"'+String(c).replace(/"/g,'\\"')+'"').join(',')})`;
+  return fetch(SV_TABLE+'?select=id&'+enScope,{headers:SV_HDR()})
+    .then(r=>r.ok?r.json():Promise.reject(new Error('HTTP '+r.status)))
+    .then(viejas=>{
+      const idsViejos=viejas.map(v=>v.id);
+      return fetch(SV_TABLE,{method:'POST',headers:SV_HDR({Prefer:'return=minimal'}),body:JSON.stringify(filas.map(rowToSv))})
+        .then(r=>r.ok?true:Promise.reject(new Error('HTTP '+r.status)))
+        .then(()=>{
+          if(!idsViejos.length)return true;
+          return fetch(SV_TABLE+`?id=in.(${idsViejos.join(',')})`,{method:'DELETE',headers:SV_HDR({Prefer:'return=minimal'})})
+            .then(r=>r.ok);
+        });
+    })
+    .catch(()=>false);
+}
+
+/* ---- Proyectos de la plataforma: para validar que el Cliente casa con una obra ---- */
+let PROYECTOS=[],PROY_NOMBRES=[];
+function loadProyectos(){
+  return fetch(SV_URL+'/rest/v1/proyectos?select=nombre,estado&order=nombre.asc',{headers:SV_HDR()})
+    .then(r=>r.ok?r.json():[])
+    .then(rows=>{
+      PROYECTOS=Array.isArray(rows)?rows:[];
+      PROY_NOMBRES=PROYECTOS.map(p=>normTxt(p.nombre));
+    })
+    .catch(()=>{});
+}
+
+function showImportMsg(msg,type){
+  const el=document.getElementById('editorMsg');if(!el)return;
+  const colors={ok:['var(--brand-l)','var(--brand-d)','#a8e8df'],warn:['var(--amber-l)','var(--amber-d)','#fde68a'],error:['var(--red-l)','var(--red-d)','#fecaca']};
+  const[bg,fg,bd]=colors[type]||colors.ok;
+  el.innerHTML=`<div style="background:${bg};color:${fg};border:1px solid ${bd};border-radius:10px;padding:10px 14px;font-size:12px;font-weight:600;margin-bottom:12px">${msg}</div>`;
+}
+
+function refreshAll(){
+  rebuildDerived();
+  populateFilters();
+  initEjecutiva();
+  const activeEl=document.querySelector('.page.active');
+  const id=activeEl?activeEl.id.replace('page-',''):null;
+  if(id&&id!=='ejecutiva'&&RENDERERS[id])RENDERERS[id]();
+}
+
+/* ---- Render tabla editable ---- */
+function renderEditor(){
+  const dl=(id,arr)=>{const el=document.getElementById(id);if(el)el.innerHTML=arr.map(v=>`<option value="${escAttr(v)}">`).join('');};
+  dl('dl-esp',allEsps);dl('dl-sup',allSups);dl('dl-con',allConts);dl('dl-cli',allClis);
+  dl('dl-fase',['','I','II','III']);
+  dl('dl-proy',PROYECTOS.length?PROYECTOS.map(p=>p.nombre):allClis);
+  const conclCount=DATA.filter(r=>r.est==='Concluído').length;
+  const huerf=DATA.filter(r=>!PROY_NOMBRES.length||!PROY_NOMBRES.includes(normTxt(r.c))).length;
+  document.getElementById('editorCount').innerHTML=`${DATA.length} servicios en total`
+    +(conclCount?` · ${conclCount} Concluído (excluidos de las vistas activas)`:'')
+    +(huerf?` · <span style="color:var(--amber-d);font-weight:700">${huerf} sin proyecto que coincida</span>`:'');
+  document.getElementById('editorBody').innerHTML=DATA.map((r,i)=>{
+    const ok=!PROY_NOMBRES.length||PROY_NOMBRES.includes(normTxt(r.c));
+    return `
+    <tr>
+      <td><input class="editor-input" value="${escAttr(r.c)}" list="dl-proy" onchange="editCell(${i},'c',this.value)"${ok?'':' style="border-color:var(--amber);background:var(--amber-l)" title="Este nombre no coincide con ningún proyecto: el servicio no aparecerá en la pestaña Contratistas de ninguna obra"'}></td>
+      <td><input class="editor-input" value="${escAttr(r.fa)}" list="dl-fase" placeholder="—" onchange="editCell(${i},'fa',this.value)"></td>
+      <td><input class="editor-input" value="${escAttr(r.e)}" list="dl-esp" onchange="editCell(${i},'e',this.value)"></td>
+      <td><select class="editor-input" onchange="editCell(${i},'sit',this.value)">${selOptions(['Contratado','Pendiente','Licitación'],r.sit)}</select></td>
+      <td><select class="editor-input" onchange="editCell(${i},'est',this.value)">${selOptions(['Proceso','Cierre','Por Iniciar','Concluído'],r.est)}</select></td>
+      <td><input class="editor-input" value="${escAttr(r.sup)}" list="dl-sup" onchange="editCell(${i},'sup',this.value)"></td>
+      <td><input class="editor-input" value="${escAttr(r.con)}" list="dl-con" onchange="editCell(${i},'con',this.value)"></td>
+      <td><input class="editor-input" type="date" value="${escAttr(r.ini)}" onchange="editCell(${i},'ini',this.value)"></td>
+      <td><input class="editor-input" type="date" value="${escAttr(r.fin)}" onchange="editCell(${i},'fin',this.value)"></td>
+      <td style="text-align:center"><button class="btn" style="padding:4px 8px" onclick="deleteRow(${i})" title="Eliminar"><i class="ti ti-trash" style="color:var(--red)"></i></button></td>
+    </tr>`;}).join('');
+}
+
+function editCell(i,field,value){
+  const row=DATA[i];if(!row)return;
+  row[field]=value;
+  svPatch(row,field,value);
+  refreshAll();
+}
+function deleteRow(i){
+  const row=DATA[i];if(!row)return;
+  if(!confirm(`¿Eliminar "${row.e||'este servicio'}" de ${row.c||'la obra'}?\n\nSe borra también de la pestaña Contratistas del proyecto.`))return;
+  svDelete(row).then(ok=>{
+    if(ok||!SV_ONLINE){DATA.splice(i,1);refreshAll();}
+  });
+}
+function addRow(){
+  const t=TODAY.toISOString().slice(0,10);
+  const row={c:'',fa:'',e:'',sit:'Pendiente',est:'Por Iniciar',sup:'Sin Asignar',con:'',ini:t,fin:t};
+  DATA.push(row);
+  refreshAll();
+  svInsert(row);
+  setTimeout(()=>{
+    const rows=document.querySelectorAll('#editorBody tr');
+    const last=rows[rows.length-1];
+    const inp=last&&last.querySelector('input');
+    if(inp)inp.focus();
+  },0);
+}
+
+/* ---- Exportar a Excel ---- */
+function exportExcel(){
+  const header=['#','Cliente','Especialidad','Situación','Supervisor','Estado','Contratista','Fecha Inicio','Fecha Fin'];
+  const rows=DATA.map((r,i)=>[i+1,r.c,r.e,r.sit,r.sup,r.est,r.con,r.ini,r.fin]);
+  const ws=XLSX.utils.aoa_to_sheet([
+    ['BASE DE SERVICIOS — FRIOPACKING PMO'],
+    [`Total: ${DATA.length} servicios · Exportado ${new Date().toLocaleDateString('es-PE')}`],
+    [],
+    header,
+    ...rows
+  ]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Servicios');
+  XLSX.writeFile(wb,`Base de Datos_Servicios_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+/* ---- Importar Excel/CSV ---- */
+function handleImportFile(evt){
+  const file=evt.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+
+      let headerIdx=-1,headerRow=null;
+      for(let i=0;i<Math.min(raw.length,15);i++){
+        const cells=(raw[i]||[]).map(normTxt);
+        if(cells.includes('cliente')){headerIdx=i;headerRow=raw[i];break;}
+      }
+      if(headerIdx===-1){showImportMsg('No se encontró una fila de encabezados con "Cliente". Verifica el archivo.','error');evt.target.value='';return;}
+
+      const colMap={};
+      headerRow.forEach((h,ci)=>{
+        const n=normTxt(h);
+        if(n==='cliente')colMap.c=ci;
+        else if(n==='especialidad')colMap.e=ci;
+        else if(n.startsWith('situacion'))colMap.sit=ci;
+        else if(n==='estado')colMap.est=ci;
+        else if(n==='supervisor')colMap.sup=ci;
+        else if(n==='contratista')colMap.con=ci;
+        else if(n.startsWith('fecha inicio')||n==='inicio')colMap.ini=ci;
+        else if(n.startsWith('fecha fin')||n==='fin')colMap.fin=ci;
+        else if(n==='fase')colMap.fa=ci;
+      });
+      if(colMap.c==null||colMap.e==null||colMap.con==null||colMap.ini==null||colMap.fin==null){
+        showImportMsg('Faltan columnas obligatorias (Cliente, Especialidad, Contratista, Fecha Inicio, Fecha Fin).','error');
+        evt.target.value='';return;
+      }
+      const noSupCol=colMap.sup==null;
+
+      const parseDate=(v)=>{
+        if(v==null||v==='')return null;
+        if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);
+        if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);if(d)return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;return null;}
+        const s=String(v).trim();
+        let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if(m)return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+        m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if(m)return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+        return null;
+      };
+      const normalizeTo=(value,options,fallback)=>{
+        const n=normTxt(value);
+        const found=options.find(o=>normTxt(o)===n);
+        return found?{v:found,ok:true}:{v:fallback,ok:false};
+      };
+
+      let imported=0,badDates=0,badSit=0,badEst=0;
+      const newData=[];
+      for(let i=headerIdx+1;i<raw.length;i++){
+        const row=raw[i];if(!row||!row[colMap.c])continue;
+        const ini=parseDate(row[colMap.ini]);const fin=parseDate(row[colMap.fin]);
+        if(!ini||!fin)badDates++;
+        const sitR=normalizeTo(row[colMap.sit],['Contratado','Pendiente','Licitación'],'Pendiente');
+        const estR=normalizeTo(row[colMap.est],['Proceso','Cierre','Por Iniciar','Concluído'],'Por Iniciar');
+        if(!sitR.ok)badSit++;
+        if(!estR.ok)badEst++;
+        newData.push({
+          c:String(row[colMap.c]||'').trim(),
+          fa:colMap.fa!=null?String(row[colMap.fa]||'').trim():'',
+          e:String(row[colMap.e]||'').trim(),
+          sit:sitR.v,
+          est:estR.v,
+          sup:noSupCol?'Sin Asignar':String(row[colMap.sup]||'Sin Asignar').trim()||'Sin Asignar',
+          con:String(row[colMap.con]||'').trim(),
+          ini:ini||TODAY.toISOString().slice(0,10),
+          fin:fin||TODAY.toISOString().slice(0,10)
+        });
+        imported++;
+      }
+      if(!imported){showImportMsg('No se encontraron filas válidas para importar.','error');evt.target.value='';return;}
+
+      const conclCount=newData.filter(r=>r.est==='Concluído').length;
+      const sinProy=PROY_NOMBRES.length?newData.filter(r=>!PROY_NOMBRES.includes(normTxt(r.c))).length:0;
+      const clis=[...new Set(newData.map(r=>r.c))];
+
+      if(!SV_ONLINE){
+        DATA=newData;refreshAll();
+        showImportMsg(`${imported} servicios cargados SOLO en pantalla: no hay conexión con Supabase, nada se guardó.`,'error');
+        evt.target.value='';return;
+      }
+      if(!confirm(
+        `Vas a reemplazar en Supabase los servicios de ${clis.length} cliente(s) con las ${imported} filas del Excel.\n\n`+
+        `• Se borran las filas actuales de: ${clis.slice(0,8).join(', ')}${clis.length>8?` y ${clis.length-8} más`:''}\n`+
+        `• Los servicios de otros clientes NO se tocan\n`+
+        `• Esto cambia también la pestaña Contratistas de esos proyectos\n\n¿Continuar?`)){
+        evt.target.value='';return;
+      }
+
+      showImportMsg('Guardando en Supabase…','warn');
+      svReplaceClients(clis,newData).then(ok=>{
+        if(!ok){showImportMsg('Falló la carga a Supabase. No se cambió nada; vuelve a intentar.','error');return;}
+        return loadFromSupabase().then(()=>{
+          refreshAll();
+          const parts=[`${imported} servicios importados y guardados en Supabase`,`${conclCount} Concluído (excluidos de las vistas activas)`];
+          if(sinProy)parts.push(`${sinProy} con un Cliente que no coincide con ningún proyecto (no saldrán en la pestaña Contratistas)`);
+          if(noSupCol)parts.push(`sin columna Supervisor detectada, se asignó "Sin Asignar" a todos`);
+          if(badDates)parts.push(`${badDates} con fecha inválida (revisar en el Excel)`);
+          if(badSit)parts.push(`${badSit} con Situación no reconocida (se asignó "Pendiente")`);
+          if(badEst)parts.push(`${badEst} con Estado no reconocido (se asignó "Por Iniciar")`);
+          showImportMsg(parts.join(' · ')+'.', (badDates||badSit||badEst||noSupCol||sinProy)?'warn':'ok');
+        });
+      });
+    }catch(err){
+      showImportMsg('Error leyendo el archivo: '+err.message,'error');
+    }
+    evt.target.value='';
+  };
+  reader.readAsBinaryString(file);
+}
+
+/* ===========================================================
+   INIT
+   =========================================================== */
+/* Pinta de inmediato con el seed embebido (Excel 02.08.2026) y luego
+   sustituye por lo que esté en Supabase — la fuente única de verdad. */
+rebuildDerived();
+populateFilters();
+setToday();
+
+/* Vista inicial: la que pidió el shell por hash (#v=gantt), o el Resumen. */
+const _vistaInicial=(location.hash.match(/v=([a-z]+)/)||[])[1]||'ejecutiva';
+setView(_vistaInicial);
+
+Promise.all([loadFromSupabase(),loadProyectos()]).then(()=>{
+  refreshAll();
+  svBadge();
+  /* Avisar al shell que ya se puede navegar (evita que pida una vista antes de tiempo). */
+  try{
+    if(window.parent&&window.parent!==window)
+      window.parent.postMessage({tipo:'servicios:listo'},'*');
+  }catch(e){}
+  console.log('%c🔧 Servicios v5 · '+DATA.length+' servicios · '+(SV_ONLINE?'Supabase en vivo':'seed local'),
+    'background:#0a1f63;color:#fff;padding:3px 12px;border-radius:6px;font-size:11px');
+});
+</script>
+</body>
+</html>

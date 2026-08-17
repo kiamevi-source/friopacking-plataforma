@@ -297,21 +297,37 @@
         <i data-lucide="package" class="ic"></i>
         <span>Equipos</span>
       </a>
-      <a href="#servicios" class="nav-item">
-        <i data-lucide="layers" class="ic"></i>
-        <span>Servicios (Contratistas)</span>
-      </a>
+      <!-- ── Contratistas: una sola entrada que despliega sus vistas.
+           Antes eran 3 entradas sueltas (Servicios, Eval., Dashboard) + un rail
+           propio dentro del módulo. Ver nav-group en router-views.js. ── -->
+      <div class="nav-group" data-group="contratistas">
+        <a href="#ct-resumen" class="nav-item nav-parent" data-group-parent="contratistas">
+          <i data-lucide="layers" class="ic"></i>
+          <span>Contratistas</span>
+          <i data-lucide="chevron-down" class="ic chev"></i>
+        </a>
+        <div class="nav-sub">
+          <div class="nav-sub-label">Portafolio</div>
+          <a href="#ct-resumen" class="nav-item nav-child" data-section="ct-resumen"><span>Resumen</span></a>
+          <a href="#ct-operativa" class="nav-item nav-child" data-section="ct-operativa"><span>Operativa</span></a>
+          <a href="#ct-matriz" class="nav-item nav-child" data-section="ct-matriz"><span>Matriz</span></a>
+          <a href="#ct-gantt" class="nav-item nav-child" data-section="ct-gantt"><span>Gantt</span></a>
+          <a href="#ct-urgentes" class="nav-item nav-child" data-section="ct-urgentes">
+            <span>Sin contratar</span><span class="nav-count" id="nav-ct-urgentes"></span>
+          </a>
+          <a href="#ct-disponibilidad" class="nav-item nav-child" data-section="ct-disponibilidad"><span>Disponibilidad</span></a>
+          <a href="#ct-editor" class="nav-item nav-child" data-section="ct-editor"><span>Editor de datos</span></a>
+          <div class="nav-sub-label">Empresas</div>
+          <a href="#ct-universo" class="nav-item nav-child" data-section="ct-universo">
+            <span>Universo</span><span class="nav-count brand" id="nav-ct-universo"></span>
+          </a>
+          <a href="#ct-evaluacion" class="nav-item nav-child" data-section="ct-evaluacion"><span>Evaluación</span></a>
+          <a href="#ct-dashboard" class="nav-item nav-child" data-section="ct-dashboard"><span>Dashboard</span></a>
+        </div>
+      </div>
       <a href="#licitaciones" class="nav-item" data-section="licitaciones">
         <i data-lucide="gavel" class="ic"></i>
         <span>Licitaciones</span>
-      </a>
-      <a href="#eval-contratistas" class="nav-item" data-section="eval-contratistas">
-        <i data-lucide="clipboard-check" class="ic"></i>
-        <span>Eval. Contratistas</span>
-      </a>
-      <a href="#dash-contratistas" class="nav-item" data-section="dash-contratistas">
-        <i data-lucide="bar-chart-3" class="ic"></i>
-        <span>Dashboard Contratistas</span>
       </a>
       <a href="#pmo-ejecutivo" class="nav-item" data-section="pmo-ejecutivo">
         <i data-lucide="calendar-range" class="ic"></i>

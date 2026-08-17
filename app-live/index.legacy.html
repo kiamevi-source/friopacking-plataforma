@@ -761,19 +761,146 @@ input[type=date]{font-family:inherit;color:var(--ink);background:transparent;bor
 
 <script>
 /* ====== EMBEDDED PROJECT DATA ====== */
-const PROJECTS=[{"name":"AGROBERRIES","name_v3":"AGROBERRIES","sup":"Diego Asmat","asist":"","dep":"LAMBAYEQUE","prov":"Lambayeque","dist":"Olmos","zona":"Norte","lat":-6.0173,"lng":-79.7736,"venta":641560.13,"fact":323383.61,"valp":53.7,"spi":1.0,"estado":"EN PLAN","var_06may":2.7,"ci":"2026-01-22","cf":"2026-06-22","ri":"2026-02-05","rf":"2026-05-30","titulos":[{"desc":"PRY 2026-0000008","venta":552380.14,"fact":257740.58,"valp":23.8},{"desc":"PRD 2026-0000006","venta":50864.99,"fact":46485.53,"valp":87.7},{"desc":"VSR 2026-0000001","venta":38315,"fact":19157.5,"valp":0}],"dias":47,"tipo":"Refrigeración","real":53.7,"plan":53.7},{"name":"AGROFLORAL","name_v3":"AGROFLORAL","sup":"Luis Goycochea","asist":null,"dep":"LIMA","prov":"Cañete","dist":"San Vicente de Cañete","zona":"Centro","lat":-13.076,"lng":-76.389,"venta":520799.42,"fact":415687.02,"valp":87.1,"spi":0.98,"estado":"EN PLAN","var_06may":2.2,"ci":"2025-12-01","cf":"2026-04-30","ri":"2026-01-02","rf":"2026-03-30","titulos":[{"desc":"PRY 2025-0000066","venta":490966.62,"fact":415687.02,"valp":78.1},{"desc":"PRD 2026-0000004","venta":6690,"fact":0,"valp":0},{"desc":"PRD 2026-0000013","venta":19881.8,"fact":0,"valp":0},{"desc":"PRD 2026-0000014","venta":3261,"fact":0,"valp":0}],"dias":0,"tipo":"Mecánica","real":87.1,"plan":88.9},{"name":"ARAFOODS","name_v3":"ARAFOODS","sup":"Steve Sarmiento","asist":"Abdon Solorzano","dep":"ANCASH","prov":"Casma","dist":"Casma","zona":"Norte","lat":-9.4754,"lng":-78.2897,"venta":805597.47,"fact":632370.43,"valp":98.4,"spi":1.0,"estado":"EN PLAN","var_06may":0.2,"ci":"2025-08-01","cf":"2025-12-31","ri":"2025-08-12","rf":"2026-03-21","titulos":[{"desc":"PRY 2025-0000054","venta":780000,"fact":626958.03,"valp":71.97},{"desc":"PRD 2025-0000030","venta":18041.37,"fact":5412.4,"valp":0},{"desc":"PRD 2025-0000038","venta":5000,"fact":0,"valp":0},{"desc":"PRD 2025-0000043","venta":2556.1,"fact":0,"valp":0}],"dias":-9,"tipo":"Refrigeración","real":98.4,"plan":98.4},{"name":"BERRY HARVEST","name_v3":"BERRY HARVEST","sup":"Irwin Gutierrez","asist":null,"dep":"LAMBAYEQUE","prov":"Lambayeque","dist":"Olmos","zona":"Norte","lat":-6.0173,"lng":-79.7736,"venta":347856.25,"fact":130401.3,"valp":38.9,"spi":0.88,"estado":"LEVE ATRASO","var_06may":0.5,"ci":"2025-11-20","cf":"2026-04-15","ri":"2026-01-26","rf":"2026-06-01","titulos":[{"desc":"VSR 2025-0000002","venta":242000,"fact":72600,"valp":0},{"desc":"PRD 2026-0000010","venta":97846.74,"fact":56199.4,"valp":39.19},{"desc":"VSR 2025-0000003","venta":8009.51,"fact":1601.9,"valp":0}],"dias":63,"tipo":"Refrigeración","real":38.9,"plan":44.2},{"name":"BOMAREA","name_v3":"BOMAREA","sup":"Jorvin Paredes","asist":"","dep":"LAMBAYEQUE","prov":"Lambayeque","dist":"Olmos","zona":"Norte","lat":-6.0173,"lng":-79.7736,"venta":1500000,"fact":300000,"valp":7.3,"spi":0.96,"estado":"EN PLAN","var_06may":4.0,"ci":"2026-01-13","cf":"2026-07-20","ri":"2026-03-26","rf":"2026-07-20","titulos":[{"desc":"PRY 2026-0000002","venta":1500000,"fact":300000,"valp":0}],"dias":112,"tipo":"Civil","real":7.3,"plan":7.6},{"name":"DELICE","name_v3":"DELICE","sup":"Wilson Urbina","asist":null,"dep":"LIMA","prov":"Lima","dist":"Lurín","zona":"Centro","lat":-12.2759,"lng":-76.8736,"venta":360886.11,"fact":175954.12,"valp":88.2,"spi":0.95,"estado":"LEVE ATRASO","var_06may":1.5,"ci":"2025-12-15","cf":"2026-05-05","ri":"2026-01-15","rf":"2026-05-28","titulos":[{"desc":"PRY 2025-0000075","venta":360886.11,"fact":175954.12,"valp":31.67}],"dias":31,"tipo":"Packing","real":88.2,"plan":92.8},{"name":"FRUSAN","name_v3":"FRUSAN / HUARMEY","sup":"Victor Ramirez","asist":"Jordy Acosta","dep":"LAMBAYEQUE","prov":"Lambayeque","dist":"Olmos","zona":"Norte","lat":-6.0173,"lng":-79.7736,"venta":4008997.04,"fact":3536984.79,"valp":90.3,"spi":0.95,"estado":"LEVE ATRASO","var_06may":0.8,"ci":"2025-09-01","cf":"2026-02-28","ri":"2025-12-17","rf":"2026-04-30","titulos":[{"desc":"PRY 2025-0000061","venta":3839343.44,"fact":3486088.71,"valp":61.66},{"desc":"PRD 2026-0000015","venta":169653.6,"fact":50896.08,"valp":0}],"dias":31,"tipo":"Refrigeración","real":90.3,"plan":95.1},{"name":"IMBAREX","name_v3":"IMBAREX","sup":"Jean Percy Casas","asist":"Gianpier Girao","dep":"ICA","prov":"Pisco","dist":"Humay","zona":"Sur","lat":-13.635,"lng":-76.002,"venta":853450,"fact":406535,"valp":82.8,"spi":0.97,"estado":"EN PLAN","var_06may":3.1,"ci":"2025-08-07","cf":"2026-05-15","ri":"2025-08-30","rf":"2026-05-29","titulos":[{"desc":"PRY 2025-0000058","venta":584350,"fact":175305,"valp":0},{"desc":"PRD 2026-0000001","venta":215000,"fact":215000,"valp":0},{"desc":"PRD 2026-0000012","venta":54100,"fact":16230,"valp":0}],"dias":60,"tipo":"Packing","real":82.8,"plan":85.4},{"name":"QPACK","name_v3":"QUELEN / QBERRIES / QPACK","sup":"Jesus Cabrera","asist":"Fernando Aurazo","dep":"LA LIBERTAD","prov":"Ascope","dist":"Casa Grande","zona":"Norte","lat":-7.7548,"lng":-79.1951,"venta":2856251.96,"fact":2242724.21,"valp":43.5,"spi":0.82,"estado":"ATRASADO","var_06may":4.5,"ci":"2026-02-09","cf":"2026-06-16","ri":"2026-02-09","rf":"2026-06-16","titulos":[{"desc":"PRY 2025-0000070","venta":1700000,"fact":1171046.97,"valp":52.13},{"desc":"PRY 2025-0000065","venta":1094264.8,"fact":1031231.52,"valp":91.77},{"desc":"PRD 2026-0000007","venta":30773.49,"fact":9232.05,"valp":0},{"desc":"PRY 2025-0000048","venta":16705.69,"fact":16705.69,"valp":0},{"desc":"PRY 2025-0000064","venta":14507.98,"fact":14507.98,"valp":0}],"dias":78,"tipo":"Packing","real":43.5,"plan":53.0},{"name":"SANTA SOFIA","name_v3":"SANTA SOFIA","sup":"Steve Sarmiento","asist":null,"dep":"ICA","prov":"Ica","dist":"Subtanjalla","zona":"Sur","lat":-14.0842,"lng":-75.7481,"venta":545000,"fact":245250,"valp":77.7,"spi":0.93,"estado":"LEVE ATRASO","var_06may":4.6,"ci":"2026-02-01","cf":"2026-05-30","ri":"2026-02-17","rf":"2026-05-15","titulos":[{"desc":"PRY 2025-0000072","venta":545000,"fact":245250,"valp":0}],"dias":46,"tipo":"Packing","real":77.7,"plan":83.5},{"name":"SMARTPACKING","name_v3":"SMARTPACKING","sup":"Erick Salvador","asist":"","dep":"LA LIBERTAD","prov":"Virú","dist":"Virú","zona":"Norte","lat":-8.4122,"lng":-78.7537,"venta":75700.16,"fact":22710.05,"valp":62.8,"spi":1.0,"estado":"EN PLAN","var_06may":6.7,"ci":"2026-03-26","cf":"2026-05-26","ri":"2026-04-21","rf":"2026-06-01","titulos":[{"desc":"PRY 2026-0000014","venta":6875,"fact":2062.5,"valp":0},{"desc":"PRY 2026-0000015","venta":68825.16,"fact":20647.55,"valp":0}],"dias":0,"tipo":"Packing","real":62.8,"plan":62.8},{"name":"TA EXPORT","name_v3":"TA EXPORT","sup":"Patrick Vasquez","asist":"Percy Sanchez","dep":"ICA","prov":"Ica","dist":"Salas","zona":"Sur","lat":-14.1742,"lng":-75.6936,"venta":1460000.01,"fact":722375.36,"valp":46.8,"spi":0.82,"estado":"ATRASADO","var_06may":4.7,"ci":"2026-02-02","cf":"2026-06-15","ri":"2026-01-23","rf":"2026-06-17","titulos":[{"desc":"PRY 2026-0000007","venta":1460000.01,"fact":722375.36,"valp":25.47}],"dias":79,"tipo":"Refrigeración","real":46.8,"plan":57.1},{"name":"TAL SA","name_v3":"TAL SA","sup":"Dennis Saravia","asist":"Eric Jara","dep":"LA LIBERTAD","prov":"Trujillo","dist":"Salaverry","zona":"Norte","lat":-8.227,"lng":-78.964,"venta":1700000,"fact":425000,"valp":63.0,"spi":1.0,"estado":"EN PLAN","var_06may":11.0,"ci":"2025-12-12","cf":"2026-05-27","ri":"2026-03-02","rf":"2026-05-30","titulos":[{"desc":"PRY 2026-0000001","venta":1700000,"fact":425000,"valp":0}],"dias":61,"tipo":"Civil","real":63.0,"plan":63.0},{"name":"TALSA PTO. MORIN","name_v3":"TALSA PUERTO MORIN","sup":"Antero Ávila","asist":null,"dep":"LA LIBERTAD","prov":"Virú","dist":"Virú","zona":"Norte","lat":-8.4122,"lng":-78.7537,"venta":352587.8,"fact":105776.36,"valp":81.0,"spi":1.01,"estado":"EN PLAN","var_06may":6.3,"ci":"2026-01-11","cf":"2026-04-29","ri":"2026-02-14","rf":"2026-04-29","titulos":[{"desc":"PRY 2026-0000005","venta":352587.8,"fact":105776.36,"valp":0}],"dias":30,"tipo":"Mecánica","real":81.0,"plan":80.2},{"name":"TORRE BLANCA","name_v3":"TORRE BLANCA","sup":"Waldir Saldaña","asist":null,"dep":"LIMA","prov":"Huaral","dist":"Chancay","zona":"Centro","lat":-11.5619,"lng":-77.2683,"venta":718498.3,"fact":292015.43,"valp":58.7,"spi":0.95,"estado":"EN PLAN","var_06may":2.7,"ci":"2026-01-16","cf":"2026-06-30","ri":"2026-02-02","rf":"2026-06-08","titulos":[{"desc":"PRY 2026-0000004","venta":718498.3,"fact":292015.43,"valp":15.2}],"dias":70,"tipo":"Refrigeración","real":58.7,"plan":61.8},{"name":"TyT","name_v3":"TyT","sup":"Luis Silva","asist":null,"dep":"LIMA","prov":"Huaral","dist":"Huaral","zona":"Centro","lat":-11.1053,"lng":-77.2067,"venta":227719.49,"fact":136631.69,"valp":47.6,"spi":0.99,"estado":"EN PLAN","var_06may":8.0,"ci":"2026-03-01","cf":"2026-05-15","ri":"2026-03-06","rf":"2026-05-12","titulos":[{"desc":"PRY 2026-0000003","venta":227719.49,"fact":136631.69,"valp":55.58}],"dias":43,"tipo":"Refrigeración","real":47.6,"plan":48.1},{"name":"VANGUARD/PROSEMBRA","name_v3":"VANGUARD / PROSEMBRA","sup":"Victor Flores","asist":"Erick Salvador","dep":"ICA","prov":"Pisco","dist":"Tupac Amaru Inca","zona":"Sur","lat":-13.805,"lng":-76.235,"venta":3551664.97,"fact":2754312.12,"valp":99.5,"spi":0.99,"estado":"EN PLAN","var_06may":0.0,"ci":"2025-11-01","cf":"2026-03-31","ri":"2025-10-23","rf":"2026-03-12","titulos":[{"desc":"PRY 2025-0000063","venta":1711648.49,"fact":1504235.51,"valp":84.85},{"desc":"PRY 2025-0000059","venta":1662834,"fact":1173793.11,"valp":70.59},{"desc":"PRD 2026-0000011","venta":118131.56,"fact":76283.5,"valp":0},{"desc":"PRY 2026-0000011","venta":53240.92,"fact":0,"valp":0},{"desc":"PRD 2026-0000003","venta":5810,"fact":0,"valp":0}],"dias":-18,"tipo":"Packing","real":99.5,"plan":100.5},{"name":"VIVEROS EL TAMBO","name_v3":"VIVEROS EL TAMBO","sup":"Dylan Marquina","asist":"","dep":"PIURA","prov":"Piura","dist":"Piura","zona":"Norte","lat":-5.1945,"lng":-80.6328,"venta":216754.9,"fact":0,"valp":27.7,"spi":0.92,"estado":"LEVE ATRASO","var_06may":7.6,"ci":"2026-03-15","cf":"2026-05-15","ri":"2026-04-01","rf":"2026-05-22","titulos":[{"desc":"PRY 2026-0000013","venta":216754.9,"fact":0,"valp":0}],"dias":53,"tipo":"Civil","real":27.7,"plan":30.1},{"name":"CAMPOSOL","name_v3":"CAMPOSOL","sup":"Renato Jara","asist":null,"dep":"LA LIBERTAD","prov":"Virú","dist":"Chao","zona":"Norte","lat":-8.5349,"lng":-78.9017,"venta":497385.27,"fact":99477.05,"valp":13.0,"spi":0.87,"estado":"LEVE ATRASO","var_06may":null,"ci":"2026-02-09","cf":"2026-06-23","ri":"2026-03-16","rf":"2026-06-30","titulos":[{"desc":"PRY 2026-0000009","venta":497385.27,"fact":99477.05,"valp":3.46}],"dias":92,"tipo":"Refrigeración","real":13.0,"plan":14.9},{"name":"REITER","name_v3":"REITER","sup":"Gustavo Martinez","asist":"","dep":"ICA","prov":"Chincha","dist":"San Antonio","zona":"Norte","lat":-13.25,"lng":-76.15,"venta":110710,"fact":33213,"valp":22.5,"spi":1.42,"estado":"ADELANTADO","var_06may":null,"ci":"2026-04-23","cf":"2026-05-30","ri":"2026-04-30","rf":"2026-05-30","titulos":[{"desc":"PRY 2026-0000020","venta":110710,"fact":33213,"valp":0}],"dias":0,"tipo":"Packing","real":22.5,"plan":15.8},
-{"name":"DIAMOND","name_v3":"DIAMOND","sup":"Sin asignar","asist":null,"dep":"LA LIBERTAD","prov":"Trujillo","dist":"Trujillo","zona":"Norte","lat":-8.115,"lng":-79.029,"venta":0,"fact":0,"valp":0,"spi":1,"estado":"PAUSA","var_06may":null,"ci":null,"cf":null,"ri":null,"rf":null,"titulos":[],"dias":0,"tipo":"Packing","real":0,"plan":0,"_nuevo":true},
-{"name":"BRANCHOUT","name_v3":"BRANCHOUT","sup":"Sin asignar","asist":null,"dep":"LIMA","prov":"Lima","dist":"Lima","zona":"Centro","lat":-12.046,"lng":-77.043,"venta":0,"fact":0,"valp":0,"spi":1,"estado":"PAUSA","var_06may":null,"ci":null,"cf":null,"ri":null,"rf":null,"titulos":[],"dias":0,"tipo":"Refrigeración","real":0,"plan":0,"_nuevo":true},
-{"name":"OSLO","name_v3":"OSLO","sup":"Sin asignar","asist":null,"dep":"LIMA","prov":"Lima","dist":"Lima","zona":"Centro","lat":-12.046,"lng":-77.043,"venta":0,"fact":0,"valp":0,"spi":1,"estado":"PAUSA","var_06may":null,"ci":null,"cf":null,"ri":null,"rf":null,"titulos":[],"dias":0,"tipo":"Refrigeración","real":0,"plan":0,"_nuevo":true},
-{"name":"TAL ACOPIO","name_v3":"TAL ACOPIO","sup":"Sin asignar","asist":null,"dep":"LA LIBERTAD","prov":"Virú","dist":"Virú","zona":"Norte","lat":-8.4122,"lng":-78.7537,"venta":0,"fact":0,"valp":0,"spi":1,"estado":"PAUSA","var_06may":null,"ci":null,"cf":null,"ri":null,"rf":null,"titulos":[],"dias":0,"tipo":"Civil","real":0,"plan":0,"_nuevo":true},
-{"name":"PROLAN","name_v3":"PROLAN","sup":"Sin asignar","asist":null,"dep":"LIMA","prov":"Lima","dist":"Lima","zona":"Centro","lat":-12.046,"lng":-77.043,"venta":0,"fact":0,"valp":0,"spi":1,"estado":"PAUSA","var_06may":null,"ci":null,"cf":null,"ri":null,"rf":null,"titulos":[],"dias":0,"tipo":"Mecánica","real":0,"plan":0,"_nuevo":true},
-{"name":"RINTISA","name_v3":"RINTISA JRM","sup":"Sin asignar","asist":null,"dep":"LIMA","prov":"Lima","dist":"Lima","zona":"Centro","lat":-12.046,"lng":-77.043,"venta":0,"fact":0,"valp":0,"spi":1,"estado":"PAUSA","var_06may":null,"ci":null,"cf":null,"ri":null,"rf":null,"titulos":[],"dias":0,"tipo":"Mecánica","real":0,"plan":0,"_nuevo":true},
-{"name":"AGROKASA","name_v3":"AGROKASA","sup":"Sin asignar","asist":null,"dep":"ICA","prov":"Ica","dist":"Ica","zona":"Sur","lat":-14.0681,"lng":-75.7286,"venta":0,"fact":0,"valp":0,"spi":1,"estado":"PAUSA","var_06may":null,"ci":null,"cf":null,"ri":null,"rf":null,"titulos":[],"dias":0,"tipo":"Refrigeración","real":0,"plan":0,"_nuevo":true},
-{"name":"ICYP","name_v3":"ICYP","sup":"Sin asignar","asist":null,"dep":"ICA","prov":"Ica","dist":"Ica","zona":"Sur","lat":-14.0681,"lng":-75.7286,"venta":0,"fact":0,"valp":0,"spi":1,"estado":"PAUSA","var_06may":null,"ci":null,"cf":null,"ri":null,"rf":null,"titulos":[],"dias":0,"tipo":"Mecánica","real":0,"plan":0,"_nuevo":true},
-{"name":"ARCA CONTINENTAL","name_v3":"ARCA CONTINENTAL","sup":"Sin asignar","asist":null,"dep":"LAMBAYEQUE","prov":"Chiclayo","dist":"Chiclayo","zona":"Norte","lat":-6.7714,"lng":-79.8409,"venta":0,"fact":0,"valp":0,"spi":1,"estado":"PAUSA","var_06may":null,"ci":null,"cf":null,"ri":null,"rf":null,"titulos":[],"dias":0,"tipo":"Refrigeración","real":0,"plan":0,"_nuevo":true},
-{"name":"VIRÚ","name_v3":"VIRÚ","sup":"Sin asignar","asist":null,"dep":"LA LIBERTAD","prov":"Virú","dist":"Virú","zona":"Norte","lat":-8.4122,"lng":-78.7537,"venta":0,"fact":0,"valp":0,"spi":1,"estado":"PAUSA","var_06may":null,"ci":null,"cf":null,"ri":null,"rf":null,"titulos":[],"dias":0,"tipo":"Refrigeración","real":0,"plan":0,"_nuevo":true},
-{"name":"AGROLATINA","name_v3":"AGROLATINA","sup":"Sin asignar","asist":null,"dep":"ICA","prov":"Nazca","dist":"Nazca","zona":"Sur","lat":-14.8294,"lng":-74.9286,"venta":0,"fact":0,"valp":0,"spi":1,"estado":"PAUSA","var_06may":null,"ci":null,"cf":null,"ri":null,"rf":null,"titulos":[],"dias":0,"tipo":"Refrigeración","real":0,"plan":0,"_nuevo":true},
-{"name":"AIB","name_v3":"AIB","sup":"Sin asignar","asist":null,"dep":"LIMA","prov":"Lima","dist":"Lima","zona":"Centro","lat":-12.046,"lng":-77.043,"venta":0,"fact":0,"valp":0,"spi":1,"estado":"PAUSA","var_06may":null,"ci":null,"cf":null,"ri":null,"rf":null,"titulos":[],"dias":0,"tipo":"Mecánica","real":0,"plan":0,"_nuevo":true}];
+/* ══════════════════════════════════════════════════════════════════
+   FOTO DE PROYECTOS (antes ~30 KB hardcodeados aquí: la foto de junio).
+   Ahora vive en Supabase → tabla `proyectos_snapshot` (+ `proyectos_titulos`),
+   editable desde la plataforma. Se cachea en localStorage para pintar al
+   instante en el arranque, antes de que responda la red.
+   Sigue siendo SOLO respaldo: `window.PROJECTS` (la lista viva que usan la
+   grilla, los filtros y el modal) se arma desde la tabla `proyectos`.
+   ══════════════════════════════════════════════════════════════════ */
+const PROJECTS_SNAP_LS='fp_proyectos_snapshot_v2';
+let PROJECTS=[];
+try{
+  const _cache=localStorage.getItem(PROJECTS_SNAP_LS);
+  if(_cache){const _arr=JSON.parse(_cache);if(Array.isArray(_arr))PROJECTS=_arr;}
+}catch(e){}
+
+/* fila de proyectos_snapshot -> la forma que espera el resto del código */
+function _snapRowToProj(r,titulos){
+  const n=r.proyecto_nombre||'';
+  const num=v=>(v==null||v==='')?0:parseFloat(v)||0;
+  return{
+    name:n,name_v3:n,
+    sup:r.supervisor||'',asist:r.asistente||null,
+    dep:r.departamento||'',prov:r.provincia||'',dist:r.distrito||'',zona:r.zona||'',
+    lat:r.lat!=null?parseFloat(r.lat):null,lng:r.lng!=null?parseFloat(r.lng):null,
+    venta:num(r.venta),fact:num(r.facturado),
+    valp:num(r.valorizacion_pct),plan:num(r.plan_pct),spi:r.spi!=null?parseFloat(r.spi):1,
+    real:num(r.valorizacion_pct),
+    estado:'EN PLAN',var_06may:null,
+    ci:r.fecha_ini_cont||null,cf:r.fecha_fin_cont||null,
+    ri:r.fecha_ini_real||null,rf:r.fecha_fin_proy||null,
+    dias:0,tipo:r.tipo||'Refrigeración',
+    titulos:(titulos[n]||[]).map(t=>({id:t.id,desc:t.codigo,venta:num(t.venta),fact:num(t.facturado),valp:num(t.valorizacion_pct)}))
+  };
+}
+
+/* Refresca la foto desde Supabase. La llama initFromSupabase antes de usarla
+   como respaldo, así el fallback nunca queda más viejo que la BD. */
+async function _loadProjectsSnapshot(){
+  const db=getSB();if(!db)return PROJECTS;
+  try{
+    const [snapRes,titRes]=await Promise.all([
+      db.from('proyectos_snapshot').select('*').order('proyecto_nombre'),
+      db.from('proyectos_titulos').select('*')
+    ]);
+    if(snapRes.error||!Array.isArray(snapRes.data))return PROJECTS;
+    const porProy={};
+    (titRes.data||[]).forEach(t=>{(porProy[t.proyecto_nombre]=porProy[t.proyecto_nombre]||[]).push(t);});
+    PROJECTS=snapRes.data.map(r=>_snapRowToProj(r,porProy));
+    try{localStorage.setItem(PROJECTS_SNAP_LS,JSON.stringify(PROJECTS));}catch(e){}
+  }catch(e){console.warn('proyectos_snapshot:',e);}
+  return PROJECTS;
+}
+window._loadProjectsSnapshot=_loadProjectsSnapshot;
+
+/* ─── Títulos del contrato: tabla editable en la pestaña Finanzas ───
+   Escriben directo a proyectos_titulos; al guardar se refresca la foto
+   para que el total del proyecto quede consistente. */
+const _tiEsc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+/* Formateador propio: el _fmtUSDc del modal vive dentro de un IIFE y no es global. */
+const _tiUSD=v=>{const n=parseFloat(v)||0;return '$'+n.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});};
+const _tiHdr=()=>({apikey:_SB_KEY,Authorization:'Bearer '+_SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'});
+const _TI_URL=()=>_SB_URL+'/rest/v1/proyectos_titulos';
+
+function _titulosHtml(p){
+  const ts=p.titulos||[];
+  const th='text-align:left;padding:8px 6px;font-size:10px;color:#94a3b8;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid rgba(15,23,42,.08)';
+  const thR=th.replace('text-align:left','text-align:right');
+  const td='padding:6px;border-bottom:1px solid rgba(15,23,42,.04)';
+  const inp='style="width:100%;box-sizing:border-box;padding:5px 7px;border:1px solid rgba(15,23,42,.10);border-radius:6px;font:inherit;font-size:12px"';
+  const inpN=inp.replace('"width:100%','"width:100%;text-align:right');
+  const totV=ts.reduce((a,t)=>a+(parseFloat(t.venta)||0),0);
+  const totF=ts.reduce((a,t)=>a+(parseFloat(t.fact)||0),0);
+  const nom=_tiEsc(p.name);
+  const filas=ts.map(t=>`<tr>
+      <td style="${td}"><input ${inp} value="${_tiEsc(t.desc)}" onchange="_tiPatch(${t.id},'codigo',this.value)"></td>
+      <td style="${td}"><input ${inpN} type="number" step="0.01" value="${t.venta||0}" onchange="_tiPatch(${t.id},'venta',this.value)"></td>
+      <td style="${td}"><input ${inpN} type="number" step="0.01" value="${t.fact||0}" onchange="_tiPatch(${t.id},'facturado',this.value)"></td>
+      <td style="${td}"><input ${inpN} type="number" step="0.01" value="${t.valp||0}" onchange="_tiPatch(${t.id},'valorizacion_pct',this.value)"></td>
+      <td style="${td};text-align:center"><button title="Quitar" onclick="_tiDel(${t.id})" style="border:none;background:none;cursor:pointer;color:#DC2626;font-size:14px">🗑</button></td>
+    </tr>`).join('');
+  return `
+    <div class="exc-fin" style="margin-top:14px">
+      <h5>Títulos del contrato (${ts.length})</h5>
+      <div style="overflow-x:auto">
+      <table style="width:100%;font-size:12px;border-collapse:collapse">
+        <thead><tr>
+          <th style="${th}">Código</th><th style="${thR}">Venta</th><th style="${thR}">Fact.</th>
+          <th style="${thR}">Avance %</th><th style="${th};width:40px"></th>
+        </tr></thead>
+        <tbody>${filas}
+          <tr style="background:rgba(15,23,42,.02)">
+            <td style="${td}"><input id="ti-add-cod" ${inp} placeholder="PRY 2026-00000…"></td>
+            <td style="${td}"><input id="ti-add-venta" ${inpN} type="number" step="0.01" placeholder="0"></td>
+            <td style="${td}"><input id="ti-add-fact" ${inpN} type="number" step="0.01" placeholder="0"></td>
+            <td style="${td}"><input id="ti-add-valp" ${inpN} type="number" step="0.01" placeholder="0"></td>
+            <td style="${td};text-align:center"><button onclick="_tiAdd('${nom}')" style="border:none;background:#3ECBB0;color:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font:inherit;font-weight:800">➕</button></td>
+          </tr>
+          ${ts.length?`<tr><td style="padding:9px 6px;font-weight:800">Total</td>
+            <td style="padding:9px 6px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums">${_tiUSD(totV)}</td>
+            <td style="padding:9px 6px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums">${_tiUSD(totF)}</td>
+            <td colspan="2"></td></tr>`:''}
+        </tbody>
+      </table>
+      </div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:7px">Se guardan al instante en <code>proyectos_titulos</code>.</div>
+    </div>`;
+}
+function _tiReload(){
+  if(typeof _loadProjectsSnapshot!=='function')return;
+  _loadProjectsSnapshot().then(()=>{
+    const p=(typeof _resolveProject==='function')?_resolveProject():window.curProject;
+    if(!p)return;
+    const sp=(PROJECTS||[]).find(x=>_pcNorm(x.name)===_pcNorm(p.name));
+    p.titulos=sp?sp.titulos:[];
+    if(window.curMV==='fin'&&typeof window.renderModalView==='function')window.renderModalView();
+  });
+}
+function _tiPatch(id,campo,val){
+  const v=(campo==='codigo')?val:(val===''?null:parseFloat(val));
+  fetch(_TI_URL()+'?id=eq.'+id,{method:'PATCH',headers:_tiHdr(),body:JSON.stringify({[campo]:v})})
+    .then(r=>{if(!r.ok){alert('No se pudo guardar el título');return;}_tiReload();})
+    .catch(()=>alert('No se pudo guardar el título'));
+}
+function _tiDel(id){
+  if(!confirm('¿Quitar este título del contrato?'))return;
+  fetch(_TI_URL()+'?id=eq.'+id,{method:'DELETE',headers:_tiHdr()})
+    .then(r=>{if(r.ok)_tiReload();else alert('No se pudo eliminar');});
+}
+function _tiAdd(nombre){
+  const g=id=>{const e=document.getElementById(id);return e?e.value:'';};
+  const cod=(g('ti-add-cod')||'').trim();
+  if(!cod){alert('Escribe el código del título');return;}
+  const num=v=>v===''?null:parseFloat(v);
+  fetch(_TI_URL(),{method:'POST',headers:_tiHdr(),body:JSON.stringify({
+    proyecto_nombre:nombre,codigo:cod,venta:num(g('ti-add-venta')),
+    facturado:num(g('ti-add-fact')),valorizacion_pct:num(g('ti-add-valp'))})})
+    .then(r=>{if(r.ok)_tiReload();else alert('No se pudo agregar el título');});
+}
+window._tiPatch=_tiPatch;window._tiDel=_tiDel;window._tiAdd=_tiAdd;
+
 window.PROJECTS=PROJECTS;
 </script>
 <script>
@@ -949,6 +1076,8 @@ window._sbConnected=false;
 async function initFromSupabase(){
   const db=getSB();
   if(!db){console.warn('Supabase JS no cargado');return;}
+  // La foto de respaldo ya no está hardcodeada: se trae de proyectos_snapshot.
+  await _loadProjectsSnapshot();
   const banner=document.createElement('div');
   banner.id='sb-banner';
   banner.style.cssText='position:fixed;bottom:70px;right:22px;z-index:9998;background:#0d2436;color:#9fb3c8;font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.08)';
@@ -1159,7 +1288,10 @@ async function initFromSupabase(){
         _spiFact:(p.facturado!=null&&p.facturado!==''?parseFloat(p.facturado):(_sp?_sp.fact:0))||0,_spiVenta:(parseFloat(p.venta)||(_sp?_sp.venta:0))||0, // facturación/SPI del heatmap desde Supabase, no del ZIP
         personal_total:lastPers,contratas_activas:lastContratas,
         _lastReportDate:lastRepFecha,_reportedToday:reportedToday,
-        _cod:p.cod_proyecto||''
+        _cod:p.cod_proyecto||'',
+        // Títulos del contrato (proyectos_titulos). Antes nunca llegaban al objeto
+        // vivo, así que la tabla de la pestaña Finanzas jamás se pintaba.
+        titulos:(_sp&&_sp.titulos)?_sp.titulos:[]
       };
     });
 
@@ -1784,51 +1916,168 @@ function renderModalView(){
 let _PORTAFOLIO=null;
 function _pcNorm(s){return (s||'').toString().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();}
 let _pcCurrent=null;
-const _PC_SIT=['Pendiente','Contratado','Descartado'];
-const _PC_EST=['Por Iniciar','Proceso','Cierre','Concluido'];
+const _PC_SIT=['Pendiente','Licitación','Contratado','Descartado'];
+const _PC_EST=['Por Iniciar','Proceso','Cierre','Concluído'];
+const _PC_FASE=['','I','II','III'];
 function _pcHdr(){return {apikey:_SB_KEY,Authorization:'Bearer '+_SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};}
 function _pcEsc(s){return (s||'').toString().replace(/"/g,'&quot;');}
 function _pcOptions(arr,cur){const a=(cur&&!arr.includes(cur))?[cur,...arr]:arr;return a.map(o=>`<option ${o===cur?'selected':''}>${o}</option>`).join('');}
+/* Paleta de estados/situaciones — misma lectura que el tablero de Servicios */
+const _PC_SIT_COLOR={'Contratado':['#d1fae5','#047857'],'Pendiente':['#fef3c7','#b45309'],'Licitación':['#ede9fe','#6d28d9'],'Descartado':['#f1f5f9','#64748b']};
+const _PC_EST_COLOR={'Proceso':['#dbeafe','#1e40af'],'Cierre':['#fef3c7','#b45309'],'Por Iniciar':['#f1f5f9','#475569'],'Concluído':['#d1fae5','#047857']};
+function _pcPill(txt,map){const[bg,fg]=map[txt]||['#f1f5f9','#64748b'];return `<span style="display:inline-block;background:${bg};color:${fg};font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;white-space:nowrap">${txt||'—'}</span>`;}
+function _pcFecha(s){if(!s)return '—';const d=new Date(s+'T12:00:00');if(isNaN(d))return s;return d.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'2-digit'});}
+function _pcDias(fin){if(!fin)return null;const d=new Date(fin+'T12:00:00');if(isNaN(d))return null;return Math.round((d-new Date())/86400000);}
+
+/* La obra puede llegar con el nombre de Supabase (AGROLATINA NAZCA) o con el
+   nombre corto de la foto estática (AGROLATINA). Este mapa cierra esa brecha
+   para que la pestaña funcione con cualquiera de los dos. Clave y valores
+   normalizados con _pcNorm (MAYÚSCULAS, sin tildes). */
+const _PC_ALIAS={
+  'AGROLATINA':['AGROLATINA NAZCA'],
+  'AIB':['AIB CHINCHA'],
+  'PROLAN':['LARAN'],
+  'AGROKASA':['DROKASA PISCO','DROKASA ICA'],
+  'ICYP':['INGENIERIA EN CARTONES Y PAPELES'],
+  'AGROBERRIES':['AGROBERRIES VIRU'],
+  'VANGUARD/PROSEMBRA':['VANGUARD'],
+  'TALSA PTO. MORIN':['TALSA PUERTO MORIN'],
+  'PAMPA BAJA':['PAMPA BAJA II'],
+  'QALI':['QALI FRUITS'],
+};
+/* Nombres de cliente que le corresponden a esta obra (el propio + sus alias). */
+function _pcClientesDe(p){
+  const pn=_pcNorm(p.name);
+  return [pn].concat(_PC_ALIAS[pn]||[]);
+}
+
+/* Construye el bloque de contratas de una obra a partir de portafolio_servicios.
+   Lo usan las DOS entradas: la pestaña legacy y la pestaña "Contratas" del modal vivo. */
+function _pcBuildHtml(p,rows){
+    const pn=_pcClientesDe(p);
+    const mine=rows.filter(r=>pn.includes(_pcNorm(r.cliente)))
+      .sort((a,b)=>String(a.cliente||'').localeCompare(String(b.cliente||''))
+                 ||String(a.fase||'').localeCompare(String(b.fase||''))
+                 ||(a.especialidad||'').localeCompare(b.especialidad||''));
+    /* Si la obra agrupa varios clientes del portafolio (p.ej. AGROKASA = Pisco + Ica),
+       hay que decir de cuál es cada fila. */
+    const multiCli=new Set(mine.map(r=>_pcNorm(r.cliente))).size>1;
+    const esps=[...new Set(rows.map(r=>r.especialidad).filter(Boolean))].sort();
+    const cons=[...new Set(rows.map(r=>r.contratista).filter(Boolean))].sort();
+    const dl=`<datalist id="pc-esp">${esps.map(e=>`<option value="${_pcEsc(e)}">`).join('')}</datalist>`
+            +`<datalist id="pc-con">${cons.map(c=>`<option value="${_pcEsc(c)}">`).join('')}</datalist>`
+            +`<datalist id="pc-fase">${_PC_FASE.filter(Boolean).map(f=>`<option value="${f}">`).join('')}</datalist>`;
+
+    /* ── Resumen: cómo va la contratación de esta obra ── */
+    const n=mine.length;
+    const nCon=mine.filter(r=>r.situacion==='Contratado').length;
+    const nPend=mine.filter(r=>r.situacion==='Pendiente').length;
+    const nLic=mine.filter(r=>r.situacion==='Licitación').length;
+    const nProc=mine.filter(r=>r.estado==='Proceso').length;
+    const empresas=[...new Set(mine.map(r=>r.contratista).filter(Boolean))].length;
+    const pct=n?Math.round(nCon/n*100):0;
+    const riesgo=mine.filter(r=>{const d=_pcDias(r.fecha_fin);return r.situacion!=='Contratado'&&d!==null&&d<=30;}).length;
+
+    const kpi=(v,l,color)=>`<div style="flex:1;min-width:88px;background:var(--surface2,#f8fafc);border:1px solid var(--line,#e6edf5);border-radius:11px;padding:11px 12px">
+        <div style="font-size:21px;font-weight:800;color:${color||'var(--ink,#0f172a)'};line-height:1">${v}</div>
+        <div style="font-size:10px;font-weight:700;color:var(--muted,#94a3b8);text-transform:uppercase;letter-spacing:.7px;margin-top:4px">${l}</div>
+      </div>`;
+    const resumen=n?`
+      <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:13px">
+        ${kpi(n,'Servicios')}
+        ${kpi(empresas,'Contratistas')}
+        ${kpi(pct+'%','Contratado',pct>=80?'#047857':pct>=50?'#b45309':'#b91c1c')}
+        ${kpi(nProc,'En proceso','#1e40af')}
+        ${kpi(nPend+nLic,'Por cerrar',(nPend+nLic)?'#b45309':'#047857')}
+      </div>
+      <div style="height:7px;border-radius:20px;background:var(--line,#e6edf5);overflow:hidden;margin-bottom:6px">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#0a1f63,#2fbfae);border-radius:20px"></div>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted,#94a3b8);margin-bottom:14px">
+        ${nCon} de ${n} servicios contratados${riesgo?` · <b style="color:#b91c1c">${riesgo} sin contratar con fin a ≤30 días</b>`:''}
+      </div>`:'';
+
+    const inp='style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--line,#e6edf5);border-radius:7px;font:inherit;font-size:12.5px"';
+    const inpF='style="width:100%;box-sizing:border-box;padding:6px 6px;border:1px solid var(--line,#e6edf5);border-radius:7px;font:inherit;font-size:12.5px;text-align:center"';
+    const sel='style="padding:6px 8px;border:1px solid var(--line,#e6edf5);border-radius:7px;font:inherit;font-size:12.5px"';
+    const dtp='style="width:100%;box-sizing:border-box;padding:5px 6px;border:1px solid var(--line,#e6edf5);border-radius:7px;font:inherit;font-size:11.5px"';
+
+    const tr=mine.map(r=>{
+      const d=_pcDias(r.fecha_fin);
+      const dCol=d===null?'var(--muted,#94a3b8)':d<0?'#b91c1c':d<=7?'#b91c1c':d<=14?'#b45309':'var(--muted,#94a3b8)';
+      const dTxt=d===null?'—':(d<0?Math.abs(d)+'d vencido':d+'d');
+      return `<tr style="border-top:1px solid var(--line,#e6edf5)">
+      <td style="padding:5px 6px;width:${multiCli?'150':'56'}px">${multiCli?`<div style="font-size:10px;font-weight:800;color:var(--muted,#94a3b8);margin-bottom:3px">${_pcEsc(r.cliente)}</div>`:''}<input list="pc-fase" ${inpF} value="${_pcEsc(r.fase)}" placeholder="—" onchange="_pcPatch(${r.id},'fase',this.value)"></td>
+      <td style="padding:5px 6px"><input list="pc-esp" ${inp} value="${_pcEsc(r.especialidad)}" onchange="_pcPatch(${r.id},'especialidad',this.value)"></td>
+      <td style="padding:5px 6px"><input list="pc-con" ${inp} value="${_pcEsc(r.contratista)}" onchange="_pcPatch(${r.id},'contratista',this.value)"></td>
+      <td style="padding:5px 6px"><select ${sel} onchange="_pcPatch(${r.id},'situacion',this.value)">${_pcOptions(_PC_SIT,r.situacion)}</select></td>
+      <td style="padding:5px 6px"><select ${sel} onchange="_pcPatch(${r.id},'estado',this.value)">${_pcOptions(_PC_EST,r.estado)}</select></td>
+      <td style="padding:5px 6px;width:118px"><input type="date" ${dtp} value="${_pcEsc(r.fecha_inicio)}" onchange="_pcPatch(${r.id},'fecha_inicio',this.value)"></td>
+      <td style="padding:5px 6px;width:118px"><input type="date" ${dtp} value="${_pcEsc(r.fecha_fin)}" onchange="_pcPatch(${r.id},'fecha_fin',this.value)"></td>
+      <td style="padding:5px 6px;text-align:right;font-size:11.5px;font-weight:800;color:${dCol};white-space:nowrap">${dTxt}</td>
+      <td style="padding:5px 6px;text-align:center"><button title="Quitar" onclick="pcDel(${r.id})" style="border:none;background:none;cursor:pointer;font-size:15px;color:#DC2626">🗑</button></td>
+    </tr>`;}).join('');
+
+    const addRow=`<tr style="background:var(--surface2,#f8fafc);border-top:2px solid var(--line,#e6edf5)">
+      <td style="padding:5px 6px"><input id="pc-add-fase" list="pc-fase" ${inpF} placeholder="—"></td>
+      <td style="padding:5px 6px"><input id="pc-add-esp" list="pc-esp" ${inp} placeholder="Especialidad…"></td>
+      <td style="padding:5px 6px"><input id="pc-add-con" list="pc-con" ${inp} placeholder="Contratista…"></td>
+      <td style="padding:5px 6px"><select id="pc-add-sit" ${sel}>${_pcOptions(_PC_SIT,'Pendiente')}</select></td>
+      <td style="padding:5px 6px"><select id="pc-add-est" ${sel}>${_pcOptions(_PC_EST,'Por Iniciar')}</select></td>
+      <td style="padding:5px 6px"><input id="pc-add-ini" type="date" ${dtp}></td>
+      <td style="padding:5px 6px"><input id="pc-add-fin" type="date" ${dtp}></td>
+      <td></td>
+      <td style="padding:5px 6px;text-align:center"><button onclick="pcAdd()" title="Agregar" style="border:none;background:#3ECBB0;color:#fff;border-radius:7px;padding:6px 11px;cursor:pointer;font:inherit;font-size:13px;font-weight:800">➕</button></td>
+    </tr>`;
+
+    const vacio=n?'':`<div style="padding:26px;text-align:center;color:var(--muted,#94a3b8);font-size:13px;background:var(--surface2,#f8fafc);border:1px dashed var(--line,#e6edf5);border-radius:12px;margin-bottom:12px">
+        Esta obra todavía no tiene servicios cargados.<br>
+        <span style="font-size:11.5px">Agrégalos abajo, o cárgalos en bloque desde <b>Servicios → Editor de Datos</b>.</span>
+      </div>`;
+
+    return `${dl}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div>
+          <div style="font-size:15px;font-weight:800;color:var(--ink,#0f172a)">🔧 Contratas de ${p.name}</div>
+          <div style="color:var(--muted,#94a3b8);font-size:11.5px;margin-top:2px">Misma data del tablero de <b>Servicios</b> · los cambios se guardan al instante en ambos lados.</div>
+        </div>
+        <button onclick="_pcRefresh()" style="border:1px solid var(--line,#e6edf5);background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font:inherit;font-size:12px;font-weight:700;color:var(--muted,#64748b)">🔄 Actualizar</button>
+      </div>
+      ${resumen}${vacio}
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:820px">
+        <thead><tr style="text-align:left;color:var(--muted,#94a3b8);font-size:10px;text-transform:uppercase;letter-spacing:.6px">
+          <th style="padding:7px 6px">${multiCli?'Obra / Fase':'Fase'}</th><th style="padding:7px 6px">Especialidad</th><th style="padding:7px 6px">Contratista</th>
+          <th style="padding:7px 6px">Situación</th><th style="padding:7px 6px">Estado</th>
+          <th style="padding:7px 6px">Inicio</th><th style="padding:7px 6px">Fin</th>
+          <th style="padding:7px 6px;text-align:right">Faltan</th><th style="padding:7px 6px;width:40px"></th>
+        </tr></thead><tbody>${tr}${addRow}</tbody></table></div>`;
+}
+
+/* Carga (y cachea) el portafolio completo; lo filtra por obra quien lo pinte. */
+function _pcLoad(){
+  if(_PORTAFOLIO)return Promise.resolve(_PORTAFOLIO);
+  return fetch(_SB_URL+'/rest/v1/portafolio_servicios?select=id,cliente,fase,especialidad,contratista,situacion,estado,supervisor,fecha_inicio,fecha_fin',{headers:{apikey:_SB_KEY,Authorization:'Bearer '+_SB_KEY}})
+    .then(r=>r.ok?r.json():Promise.reject(new Error('HTTP '+r.status)))
+    .then(rows=>{_PORTAFOLIO=rows;return rows;});
+}
+
 function renderModalContratistas(p){
   _pcCurrent=p;
   const body=$('#modal-body'); if(!body) return;
-  const paint=(rows)=>{
-    const pn=_pcNorm(p.name);
-    const mine=rows.filter(r=>_pcNorm(r.cliente)===pn).sort((a,b)=>(a.especialidad||'').localeCompare(b.especialidad||''));
-    const esps=[...new Set(rows.map(r=>r.especialidad).filter(Boolean))].sort();
-    const cons=[...new Set(rows.map(r=>r.contratista).filter(Boolean))].sort();
-    const dl=`<datalist id="pc-esp">${esps.map(e=>`<option value="${_pcEsc(e)}">`).join('')}</datalist><datalist id="pc-con">${cons.map(c=>`<option value="${_pcEsc(c)}">`).join('')}</datalist>`;
-    const inp='style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--line,#e6edf5);border-radius:7px;font:inherit;font-size:12.5px"';
-    const sel='style="padding:6px 8px;border:1px solid var(--line,#e6edf5);border-radius:7px;font:inherit;font-size:12.5px"';
-    const tr=mine.map(r=>`<tr>
-      <td style="padding:5px 8px"><input list="pc-esp" ${inp} value="${_pcEsc(r.especialidad)}" onchange="_pcPatch(${r.id},'especialidad',this.value)"></td>
-      <td style="padding:5px 8px"><input list="pc-con" ${inp} value="${_pcEsc(r.contratista)}" onchange="_pcPatch(${r.id},'contratista',this.value)"></td>
-      <td style="padding:5px 8px"><select ${sel} onchange="_pcPatch(${r.id},'situacion',this.value)">${_pcOptions(_PC_SIT,r.situacion)}</select></td>
-      <td style="padding:5px 8px"><select ${sel} onchange="_pcPatch(${r.id},'estado',this.value)">${_pcOptions(_PC_EST,r.estado)}</select></td>
-      <td style="padding:5px 8px;text-align:center"><button title="Quitar" onclick="pcDel(${r.id})" style="border:none;background:none;cursor:pointer;font-size:15px;color:#DC2626">🗑</button></td>
-    </tr>`).join('');
-    const addRow=`<tr style="background:var(--surface2,#f8fafc)">
-      <td style="padding:5px 8px"><input id="pc-add-esp" list="pc-esp" ${inp} placeholder="Especialidad…"></td>
-      <td style="padding:5px 8px"><input id="pc-add-con" list="pc-con" ${inp} placeholder="Contratista…"></td>
-      <td style="padding:5px 8px"><select id="pc-add-sit" ${sel}>${_pcOptions(_PC_SIT,'Pendiente')}</select></td>
-      <td style="padding:5px 8px"><select id="pc-add-est" ${sel}>${_pcOptions(_PC_EST,'Por Iniciar')}</select></td>
-      <td style="padding:5px 8px;text-align:center"><button onclick="pcAdd()" style="border:none;background:#3ECBB0;color:#fff;border-radius:7px;padding:6px 11px;cursor:pointer;font:inherit;font-size:13px;font-weight:800">➕</button></td>
-    </tr>`;
-    const inner=`${dl}
-      <div style="padding:4px 0 2px;color:var(--muted);font-size:13px">${mine.length} contratista(s) en <b>${p.name}</b> · asigna <b>Especialidad → Contratista</b>. Los cambios se guardan al instante.</div>
-      <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px">
-        <thead><tr style="text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">
-          <th style="padding:8px">Especialidad</th><th style="padding:8px">Contratista</th><th style="padding:8px">Situación</th><th style="padding:8px">Estado</th><th style="padding:8px;width:44px"></th>
-        </tr></thead><tbody>${tr}${addRow}</tbody></table>`;
-    body.innerHTML=`<div class="mview on" id="mv-contratistas" style="padding:16px 20px">${inner}</div>`;
-  };
-  if(_PORTAFOLIO){paint(_PORTAFOLIO);return;}
-  body.innerHTML=`<div class="mview on" style="padding:40px;text-align:center;color:var(--muted)">Cargando contratistas…</div>`;
-  fetch(_SB_URL+'/rest/v1/portafolio_servicios?select=id,cliente,especialidad,contratista,situacion,estado',{headers:{apikey:_SB_KEY,Authorization:'Bearer '+_SB_KEY}})
-    .then(r=>r.ok?r.json():[]).then(rows=>{_PORTAFOLIO=rows;paint(rows);})
-    .catch(()=>{body.innerHTML='<div class="mview on" style="padding:40px;text-align:center;color:#DC2626">No se pudo cargar el portafolio de contratistas.</div>';});
+  if(_PORTAFOLIO){body.innerHTML=`<div class="mview on" id="mv-contratistas" style="padding:16px 20px">${_pcBuildHtml(p,_PORTAFOLIO)}</div>`;return;}
+  body.innerHTML=`<div class="mview on" style="padding:40px;text-align:center;color:var(--muted)">Cargando contratas…</div>`;
+  _pcLoad()
+    .then(rows=>{body.innerHTML=`<div class="mview on" id="mv-contratistas" style="padding:16px 20px">${_pcBuildHtml(p,rows)}</div>`;})
+    .catch(()=>{body.innerHTML='<div class="mview on" style="padding:40px;text-align:center;color:#DC2626">No se pudo cargar el portafolio de contratas.</div>';});
 }
-function _pcRefresh(){_PORTAFOLIO=null; if(_pcCurrent) renderModalContratistas(_pcCurrent);}
+function _pcRefresh(){
+  _PORTAFOLIO=null;
+  if(!_pcCurrent)return;
+  // El modal vivo usa la pestaña "Contratas"; el legacy, "contratistas".
+  if(window.curMV==='contratas'&&typeof _renderContratas==='function')return _renderContratas(_pcCurrent);
+  renderModalContratistas(_pcCurrent);
+}
 function _pcPatch(id,campo,val){
   fetch(_SB_URL+'/rest/v1/portafolio_servicios?id=eq.'+id,{method:'PATCH',headers:_pcHdr(),body:JSON.stringify({[campo]:val})})
     .then(r=>{ if(!r.ok){alert('No se pudo guardar el cambio');return;} const row=(_PORTAFOLIO||[]).find(x=>x.id===id); if(row) row[campo]=val; });
@@ -1842,7 +2091,25 @@ function pcAdd(){
   const espEl=$('#pc-add-esp'),conEl=$('#pc-add-con');
   const esp=espEl&&espEl.value.trim(), con=conEl&&conEl.value.trim();
   if(!esp||!con){alert('Completa Especialidad y Contratista');return;}
-  const rec={cliente:_pcCurrent.name,especialidad:esp,contratista:con,situacion:($('#pc-add-sit')||{}).value,estado:($('#pc-add-est')||{}).value};
+  const val=id=>{const el=$(id);return el&&el.value?el.value:null;};
+  /* Guardar con el nombre canónico del portafolio, no con el alias corto de la
+     foto estática: si no, la fila nace huérfana y no la ve nadie. */
+  const alias=_PC_ALIAS[_pcNorm(_pcCurrent.name)];
+  let cliente=_pcCurrent.name;
+  if(alias){
+    if(alias.length===1)cliente=alias[0];
+    else{
+      const elegido=prompt(`¿A qué obra corresponde?\n\n${alias.join('\n')}`,alias[0]);
+      if(!elegido)return;
+      const ok=alias.find(a=>_pcNorm(a)===_pcNorm(elegido));
+      if(!ok){alert('Obra no reconocida. Escribe una de: '+alias.join(', '));return;}
+      cliente=ok;
+    }
+  }
+  const rec={cliente:cliente,especialidad:esp,contratista:con,
+             situacion:($('#pc-add-sit')||{}).value,estado:($('#pc-add-est')||{}).value,
+             fase:val('#pc-add-fase'),fecha_inicio:val('#pc-add-ini'),fecha_fin:val('#pc-add-fin'),
+             supervisor:_pcCurrent.sup||_pcCurrent.supervisor||null};
   fetch(_SB_URL+'/rest/v1/portafolio_servicios',{method:'POST',headers:_pcHdr(),body:JSON.stringify(rec)})
     .then(r=>{ if(r.ok){_pcRefresh();} else alert('No se pudo agregar el contratista'); });
 }
@@ -2000,7 +2267,20 @@ const _LIC_COLORS={pendiente:'#64748b',en_licitacion:'#d97706',adjudicado:'#2563
 function _licMoney(v){ return (v==null||v===''||isNaN(v))?'—':('S/ '+Number(v).toLocaleString('es-PE')); }
 async function _renderContratas(p){
   const body=document.getElementById('modal-body'); if(!body) return;
-  body.innerHTML='<div class="mview on exc"><div style="padding:24px;color:#94a3b8;font-size:13px">Cargando licitaciones…</div></div>';
+  body.innerHTML='<div class="mview on exc"><div style="padding:24px;color:#94a3b8;font-size:13px">Cargando contratas…</div></div>';
+
+  // Bloque principal: las contratas de la obra (portafolio_servicios · mismo dato que el tablero de Servicios)
+  let portaHtml='';
+  try{
+    _pcCurrent=p;
+    const porta=await _pcLoad();
+    portaHtml=`<div style="background:#fff;border:1px solid #e6edf5;border-radius:14px;padding:18px 20px;margin-bottom:14px">${_pcBuildHtml(p,porta)}</div>`;
+  }catch(e){
+    console.warn('contratas/portafolio:',e);
+    portaHtml='<div style="background:#fff;border:1px solid #e6edf5;border-radius:14px;padding:20px;color:#DC2626;font-size:13px;margin-bottom:14px">No se pudo cargar el portafolio de contratas.</div>';
+  }
+
+  // Bloque secundario: estado de licitación que lleva el supervisor en su Gantt
   let rows=[];
   try{
     const cod=p._cod||'';
@@ -2022,9 +2302,12 @@ async function _renderContratas(p){
           <td style="padding:8px 6px;border-bottom:1px dashed #eef2f7;text-align:right;font-variant-numeric:tabular-nums">${_licMoney(r.monto_adjudicado)}</td>
           <td style="padding:8px 6px;border-bottom:1px dashed #eef2f7;color:#556270">${r.fecha_adjudicacion?_escR(r.fecha_adjudicacion):'—'}</td></tr>`;}).join('')
       + `</tbody></table>`
-    : `<div style="padding:26px;text-align:center;color:#8a94a6;font-size:13px">Sin licitaciones registradas para esta obra.<br><span style="font-size:11.5px">Las contratas y su estado de licitación se gestionan en el Gantt del supervisor (tareas de tipo Licitación).</span></div>`;
-  body.innerHTML=`<div class="mview on exc"><div style="background:#fff;border:1px solid #e6edf5;border-radius:14px;padding:18px 20px">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px"><h4 style="margin:0;font-size:15px;font-weight:700;color:#0d2436">Contratas · estado de licitación</h4><span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">${chips}</span></div>
+    : `<div style="padding:22px;text-align:center;color:#8a94a6;font-size:13px">Sin licitaciones registradas para esta obra.<br><span style="font-size:11.5px">El estado de licitación (con monto adjudicado) lo lleva el supervisor en su Gantt, en tareas de tipo Licitación.</span></div>`;
+  body.innerHTML=`<div class="mview on exc">${portaHtml}
+    <div style="background:#fff;border:1px solid #e6edf5;border-radius:14px;padding:18px 20px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <h4 style="margin:0;font-size:15px;font-weight:700;color:#0d2436">Licitaciones · Gantt del supervisor</h4>
+      <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">${chips}</span></div>
     ${inner}</div></div>`;
 }
 
@@ -15226,6 +15509,60 @@ console.log('%c OK PMO v14.5 — Light Mode PMO ejecutivo','background:#F0FDFA;c
 })(window);
 </script>
 
+<!-- ============ VALORIZACIÓN v6 · fuente única = Supabase (tablas valorizacion_lineas/cobros) ============ -->
+<script>
+(function(W){
+'use strict';
+// Renderer FINAL de Valorización: lee las tablas reales de Supabase y gana
+// sobre las ~6 versiones legacy apiladas (VMAYO/VR/VP/v5). Aislado a propósito.
+var VS={lineas:[],cobros:[],loaded:false,loading:false};
+function _u(v){v=+v;if(v==null||isNaN(v))return '$0';var a=Math.abs(v),s=(v<0?'-':'')+'$';if(a>=1e6)return s+(a/1e6).toFixed(2)+'M';if(a>=1e3)return s+Math.round(a/1e3)+'K';return s+Math.round(a);}
+function _esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function _sum(a,k){return a.reduce(function(s,x){return s+(+x[k]||0);},0);}
+async function _load(force){
+  if(VS.loaded&&!force)return; if(VS.loading)return; VS.loading=true;
+  try{
+    var db=W.getSB&&W.getSB(); if(!db){VS.loading=false;return;}
+    var lr=await db.from('valorizacion_lineas').select('*');
+    var cr=await db.from('valorizacion_cobros').select('*');
+    VS.lineas=(lr&&lr.data)||[]; VS.cobros=(cr&&cr.data)||[]; VS.loaded=true;
+  }catch(e){console.warn('[valorizacion] load',e);}
+  VS.loading=false;
+}
+function _render(){
+  var el=document.getElementById('v-valorizacion'); if(!el)return;
+  if(!VS.loaded){ el.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted,#64748b)">Cargando valorización…</div>'; _load().then(_render); return; }
+  var L=VS.lineas,C=VS.cobros;
+  var byEst=function(e){return L.filter(function(x){return x.estado===e;});};
+  var val=byEst('Valorizado'),pre=byEst('Presentado'),pen=byEst('Pendiente');
+  var meta=_sum(L,'valorizacion_proyectada'),facturado=_sum(L,'facturacion');
+  var saldoTot=_sum(C,'saldo_pendiente'),venc=C.filter(function(x){return (+x.dias||0)>90;}),saldoVenc=_sum(venc,'saldo_pendiente');
+  var supMap={}; L.forEach(function(x){var s=x.supervisor||'—'; if(!supMap[s])supMap[s]={sup:s,val:0,fact:0,n:0}; supMap[s].val+=(+x.valorizacion||0); supMap[s].fact+=(+x.facturacion||0); supMap[s].n++;});
+  var sups=Object.keys(supMap).map(function(k){return supMap[k];}).sort(function(a,b){return b.fact-a.fact;});
+  var C_=' var(--card,#fff)',LN='var(--line,#e6edf5)',IN='var(--ink,#0d2436)',MU='var(--muted,#64748b)';
+  var kpi=function(l,v,c,sub){return '<div style="background:'+C_+';border:1px solid '+LN+';border-radius:10px;padding:12px 14px;flex:1;min-width:130px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:'+MU+'">'+l+'</div><div style="font-size:20px;font-weight:800;color:'+(c||IN)+'">'+v+'</div>'+(sub?'<div style="font-size:11px;color:'+MU+'">'+sub+'</div>':'')+'</div>';};
+  var fcard=function(lbl,arr,col){return '<div style="flex:1;min-width:150px;background:'+C_+';border:1px solid '+LN+';border-top:3px solid '+col+';border-radius:10px;padding:12px 14px"><div style="font-size:12px;font-weight:700;color:'+col+'">'+lbl+' ('+arr.length+')</div><div style="font-size:18px;font-weight:800;margin-top:4px;color:'+IN+'">'+_u(_sum(arr,'valorizacion'))+'</div><div style="font-size:11px;color:'+MU+'">facturado '+_u(_sum(arr,'facturacion'))+'</div></div>';};
+  var th=function(x){return '<th style="text-align:left;padding:5px 8px;color:'+MU+';font-size:10px;text-transform:uppercase;border-bottom:2px solid '+LN+'">'+x+'</th>';};
+  var h='';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px"><div><h2 style="margin:0;color:'+IN+'">💰 Valorización · Agosto 2026</h2><p style="color:'+MU+';font-size:12px;margin-top:3px">'+L.length+' líneas · '+C.length+' cuentas por cobrar · fuente: Supabase</p></div><div style="display:flex;gap:6px"><button class="btn" onclick="W._valRefresh()">🔄 Actualizar</button><button class="btn primary" onclick="W._valImport()">📁 Importar Excel</button></div></div>';
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+kpi('Meta a valorizar',_u(meta),'#0d6efd')+kpi('Facturado',_u(facturado),'#16a34a',meta>0?(facturado/meta*100).toFixed(0)+'% de meta':'')+kpi('Por cobrar',_u(saldoTot),'#c1272d',venc.length+' vencidas (+90d) · '+_u(saldoVenc))+'</div>';
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+fcard('Valorizado',val,'#16a34a')+fcard('Presentado',pre,'#e67e22')+fcard('Pendiente',pen,'#c1272d')+'</div>';
+  h+='<div style="background:'+C_+';border:1px solid '+LN+';border-radius:10px;padding:14px 16px;margin-bottom:16px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:'+MU+';margin-bottom:10px">Por supervisor</div><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'+['Supervisor','Líneas','Valorización','Facturado'].map(th).join('')+'</tr></thead><tbody>'+sups.map(function(s){return '<tr><td style="padding:6px 8px;font-weight:600;border-bottom:1px solid '+LN+';color:'+IN+'">'+_esc(s.sup)+'</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+'">'+s.n+'</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+'">'+_u(s.val)+'</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+';font-weight:700">'+_u(s.fact)+'</td></tr>';}).join('')+'</tbody></table></div>';
+  var cv=C.slice().sort(function(a,b){return (+b.dias||0)-(+a.dias||0);}).slice(0,15);
+  h+='<div style="background:'+C_+';border:1px solid '+LN+';border-radius:10px;padding:14px 16px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:'+MU+';margin-bottom:10px">Cuentas por cobrar · '+_u(saldoTot)+' total · '+venc.length+' con +90 días</div><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'+['Cliente','Supervisor','Saldo','Días','Últ. factura'].map(th).join('')+'</tr></thead><tbody>'+cv.map(function(x){var d=+x.dias||0,col=d>90?'#c1272d':d>30?'#e67e22':MU;return '<tr><td style="padding:6px 8px;border-bottom:1px solid '+LN+';max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:'+IN+'">'+_esc(x.cliente)+'</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+'">'+_esc(x.supervisor||'—')+'</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+';font-weight:700">'+_u(+x.saldo_pendiente||0)+'</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+';color:'+col+';font-weight:700">'+d+'d</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+';color:'+MU+'">'+(x.ultima_factura||'—')+'</td></tr>';}).join('')+'</tbody></table></div>';
+  el.innerHTML=h;
+}
+W._valRefresh=function(){VS.loaded=false;_load(true).then(_render);};
+W._valImport=function(){alert('Importador de Excel: próximo paso. Por ahora la data se carga y ya se ve aquí.');};
+/* Registrar como renderer FINAL (gana sobre VMAYO/VR/VP/v5) */
+W.renderValorizacionPremium=_render;
+W.renderValorizacion=_render;
+if(W.VIEW_RENDERERS) W.VIEW_RENDERERS.valorizacion=_render;
+if(document.querySelector('.tab[data-v="valorizacion"]')&&document.querySelector('.tab[data-v="valorizacion"]').classList.contains('active')){setTimeout(_render,50);}
+console.log('%c✅ Valorización v6 · Supabase (fuente única)','background:#0D9488;color:#fff;padding:3px 12px;border-radius:6px;font-size:11px');
+})(window);
+</script>
+
 <!-- ================================================================
      PMO v15.0 — EXECUTIVE VISUAL REDESIGN (Datos view only)
      Goal: -50% visual noise, clear hierarchy, Stripe/Linear aesthetic
@@ -19299,29 +19636,7 @@ function renderFin(p){
       </div>
     </div>
 
-    ${(p.titulos||[]).length ? `
-      <div class="exc-fin" style="margin-top:14px">
-        <h5>Títulos del contrato (${p.titulos.length})</h5>
-        <div style="overflow-x:auto">
-        <table style="width:100%;font-size:12px;border-collapse:collapse">
-          <thead><tr>
-            <th style="text-align:left;padding:8px 6px;font-size:10px;color:#94a3b8;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid rgba(15,23,42,.08)">Descripción</th>
-            <th style="text-align:right;padding:8px 6px;font-size:10px;color:#94a3b8;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid rgba(15,23,42,.08)">Venta</th>
-            <th style="text-align:right;padding:8px 6px;font-size:10px;color:#94a3b8;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid rgba(15,23,42,.08)">Fact.</th>
-            <th style="text-align:right;padding:8px 6px;font-size:10px;color:#94a3b8;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid rgba(15,23,42,.08)">Avance</th>
-          </tr></thead>
-          <tbody>
-            ${p.titulos.map(t=>`<tr>
-              <td style="padding:9px 6px;border-bottom:1px solid rgba(15,23,42,.04)">${t.desc||'—'}</td>
-              <td style="padding:9px 6px;border-bottom:1px solid rgba(15,23,42,.04);text-align:right;font-variant-numeric:tabular-nums;font-weight:600">${_fmtUSDc(t.venta)}</td>
-              <td style="padding:9px 6px;border-bottom:1px solid rgba(15,23,42,.04);text-align:right;font-variant-numeric:tabular-nums">${_fmtUSDc(t.fact)}</td>
-              <td style="padding:9px 6px;border-bottom:1px solid rgba(15,23,42,.04);text-align:right;font-variant-numeric:tabular-nums"><b>${_fmtPct(t.valp)}</b></td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-        </div>
-      </div>
-    ` : ''}
+    ${_titulosHtml(p)}
   </div>`;
   // animate fin bar
   setTimeout(()=>{
