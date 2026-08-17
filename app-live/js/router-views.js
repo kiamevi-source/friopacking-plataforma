@@ -10,7 +10,7 @@
   'use strict';
 
   const HOME_KEY = 'inicio';
-  const LEGACY_URL = 'index.legacy.html?v=20260817a';
+  const LEGACY_URL = 'index.legacy.html?v=20260817b';
 
   // ── Alias de hash → nombre de vista real en el legacy ──
   // (el legacy tiene algunas vistas con renderers rotos o con nombres distintos)
@@ -593,6 +593,21 @@
     set('nav-ct-universo', d.contratistas);
   });
 
+  // ── Carga diferida de los módulos ─────────────────────────────────
+  // Los 8 iframes de módulos nacen con data-src en vez de src. Cada uno es
+  // una app completa (su propio Supabase, sus propios timers, su propio DOM);
+  // cargarlos todos al arrancar costaba ~4.7 s y ~65 MB antes de que el
+  // usuario abriera nada. loading="lazy" no ayuda: como viven en contenedores
+  // display:none, el navegador los pide igual. Ahora el src se asigna la
+  // primera vez que se entra a esa vista, y ahí se queda.
+  function ensureModuleLoaded(contenedor) {
+    if (!contenedor) return;
+    contenedor.querySelectorAll('iframe[data-src]').forEach((f) => {
+      f.src = f.dataset.src;
+      f.removeAttribute('data-src');
+    });
+  }
+
   // ── Ocultar todas las vistas nativas registradas ──
   function hideNativeViews() {
     Object.values(NATIVE_VIEWS).forEach((v) => {
@@ -621,7 +636,7 @@
       vistaEl.style.display = 'none';
       hideNativeViews();
       const v = NATIVE_VIEWS[name];
-      if (v.el) v.el.style.display = '';
+      if (v.el) { ensureModuleLoaded(v.el); v.el.style.display = ''; }
       updateActive(name);
       try { v.init(); } catch (e) { console.warn('[router-views] native view init falló:', e); }
       return;
