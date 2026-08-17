@@ -329,8 +329,15 @@ var CT_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 var ctsb = null;
 try { ctsb = window.supabase.createClient(CT_URL, CT_KEY); } catch(e){ console.warn('CT init', e); }
 
+// Cliente LECTOR de la instancia Supervisor (presupuesto → mano de obra a licitar)
+var SUP_URL = 'https://iiceeajjmugtuzcfqggs.supabase.co';
+var SUP_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpY2VlYWpqbXVndHV6Y2ZxZ2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODg5OTUsImV4cCI6MjA5NDc2NDk5NX0.xeOFlxEGoPsqO5mBLz2_o6UqMCiUw5t8Aghg0ieRqs4';
+var supsb = null;
+try { supsb = window.supabase.createClient(SUP_URL, SUP_KEY); } catch(e){ console.warn('SUP init', e); }
+
 // ══════════════ Estado del módulo ══════════════
-var STATE = { view:'list', lics:[], adj:{}, ofertasCount:{}, invCount:{}, filter:{q:'',est:''}, cur:null, tab:'resumen', contratistas:[], proyectos:[] };
+var STATE = { view:'list', lics:[], adj:{}, ofertasCount:{}, invCount:{}, filter:{q:'',est:'',group:''}, sort:'cierre', cur:null, tab:'resumen', contratistas:[], proyectos:[], proyectosByName:{}, selProyecto:null, manoObra:{} };
+function normname(s){ return String(s==null?'':s).trim().toLowerCase(); }
 
 var FLOW = ['Borrador','Preparación','Publicada','Invitaciones','Ofertas','Evaluación','Adjudicación','Contratada','Cerrada'];
 var EST_CLASS = {
@@ -382,6 +389,9 @@ async function boot(){
     });
     var inv = await sb.from('lic_invitados').select('licitacion_id');
     STATE.invCount={}; (inv.data||[]).forEach(function(i){ STATE.invCount[i.licitacion_id]=(STATE.invCount[i.licitacion_id]||0)+1; });
+    // Mano de obra a licitar por proyecto (instancia Supervisor)
+    STATE.manoObra={};
+    if(supsb){ try{ var mo=await supsb.from('v_mano_obra_proyecto').select('*'); (mo.data||[]).forEach(function(r){ STATE.manoObra[normname(r.nombre_proyecto)]={proyecto:r.nombre_proyecto,costo:Number(r.mano_obra_costo||0),venta:Number(r.mano_obra_venta||0),partidas:r.partidas_mo}; }); }catch(e){ console.warn('mano obra', e); } }
     renderList();
   }catch(e){ console.error(e); $('#app').innerHTML = errBox(String(e.message||e)); }
 }
@@ -441,6 +451,28 @@ function alertChip(g,tone,text,active){
   return '<button class="alert-chip '+tone+(active===g?' on':'')+'" data-group="'+g+'"><span class="adot"></span>'+esc(text)+'</button>';
 }
 
+// Proyectos con mano de obra en su presupuesto que aún NO tienen licitación
+function pendientesLic(){
+  var conLic={}; STATE.lics.forEach(function(l){ if(l.proyecto) conLic[normname(l.proyecto)]=true; });
+  var out=[];
+  Object.keys(STATE.manoObra).forEach(function(k){ if(!conLic[k]) out.push(STATE.manoObra[k]); });
+  return out.sort(function(a,b){ return b.costo-a.costo; });
+}
+function openPendientes(){
+  var items=pendientesLic();
+  openModal({
+    title:'Pendientes por licitar', sub:'Proyectos con mano de obra en su presupuesto (módulo Supervisor) que aún no tienen una licitación abierta.',
+    wide:false,
+    body: items.length
+      ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Proyecto</th><th class="num">Partidas</th><th class="num">Mano de obra (costo)</th><th class="num">Referencia venta</th><th></th></tr></thead><tbody>'+
+          items.map(function(m){ return '<tr><td style="font-weight:800">'+esc(m.proyecto)+'</td><td class="num">'+m.partidas+'</td><td class="num" style="font-weight:800">'+money(m.costo,'PEN')+'</td><td class="num" style="color:#64748b">'+money(m.venta,'PEN')+'</td><td><button class="btn btn-sm btn-primary" data-crear="'+esc(m.proyecto)+'" style="white-space:nowrap"><i data-lucide="plus"></i>Crear</button></td></tr>'; }).join('')+
+          '</tbody></table></div><div style="font-size:11.5px;color:#94a3b8;margin-top:10px;font-weight:600">La mano de obra es lo que se terceriza. Al crear, el presupuesto de la licitación se precarga con este monto.</div>'
+      : '<div class="empty"><i data-lucide="check-circle-2"></i>Todos los proyectos con mano de obra ya tienen licitación.</div>',
+    okText:'Cerrar', ok:function(){ closeModal(); },
+    after:function(){ document.querySelectorAll('[data-crear]').forEach(function(b){ b.onclick=function(){ var pn=b.getAttribute('data-crear'); closeModal(); openCreate(pn); }; }); }
+  });
+}
+
 function renderList(){
   STATE.view='list';
   var k=computeKpis();
@@ -465,7 +497,9 @@ function renderList(){
   if(cnt.porvencer) alerts.push(alertChip('porvencer','warn', cnt.porvencer+' próximo'+(cnt.porvencer>1?'s':'')+' cierre'+(cnt.porvencer>1?'s':''), f.group));
   if(cnt.vencidas)  alerts.push(alertChip('vencidas','crit', cnt.vencidas+' licitación'+(cnt.vencidas>1?'es':'')+' vencida'+(cnt.vencidas>1?'s':''), f.group));
   if(cnt.docinc)    alerts.push(alertChip('docinc','warn2', cnt.docinc+' con documentación incompleta', f.group));
-  var alertbar=(alerts.length?alerts.join(''):'<span class="alert-chip ok" style="cursor:default"><span class="adot"></span>Sin alertas críticas</span>')+clearBtn;
+  var pend=pendientesLic();
+  var pendChip=pend.length?'<button class="alert-chip" id="chip-pend" style="border-color:rgba(62,203,176,.55);color:#0d7d70"><span class="adot" style="background:var(--teal)"></span>'+pend.length+' pendiente'+(pend.length>1?'s':'')+' por licitar</button>':'';
+  var alertbar=pendChip+(alerts.length?alerts.join(''):'<span class="alert-chip ok" style="cursor:default"><span class="adot"></span>Sin alertas críticas</span>')+clearBtn;
 
   app.innerHTML =
     '<div class="lc-head3">'+
@@ -503,6 +537,7 @@ function renderList(){
   $('#f-est').onchange=function(e){ f.est=e.target.value; f.group=''; renderList(); };
   $('#f-sort').onchange=function(e){ STATE.sort=e.target.value; renderList(); };
   var cf=$('#clear-f'); if(cf) cf.onclick=function(){ f.est=''; f.group=''; renderList(); };
+  var cp=$('#chip-pend'); if(cp) cp.onclick=openPendientes;
   document.querySelectorAll('[data-group]').forEach(function(el){ el.onclick=function(){ var g=el.getAttribute('data-group'); f.group=(f.group===g?'':g); f.est=''; renderList(); }; });
   document.querySelectorAll('[data-lic]').forEach(function(el){ el.onclick=function(){ openDetail(el.getAttribute('data-lic')); }; });
 }
@@ -555,7 +590,8 @@ async function ensureRefs(){
   }catch(e){ STATE.contratistas=[]; }
 }
 
-async function openCreate(){
+async function openCreate(prefill){
+  prefill=(typeof prefill==='string')?prefill:null;
   await ensureRefs();
   // sugerir siguiente código
   var maxNum=0; STATE.lics.forEach(function(l){ var m=(l.codigo||'').match(/LIC-\d{4}-(\d+)/); if(m) maxNum=Math.max(maxNum,+m[1]); });
@@ -593,29 +629,42 @@ async function openCreate(){
     after: function(){
       var sel=$('#nc-proyecto'); if(!sel) return;
       function row(k,v){ return v!=null&&v!==''?('<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:12px"><span style="color:#94a3b8;font-weight:600">'+esc(k)+'</span><span style="color:#0f1e35;font-weight:700;text-align:right">'+esc(v)+'</span></div>'):''; }
-      function proyInfoHtml(p,ubic){
-        var venta = p.venta? ('$ '+Number(p.venta).toLocaleString('es-PE')) : '';
+      function proyInfoHtml(p,ubic,mo){
+        var moBlock = mo
+          ? '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:2px 0 9px;border-bottom:1px solid rgba(13,148,136,.18);margin-bottom:7px"><span style="font-size:12px;color:#0d9488;font-weight:800">Mano de obra a licitar</span><span style="font-size:17px;font-weight:800;color:#0f1e35">'+money(mo.costo,"PEN")+' <span style="font-size:10.5px;color:#94a3b8;font-weight:700">· '+mo.partidas+' partidas</span></span></div>'
+          : '<div style="font-size:11.5px;color:#b45309;font-weight:700;padding:2px 0 8px">Sin presupuesto con mano de obra cargado en el módulo Supervisor.</div>';
         return '<div style="background:#f0fbf9;border:1px solid rgba(62,203,176,.3);border-radius:12px;padding:12px 14px;margin-top:2px">'+
-          '<div style="font-size:11px;font-weight:800;color:#0d9488;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;display:flex;align-items:center;gap:6px"><i data-lucide="link-2" style="width:13px;height:13px"></i>Datos del proyecto vinculado</div>'+
-          row('Código', p.cod_proyecto)+row('Estado', p.estado)+row('Supervisor', p.supervisor)+row('Categoría', p.categoria)+row('Ubicación', ubic||p.direccion)+row('Valor de venta', venta)+row('Avance', p.valorizacion_pct!=null?(p.valorizacion_pct+'%'):'')+row('Ambientes', p.ambientes)+
-          '<div style="font-size:10.5px;color:#0d9488;margin-top:7px;font-weight:600;line-height:1.4">Se autocompletaron cliente, ubicación, especialidad y fechas. El valor de venta es del proyecto completo — ajusta el presupuesto de esta licitación.</div>'+
+          '<div style="font-size:11px;font-weight:800;color:#0d9488;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;align-items:center;gap:6px"><i data-lucide="link-2" style="width:13px;height:13px"></i>Datos del proyecto vinculado</div>'+
+          moBlock+
+          (p?(row('Código', p.cod_proyecto)+row('Estado', p.estado)+row('Supervisor', p.supervisor)+row('Categoría', p.categoria)+row('Ubicación', ubic||p.direccion)+row('Avance', p.valorizacion_pct!=null?(p.valorizacion_pct+'%'):'')+row('Ambientes', p.ambientes)):'')+
+          (mo?'<div style="font-size:10.5px;color:#0d9488;margin-top:7px;font-weight:600;line-height:1.4">El presupuesto se precargó con la mano de obra (lo que se terceriza). Ajústalo si hace falta.</div>':'')+
         '</div>';
       }
       function fill(){
-        var name=sel.value;
+        var name=sel.value; var info=$('#nc-proyinfo');
+        var mo = name ? STATE.manoObra[normname(name)] : null;
         STATE.selProyecto = name ? ((STATE.proyectosByName&&STATE.proyectosByName[name])||null) : null;
-        var p=STATE.selProyecto; var info=$('#nc-proyinfo');
-        if(!p){ if(info) info.innerHTML=''; return; }
-        var _seen={}, ubic=[p.distrito,p.provincia,p.departamento].filter(Boolean).filter(function(x){ var k=String(x).toLowerCase(); if(_seen[k]) return false; _seen[k]=1; return true; }).join(', ');
+        var p=STATE.selProyecto;
+        if(!name){ if(info) info.innerHTML=''; return; }
         function setV(id,v){ var el=$('#'+id); if(el) el.value=(v==null?'':v); }
-        setV('nc-cliente', p.nombre);
-        setV('nc-ubic', ubic||p.direccion||p.zona||'');
-        if(p.categoria) setV('nc-esp', p.categoria);
-        if(p.fecha_ini_contractual) setV('nc-fini', p.fecha_ini_contractual);
-        if(p.fecha_ini_contractual && p.fecha_fin_contractual){ var dd=Math.round((new Date(p.fecha_fin_contractual)-new Date(p.fecha_ini_contractual))/86400000); if(dd>0) setV('nc-plazo', dd); }
-        if(info){ info.innerHTML=proyInfoHtml(p,ubic); icons(); }
+        var ubic='';
+        if(p){
+          var _seen={}; ubic=[p.distrito,p.provincia,p.departamento].filter(Boolean).filter(function(x){ var k=String(x).toLowerCase(); if(_seen[k]) return false; _seen[k]=1; return true; }).join(', ');
+          setV('nc-cliente', p.nombre);
+          setV('nc-ubic', ubic||p.direccion||p.zona||'');
+          if(p.categoria) setV('nc-esp', p.categoria);
+          if(p.fecha_ini_contractual) setV('nc-fini', p.fecha_ini_contractual);
+          if(p.fecha_ini_contractual && p.fecha_fin_contractual){ var dd=Math.round((new Date(p.fecha_fin_contractual)-new Date(p.fecha_ini_contractual))/86400000); if(dd>0) setV('nc-plazo', dd); }
+        } else { setV('nc-cliente', name); }
+        if(mo && mo.costo){ setV('nc-pres', Math.round(mo.costo)); }
+        if(info){ info.innerHTML=proyInfoHtml(p,ubic,mo); icons(); }
       }
       sel.onchange=fill;
+      if(prefill){
+        var exists=Array.prototype.some.call(sel.options,function(o){ return o.value===prefill; });
+        if(!exists){ var op=document.createElement('option'); op.value=prefill; op.textContent=prefill; sel.appendChild(op); }
+        sel.value=prefill; fill();
+      }
     }
   });
 }
