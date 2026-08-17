@@ -349,7 +349,7 @@ function moneyK(n,cur){ n=Number(n||0); var sym=cur==='USD'?'$':'S/ '; if(Math.a
 function fmtDate(iso){ if(!iso) return '—'; try{ var d=new Date(iso); return d.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'}); }catch(e){ return '—'; } }
 function daysTo(iso){ if(!iso) return null; var t=new Date(); t.setHours(0,0,0,0); var d=new Date(iso); d.setHours(0,0,0,0); return Math.round((d-t)/86400000); }
 function estClass(e){ return EST_CLASS[e]||'est-borrador'; }
-function toast(msg,err){ var t=$('#toast'); $('#toast-txt').textContent=msg; t.classList.toggle('err',!!err); t.querySelector('i').setAttribute('data-lucide',err?'alert-triangle':'check'); icons(); t.classList.add('on'); clearTimeout(window.__tt); window.__tt=setTimeout(function(){t.classList.remove('on');},3200); }
+function toast(msg,err){ var t=$('#toast'); if(!t) return; var tx=$('#toast-txt'); if(tx) tx.textContent=msg; t.classList.toggle('err',!!err); var ic=t.querySelector('i,svg'); if(ic&&ic.parentNode){ var ni=document.createElement('i'); ni.setAttribute('data-lucide',err?'alert-triangle':'check'); ic.parentNode.replaceChild(ni,ic); } icons(); t.classList.add('on'); clearTimeout(window.__tt); window.__tt=setTimeout(function(){t.classList.remove('on');},3200); }
 function uniq(a){ return a.filter(function(v,i){ return v && a.indexOf(v)===i; }); }
 function esc2(s){return esc(s);}
 
@@ -541,9 +541,12 @@ function licRow(l){
 async function ensureRefs(){
   if(STATE.contratistas.length && STATE.proyectos.length) return;
   try{
-    var ps = await sb.from('proyectos').select('nombre').order('nombre');
-    STATE.proyectos = uniq((ps.data||[]).map(function(p){ return p.nombre; }));
-  }catch(e){ STATE.proyectos=[]; }
+    var ps = await sb.from('proyectos').select('id,nombre,cod_proyecto,estado,supervisor,supervisor_email,zona,categoria,departamento,provincia,distrito,direccion,ambientes,fecha_ini_contractual,fecha_fin_contractual,venta,valorizacion_pct').order('nombre');
+    var rows = ps.data||[];
+    STATE.proyectos = uniq(rows.map(function(p){ return p.nombre; }));
+    STATE.proyectosByName = {};
+    rows.forEach(function(p){ if(p.nombre && !STATE.proyectosByName[p.nombre]) STATE.proyectosByName[p.nombre]=p; });
+  }catch(e){ STATE.proyectos=[]; STATE.proyectosByName={}; }
   try{
     var cs = await sb.from('portafolio_servicios').select('contratista,especialidad,supervisor');
     var map={};
@@ -558,6 +561,7 @@ async function openCreate(){
   var maxNum=0; STATE.lics.forEach(function(l){ var m=(l.codigo||'').match(/LIC-\d{4}-(\d+)/); if(m) maxNum=Math.max(maxNum,+m[1]); });
   var year=(new Date()).getFullYear();
   var cod='LIC-'+year+'-'+String(maxNum+1).padStart(4,'0');
+  STATE.selProyecto=null;
   openModal({
     title:'Nueva licitación', sub:'Se genera el código automáticamente y queda en Borrador.',
     wide:false,
@@ -571,6 +575,7 @@ async function openCreate(){
         fInput('nc-esp','Especialidad','','text')+
         fInput('nc-resp','Responsable',USER,'text')+
         fSelect('nc-prio','Prioridad',['Alta','Media','Baja'],'Media')+
+        '<div class="fg full" style="grid-column:1/-1"><div id="nc-proyinfo"></div></div>'+
       '</div></div>'+
       '<div class="fsec"><div class="fsec-t"><i data-lucide="calendar-days"></i>Fechas y económico</div><div class="fgrid">'+
         fInput('nc-flim','Fecha límite de presentación','','date')+
@@ -584,7 +589,34 @@ async function openCreate(){
         fArea('nc-excl','Exclusiones','')+
         fArea('nc-entreg','Entregables','')+
       '</div></div>',
-    okText:'Crear licitación', ok: doCreate
+    okText:'Crear licitación', ok: doCreate,
+    after: function(){
+      var sel=$('#nc-proyecto'); if(!sel) return;
+      function row(k,v){ return v!=null&&v!==''?('<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:12px"><span style="color:#94a3b8;font-weight:600">'+esc(k)+'</span><span style="color:#0f1e35;font-weight:700;text-align:right">'+esc(v)+'</span></div>'):''; }
+      function proyInfoHtml(p,ubic){
+        var venta = p.venta? ('$ '+Number(p.venta).toLocaleString('es-PE')) : '';
+        return '<div style="background:#f0fbf9;border:1px solid rgba(62,203,176,.3);border-radius:12px;padding:12px 14px;margin-top:2px">'+
+          '<div style="font-size:11px;font-weight:800;color:#0d9488;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;display:flex;align-items:center;gap:6px"><i data-lucide="link-2" style="width:13px;height:13px"></i>Datos del proyecto vinculado</div>'+
+          row('Código', p.cod_proyecto)+row('Estado', p.estado)+row('Supervisor', p.supervisor)+row('Categoría', p.categoria)+row('Ubicación', ubic||p.direccion)+row('Valor de venta', venta)+row('Avance', p.valorizacion_pct!=null?(p.valorizacion_pct+'%'):'')+row('Ambientes', p.ambientes)+
+          '<div style="font-size:10.5px;color:#0d9488;margin-top:7px;font-weight:600;line-height:1.4">Se autocompletaron cliente, ubicación, especialidad y fechas. El valor de venta es del proyecto completo — ajusta el presupuesto de esta licitación.</div>'+
+        '</div>';
+      }
+      function fill(){
+        var name=sel.value;
+        STATE.selProyecto = name ? ((STATE.proyectosByName&&STATE.proyectosByName[name])||null) : null;
+        var p=STATE.selProyecto; var info=$('#nc-proyinfo');
+        if(!p){ if(info) info.innerHTML=''; return; }
+        var _seen={}, ubic=[p.distrito,p.provincia,p.departamento].filter(Boolean).filter(function(x){ var k=String(x).toLowerCase(); if(_seen[k]) return false; _seen[k]=1; return true; }).join(', ');
+        function setV(id,v){ var el=$('#'+id); if(el) el.value=(v==null?'':v); }
+        setV('nc-cliente', p.nombre);
+        setV('nc-ubic', ubic||p.direccion||p.zona||'');
+        if(p.categoria) setV('nc-esp', p.categoria);
+        if(p.fecha_ini_contractual) setV('nc-fini', p.fecha_ini_contractual);
+        if(p.fecha_ini_contractual && p.fecha_fin_contractual){ var dd=Math.round((new Date(p.fecha_fin_contractual)-new Date(p.fecha_ini_contractual))/86400000); if(dd>0) setV('nc-plazo', dd); }
+        if(info){ info.innerHTML=proyInfoHtml(p,ubic); icons(); }
+      }
+      sel.onchange=fill;
+    }
   });
 }
 async function doCreate(){
@@ -592,7 +624,7 @@ async function doCreate(){
   if(!nombre){ toast('El nombre es obligatorio', true); return false; }
   var payload={
     codigo:$('#nc-cod').value.trim(), nombre:nombre,
-    proyecto:$('#nc-proyecto').value||null, cliente:$('#nc-cliente').value.trim()||null,
+    proyecto:$('#nc-proyecto').value||null, proyecto_id:(STATE.selProyecto&&STATE.selProyecto.id)||null, cliente:$('#nc-cliente').value.trim()||null,
     ubicacion:$('#nc-ubic').value.trim()||null, especialidad:$('#nc-esp').value.trim()||null,
     responsable:$('#nc-resp').value.trim()||USER, prioridad:$('#nc-prio').value,
     moneda:$('#nc-moneda').value, presupuesto_base:Number($('#nc-pres').value||0),
