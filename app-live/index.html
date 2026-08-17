@@ -477,6 +477,18 @@
       </div>
     </section>
 
+    <!-- ░░░░░░ LICITACIONES — KPIs (fuente única: v_lic_kpis) ░░░░░░ -->
+    <section class="panel fade-up delay-2" id="lic-kpi-panel" style="margin-bottom:18px">
+      <div class="panel-header">
+        <div class="panel-title"><i data-lucide="gavel" class="ic"></i><span>Licitaciones</span></div>
+        <a href="#licitaciones" class="panel-link">Ir a licitaciones →</a>
+      </div>
+      <p class="panel-desc">Estado del proceso de contratación — indicadores en vivo del módulo de Licitaciones.</p>
+      <div id="lic-kpi-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+        <div class="home-empty" style="grid-column:1/-1"><i data-lucide="loader"></i><span>Cargando indicadores…</span></div>
+      </div>
+    </section>
+
     <!-- ░░░░░░ GRID PRINCIPAL ░░░░░░ -->
     <div class="home-grid fade-up delay-3">
 
@@ -589,7 +601,7 @@
     <div id="view-servicios" style="display:none">
       <iframe
         id="servicios-frame"
-        src="modulos/servicios-v4.html"
+        src="modulos/servicios-v5.html?v=20260817"
         title="Dashboard de Servicios"
         loading="lazy"
         style="width:100%;height:calc(100vh - 90px);border:none;border-radius:14px;background:#f5f7fa;box-shadow:0 1px 2px rgba(15,30,53,.04),0 12px 28px -8px rgba(15,30,53,.08);display:block"
@@ -762,6 +774,7 @@
 <script src="js/router.js"></script>
 <script src="js/nuevo-proyecto.js"></script>
 <script src="js/views/inicio.js?v=20260812a"></script>
+<script src="js/views/licitaciones-kpi.js?v=20260812a"></script>
 <script src="js/views/servicios.js?v=20260607a"></script>
 <script src="js/globe.js?v=20260812a"></script>
 <script src="js/globe-exec.js?v=20260812a"></script>
