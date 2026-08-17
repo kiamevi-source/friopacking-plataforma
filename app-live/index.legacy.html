@@ -15562,26 +15562,10 @@ W._valRefresh=function(){VS.loaded=false;_load(true).then(_render);};
 W._valImport=function(){alert('Importador de Excel: próximo paso. Por ahora la data se carga y ya se ve aquí.');};
 /* Registrar como renderer FINAL (gana sobre VMAYO/VR/VP/v5).
    Re-aseguramos en timers porque alguna capa legacy re-registra tarde. */
-function _valRegister(){
-  try{W.renderValorizacionPremium=_render;}catch(e){}
-  try{W.renderValorizacion=_render;}catch(e){}
-  if(W.VIEW_RENDERERS) W.VIEW_RENDERERS.valorizacion=_render;
-  if(W.viewRenderers) W.viewRenderers.valorizacion=_render;
-}
-_valRegister();
-[0,400,1200,2500].forEach(function(ms){ setTimeout(_valRegister,ms); });
-// Auto-sanador: si la vista de Valorización está VISIBLE pero muestra la versión
-// vieja o el shell, la re-renderizo. Es robusto ante showView y las ~6 capas
-// legacy que reasignan el renderer (no depende de ganar la carrera de overrides).
-if(!W._valHealer){
-  W._valHealer=setInterval(function(){
-    var el=document.getElementById('v-valorizacion');
-    if(!el||el.offsetParent===null) return;            // no visible → nada
-    var t=el.innerText||'';
-    if(t.indexOf('Agosto 2026')<0 && t.indexOf('Cargando valorización')<0){ _render(); }
-  },700);
-}
-if(document.querySelector('.tab[data-v="valorizacion"]')&&document.querySelector('.tab[data-v="valorizacion"]').classList.contains('active')){setTimeout(_render,60);}
+/* ⛔ DESACTIVADO (colgaba la plataforma): NO auto-registrar ni auto-sanar.
+   Se deja el renderer legacy activo. _render queda disponible SOLO para pruebas
+   manuales vía window._valRenderV6(). Sin timers, sin setInterval, sin loops. */
+W._valRenderV6=_render;
 console.log('%c✅ Valorización v6 · Supabase (fuente única)','background:#0D9488;color:#fff;padding:3px 12px;border-radius:6px;font-size:11px');
 })(window);
 </script>
