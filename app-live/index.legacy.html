@@ -15519,13 +15519,19 @@ var VS={lineas:[],cobros:[],loaded:false,loading:false};
 function _u(v){v=+v;if(v==null||isNaN(v))return '$0';var a=Math.abs(v),s=(v<0?'-':'')+'$';if(a>=1e6)return s+(a/1e6).toFixed(2)+'M';if(a>=1e3)return s+Math.round(a/1e3)+'K';return s+Math.round(a);}
 function _esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function _sum(a,k){return a.reduce(function(s,x){return s+(+x[k]||0);},0);}
+// Carga vía fetch directo a la REST API de PMO (no depende de que getSB() esté
+// listo dentro del iframe — ese era el motivo del "Cargando…" infinito).
+var _VU='https://vsploxglutkbeokumunp.supabase.co';
+var _VK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
 async function _load(force){
   if(VS.loaded&&!force)return; if(VS.loading)return; VS.loading=true;
   try{
-    var db=W.getSB&&W.getSB(); if(!db){VS.loading=false;return;}
-    var lr=await db.from('valorizacion_lineas').select('*');
-    var cr=await db.from('valorizacion_cobros').select('*');
-    VS.lineas=(lr&&lr.data)||[]; VS.cobros=(cr&&cr.data)||[]; VS.loaded=true;
+    var H={apikey:_VK,Authorization:'Bearer '+_VK};
+    var lr=await fetch(_VU+'/rest/v1/valorizacion_lineas?select=*',{headers:H});
+    var cr=await fetch(_VU+'/rest/v1/valorizacion_cobros?select=*',{headers:H});
+    VS.lineas=lr.ok?(await lr.json()):[];
+    VS.cobros=cr.ok?(await cr.json()):[];
+    VS.loaded=VS.lineas.length>0;   // si falló, queda false y el auto-sanador reintenta
   }catch(e){console.warn('[valorizacion] load',e);}
   VS.loading=false;
 }
