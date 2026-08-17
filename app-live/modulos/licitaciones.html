@@ -375,28 +375,25 @@ function valState(v){ v=v||{}; var vals=VALID_KEYS.map(function(k){return v[k[0]
 async function boot(){
   if(!sb){ $('#app').innerHTML = errBox('Supabase no disponible'); return; }
   try{
-    var r = await sb.from('lic_licitaciones').select('*').order('created_at',{ascending:false});
-    if(r.error) throw r.error;
-    STATE.lics = r.data||[];
-    // conteos auxiliares
-    var adj = await sb.from('lic_adjudicaciones').select('licitacion_id,monto_adjudicado,contratista');
-    STATE.adj = {}; (adj.data||[]).forEach(function(a){ STATE.adj[a.licitacion_id]=a; });
-    var ofs = await sb.from('lic_ofertas').select('licitacion_id,estado,validacion');
+    // Todas las consultas EN PARALELO (antes iban en serie → 3× más lento)
+    var res = await Promise.all([
+      sb.from('lic_licitaciones').select('*').order('created_at',{ascending:false}),
+      sb.from('lic_adjudicaciones').select('licitacion_id,monto_adjudicado,contratista'),
+      sb.from('lic_ofertas').select('licitacion_id,estado,validacion'),
+      sb.from('lic_invitados').select('licitacion_id'),
+      sb.from('lic_partidas').select('origen_presupuesto_id').not('origen_presupuesto_id','is',null),
+      supsb ? supsb.from('v_partidas_licitables').select('*') : Promise.resolve({data:[]})
+    ]);
+    if(res[0].error) throw res[0].error;
+    STATE.lics = res[0].data||[];
+    STATE.adj = {}; (res[1].data||[]).forEach(function(a){ STATE.adj[a.licitacion_id]=a; });
     STATE.ofertasCount={}; STATE.docIncompleta={};
-    (ofs.data||[]).forEach(function(o){
-      STATE.ofertasCount[o.licitacion_id]=(STATE.ofertasCount[o.licitacion_id]||0)+1;
-      if(valState(o.validacion)!=='ok') STATE.docIncompleta[o.licitacion_id]=true;
-    });
-    var inv = await sb.from('lic_invitados').select('licitacion_id');
-    STATE.invCount={}; (inv.data||[]).forEach(function(i){ STATE.invCount[i.licitacion_id]=(STATE.invCount[i.licitacion_id]||0)+1; });
-    // Partidas licitables (mano de obra por partida, Supervisor) + cuáles ya se licitaron (PMO)
-    STATE.partidasLic={}; STATE.licitadas={}; STATE.manoObra={};
-    if(supsb){ try{
-      var pl=await supsb.from('v_partidas_licitables').select('*');
-      (pl.data||[]).forEach(function(r){ var k=normname(r.nombre_proyecto); (STATE.partidasLic[k]=STATE.partidasLic[k]||[]).push({presupuesto_id:r.presupuesto_id,proyecto:r.nombre_proyecto,item:r.item,descripcion:r.descripcion,unidad:r.unidad,cantidad:Number(r.cantidad||1),costo:Number(r.mano_obra_costo||0),venta:Number(r.mano_obra_venta||0)}); });
-      Object.keys(STATE.partidasLic).forEach(function(k){ var a=STATE.partidasLic[k]; a.sort(function(x,y){ return (parseInt(x.item,10)||0)-(parseInt(y.item,10)||0); }); STATE.manoObra[k]={proyecto:a[0].proyecto,costo:a.reduce(function(s,x){return s+x.costo;},0),venta:a.reduce(function(s,x){return s+x.venta;},0),partidas:a.length}; });
-    }catch(e){ console.warn('partidas lic', e); } }
-    try{ var lp=await sb.from('lic_partidas').select('origen_presupuesto_id').not('origen_presupuesto_id','is',null); (lp.data||[]).forEach(function(r){ if(r.origen_presupuesto_id!=null) STATE.licitadas[r.origen_presupuesto_id]=true; }); }catch(e){}
+    (res[2].data||[]).forEach(function(o){ STATE.ofertasCount[o.licitacion_id]=(STATE.ofertasCount[o.licitacion_id]||0)+1; if(valState(o.validacion)!=='ok') STATE.docIncompleta[o.licitacion_id]=true; });
+    STATE.invCount={}; (res[3].data||[]).forEach(function(i){ STATE.invCount[i.licitacion_id]=(STATE.invCount[i.licitacion_id]||0)+1; });
+    STATE.licitadas={}; (res[4].data||[]).forEach(function(r){ if(r.origen_presupuesto_id!=null) STATE.licitadas[r.origen_presupuesto_id]=true; });
+    STATE.partidasLic={}; STATE.manoObra={};
+    (res[5].data||[]).forEach(function(r){ var k=normname(r.nombre_proyecto); (STATE.partidasLic[k]=STATE.partidasLic[k]||[]).push({presupuesto_id:r.presupuesto_id,proyecto:r.nombre_proyecto,item:r.item,descripcion:r.descripcion,unidad:r.unidad,cantidad:Number(r.cantidad||1),costo:Number(r.mano_obra_costo||0),venta:Number(r.mano_obra_venta||0)}); });
+    Object.keys(STATE.partidasLic).forEach(function(k){ var a=STATE.partidasLic[k]; a.sort(function(x,y){ return (parseInt(x.item,10)||0)-(parseInt(y.item,10)||0); }); STATE.manoObra[k]={proyecto:a[0].proyecto,costo:a.reduce(function(s,x){return s+x.costo;},0),venta:a.reduce(function(s,x){return s+x.venta;},0),partidas:a.length}; });
     renderList();
   }catch(e){ console.error(e); $('#app').innerHTML = errBox(String(e.message||e)); }
 }
@@ -730,24 +727,29 @@ async function openDetail(id){
   STATE.view='detail'; STATE.tab=STATE.tab||'resumen';
   var app=$('#app'); app.innerHTML='<div style="text-align:center;padding:80px 20px"><div class="spinner"></div><div style="color:#94a3b8;font-weight:600">Cargando licitación…</div></div>';
   try{
-    var L = (await sb.from('lic_licitaciones').select('*').eq('id',id).single()).data;
-    var cur={ lic:L };
-    cur.partidas = (await sb.from('lic_partidas').select('*').eq('licitacion_id',id).order('orden')).data||[];
-    cur.docs = (await sb.from('lic_documentos').select('*').eq('licitacion_id',id).order('created_at')).data||[];
-    cur.planos = (await sb.from('lic_planos').select('*').eq('licitacion_id',id).order('created_at')).data||[];
-    cur.planoVers = (await sb.from('lic_plano_versiones').select('*').order('created_at')).data||[];
-    cur.invitados = (await sb.from('lic_invitados').select('*').eq('licitacion_id',id).order('invitado_at')).data||[];
-    cur.consultas = (await sb.from('lic_consultas').select('*').eq('licitacion_id',id).order('created_at')).data||[];
-    cur.adendas = (await sb.from('lic_adendas').select('*').eq('licitacion_id',id).order('numero')).data||[];
-    cur.ofertas = (await sb.from('lic_ofertas').select('*').eq('licitacion_id',id).order('created_at')).data||[];
+    // Lote 1: todo lo que no depende de otra consulta, EN PARALELO
+    var b = await Promise.all([
+      sb.from('lic_licitaciones').select('*').eq('id',id).single(),
+      sb.from('lic_partidas').select('*').eq('licitacion_id',id).order('orden'),
+      sb.from('lic_documentos').select('*').eq('licitacion_id',id).order('created_at'),
+      sb.from('lic_planos').select('*').eq('licitacion_id',id).order('created_at'),
+      sb.from('lic_plano_versiones').select('*').order('created_at'),
+      sb.from('lic_invitados').select('*').eq('licitacion_id',id).order('invitado_at'),
+      sb.from('lic_consultas').select('*').eq('licitacion_id',id).order('created_at'),
+      sb.from('lic_adendas').select('*').eq('licitacion_id',id).order('numero'),
+      sb.from('lic_ofertas').select('*').eq('licitacion_id',id).order('created_at'),
+      sb.from('lic_adjudicaciones').select('*').eq('licitacion_id',id).maybeSingle(),
+      sb.from('lic_eventos').select('*').eq('licitacion_id',id).order('created_at',{ascending:false})
+    ]);
+    var cur={ lic:b[0].data, partidas:b[1].data||[], docs:b[2].data||[], planos:b[3].data||[], planoVers:b[4].data||[], invitados:b[5].data||[], consultas:b[6].data||[], adendas:b[7].data||[], ofertas:b[8].data||[], adj:b[9].data, eventos:b[10].data||[] };
+    // Lote 2: lo que sí depende (items de oferta, facturas del contrato) — también en paralelo
     var ofIds = cur.ofertas.map(function(o){ return o.id; });
-    cur.ofItems = ofIds.length ? ((await sb.from('lic_oferta_items').select('*').in('oferta_id',ofIds)).data||[]) : [];
-    cur.adj = (await sb.from('lic_adjudicaciones').select('*').eq('licitacion_id',id).maybeSingle()).data;
-    cur.facturas = [];
-    if(cur.adj && cur.adj.contrato_codigo && ctsb){
-      try{ var fr = await ctsb.rpc('contrato_ejecucion', { p_contrato: cur.adj.contrato_codigo }); cur.facturas = (fr.data||[]).slice().sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); }); }catch(e){ console.warn('facturas', e); }
-    }
-    cur.eventos = (await sb.from('lic_eventos').select('*').eq('licitacion_id',id).order('created_at',{ascending:false})).data||[];
+    var b2 = await Promise.all([
+      ofIds.length ? sb.from('lic_oferta_items').select('*').in('oferta_id',ofIds) : Promise.resolve({data:[]}),
+      (cur.adj && cur.adj.contrato_codigo && ctsb) ? ctsb.rpc('contrato_ejecucion', { p_contrato: cur.adj.contrato_codigo }) : Promise.resolve({data:[]})
+    ]);
+    cur.ofItems = b2[0].data||[];
+    cur.facturas = (b2[1].data||[]).slice().sort(function(a,c){ return new Date(c.fecha)-new Date(a.fecha); });
     STATE.cur=cur;
     renderDetail();
   }catch(e){ console.error(e); app.innerHTML=errBox(String(e.message||e)); }
