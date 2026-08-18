@@ -334,7 +334,8 @@
             <div class="fld"><label>N° de factura</label><input type="text" id="fac-num" placeholder="F001-0001" required></div>
             <div class="fld"><label>Contrato adjudicado <span style="color:var(--muted);font-weight:500">(opcional)</span></label><select id="fac-contrato"><option value="">— Sin contrato / suelta —</option></select></div>
             <div class="fld"><label>Proyecto / obra</label><select id="fac-proyecto" required><option value="">Cargando proyectos…</option></select></div>
-            <div class="fld"><label>Monto (USD)</label><input type="number" id="fac-monto" min="0" step="0.01" placeholder="0.00" required></div>
+            <div class="fld"><label>Moneda</label><select id="fac-moneda"><option value="PEN">Soles (S/)</option><option value="USD">Dólares ($)</option></select></div>
+            <div class="fld"><label>Monto</label><input type="number" id="fac-monto" min="0" step="0.01" placeholder="0.00" required></div>
             <div class="fld"><label>Fecha de emisión</label><input type="date" id="fac-fecha" required></div>
             <div class="fld"><label>Estado</label>
               <select id="fac-estado">
@@ -423,8 +424,11 @@
   // ── Helpers ──
   var $ = function(s){ return document.querySelector(s); };
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  function money(n){ n = Number(n)||0; return '$' + n.toLocaleString('en-US',{maximumFractionDigits:0}); }
-  function money2(n){ n = Number(n)||0; return '$' + n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function sym(m){ return (m==='USD'||m==='$')?'$ ':'S/ '; }
+  function money(n,m){ n = Number(n)||0; return sym(m) + n.toLocaleString('es-PE',{maximumFractionDigits:0}); }
+  function money2(n,m){ n = Number(n)||0; return sym(m) + n.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  // Suma por moneda → "S/ X · $ Y" (nunca mezcla soles con dólares en un solo total)
+  function sumByMoneda(list,getN,getM){ var by={}; (list||[]).forEach(function(r){ var m=(getM(r)||'PEN'); by[m]=(by[m]||0)+(Number(getN(r))||0); }); var ks=Object.keys(by).sort(); if(!ks.length) return money(0,'PEN'); return ks.map(function(m){ return money(by[m],m); }).join('  ·  '); }
   function fmtDate(iso){ if(!iso) return '—'; var d=new Date(iso+'T12:00:00'); var m=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']; return d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear(); }
   function fileSize(b){ if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
   var toastTimer;
@@ -548,6 +552,7 @@
       num: $('#fac-num').value.trim(),
       proyecto: $('#fac-proyecto').value.trim(),
       monto: parseFloat($('#fac-monto').value)||0,
+      moneda: ($('#fac-moneda') && $('#fac-moneda').value) || 'PEN',
       fecha: $('#fac-fecha').value,
       estado: $('#fac-estado').value,
       contrata: USER_EMAIL || null,
@@ -578,7 +583,7 @@
     facPending = []; renderFacPending();
     formFac.reset(); $('#fac-fecha').value = new Date().toISOString().slice(0,10);
     renderFacturas(); renderDocs(); renderResumen(); renderContratos();
-    toast('Factura enviada al supervisor', fac.num + ' · ' + money2(fac.monto) + (subidos?(' · '+subidos+' doc(s)'):''));
+    toast('Factura enviada al supervisor', fac.num + ' · ' + money2(fac.monto,fac.moneda) + (subidos?(' · '+subidos+' doc(s)'):''));
   });
   async function delFactura(id){
     if(!sb) return;
@@ -598,17 +603,15 @@
         var nd = docs.filter(function(d){ return d.factura_id === r.id; }).length;
         var motivo = (r.estado_revision==='observada' && r.obs_supervisor) ? '<div style="font-size:11px;color:var(--danger);font-weight:600;margin-top:5px;line-height:1.35;max-width:240px">⚠ '+esc(r.obs_supervisor)+'</div>' : '';
         return '<tr><td><b>'+esc(r.num)+'</b></td><td>'+esc(r.proyecto)+'</td><td>'+fmtDate(r.fecha)+'</td>'+
-          '<td><b>'+money2(r.monto)+'</b></td><td><span class="tag '+e.c+'">'+e.t+'</span></td>'+
+          '<td><b>'+money2(r.monto,r.moneda)+'</b></td><td><span class="tag '+e.c+'">'+e.t+'</span></td>'+
           '<td>'+(nd?('<span class="tag info">📎 '+nd+'</span>'):'<span style="color:var(--muted)">—</span>')+'</td>'+
           '<td><span class="tag '+rv.c+'">'+rv.t+'</span>'+motivo+'</td>'+
           '<td style="text-align:right"><button class="row-act" data-del-fac="'+r.id+'" title="Eliminar"><svg data-lucide="trash-2"></svg></button></td></tr>';
       }).join('');
     }
-    var total=0,pend=0,paid=0;
-    facturas.forEach(function(r){ var m=Number(r.monto)||0; total+=m; if(r.estado==='pagada') paid+=m; else pend+=m; });
-    $('#f-total').textContent = money(total);
-    $('#f-pend').textContent  = money(pend);
-    $('#f-paid').textContent  = money(paid);
+    $('#f-total').textContent = sumByMoneda(facturas, function(r){return r.monto;}, function(r){return r.moneda;});
+    $('#f-pend').textContent  = sumByMoneda(facturas.filter(function(r){return r.estado!=='pagada';}), function(r){return r.monto;}, function(r){return r.moneda;});
+    $('#f-paid').textContent  = sumByMoneda(facturas.filter(function(r){return r.estado==='pagada';}), function(r){return r.monto;}, function(r){return r.moneda;});
     body.querySelectorAll('[data-del-fac]').forEach(function(b){ b.addEventListener('click', function(){ delFactura(b.dataset.delFac); }); });
     if(window.lucide) lucide.createIcons();
   }
@@ -677,11 +680,10 @@
     var now = new Date(), m = now.getMonth(), y = now.getFullYear();
     var infMes = informes.filter(function(r){ var d=new Date(r.fecha+'T12:00:00'); return d.getMonth()===m && d.getFullYear()===y; }).length;
     $('#k-informes').textContent = infMes;
-    var total=0,pend=0;
-    facturas.forEach(function(r){ var mt=Number(r.monto)||0; total+=mt; if(r.estado!=='pagada') pend+=mt; });
-    $('#k-facturado').textContent = money(total);
+    var gm=function(r){return r.moneda;}, gn=function(r){return r.monto;};
+    $('#k-facturado').textContent = sumByMoneda(facturas, gn, gm);
     $('#k-facturado-sub').textContent = facturas.length + (facturas.length===1?' factura':' facturas');
-    $('#k-porcobrar').textContent = money(pend);
+    $('#k-porcobrar').textContent = sumByMoneda(facturas.filter(function(r){return r.estado!=='pagada';}), gn, gm);
     $('#k-docs').textContent = docs.length;
     if(typeof renderResumenHome==='function') renderResumenHome();
   }
@@ -722,9 +724,10 @@
     if(sel){
       var prev = sel.value;
       sel.innerHTML = '<option value="">— Sin contrato / suelta —</option>' + LZ.contratos.map(function(a){
-        return '<option value="'+esc(a.contrato_codigo||'')+'" data-lic="'+esc(a.licitacion_codigo||'')+'">'+esc(a.contrato_codigo||'(sin código)')+' · '+esc(a.contratista||'')+'</option>';
+        return '<option value="'+esc(a.contrato_codigo||'')+'" data-lic="'+esc(a.licitacion_codigo||'')+'" data-moneda="'+esc(a.moneda||'PEN')+'">'+esc(a.contrato_codigo||'(sin código)')+' · '+esc(a.contratista||'')+'</option>';
       }).join('');
       if(prev) sel.value = prev;
+      if(!sel.__monedaBound){ sel.__monedaBound=true; sel.addEventListener('change', function(){ var o=sel.options[sel.selectedIndex]; var mo=o&&o.getAttribute('data-moneda'); var fm=$('#fac-moneda'); if(mo&&fm) fm.value=mo; }); }
     }
     renderContratos();
   }
@@ -734,13 +737,13 @@
     if(!LZ.contratos.length){ box.innerHTML=''; return; }
     box.innerHTML = '<div class="panel" style="margin-bottom:14px"><div class="panel-h"><h3>Mis contratos</h3><span class="count">'+LZ.contratos.length+'</span></div>'+
       LZ.contratos.map(function(a){
-        var adj=Number(a.monto_adjudicado||0); var fac=facturadoDe(a.contrato_codigo); var saldo=adj-fac; var pct=adj?Math.min(100,Math.round(fac/adj*100)):0;
+        var cur=a.moneda||'PEN'; var adj=Number(a.monto_adjudicado||0); var fac=facturadoDe(a.contrato_codigo); var saldo=adj-fac; var pct=adj?Math.min(100,Math.round(fac/adj*100)):0;
         return '<div style="border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:10px">'+
           '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><div style="font-weight:800;font-size:14px;color:var(--ink)">'+esc(a.contrato_codigo||'(sin código)')+'</div><div style="font-size:12px;color:var(--muted);font-weight:600">Licitación '+esc(a.licitacion_codigo||'—')+'</div></div>'+
           '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 6px">'+
-            '<div><div style="font-size:11px;color:var(--muted);font-weight:700">Adjudicado</div><div style="font-size:16px;font-weight:800">'+lzMoney(adj,'PEN')+'</div></div>'+
-            '<div><div style="font-size:11px;color:var(--muted);font-weight:700">Facturado</div><div style="font-size:16px;font-weight:800;color:var(--teal)">'+lzMoney(fac,'PEN')+'</div></div>'+
-            '<div><div style="font-size:11px;color:var(--muted);font-weight:700">Saldo</div><div style="font-size:16px;font-weight:800;color:'+(saldo>0?'var(--blue)':'var(--danger)')+'">'+lzMoney(saldo,'PEN')+'</div></div>'+
+            '<div><div style="font-size:11px;color:var(--muted);font-weight:700">Adjudicado</div><div style="font-size:16px;font-weight:800">'+lzMoney(adj,cur)+'</div></div>'+
+            '<div><div style="font-size:11px;color:var(--muted);font-weight:700">Facturado</div><div style="font-size:16px;font-weight:800;color:var(--teal)">'+lzMoney(fac,cur)+'</div></div>'+
+            '<div><div style="font-size:11px;color:var(--muted);font-weight:700">Saldo</div><div style="font-size:16px;font-weight:800;color:'+(saldo>0?'var(--blue)':'var(--danger)')+'">'+lzMoney(saldo,cur)+'</div></div>'+
           '</div>'+
           '<div style="height:8px;border-radius:6px;background:var(--bg2);overflow:hidden"><div style="height:100%;width:'+pct+'%;border-radius:6px;background:linear-gradient(90deg,var(--teal),var(--blue))"></div></div>'+
           '<div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:4px">'+pct+'% facturado</div>'+
@@ -962,12 +965,16 @@
     var ch=$('#rs-contratos');
     if(ch){
       if(typeof LZ!=='undefined' && LZ.contratos && LZ.contratos.length){
-        var ms=function(l,v,col){ return '<div style="background:var(--bg2);border-radius:11px;padding:11px 12px"><div style="font-size:11px;color:var(--muted);font-weight:700">'+l+'</div><div style="font-size:16px;font-weight:800;color:'+col+';margin-top:2px">'+lzMoney(v,"PEN")+'</div></div>'; };
-        var tA=0,tF=0; LZ.contratos.forEach(function(a){ tA+=Number(a.monto_adjudicado||0); tF+=facturadoDe(a.contrato_codigo); }); var tS=tA-tF;
+        var ms=function(l,vstr,col){ return '<div style="background:var(--bg2);border-radius:11px;padding:11px 12px"><div style="font-size:11px;color:var(--muted);font-weight:700">'+l+'</div><div style="font-size:15px;font-weight:800;color:'+col+';margin-top:2px">'+vstr+'</div></div>'; };
+        var byM={}; LZ.contratos.forEach(function(a){ var m=a.moneda||'PEN'; if(!byM[m])byM[m]={adj:0,fac:0}; byM[m].adj+=Number(a.monto_adjudicado||0); byM[m].fac+=facturadoDe(a.contrato_codigo); });
+        var mks=Object.keys(byM).sort();
+        var gA=mks.map(function(m){return lzMoney(byM[m].adj,m);}).join(' · ');
+        var gF=mks.map(function(m){return lzMoney(byM[m].fac,m);}).join(' · ');
+        var gS=mks.map(function(m){return lzMoney(byM[m].adj-byM[m].fac,m);}).join(' · ');
         ch.innerHTML='<div class="panel" style="padding:15px 16px"><div class="panel-h" style="margin-bottom:10px"><h3>Mis contratos</h3><span class="count">'+LZ.contratos.length+'</span></div>'+
-          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">'+ms('Adjudicado',tA,'var(--ink)')+ms('Facturado',tF,'var(--teal)')+ms('Saldo por facturar',tS,tS>0?'var(--blue)':'var(--danger)')+'</div>'+
-          LZ.contratos.map(function(a){ var adj=Number(a.monto_adjudicado||0),fac=facturadoDe(a.contrato_codigo),s=adj-fac,pct=adj?Math.min(100,Math.round(fac/adj*100)):0;
-            return '<div style="padding:9px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px"><span style="font-weight:800">'+esc(a.contrato_codigo||'—')+' <span style="color:var(--muted);font-weight:600">· '+esc(a.licitacion_codigo||'')+'</span></span><span style="color:var(--muted);font-weight:600;white-space:nowrap">'+lzMoney(s,"PEN")+' por facturar</span></div><div style="height:6px;border-radius:4px;background:var(--bg2);overflow:hidden;margin-top:6px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--teal),var(--blue))"></div></div></div>';
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">'+ms('Adjudicado',gA,'var(--ink)')+ms('Facturado',gF,'var(--teal)')+ms('Saldo por facturar',gS,'var(--blue)')+'</div>'+
+          LZ.contratos.map(function(a){ var cur=a.moneda||'PEN',adj=Number(a.monto_adjudicado||0),fac=facturadoDe(a.contrato_codigo),s=adj-fac,pct=adj?Math.min(100,Math.round(fac/adj*100)):0;
+            return '<div style="padding:9px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px"><span style="font-weight:800">'+esc(a.contrato_codigo||'—')+' <span style="color:var(--muted);font-weight:600">· '+esc(a.licitacion_codigo||'')+'</span></span><span style="color:var(--muted);font-weight:600;white-space:nowrap">'+lzMoney(s,cur)+' por facturar</span></div><div style="height:6px;border-radius:4px;background:var(--bg2);overflow:hidden;margin-top:6px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--teal),var(--blue))"></div></div></div>';
           }).join('')+'</div>';
       } else { ch.innerHTML=''; }
     }
