@@ -1094,12 +1094,15 @@ function rDIR(){
   let h=`<table class="gtbl" style="width:100%;font-size:12px;"><thead><tr>
     <th class="lh" style="text-align:left;">OBRA</th><th style="text-align:left;">ESTADO</th><th style="text-align:left;">SUPERVISOR (dirige)</th><th style="text-align:left;">ASISTENTE (también reporta)</th><th>ZONA</th></tr></thead><tbody>`;
   list.forEach(p=>{
-    const asis=accDe(p.cod_proyecto,'asistente');
+    const asis=accsDe(p.cod_proyecto,'asistente');
+    const chips=asis.map(a=>`<span style="display:inline-flex;align-items:center;gap:5px;background:#f1f5f9;border:1px solid var(--border);border-radius:999px;padding:2px 4px 2px 9px;margin:1px 3px 1px 0;font-size:11px;white-space:nowrap;">${nomDe(a.email)}<a onclick="quitarAsis(${p.id},'${a.email}')" title="Quitar" style="cursor:pointer;color:#DC2626;font-weight:700;padding:0 4px;">&times;</a></span>`).join('');
+    const libres=ROSTER.filter(r=>r.email && !asis.some(a=>a.email===r.email));
+    const addOpts=`<option value="">+ agregar</option>`+libres.map(r=>`<option value="${r.email}">${r.n}</option>`).join('');
     h+=`<tr>
       <td style="padding:7px 10px;"><b>${p.nombre||'(sin nombre)'}</b><div style="font-size:10px;color:var(--muted);">${p.cod_proyecto||''}</div></td>
       <td><select onchange="cambiarEstado(${p.id},this.value)" style="font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:7px;font-family:inherit;">${estOpts(p.estado)}</select></td>
       <td><select onchange="asignarSup(${p.id},this.value)" style="font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:7px;font-family:inherit;min-width:200px;">${supOpts(p.supervisor_email)}</select></td>
-      <td><select onchange="asignarAsis(${p.id},this.value)" style="font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:7px;font-family:inherit;min-width:200px;">${supOpts(asis?asis.email:'')}</select></td>
+      <td style="min-width:220px;">${chips}<select onchange="agregarAsis(${p.id},this.value);this.selectedIndex=0;" style="font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:7px;font-family:inherit;min-width:120px;">${addOpts}</select></td>
       <td style="text-align:center;color:var(--muted);">${p.zona||'—'}</td>
     </tr>`;
   });
@@ -1482,6 +1485,34 @@ function cargarAccesos(){
 }
 cargarAccesos();
 const accDe=(cod,rol)=>ACCESOS.find(a=>a.cod_proyecto===cod&&a.rol===rol);
+/* Una obra puede tener VARIOS asistentes (AGROBERRIES VIRÚ tiene dos). */
+const accsDe=(cod,rol)=>ACCESOS.filter(a=>a.cod_proyecto===cod&&a.rol===rol);
+const nomDe=(email)=>{ const r=ROSTER.find(x=>x.email===email); return r?r.n:email; };
+
+function agregarAsis(id,email){
+  if(!email) return;
+  const p0=PROYS.find(x=>x.id===id); if(!p0) return;
+  const cod=p0.cod_proyecto;
+  if(!cod){ toast('Esa obra no tiene código de proyecto'); return; }
+  const sup=accDe(cod,'supervisor');
+  if(sup&&sup.email===email){ toast('Ya es el supervisor de esta obra'); rDIR(); return; }
+  if(accsDe(cod,'asistente').some(a=>a.email===email)){ toast('Ya es asistente aquí'); return; }
+  fetch(SB_URL+'/rest/v1/proyecto_accesos',{method:'POST',headers:{...SB_H,'Prefer':'return=minimal'},
+    body:JSON.stringify({cod_proyecto:cod,email,rol:'asistente'})})
+    .then(r=>{ if(!r.ok) throw 0; return cargarAccesos(); })
+    .then(()=>{ toast('Asistente: '+nomDe(email)); logBitacora('Acceso asistente',p0.nombre,'+ '+email); })
+    .catch(()=>{ toast('No se pudo agregar'); cargarAccesos(); });
+}
+
+function quitarAsis(id,email){
+  const p0=PROYS.find(x=>x.id===id); if(!p0) return;
+  if(!confirm('Quitar a '+nomDe(email)+' de '+p0.nombre+'?\n\nDeja de poder escribir el reporte diario de esta obra.')) return;
+  fetch(SB_URL+'/rest/v1/proyecto_accesos?cod_proyecto=eq.'+encodeURIComponent(p0.cod_proyecto)+'&rol=eq.asistente&email=eq.'+encodeURIComponent(email),
+    {method:'DELETE',headers:{...SB_H,'Prefer':'return=minimal'}})
+    .then(r=>{ if(!r.ok) throw 0; return cargarAccesos(); })
+    .then(()=>{ toast('Quitado: '+nomDe(email)); logBitacora('Acceso asistente',p0.nombre,'- '+email); })
+    .catch(()=>{ toast('No se pudo quitar'); cargarAccesos(); });
+}
 
 /* Reemplaza el acceso de un rol en una obra: fuera el anterior, entra el nuevo. */
 function setAcceso(cod,rol,email,nomObra,silencioso){
@@ -1499,10 +1530,6 @@ function setAcceso(cod,rol,email,nomObra,silencioso){
     if(!silencioso) toast(rol==='supervisor'?('Supervisor: '+nuevo):('Asistente: '+nuevo));
     if((prev?prev.email:'')!==(email||'')) logBitacora('Acceso '+rol, nomObra||cod, (prev?prev.email:'—')+' → '+(email||'—'));
   }).catch(()=>{ toast('Error al cambiar el acceso'); cargarAccesos(); });
-}
-function asignarAsis(id,email){
-  const p0=PROYS.find(x=>x.id===id); if(!p0) return;
-  setAcceso(p0.cod_proyecto,'asistente',email,p0.nombre);
 }
 function autoZona(){
   const nombre=(document.getElementById('f-cli').value||'').trim().toLowerCase();
