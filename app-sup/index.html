@@ -3153,6 +3153,19 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 .rd-hero-meta div{display:flex;flex-direction:column;gap:1px;}
 .rd-hero-meta .k{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.5);}
 .rd-hero-meta .v{font-size:14px;font-weight:700;color:#fff;}
+/* ── Tira de plazos del hero: contractual vs real + SPI ── */
+.rd-hero-plazos{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+.rd-hp{display:flex;flex-direction:column;gap:2px;padding:7px 12px;border-radius:9px;
+  background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.14);min-width:104px;}
+.rd-hp .k{font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.55);}
+.rd-hp .v{font-size:13px;font-weight:800;color:#fff;line-height:1.15;}
+.rd-hp .s{font-size:10px;font-weight:700;color:rgba(255,255,255,.6);}
+.rd-hp.real{background:rgba(34,211,238,.16);border-color:rgba(34,211,238,.34);}
+.rd-hp.spi{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.24);}
+.rd-hp.spi.bad{background:rgba(239,68,68,.22);border-color:rgba(239,68,68,.45);}
+.rd-hp.spi.warn{background:rgba(245,158,11,.22);border-color:rgba(245,158,11,.45);}
+.rd-hp.spi.ok{background:rgba(34,197,94,.22);border-color:rgba(34,197,94,.45);}
+.rd-hp .late{color:#fca5a5;} .rd-hp .early{color:#86efac;}
 .rd-status{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;
   font-size:12.5px;font-weight:800;width:fit-content;
   background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);}
@@ -4036,6 +4049,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
               <div><span class="k">Fecha</span><span class="v"><input type="date" id="rd-fecha" style="border:none;background:transparent;color:#fff;font-weight:700;font-size:13.5px;color-scheme:dark;"></span></div>
               <div><span class="k">Jornada</span><span class="v" style="display:flex;gap:4px;align-items:center;"><input type="time" id="rd-entrada" style="border:none;background:transparent;color:#fff;width:66px;color-scheme:dark;"><span style="opacity:.5;">–</span><input type="time" id="rd-salida" style="border:none;background:transparent;color:#fff;width:66px;color-scheme:dark;"></span></div>
             </div>
+            <div class="rd-hero-plazos" id="rd-hero-plazos"></div>
             <div class="rd-status ok" id="rd-status"><span class="dot"></span> <span id="rd-status-txt">Operación normal</span></div>
             <input type="text" id="rd-jornada-motivo" placeholder="Motivo variación de jornada (si aplica)" style="margin-top:2px;border:none;background:rgba(255,255,255,.1);border-radius:8px;padding:6px 10px;color:#fff;font-size:11.5px;width:100%;max-width:340px;">
           </div>
@@ -4078,9 +4092,6 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
               </div>
               <div class="rd-diff pos" id="rd-diff"><b>0</b><span>Δ puntos</span></div>
             </div>
-            <div class="form-row" style="margin-bottom:12px;">
-              <div class="field"><label>Rondas de calidad · del checklist</label><div style="display:flex;gap:6px;"><input type="number" id="rd-rondas-ok" readonly value="0" style="width:50%;background:var(--surface-2);" title="Ítems que cumplen"><input type="number" id="rd-rondas-tot" readonly value="0" style="width:50%;background:var(--surface-2);" title="Ítems aplicables"></div></div>
-            </div>
             <div id="alerta-diferencia" class="hidden" style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#991b1b;font-weight:600;">⚠ Diferencia detectada entre avance supervisor y contrata. Revisar.</div>
             <input id="rd-hito-search" type="search" placeholder="Buscar tarea del Gantt para marcar Hoy / Mañana…" oninput="rdHitoFilter(this.value)" style="width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:8px 11px;font-size:13px;margin-bottom:10px;background:var(--surface-1);color:var(--text-1);">
             <div id="rd-hitos-list" class="rd-prog"></div>
@@ -4089,16 +4100,6 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
           </div>
         </div>
 
-        <!-- RONDAS DE CALIDAD (CHECKLIST) -->
-        <div class="rd-card">
-          <div class="rd-head click" onclick="rdFold(this,event)">
-            <div class="rd-head-ic"><i data-lucide="clipboard-check" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Rondas de calidad</h4><p>Checklist por frente · seguridad, calidad, cumplimiento y gestión</p></div>
-            <span class="rd-head-badge teal"><strong id="rd-rondas-pct">0%</strong> · <span id="rd-rondas-res">0/0</span></span>
-            <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
-          </div>
-          <div class="rd-body"><div id="rd-rondas-mount"></div></div>
-        </div>
 
         <!-- RESTRICCIONES -->
         <div class="rd-card">
@@ -4114,30 +4115,16 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
           </div>
         </div>
 
-        <!-- RIESGOS (Kanban) -->
-        <div class="rd-card">
-          <div class="rd-head click" onclick="rdFold(this,event)">
-            <div class="rd-head-ic"><i data-lucide="shield-alert" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Riesgos del día</h4><p>Clasifícalos por nivel de severidad</p></div>
-            <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
-          </div>
-          <div class="rd-body"><div id="rd-riesgos-list"></div></div>
-        </div>
 
-        <!-- ACTIVIDAD / PLAN (Editor) -->
-        <div class="rd-card">
+        <!-- EQUIPOS DEL PROYECTO (PMO + estado en obra) -->
+        <div class="rd-card folded">
           <div class="rd-head click" onclick="rdFold(this,event)">
-            <div class="rd-head-ic"><i data-lucide="notebook-pen" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Bitácora del día</h4><p>Actividad ejecutada, plan de mañana y observaciones</p></div>
+            <div class="rd-head-ic"><i data-lucide="package" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Equipos del proyecto</h4><p>Órdenes de importación desde PMO · marca el estado en obra de los que aplican</p></div>
+            <span class="rd-head-badge teal" id="rd-eq-badge">0</span>
             <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
           </div>
-          <div class="rd-body">
-            <div class="rd-editor">
-              <div class="rd-blk"><div class="rd-blk-lbl"><i data-lucide="check-circle-2"></i> Actividad de hoy · nota manual (opcional)</div><textarea id="rd-actividad" placeholder="Lo hecho hoy se marca en los hitos del Gantt (arriba). Aquí solo lo que no esté en el Gantt."></textarea></div>
-              <div class="rd-blk"><div class="rd-blk-lbl"><i data-lucide="calendar-clock"></i> Plan de mañana · nota manual (opcional)</div><textarea id="rd-plan-manana" placeholder="El plan de mañana se marca en los hitos (→ Mañana). Aquí solo lo adicional."></textarea></div>
-              <div class="rd-blk"><div class="rd-blk-lbl"><i data-lucide="message-square-more"></i> Observaciones</div><textarea id="rd-obs" placeholder="Notas generales, coordinaciones, pendientes…"></textarea></div>
-            </div>
-          </div>
+          <div class="rd-body"><div id="rd-eq-mount"></div></div>
         </div>
 
         <!-- FOTOS (Dropzone + galería) -->
@@ -4860,7 +4847,6 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       <div class="pdf-kpi"><div class="pdf-kpi-val" id="pdf-avance"></div><div class="pdf-kpi-lbl">Avance físico</div></div>
       <div class="pdf-kpi"><div class="pdf-kpi-val" id="pdf-spi"></div><div class="pdf-kpi-lbl">SPI</div></div>
       <div class="pdf-kpi"><div class="pdf-kpi-val" id="pdf-eval-ct"></div><div class="pdf-kpi-lbl">Eval. contratas</div></div>
-      <div class="pdf-kpi"><div class="pdf-kpi-val" id="pdf-rondas"></div><div class="pdf-kpi-lbl">Rondas</div></div>
     </div>
     <div class="pdf-status en-plan" id="pdf-status-bar">
       <div><span class="pdf-status-label" id="pdf-status-label">EN PLAN</span><br><span style="font-size:10px;color:#166534;" id="pdf-status-detail"></span></div>
@@ -4876,10 +4862,8 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
     <div id="pdf-personal-row" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
     <div class="pdf-section-title">Contratas activas — Evaluación del día</div>
     <table class="pdf-table" id="pdf-contratas-table"></table>
-    <div class="pdf-section-title">Rondas de inspección</div>
-    <div class="pdf-rondas" id="pdf-rondas-chips"></div>
-    <div class="pdf-section-title">Riesgos</div>
-    <div id="pdf-riesgos-list"></div>
+    <div class="pdf-section-title" id="pdf-equipos-title">Equipos del proyecto</div>
+    <table class="pdf-table" id="pdf-equipos-table"></table>
   </div>
 </div>
 
@@ -4892,13 +4876,20 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 const SB_URL = 'https://iiceeajjmugtuzcfqggs.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpY2VlYWpqbXVndHV6Y2ZxZ2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODg5OTUsImV4cCI6MjA5NDc2NDk5NX0.xeOFlxEGoPsqO5mBLz2_o6UqMCiUw5t8Aghg0ieRqs4';
 
+// BD de PMO (Gerencia) en solo lectura: proyectos, banco de contratas, etc.
+const PMO_DB_URL = 'https://vsploxglutkbeokumunp.supabase.co';
+const PMO_DB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+function pmoDbFetch(path){
+  return fetch(PMO_DB_URL + path, { headers:{ apikey: PMO_DB_KEY, Authorization:'Bearer ' + PMO_DB_KEY } })
+    .then(r => r.ok ? r.json() : []);
+}
+
 const ESPECIALIDADES = ['paneles','mecanico','electrico','aislamiento','montaje_rack','oocc','montaje_eemm'];
 
 // Estado global
 let currentUser = null;
 let currentProyecto = null;
 let curvaCtx = null;
-let riesgosTemp = [];
 
 // ── Estado del nuevo reporte diario ──
 let rdHitos = [];          // [{id, nombre, pct_actual, pct_nuevo, manual}]
@@ -5048,7 +5039,7 @@ const ADMIN_EMAILS = ['dfuentes@friopacking.pe','ccalderon@friopacking.pe','gpar
 async function cargarProyectos() {
   try {
     const esAdmin = currentUser && ADMIN_EMAILS.includes((currentUser.email||'').toLowerCase());
-    let url = '/rest/v1/proyectos?select=id,nombre,supervisor,supervisor_email,cod_proyecto,estado,fecha_ini_contractual,fecha_fin_contractual,zona&activo=eq.true&order=nombre';
+    let url = '/rest/v1/proyectos?select=id,nombre,supervisor,supervisor_email,cod_proyecto,estado,fecha_ini_contractual,fecha_fin_contractual,fecha_ini_real,fecha_fin_real,zona&activo=eq.true&order=nombre';
     if (!esAdmin) {
       url += '&supervisor_email=eq.' + encodeURIComponent((currentUser && currentUser.email) || '__none__');
     }
@@ -5068,6 +5059,9 @@ async function cargarProyectos() {
       opt.dataset.supervisor = p.supervisor;
       opt.dataset.estado = p.estado || 'activo';
       opt.dataset.finCont = p.fecha_fin_contractual || '';
+      opt.dataset.iniCont = p.fecha_ini_contractual || '';
+      opt.dataset.iniReal = p.fecha_ini_real || '';
+      opt.dataset.finReal = p.fecha_fin_real || '';
       opt.dataset.zona = p.zona || '';
       opt.textContent = p.nombre + (p.supervisor ? ' — ' + p.supervisor : '');
       sel.appendChild(opt);
@@ -5089,6 +5083,9 @@ async function cargarProyecto() {
     supervisor: opt.dataset.supervisor,
     estado: opt.dataset.estado,
     finCont: opt.dataset.finCont,
+    iniCont: opt.dataset.iniCont,
+    iniReal: opt.dataset.iniReal,
+    finReal: opt.dataset.finReal,
     zona: opt.dataset.zona
   };
 
@@ -7228,6 +7225,7 @@ function renderEquiposPanel(bodyId, liveId) {
 function renderAllEquipos() {
   renderEquiposPanel('equipos-dash-body', 'equipos-dash-live');
   renderEquiposPanel('equipos-gantt-body', 'equipos-gantt-live');
+  if (typeof rdEquiposRender === 'function') rdEquiposRender();   // tarjeta del reporte diario
 }
 // Suscripción una vez (al cargar el módulo)
 if (typeof _pmoState !== 'undefined') {
@@ -9694,9 +9692,9 @@ async function cargarReporteDiario() {
   // Hidratar hero
   const hp = document.getElementById('rd-hero-proj'); if (hp) hp.textContent = currentProyecto.nombre || 'Proyecto';
   const hs = document.getElementById('rd-hero-sup');  if (hs) hs.textContent = currentProyecto.supervisor || currentUser?.nombre || '—';
+  rdRenderPlazos();
 
   await rdEspLoad(currentProyecto.cod || currentProyecto.nombre, null);
-  rdRondasReset();
   renderChecklistCierre();
   await cargarHitosReporte();
   await cargarComercialReporte();
@@ -9704,7 +9702,7 @@ async function cargarReporteDiario() {
   rdContratas = [];
   rdRestricciones = []; renderRestricciones();
   rdFotos = []; renderFotosReporte();
-  riesgosTemp = []; renderRiesgos();
+  rdEquipos = {}; rdEquiposRender();
   await cargarReporteDeHoy();   // multi-dispositivo: retoma el borrador de hoy si ya existe
   initFirmaCanvas();
   rdSetupDrop();
@@ -9777,14 +9775,61 @@ function rdComputeCompleteness(){
     !!(g('rd-plan') && g('rd-plan').value),
     !!(g('rd-real') && g('rd-real').value),
     !!(g('rd-entrada') && g('rd-entrada').value) && !!(g('rd-salida') && g('rd-salida').value),
-    !!(g('rd-actividad') && g('rd-actividad').value.trim()),
-    !!(g('rd-plan-manana') && g('rd-plan-manana').value.trim()),
     rdFotos.length > 0,
     rdHitos.length ? rdHitos.some(h => (h.pct_nuevo||0) !== (h.pct_actual||0)) : !!(g('rd-real') && g('rd-real').value),
     RD_CHECKLIST.every((_,i) => g('rd-chk-'+i)?.checked),
     !!(g('rd-firma-nombre') && g('rd-firma-nombre').value.trim())
   ];
   return Math.round(checks.filter(Boolean).length / checks.length * 100);
+}
+
+// ── Tira de plazos del hero: contractual vs real + SPI en vivo ──
+// Las fechas salen de PMO (Gerencia es dueña); el supervisor solo las ve.
+function rdFmtFecha(f){
+  if(!f) return '—';
+  const d = new Date(String(f).slice(0,10)+'T12:00:00');
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'2-digit'}).replace('.','');
+}
+function rdDiasEntre(a,b){
+  if(!a||!b) return null;
+  const d1=new Date(String(a).slice(0,10)+'T12:00:00'), d2=new Date(String(b).slice(0,10)+'T12:00:00');
+  if(isNaN(d1)||isNaN(d2)) return null;
+  return Math.round((d2-d1)/86400000);
+}
+function rdRenderPlazos(){
+  const cont = document.getElementById('rd-hero-plazos'); if(!cont) return;
+  const P = currentProyecto;
+  if(!P){ cont.innerHTML=''; return; }
+
+  // Fin real: el reprogramado de hoy manda sobre el de PMO
+  const reproOn = document.getElementById('rd-repro-chk')?.checked;
+  const reproF  = document.getElementById('rd-repro-fecha')?.value;
+  const finReal = (reproOn && reproF) ? reproF : (P.finReal || '');
+
+  // Desfase de término: real/proyectado vs contractual
+  const desfase = rdDiasEntre(P.finCont, finReal);
+  const desfTxt = desfase==null ? '' :
+    desfase>0 ? `<span class="s late">+${desfase} d vs contrato</span>` :
+    desfase<0 ? `<span class="s early">${desfase} d vs contrato</span>` :
+                `<span class="s">en fecha</span>`;
+
+  // SPI del día = ejecutado / planificado
+  const plan = parseFloat(document.getElementById('rd-plan')?.value)||0;
+  const real = parseFloat(document.getElementById('rd-real')?.value)||0;
+  const spi  = plan>0 ? real/plan : 0;
+  const spiCls = !plan ? '' : spi>=1 ? 'ok' : spi>=0.9 ? 'warn' : 'bad';
+
+  const bloque = (k,v,sub,cls)=>`<div class="rd-hp ${cls||''}"><span class="k">${k}</span><span class="v">${v}</span>${sub||''}</div>`;
+  cont.innerHTML =
+    bloque('Inicio contractual', rdFmtFecha(P.iniCont)) +
+    bloque('Inicio real', rdFmtFecha(P.iniReal),
+      (()=>{ const d=rdDiasEntre(P.iniCont,P.iniReal); return d==null?'':(d>0?`<span class="s late">+${d} d</span>`:d<0?`<span class="s early">${d} d</span>`:'<span class="s">en fecha</span>'); })(),
+      'real') +
+    bloque('Fin contractual', rdFmtFecha(P.finCont)) +
+    bloque(reproOn&&reproF?'Fin reprogramado':'Fin real / proyectado', rdFmtFecha(finReal), desfTxt, 'real') +
+    bloque('SPI del día', plan>0 ? spi.toFixed(2) : '—',
+      `<span class="s">${plan>0 ? real.toFixed(1)+'% de '+plan.toFixed(1)+'%' : 'sin plan cargado'}</span>`, 'spi '+spiCls);
 }
 
 function rdUpdateRing(){
@@ -9794,6 +9839,7 @@ function rdUpdateRing(){
   const mb = document.getElementById('rd-mini-bar'); if (mb) mb.style.strokeDashoffset = 94.2 * (1 - pct/100);
   const mp = document.getElementById('rd-mini-pct'); if (mp) mp.textContent = pct + '%';
   const hint = document.getElementById('rd-save-hint'); if (hint) hint.textContent = pct >= 90 ? 'listo para enviar' : pct >= 45 ? 'en progreso' : 'iniciando';
+  rdRenderPlazos();
   // Estado operativo en el hero según avance vs plan + riesgos
   const plan = parseFloat(document.getElementById('rd-plan')?.value) || 0;
   const real = parseFloat(document.getElementById('rd-real')?.value) || 0;
@@ -9802,7 +9848,6 @@ function rdUpdateRing(){
     const d = real - plan; let cls = 'ok', txt = 'Operación normal';
     if (real && d <= -8) { cls = 'bad'; txt = 'Avance por debajo de lo planificado'; }
     else if (real && d < -2) { cls = 'warn'; txt = 'Ligero retraso frente al plan'; }
-    else if (riesgosTemp.some(r => r.nivel === 'ALTO')) { cls = 'warn'; txt = 'Riesgos altos registrados hoy'; }
     st.className = 'rd-status ' + cls; stt.textContent = txt;
   }
 }
@@ -10024,30 +10069,130 @@ function renderRestricciones() {
   rdIcons();
 }
 
-// ── Riesgos del día (mini-kanban por severidad) ──
-function agregarRiesgo(nivel) {
-  const lvl = nivel || 'MEDIO';
-  riesgosTemp.push({ nivel: lvl, descripcion: '' });
-  renderRiesgos();
-  setTimeout(() => {
-    const col = document.getElementById('rd-kcol-' + lvl.toLowerCase());
-    const ta = col && col.querySelectorAll('.rd-risk textarea');
-    if (ta && ta.length) ta[ta.length-1].focus();
-  }, 30);
+// ═══════════════════════════════════════════════
+// EQUIPOS DEL PROYECTO EN EL REPORTE
+// La lista sale de PMO (equipos_pmo, solo lectura). El supervisor marca el
+// estado EN OBRA de cada equipo y puede dejar una nota; eso sí se guarda
+// en el reporte (columna equipos_dia) y sale en el informe.
+// ═══════════════════════════════════════════════
+const EQ_ESTADOS = [
+  { k:'',           lbl:'—',          cls:'' },
+  { k:'esperando',  lbl:'Por llegar', cls:'wait' },
+  { k:'en_obra',    lbl:'En obra',    cls:'ok'   },
+  { k:'montaje',    lbl:'En montaje', cls:'ok'   },
+  { k:'instalado',  lbl:'Instalado',  cls:'done' },
+  { k:'observado',  lbl:'Observado',  cls:'bad'  },
+];
+let rdEquipos = {};    // doc → { estado, nota }
+let rdEqVerTodos = false;
+
+let _eqRdStyles = false;
+function rdEnsureEqStyles(){
+  if(_eqRdStyles) return; _eqRdStyles = true;
+  const css = `
+  .rd-eq-row{display:grid;grid-template-columns:1fr auto;gap:8px 14px;padding:11px 0;border-bottom:1px solid var(--border);}
+  .rd-eq-row:last-child{border-bottom:none;}
+  .rd-eq-id{min-width:0;}
+  .rd-eq-tt{font-size:13px;font-weight:800;color:var(--text-1);}
+  .rd-eq-sub{font-size:11.5px;color:var(--text-3);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap;}
+  .rd-eq-pmo{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;
+    background:var(--surface-2);color:var(--text-3);border:1px solid var(--border-strong);}
+  .rd-eq-pmo.culminado{background:#dcfce7;color:#15803d;border-color:#86efac;}
+  .rd-eq-pmo.transito{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd;}
+  .rd-eq-pmo.produccion{background:#fef3c7;color:#b45309;border-color:#fcd34d;}
+  .rd-eq-seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;flex-wrap:wrap;}
+  .rd-eq-b{border:none;background:var(--surface-1);padding:6px 10px;font-size:11.5px;font-weight:700;color:var(--text-3);
+    cursor:pointer;border-left:1px solid var(--border-strong);}
+  .rd-eq-b:first-child{border-left:none;}
+  .rd-eq-b.on{background:var(--navy-800,#0f2942);color:#fff;}
+  .rd-eq-b.on.ok{background:#0e7490;} .rd-eq-b.on.done{background:#15803d;} .rd-eq-b.on.bad{background:#b91c1c;} .rd-eq-b.on.wait{background:#b45309;}
+  .rd-eq-nota{grid-column:1/-1;border:1px solid var(--border-strong);border-radius:7px;padding:6px 10px;font-size:12px;
+    background:var(--surface-1);color:var(--text-1);}
+  .rd-eq-toggle{margin-top:10px;width:100%;border:1px dashed var(--border-strong);background:transparent;
+    border-radius:9px;padding:8px;font-size:12px;font-weight:700;color:var(--text-3);cursor:pointer;}
+  .rd-eq-toggle:hover{color:var(--teal-700);border-color:var(--teal-700);}
+  .rd-eq-empty{font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;}
+  @media(max-width:700px){ .rd-eq-row{grid-template-columns:1fr;} }
+  `;
+  const st = document.createElement('style'); st.id='rd-eq-styles'; st.textContent = css; document.head.appendChild(st);
 }
-function eliminarRiesgo(i){ riesgosTemp.splice(i,1); renderRiesgos(); }
-function renderRiesgos() {
-  const wrap = document.getElementById('rd-riesgos-list');
-  if (!wrap) return;
-  const cols = [['BAJO','bajo'],['MEDIO','medio'],['ALTO','alto']];
-  wrap.innerHTML = `<div class="rd-kanban">${cols.map(([lvl,cls])=>{
-    const items = riesgosTemp.map((r,i)=>[r,i]).filter(([r])=>(r.nivel||'MEDIO')===lvl);
-    return `<div class="rd-kcol ${cls}" id="rd-kcol-${cls}">
-      <div class="rd-kcol-head"><b>${lvl}</b><span class="cnt">${items.length}</span></div>
-      ${items.map(([r,i])=>`<div class="rd-risk"><span class="x" onclick="eliminarRiesgo(${i})">×</span><textarea oninput="riesgosTemp[${i}].descripcion=this.value" placeholder="Describe el riesgo…" style="width:100%;border:none;background:transparent;resize:none;font-size:12px;color:var(--navy-800);font-family:inherit;min-height:34px;padding-right:14px;line-height:1.4;">${(r.descripcion||'').replace(/</g,'&lt;')}</textarea></div>`).join('')}
-      <button class="rd-kadd" onclick="agregarRiesgo('${lvl}')">+ Añadir</button>
+
+function rdEquiposRender(){
+  const m = document.getElementById('rd-eq-mount'); if(!m) return;
+  rdEnsureEqStyles();
+  const lista = (typeof pmoCurrentEquipos === 'function') ? pmoCurrentEquipos() : [];
+  const badge = document.getElementById('rd-eq-badge');
+  const marcados = Object.values(rdEquipos).filter(e=>e && (e.estado || (e.nota||'').trim())).length;
+  if (badge) badge.textContent = lista.length ? `${marcados}/${lista.length}` : '0';
+
+  if (!lista.length){
+    m.innerHTML = `<div class="rd-eq-empty">${currentProyecto
+      ? 'Este proyecto no tiene equipos registrados en PMO.'
+      : 'Selecciona un proyecto para ver sus equipos.'}</div>`;
+    return;
+  }
+  // Por defecto solo los que aún importan en obra; los culminados se ven con "ver todos"
+  const orden = { transito:0, produccion:1, pendiente:2, culminado:3 };
+  const ord0 = lista.slice().sort((a,b)=> orden[_eqStatusClass(a.st)] - orden[_eqStatusClass(b.st)]);
+  const culminados = ord0.filter(e=> _eqStatusClass(e.st)==='culminado'
+                                  && !rdEquipos[e.doc||'']);          // si lo marcó, se queda visible
+  const ord = rdEqVerTodos ? ord0 : ord0.filter(e=> !culminados.includes(e));
+
+  m.innerHTML = ord.map(e=>{
+    const doc = e.doc || '';
+    const st  = rdEquipos[doc] || {};
+    const cls = _eqStatusClass(e.st);
+    const sub = [ e.proveedor, e.mod, e.eta ? 'ETA ' + e.eta : '' ].filter(Boolean)
+                  .map(x=>`<span>${rdEsc2(x)}</span>`).join('');
+    return `<div class="rd-eq-row">
+      <div class="rd-eq-id">
+        <div class="rd-eq-tt">${rdEsc2(e.tipo || 'Equipo')} <span style="font-weight:600;color:var(--text-3);">· ${rdEsc2(doc)}</span></div>
+        <div class="rd-eq-sub">${sub}<span class="rd-eq-pmo ${cls}">PMO: ${rdEsc2(e.st||'—')}</span></div>
+      </div>
+      <div class="rd-eq-seg">${EQ_ESTADOS.filter(x=>x.k).map(x=>
+        `<button class="rd-eq-b ${x.cls} ${st.estado===x.k?'on':''}" onclick="rdEqSet('${rdEsc2(doc)}','estado','${x.k}')">${x.lbl}</button>`).join('')}</div>
+      ${st.estado ? `<input class="rd-eq-nota" placeholder="Nota del equipo (opcional)…" value="${rdEsc2(st.nota||'')}" oninput="rdEqSet('${rdEsc2(doc)}','nota',this.value)">` : ''}
     </div>`;
-  }).join('')}</div>`;
+  }).join('');
+  if (culminados.length){
+    m.innerHTML += `<button class="rd-eq-toggle" onclick="rdEqVerTodos=!rdEqVerTodos;rdEquiposRender()">${
+      rdEqVerTodos ? 'Ocultar los culminados' : `Ver todos · ${culminados.length} culminado(s) en PMO`}</button>`;
+  }
+  rdIcons();
+}
+
+function rdEqSet(doc, campo, val){
+  if(!rdEquipos[doc]) rdEquipos[doc] = { estado:'', nota:'' };
+  // Volver a tocar el mismo estado lo desmarca
+  if (campo==='estado' && rdEquipos[doc].estado === val) val = '';
+  rdEquipos[doc][campo] = val;
+  if (!rdEquipos[doc].estado && !(rdEquipos[doc].nota||'').trim()) delete rdEquipos[doc];
+  if (campo==='estado') rdEquiposRender(); else {
+    const b=document.getElementById('rd-eq-badge');
+    if(b){ const l=(typeof pmoCurrentEquipos==='function')?pmoCurrentEquipos().length:0;
+      b.textContent = l ? `${Object.keys(rdEquipos).length}/${l}` : '0'; }
+  }
+  if (typeof scheduleAutosave==='function') scheduleAutosave();
+}
+
+// Lo que se guarda en el reporte: identidad del equipo (para que el informe
+// histórico no dependa de PMO) + lo que marcó el supervisor.
+function rdEquiposPayload(){
+  const lista = (typeof pmoCurrentEquipos === 'function') ? pmoCurrentEquipos() : [];
+  const porDoc = {}; lista.forEach(e=> porDoc[e.doc||''] = e);
+  return Object.keys(rdEquipos).map(doc=>{
+    const e = porDoc[doc] || {};
+    const st = rdEquipos[doc] || {};
+    return { doc, tipo:e.tipo||null, proveedor:e.proveedor||null, mod:e.mod||null,
+             etd:e.etd||null, eta:e.eta||null, st_pmo:e.st||null,
+             estado:st.estado||null, nota:(st.nota||'').trim()||null };
+  }).filter(x=> x.estado || x.nota);
+}
+function rdEquiposLoad(row){
+  rdEquipos = {};
+  const arr = row && Array.isArray(row.equipos_dia) ? row.equipos_dia : [];
+  arr.forEach(e=>{ if(e && e.doc) rdEquipos[e.doc] = { estado:e.estado||'', nota:e.nota||'' }; });
+  rdEquiposRender();
 }
 
 // ── Fotos (cualquier formato y tamaño) → bucket reporte-fotos ──
@@ -10201,6 +10346,57 @@ async function rdEspLoad(cod, reportRow){
     else rdEsp.push({ esp:a.esp, label:a.label||rdEspCatLabel(a.esp), contrata:a.contrata||'', peso:parseFloat(a.peso)||0, personal:parseInt(a.personal)||0, avance:parseFloat(a.avance)||0 });
   });
   rdEspRender(); rdEspCalc();
+  rdBancoLoad().then(()=>rdEspRender());   // el banco llega después: repinta con el selector
+}
+
+// ── Banco de contratas: fuente única = portafolio_servicios (PMO / Gerencia) ──
+// El supervisor ELIGE de ese banco. "Otro…" permite escribir una contrata que
+// todavía no está en Gerencia (queda en el reporte; no se da de alta en el banco).
+let rdBanco = null;                       // null = aún no cargado
+async function rdBancoLoad(force){
+  if (rdBanco && !force) return rdBanco;
+  try{
+    const rows = await pmoDbFetch('/rest/v1/portafolio_servicios?select=contratista');
+    const set = new Set();
+    (rows||[]).forEach(r=>{ const n=(r.contratista||'').trim(); if(n) set.add(n); });
+    rdBanco = Array.from(set).sort((a,b)=>a.localeCompare(b,'es'));
+  }catch(e){ console.warn('banco de contratas', e); rdBanco = []; }
+  return rdBanco;
+}
+function rdContrataCell(i, r){
+  const val = r.contrata || '';
+  const banco = rdBanco || [];
+  const enBanco = val && banco.includes(val);
+  // Texto libre: cuando el usuario eligió "Otro…", cuando el reporte trae una
+  // contrata que ya no está en el banco, o si el banco no cargó (sin señal).
+  if (r.otro || (val && !enBanco) || !banco.length){
+    return `<div class="rd-ct-cell">
+      <input class="rd-esp-inp" id="rd-ct-inp-${i}" value="${rdEsc2(val)}" placeholder="Nombre de la contrata…" oninput="rdEspSet(${i},'contrata',this.value)">
+      ${banco.length ? `<button class="rd-ct-back" title="Volver al banco de contratas" onclick="rdContrataModo(${i},false)">del banco</button>` : ''}
+    </div>`;
+  }
+  return `<select class="rd-esp-inp" onchange="rdContrataPick(${i},this.value)">
+    <option value="">— Elegir contrata —</option>
+    ${banco.map(n=>`<option value="${rdEsc2(n)}"${n===val?' selected':''}>${rdEsc2(n)}</option>`).join('')}
+    <option value="__otro__">Otro… (escribir)</option>
+  </select>`;
+}
+function rdContrataPick(i, v){
+  if(!rdEsp[i]) return;
+  if (v === '__otro__'){
+    rdEsp[i].otro = true; rdEsp[i].contrata = '';
+    rdEspRender(); rdEspCalc();
+    setTimeout(()=>document.getElementById('rd-ct-inp-'+i)?.focus(), 20);
+    return;
+  }
+  rdEsp[i].otro = false;
+  rdEspSet(i, 'contrata', v);
+}
+function rdContrataModo(i, otro){
+  if(!rdEsp[i]) return;
+  rdEsp[i].otro = !!otro;
+  if(!otro) rdEsp[i].contrata = '';
+  rdEspRender(); rdEspCalc();
 }
 
 function rdEspRender(){
@@ -10216,7 +10412,7 @@ function rdEspRender(){
     rdEsp.forEach((r,i)=>{
       html += `<tr>
         <td class="rd-esp-name">${rdEsc2(r.label)}</td>
-        <td><input class="rd-esp-inp" value="${rdEsc2(r.contrata)}" placeholder="Contrata…" oninput="rdEspSet(${i},'contrata',this.value)"></td>
+        <td>${rdContrataCell(i, r)}</td>
         <td><input class="rd-esp-inp num" type="number" min="0" value="${r.personal||0}" oninput="rdEspSet(${i},'personal',this.value)"></td>
         <td><div class="rd-esp-pct"><input class="rd-esp-inp num" type="number" min="0" max="100" step="0.1" value="${r.avance||0}" oninput="rdEspSet(${i},'avance',this.value)"><i class="rd-esp-bar" style="width:${Math.min(100,parseFloat(r.avance)||0)}%"></i></div></td>
         <td><input class="rd-esp-inp num" type="number" min="0" max="100" step="1" value="${r.peso||0}" oninput="rdEspSet(${i},'peso',this.value)"></td>
@@ -10281,6 +10477,12 @@ let _espStyles=false;
 function rdEnsureEspStyles(){
   if(_espStyles) return; _espStyles=true;
   const css=`
+  .rd-ct-cell{display:flex;align-items:center;gap:6px;}
+  .rd-ct-cell input{flex:1;min-width:96px;}
+  .rd-ct-back{border:1px solid var(--border-strong);background:var(--surface-1);color:var(--text-3);
+    border-radius:7px;padding:4px 8px;font-size:10.5px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .rd-ct-back:hover{color:var(--teal-700);border-color:var(--teal-700);}
+
   #rd-esp-mount .rd-esp-empty{font-size:13px;color:var(--text-3);padding:16px;border:1px dashed var(--border-strong);border-radius:10px;text-align:center;}
   .rd-esp-tblwrap{overflow-x:auto;}
   .rd-esp-tbl{width:100%;border-collapse:collapse;font-size:13px;}
@@ -10297,120 +10499,6 @@ function rdEnsureEspStyles(){
   .rd-esp-warn{margin-top:8px;font-size:11.5px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:7px 10px;}
   .rd-esp-add{display:flex;gap:8px;align-items:center;margin-top:12px;}`;
   const st=document.createElement('style'); st.id='rd-esp-styles'; st.textContent=css; document.head.appendChild(st);
-}
-
-// ═══════════════════════════════════════════════
-// RONDAS DE CALIDAD — checklist (rúbrica derivada de evaluacion_contratistas)
-// ═══════════════════════════════════════════════
-const RONDAS_CAT = [
-  { grupo:'Seguridad', items:[
-    {k:'epp', t:'Personal con EPP completo'},
-    {k:'permisos', t:'Permisos vigentes para trabajos de alto riesgo (altura, caliente, eléctrico)'},
-    {k:'frente', t:'Frente delimitado y señalizado'},
-    {k:'orden', t:'Orden y limpieza del área'},
-  ]},
-  { grupo:'Calidad', items:[
-    {k:'plano', t:'Ejecución conforme a plano y especificación vigente'},
-    {k:'materiales', t:'Materiales y equipos correctos, sin sustituciones no aprobadas'},
-    {k:'obs_prev', t:'Observaciones anteriores levantadas'},
-  ]},
-  { grupo:'Cumplimiento', items:[
-    {k:'personal_comp', t:'Personal en obra corresponde al comprometido'},
-    {k:'horario', t:'Cumple el horario de jornada'},
-    {k:'sup_contrata', t:'Presencia del supervisor de la contrata'},
-  ]},
-  { grupo:'Gestión', items:[
-    {k:'herramientas', t:'Herramientas adecuadas y operativas'},
-    {k:'materiales_dia', t:'Dispone de los materiales para el frente del día'},
-  ]},
-];
-const RONDAS_ITEMS = RONDAS_CAT.flatMap(g=>g.items.map(i=>({...i, grupo:g.grupo})));
-const RONDAS_N = 3;
-let rdRondas = [];        // [{hora, est:{k:estado}, obs:{k:txt}}] × 3
-let rdRondaActiva = 0;
-function rdRondaBlank(){ const est={}; RONDAS_ITEMS.forEach(i=>est[i.k]='ok'); return {hora:'', est, obs:{}}; }
-function rdRondasReset(){ rdRondas=[]; for(let i=0;i<RONDAS_N;i++) rdRondas.push(rdRondaBlank()); rdRondaActiva=0; rdRondasRender(); rdRondasCalc(); }
-function rdRondaCompliance(r){ let ok=0,apl=0; RONDAS_ITEMS.forEach(i=>{ const v=r.est[i.k]||'ok'; if(v!=='na'){apl++; if(v==='ok')ok++;} }); return {ok,apl,pct:apl?Math.round(ok/apl*100):0}; }
-function rdRondasCalc(){
-  let hechas=0, okT=0, aplT=0;
-  rdRondas.forEach(r=>{ if(r.hora) hechas++; const c=rdRondaCompliance(r); okT+=c.ok; aplT+=c.apl; });
-  const pct=aplT?Math.round(okT/aplT*100):0;
-  const okEl=document.getElementById('rd-rondas-ok'); if(okEl) okEl.value=hechas;
-  const totEl=document.getElementById('rd-rondas-tot'); if(totEl) totEl.value=RONDAS_N;
-  const p=document.getElementById('rd-rondas-pct'); if(p) p.textContent=pct+'%';
-  const res=document.getElementById('rd-rondas-res'); if(res) res.textContent=hechas+'/'+RONDAS_N+' rondas';
-  if(typeof rdUpdateRing==='function') rdUpdateRing();
-}
-function rdRondaTab(i){ rdRondaActiva=i; rdRondasRender(); }
-function rdRondaSetHora(val){ rdRondas[rdRondaActiva].hora=val; rdRondasCalc(); rdRondasRenderTabs(); }
-function rdRondasSet(k,val){ rdRondas[rdRondaActiva].est[k]=val; rdRondasRender(); rdRondasCalc(); if(typeof scheduleAutosave==='function') scheduleAutosave(); }
-function rdRondasObs(k,val){ rdRondas[rdRondaActiva].obs[k]=val; }
-function rdRondasRenderTabs(){
-  const tb=document.getElementById('rd-rondas-tabs'); if(!tb) return;
-  tb.innerHTML=rdRondas.map((r,i)=>{ const c=rdRondaCompliance(r); return `<button class="rd-rq-tab ${i===rdRondaActiva?'on':''} ${r.hora?'done':''}" onclick="rdRondaTab(${i})">Ronda ${i+1}${r.hora?` · ${r.hora}`:''}</button>`; }).join('');
-}
-function rdRondasRender(){
-  const m=document.getElementById('rd-rondas-mount'); if(!m) return;
-  rdEnsureRondasStyles();
-  if(!rdRondas.length) rdRondasReset();
-  const r=rdRondas[rdRondaActiva]||rdRondaBlank();
-  let html=`<div class="rd-rq-tabs" id="rd-rondas-tabs"></div>
-    <div class="rd-rq-hora"><label>Hora de la Ronda ${rdRondaActiva+1}</label><input type="time" value="${r.hora||''}" onchange="rdRondaSetHora(this.value)"></div>`;
-  RONDAS_CAT.forEach(g=>{
-    html+=`<div class="rd-rq-grp"><div class="rd-rq-gt">${g.grupo}</div>`;
-    g.items.forEach(it=>{ const v=r.est[it.k]||'ok';
-      html+=`<div class="rd-rq-item">
-        <div class="rd-rq-txt">${rdEsc2(it.t)}</div>
-        <div class="rd-rq-seg">
-          <button class="rd-rq-b ok ${v==='ok'?'on':''}" onclick="rdRondasSet('${it.k}','ok')">Cumple</button>
-          <button class="rd-rq-b no ${v==='no'?'on':''}" onclick="rdRondasSet('${it.k}','no')">No</button>
-          <button class="rd-rq-b na ${v==='na'?'on':''}" onclick="rdRondasSet('${it.k}','na')">N.A.</button>
-        </div>
-        ${v==='no'?`<input class="rd-rq-obs" placeholder="¿Qué se observó? (opcional)" value="${rdEsc2(r.obs[it.k]||'')}" oninput="rdRondasObs('${it.k}',this.value)">`:''}
-      </div>`;
-    });
-    html+=`</div>`;
-  });
-  m.innerHTML=html;
-  rdRondasRenderTabs();
-  if(window.lucide) lucide.createIcons();
-}
-function rdRondasLoad(reportRow){
-  rdRondasReset();
-  const cl=reportRow && reportRow.rondas_checklist;
-  if(Array.isArray(cl) && cl.length){
-    if(cl[0] && (cl[0].items || cl[0].hora!==undefined)){
-      // formato nuevo: array de rondas
-      cl.slice(0,RONDAS_N).forEach((rd,i)=>{ if(!rdRondas[i]) rdRondas[i]=rdRondaBlank(); rdRondas[i].hora=rd.hora||''; (rd.items||[]).forEach(it=>{ if(it&&it.k){ rdRondas[i].est[it.k]=it.estado||'ok'; if(it.obs) rdRondas[i].obs[it.k]=it.obs; } }); });
-    } else {
-      // formato viejo (array plano de ítems) → cae a Ronda 1
-      cl.forEach(it=>{ if(it&&it.k){ rdRondas[0].est[it.k]=it.estado||'ok'; if(it.obs) rdRondas[0].obs[it.k]=it.obs; } });
-    }
-  }
-  rdRondasRender(); rdRondasCalc();
-}
-function rdRondasPayload(){
-  return rdRondas.map((r,i)=>({ ronda:i+1, hora:r.hora||null, items:RONDAS_ITEMS.map(it=>({k:it.k,grupo:it.grupo,texto:it.t,estado:r.est[it.k]||'ok',obs:r.obs[it.k]||null})) }));
-}
-let _rqStyles=false;
-function rdEnsureRondasStyles(){
-  if(_rqStyles) return; _rqStyles=true;
-  const css=`
-  .rd-rq-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
-  .rd-rq-tab{border:1px solid var(--border-strong);border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:700;color:var(--text-2);background:var(--surface-1);cursor:pointer;}
-  .rd-rq-tab.on{background:var(--navy-800,#0f2942);color:#fff;border-color:var(--navy-800,#0f2942);}
-  .rd-rq-tab.done:not(.on){border-color:#86efac;color:#15803d;}
-  .rd-rq-hora{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:9px 12px;background:var(--surface-2);border-radius:9px;}
-  .rd-rq-hora label{font-size:12px;font-weight:700;color:var(--text-2);} .rd-rq-hora input{border:1px solid var(--border-strong);border-radius:7px;padding:6px 9px;font-size:13px;font-weight:700;}
-  .rd-rq-grp{margin-bottom:14px;} .rd-rq-gt{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--teal-700,#0e7490);margin:0 0 7px;}
-  .rd-rq-item{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--border);}
-  .rd-rq-txt{flex:1;min-width:180px;font-size:13px;color:var(--text-1);}
-  .rd-rq-seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;}
-  .rd-rq-b{border:none;background:var(--surface-1);padding:6px 11px;font-size:12px;font-weight:700;color:var(--text-3);cursor:pointer;border-left:1px solid var(--border);}
-  .rd-rq-b:first-child{border-left:none;}
-  .rd-rq-b.ok.on{background:#059669;color:#fff;} .rd-rq-b.no.on{background:#dc2626;color:#fff;} .rd-rq-b.na.on{background:var(--surface-2);color:var(--text-2);}
-  .rd-rq-obs{flex-basis:100%;border:1px solid #fca5a5;border-radius:7px;padding:6px 9px;font-size:12px;background:#fff5f5;}`;
-  const st=document.createElement('style'); st.id='rd-rq-styles'; st.textContent=css; document.head.appendChild(st);
 }
 
 // ═══════════════════════════════════════════════
@@ -10685,12 +10773,10 @@ async function buildHistoria(){
   // Snapshot del día desde el formulario (aún sin guardar)
   let personal = 0; ESPECIALIDADES.forEach(e => personal += parseInt(g('rd-ob-'+e)?.value)||0);
   const plan = parseFloat(g('rd-plan')?.value)||0, real = parseFloat(g('rd-real')?.value)||0;
-  const rok = parseInt(g('rd-rondas-ok')?.value)||0, rtot = parseInt(g('rd-rondas-tot')?.value)||10;
   const snap = {
     fecha_reporte:f, personal_total:personal, pct_planificado:plan, pct_ejecutado:real,
-    rondas_ok:rok, rondas_total:rtot, riesgos:riesgosTemp.filter(r=>(r.descripcion||'').trim()),
     restricciones:rdRestricciones, contratas_detalle:rdContratas.filter(c=>c.nombre),
-    fotos:rdFotos, actividad:g('rd-actividad')?.value||'', observaciones:g('rd-obs')?.value||'',
+    fotos:rdFotos,
     jornada_entrada:g('rd-entrada')?.value||'', jornada_salida:g('rd-salida')?.value||'',
     cliente_visita:g('rd-visita')?.value==='true', cliente_nombre:g('rd-visita-nombre')?.value||''
   };
@@ -10703,14 +10789,22 @@ async function buildHistoria(){
   const riesgosArr = Array.isArray(today.riesgos) ? today.riesgos : [];
   const altos = riesgosArr.filter(r => (r.nivel||'')==='ALTO').length;
   const medios = riesgosArr.filter(r => (r.nivel||'')==='MEDIO').length;
-  const rondasPct = today.rondas_total ? (today.rondas_ok/today.rondas_total*100) : 0;
+  const hayRondas  = num(today.rondas_total) > 0;              // solo reportes históricos
+  const hayRiesgos = Array.isArray(today.riesgos);             // solo reportes históricos
+  const rondasPct = hayRondas ? (today.rondas_ok/today.rondas_total*100) : 0;
   const fotosN = Array.isArray(today.fotos) ? today.fotos.length : 0;
   const diff = num(today.pct_ejecutado) - num(today.pct_planificado);
   const spi = num(today.pct_planificado)>0 ? num(today.pct_ejecutado)/num(today.pct_planificado) : (num(today.pct_ejecutado)>0?1:0);
 
   // Score IA (0–100)
   const compl = rdComputeCompleteness();
-  let score = 0.40*Math.min(100,spi*100) + 0.20*rondasPct + 0.20*Math.max(0,100-altos*25-medios*10) + 0.10*Math.min(100,fotosN*25) + 0.10*compl;
+  // Los pesos se re-normalizan: rondas y riesgos ya no se capturan, así que solo
+  // puntúan en reportes antiguos que sí los tienen.
+  const comps = [[0.40, Math.min(100,spi*100)], [0.10, Math.min(100,fotosN*25)], [0.10, compl]];
+  if (hayRondas)  comps.push([0.20, rondasPct]);
+  if (hayRiesgos) comps.push([0.20, Math.max(0,100-altos*25-medios*10)]);
+  const pesoTot = comps.reduce((a,[w])=>a+w,0);
+  let score = comps.reduce((a,[w,v])=>a+w*v,0) / (pesoTot||1);
   score = Math.round(Math.max(0,Math.min(100,score)));
   const ring = g('rd-his-ring'); if (ring) ring.style.strokeDashoffset = 326.7*(1-score/100);
   g('rd-his-score').textContent = score;
@@ -10729,8 +10823,8 @@ async function buildHistoria(){
     { ic:'trending-up', val:num(today.pct_ejecutado).toFixed(1)+'%', lbl:'Avance ejecutado', d:delta(num(today.pct_ejecutado), ayer?num(ayer.pct_ejecutado):null,'%') },
     { ic:'target', val:(diff>0?'+':'')+diff.toFixed(1), lbl:'Δ vs planificado', d:`<span class="rd-kpi-delta ${diff>=0?'up':'down'}">${diff>=0?'a favor':'en contra'}</span>` },
     { ic:'users', val:today.personal_total||0, lbl:'Personal en obra', d:delta(num(today.personal_total), ayer?num(ayer.personal_total):null) },
-    { ic:'shield-check', val:rondasPct.toFixed(0)+'%', lbl:`Rondas (${today.rondas_ok||0}/${today.rondas_total||0})`, d:`<span class="rd-kpi-delta ${rondasPct>=70?'up':'down'}">calidad</span>` },
-    { ic:'shield-alert', val:riesgosArr.length, lbl:'Riesgos del día', d:`<span class="rd-kpi-delta ${altos?'down':'flat'}">${altos} alto${altos===1?'':'s'}</span>` },
+    ...(hayRondas ? [{ ic:'shield-check', val:rondasPct.toFixed(0)+'%', lbl:`Rondas (${today.rondas_ok||0}/${today.rondas_total||0})`, d:`<span class="rd-kpi-delta ${rondasPct>=70?'up':'down'}">calidad</span>` }] : []),
+    ...(hayRiesgos ? [{ ic:'shield-alert', val:riesgosArr.length, lbl:'Riesgos del día', d:`<span class="rd-kpi-delta ${altos?'down':'flat'}">${altos} alto${altos===1?'':'s'}</span>` }] : []),
     { ic:'image', val:fotosN, lbl:'Evidencia fotográfica', d:`<span class="rd-kpi-delta ${fotosN?'up':'flat'}">${fotosN?'con soporte':'sin fotos'}</span>` }
   ];
   g('rd-his-kpis').innerHTML = kpis.map(k=>`<div class="rd-kpi">
@@ -10760,7 +10854,7 @@ async function buildHistoria(){
   // Panel IA
   const bien = [], atencion = [], recs = [];
   if (diff>=0) bien.push('El avance ejecutado va a la par o por encima de lo planificado.'); else atencion.push(`El avance está ${Math.abs(diff).toFixed(1)} puntos por debajo del plan.`);
-  if (rondasPct>=70) bien.push(`Cobertura de rondas de calidad saludable (${rondasPct.toFixed(0)}%).`); else atencion.push(`Rondas de calidad incompletas (${rondasPct.toFixed(0)}%).`);
+  if (hayRondas) { if (rondasPct>=70) bien.push(`Cobertura de rondas de calidad saludable (${rondasPct.toFixed(0)}%).`); else atencion.push(`Rondas de calidad incompletas (${rondasPct.toFixed(0)}%).`); }
   if (altos>0) { atencion.push(`${altos} riesgo(s) de nivel ALTO sin mitigar.`); recs.push('Escalar los riesgos ALTO y asignar responsable de mitigación hoy mismo.'); }
   if (fotosN>0) bien.push(`${fotosN} foto(s) de evidencia adjuntas.`); else recs.push('Adjunta evidencia fotográfica para respaldar el avance reportado.');
   if ((Array.isArray(today.restricciones)?today.restricciones:[]).length) recs.push('Da seguimiento a las restricciones abiertas con fecha objetivo.');
@@ -10778,7 +10872,7 @@ async function buildHistoria(){
     </div>
     <div class="rd-ai-body">
       <div class="rd-ai-summary">El proyecto reporta <strong>${num(today.pct_ejecutado).toFixed(1)}%</strong> de avance frente a <strong>${num(today.pct_planificado).toFixed(1)}%</strong> planificado (${diff>=0?'a favor':'en contra'} por ${Math.abs(diff).toFixed(1)} pts), con <strong>${today.personal_total||0} personas</strong> en obra y <strong>${riesgosArr.length} riesgo(s)</strong> identificados${altos?` (${altos} ALTO)`:''}. ${diff>=0&&altos===0?'El día se desarrolla dentro de parámetros esperados.':'Hay puntos que requieren atención del supervisor.'}</div>
-      <div class="rd-gauges">${g3('Cumplimiento (SPI)',gSpi,'#22c55e')}${g3('Calidad rondas',rondasPct,'#0891b2')}${g3('Gestión de riesgo',gRiesgo,'#f59e0b')}</div>
+      <div class="rd-gauges">${g3('Cumplimiento (SPI)',gSpi,'#22c55e')}${hayRondas?g3('Calidad rondas',rondasPct,'#0891b2'):''}${hayRiesgos?g3('Gestión de riesgo',gRiesgo,'#f59e0b'):''}</div>
       <div class="rd-ai-cols">
         <div class="rd-ai-block"><h5><i data-lucide="check-circle-2" class="ri"></i> Fortalezas</h5>${bien.map(x=>`<div class="rd-ai-li good"><i data-lucide="check" class="ri"></i><span>${x}</span></div>`).join('')}</div>
         <div class="rd-ai-block"><h5><i data-lucide="alert-triangle" class="ri"></i> Atención</h5>${(atencion.length?atencion:['Sin alertas relevantes hoy.']).map(x=>`<div class="rd-ai-li bad"><i data-lucide="alert-circle" class="ri"></i><span>${x}</span></div>`).join('')}</div>
@@ -10800,7 +10894,7 @@ async function buildHistoria(){
   g('rd-his-compare').innerHTML =
     cmp('Avance ejecutado','trending-up', num(today.pct_ejecutado), ayer?num(ayer.pct_ejecutado):0, avg(sem,'pct_ejecutado'), avg(mes,'pct_ejecutado'),'%') +
     cmp('Personal en obra','users', num(today.personal_total), ayer?num(ayer.personal_total):0, avg(sem,'personal_total'), avg(mes,'personal_total'),'') +
-    cmp('Rondas de calidad','shield-check', rondasPct, ayer&&ayer.rondas_total?num(ayer.rondas_ok)/num(ayer.rondas_total)*100:0, avg(sem.map(r=>({v:r.rondas_total?num(r.rondas_ok)/num(r.rondas_total)*100:0})),'v'), avg(mes.map(r=>({v:r.rondas_total?num(r.rondas_ok)/num(r.rondas_total)*100:0})),'v'),'%');
+    (hayRondas ? cmp('Rondas de calidad','shield-check', rondasPct, ayer&&ayer.rondas_total?num(ayer.rondas_ok)/num(ayer.rondas_total)*100:0, avg(sem.map(r=>({v:r.rondas_total?num(r.rondas_ok)/num(r.rondas_total)*100:0})),'v'), avg(mes.map(r=>({v:r.rondas_total?num(r.rondas_ok)/num(r.rondas_total)*100:0})),'v'),'%') : '');
 
   rdIcons();
 }
@@ -10902,7 +10996,7 @@ function rvRenderReporte(r){
     ${stat(plan.toFixed(1)+'%','Planificado')}
     ${stat((diff>=0?'+':'')+diff.toFixed(1),'Δ vs plan', diff>=0?'pos':'neg')}
     ${stat(spi.toFixed(2),'SPI', spi>=1?'pos':(spi>=0.9?'':'neg'))}
-    ${stat((r.rondas_ok||0)+'/'+(r.rondas_total||0),'Rondas de calidad')}
+    ${r.rondas_total ? stat((r.rondas_ok||0)+'/'+(r.rondas_total||0),'Rondas de calidad') : ''}
   </div>`;
 
   // Jornada
@@ -10963,7 +11057,7 @@ function rvRenderReporte(r){
   }
 
   // Riesgos
-  html += card('shield-alert','Riesgos del día', `${riesgos.length} identificado(s)`,
+  if (riesgos.length) html += card('shield-alert','Riesgos del día', `${riesgos.length} identificado(s)`,
     riesgos.length
       ? `<div class="rv-list">${riesgos.map(x=>`<div class="rv-li"><span class="rv-tag ${(x.nivel||'').toLowerCase()==='alto'?'alto':(x.nivel||'').toLowerCase()==='medio'?'medio':'bajo'}">${rvEsc(x.nivel||'MEDIO')}</span><span>${rvEsc(x.descripcion||'')}</span></div>`).join('')}</div>`
       : `<p class="rv-none">Sin riesgos registrados. Buen día.</p>`);
@@ -10987,7 +11081,8 @@ function rvRenderReporte(r){
        ${hMan.length?`<div class="rv-narr-blk" style="margin-top:12px;"><h5><i data-lucide="calendar-clock" class="ri"></i> Para mañana</h5><div class="rv-list">${hMan.map(h=>`<div class="rv-li"><span>${rvEsc(h.nombre)}</span></div>`).join('')}</div></div>`:''}`);
   }
 
-  // Narrativa (completa, sin cortes)
+  // Narrativa (completa, sin cortes) — solo en reportes que aún la traen
+  if (!r.actividad_auto && ((r.actividad||'').trim() || (planMan||'').trim() || (r.observaciones||'').trim()))
   html += card('file-text','Bitácora del día · notas manuales','',
     `<div class="rv-narr">
       <div class="rv-narr-blk"><h5><i data-lucide="check-circle-2" class="ri"></i> Actividad principal ejecutada</h5><p>${rvEsc(r.actividad)||'<span class="rv-none">Sin registro.</span>'}</p></div>
@@ -11013,6 +11108,20 @@ function rvRenderReporte(r){
   if (checklist.length){
     html += card('list-checks','Checklist de cierre', `${checklist.filter(c=>c.ok).length}/${checklist.length} completos`,
       `<div class="rv-check">${checklist.map(c=>`<div class="rv-check-i ${c.ok?'on':''}"><i data-lucide="${c.ok?'check-circle-2':'circle'}" class="ri"></i> ${rvEsc(c.item)}</div>`).join('')}</div>`);
+  }
+
+  // Equipos del proyecto reportados hoy
+  const equiposDia = rvArr(r.equipos_dia).filter(e=>e && (e.estado||e.nota));
+  if (equiposDia.length){
+    const EQ_LBL = { esperando:'Por llegar', en_obra:'En obra', montaje:'En montaje', instalado:'Instalado', observado:'Observado' };
+    const EQ_TONO = { instalado:'bajo', en_obra:'bajo', montaje:'bajo', observado:'alto', esperando:'' };
+    html += card('package','Equipos del proyecto', `${equiposDia.length} equipo(s) reportado(s)`,
+      `<div class="rv-list">${equiposDia.map(e=>`<div class="rv-li">
+        <span class="rv-tag ${EQ_TONO[e.estado]||''}">${rvEsc(EQ_LBL[e.estado]||'Sin estado')}</span>
+        <div><b>${rvEsc(e.tipo||'Equipo')}</b> · ${rvEsc(e.doc||'')}
+          ${e.proveedor?`<br><small>${rvEsc(e.proveedor)}${e.eta?' · ETA '+rvEsc(e.eta):''}${e.st_pmo?' · PMO: '+rvEsc(e.st_pmo):''}</small>`:''}
+          ${e.nota?`<br><span>${rvEsc(e.nota)}</span>`:''}</div>
+      </div>`).join('')}</div>`);
   }
 
   // Fotos (cualquier formato/tamaño)
@@ -11151,21 +11260,17 @@ async function hidratarReporte(r, cod){
   const g = id => document.getElementById(id);
   if (g('rd-plan')) g('rd-plan').value = r.pct_planificado || '';
   if (g('rd-real')) g('rd-real').value = r.pct_ejecutado || '';
-  if (g('rd-actividad')) g('rd-actividad').value = r.actividad || '';
-  if (g('rd-obs')) g('rd-obs').value = r.observaciones || '';
-  if (g('rd-plan-manana')) g('rd-plan-manana').value = (typeof r.plan_manana==='string'? r.plan_manana : (r.plan_manana?.texto||'')) || '';
   if (r.jornada_entrada && g('rd-entrada')) g('rd-entrada').value = r.jornada_entrada;
   if (r.jornada_salida && g('rd-salida')) g('rd-salida').value = r.jornada_salida;
   if (r.jornada_motivo && g('rd-jornada-motivo')) g('rd-jornada-motivo').value = r.jornada_motivo;
   await rdEspLoad(cod, r);
-  rdRondasLoad(r);
   if (Array.isArray(r.hitos_dia)) {
     r.hitos_dia.forEach(hd=>{ const h=rdHitos.find(x=>x.nombre===hd.nombre); if(h){ h.hoy=!!hd.hoy; h.manana=!!hd.manana; if(hd.pct!=null) h.pct_nuevo=hd.pct; } });
     if (typeof renderHitos==='function') renderHitos();
   }
   if (Array.isArray(r.fotos)) { rdFotos = r.fotos; renderFotosReporte(); _rehidratarFotosPendientes(); }
+  rdEquiposLoad(r);
   if (Array.isArray(r.restricciones)) { rdRestricciones = r.restricciones; if (typeof renderRestricciones==='function') renderRestricciones(); }
-  if (Array.isArray(r.riesgos)) { riesgosTemp = r.riesgos; if (typeof renderRiesgos==='function') renderRiesgos(); }
   if (g('rd-visita')) g('rd-visita').value = r.cliente_visita ? 'true' : 'false';
   if (r.cliente_nombre && g('rd-visita-nombre')) g('rd-visita-nombre').value = r.cliente_nombre;
   if (r.cliente_obs && g('rd-visita-obs')) g('rd-visita-obs').value = r.cliente_obs;
@@ -11266,7 +11371,8 @@ async function guardarReporte(esDraft = false, silent = false) {
       headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
       body: JSON.stringify(_payloadParaServidor(payload))
     });
-    await persistirHitosYRestricciones(esDraft);
+    await _persistirExtras(payload);
+    _draftMarcarExtras(payload);   // ya se aplicaron: la cola no debe repetirlos
     _saveDraftLocal(payload, false);  // confirmado en el servidor
     if(!silent) showToast(esDraft ? 'Borrador guardado ✓' : 'Reporte guardado ✓');
     setSyncStatus('ok', silent ? 'Autoguardado ✓' : 'Guardado ✓');
@@ -11292,10 +11398,18 @@ function _collectReportePayload(esDraft, firmaUrl){
   const avanceEsp = rdEsp.map(r=>({ esp:r.esp, label:r.label, contrata:(r.contrata||'').trim(), peso:parseFloat(r.peso)||0, personal:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
   const especialidades = {}; let personalTotal = 0;
   rdEsp.forEach(r=>{ especialidades[r.esp]=parseInt(r.personal)||0; personalTotal+=parseInt(r.personal)||0; });
-  const riesgosHoy = riesgosTemp.map(r => ({ nivel: r.nivel || 'MEDIO', descripcion: (r.descripcion || '').trim() })).filter(r => r.descripcion);
   const checklist = RD_CHECKLIST.map((item,i)=>({ item, ok: !!document.getElementById('rd-chk-'+i)?.checked }));
   const checklistOk = checklist.filter(c=>c.ok).length;
   const contratas = rdEsp.filter(r=>r.contrata && r.contrata.trim()).map(r=>({ nombre:r.contrata.trim(), especialidad:r.label, obreros:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
+  // Gerencia lee `actividad` como la observación del día ("Último reporte: …").
+  // Ya no hay bitácora manual, así que se arma con los hitos marcados como hechos hoy.
+  const _hoy = rdHitos.filter(h=>h.hoy);
+  const actividadAuto = _hoy.length
+    ? _hoy.map(h=>{
+        const pct = (h.pct_nuevo!=null && h.pct_nuevo!=='') ? ` (${h.pct_nuevo}%)` : '';
+        return (h.nombre||'').trim() + pct;
+      }).filter(x=>x.trim()).join(' · ')
+    : null;
   const metaMes = parseFloat(document.getElementById('rd-meta-mes').value)||null;
   const facturado = parseFloat(document.getElementById('rd-facturado').value)||null;
   return {
@@ -11307,16 +11421,13 @@ function _collectReportePayload(esDraft, firmaUrl){
     pct_ejecutado: real,
     pct_ejecutado_contrata: realCt || null,
     spi: spi,
-    rondas_ok: parseInt(document.getElementById('rd-rondas-ok').value)||0,
-    rondas_total: parseInt(document.getElementById('rd-rondas-tot').value)||0,
-    rondas_checklist: rdRondasPayload(),
     personal_total: personalTotal,
     especialidades,
     avance_especialidades: avanceEsp,
-    hitos_dia: rdHitos.map(h=>({ nombre:h.nombre, pct:h.pct_nuevo, hoy:!!h.hoy, manana:!!h.manana, manual:!!h.manual })),
-    actividad: document.getElementById('rd-actividad').value,
-    observaciones: document.getElementById('rd-obs').value,
-    plan_manana: { texto: document.getElementById('rd-plan-manana').value },
+    hitos_dia: rdHitos.map(h=>({ id:h.id||null, nombre:h.nombre, pct:h.pct_nuevo, pct_actual:h.pct_actual,
+                                hoy:!!h.hoy, manana:!!h.manana, manual:!!h.manual })),
+    actividad: actividadAuto,
+    actividad_auto: true,
     reprogramacion: (function(){
       const on = document.getElementById('rd-repro-chk')?.checked;
       const f  = document.getElementById('rd-repro-fecha')?.value;
@@ -11336,12 +11447,12 @@ function _collectReportePayload(esDraft, firmaUrl){
     cliente_visita:  document.getElementById('rd-visita').value === 'true',
     cliente_nombre:  document.getElementById('rd-visita-nombre').value||null,
     cliente_obs:     document.getElementById('rd-visita-obs').value||null,
-    riesgos: riesgosHoy,
     restricciones: rdRestricciones,
     contratas_detalle: contratas,
     contratas_activas: contratas.length,
     contratas_nombres: contratas.map(c=>c.nombre).join(', ') || null,
     impedimentos_count: rdRestricciones.length,
+    equipos_dia: rdEquiposPayload(),
     fotos: rdFotos,
     fotos_count: rdFotos.length,
     firma_url: firmaUrl,
@@ -11360,7 +11471,20 @@ function _collectReportePayload(esDraft, firmaUrl){
 function _draftKey(cod, fecha){ return 'fp_rd_'+String(cod||'').replace(/[^a-zA-Z0-9._-]/g,'_')+'_'+(fecha||''); }
 function _saveDraftLocal(payload, pending){
   if(!payload || !payload.cod_proyecto || !payload.fecha_reporte) return;
-  try{ localStorage.setItem(_draftKey(payload.cod_proyecto, payload.fecha_reporte), JSON.stringify({ payload, ts: Date.now(), pending: !!pending })); }catch(e){}
+  const k = _draftKey(payload.cod_proyecto, payload.fecha_reporte);
+  let extras = false;   // conservar si los efectos secundarios ya se aplicaron
+  try{ extras = !!(JSON.parse(localStorage.getItem(k) || 'null') || {}).extras; }catch(e){}
+  try{ localStorage.setItem(k, JSON.stringify({ payload, ts: Date.now(), pending: !!pending, extras })); }catch(e){}
+}
+// Marca en el espejo local que los efectos secundarios (Gantt + restricciones)
+// ya se aplicaron, para que la cola no los repita y duplique restricciones.
+function _draftMarcarExtras(payload){
+  if(!payload || !payload.cod_proyecto || !payload.fecha_reporte) return;
+  const k = _draftKey(payload.cod_proyecto, payload.fecha_reporte);
+  try{
+    const rec = JSON.parse(localStorage.getItem(k) || 'null');
+    if(rec){ rec.extras = true; localStorage.setItem(k, JSON.stringify(rec)); }
+  }catch(e){}
 }
 function _getDraftLocal(cod, fecha){ try{ const s=localStorage.getItem(_draftKey(cod,fecha)); return s?JSON.parse(s):null; }catch(e){ return null; } }
 function _mirrorLocal(){
@@ -11376,7 +11500,14 @@ async function _flushOutbox(){
     if(!rec || !rec.pending || !rec.payload) continue;
     try{
       await sbFetch('/rest/v1/reportes?on_conflict=cod_proyecto,fecha_reporte', { method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}, body: JSON.stringify(_payloadParaServidor(rec.payload)) });
-      rec.pending=false; localStorage.setItem(k, JSON.stringify(rec)); flushed++;
+      rec.pending=false;
+      // El reporte ya está arriba; ahora sí los efectos secundarios que antes se perdían
+      // cuando el reporte se enviaba sin señal (avance del Gantt y restricciones).
+      if(!rec.extras){
+        try{ await _persistirExtras(rec.payload); rec.extras = true; }
+        catch(e){ console.warn('extras pendientes', e); }
+      }
+      localStorage.setItem(k, JSON.stringify(rec)); flushed++;
     }catch(e){ /* sigue pendiente hasta el próximo intento */ }
   }
   if(flushed>0){ setSyncStatus('ok','Sincronizado ✓'); if(typeof showToast==='function') showToast(flushed+' reporte(s) pendiente(s) subido(s) ✓', 2800, 'success'); }
@@ -11511,30 +11642,39 @@ function scheduleAutosave(){
 document.addEventListener('input',  (e)=>{ if (e.target.closest && e.target.closest('#rd-tipo-diario')) scheduleAutosave(); });
 document.addEventListener('change', (e)=>{ if (e.target.closest && e.target.closest('#rd-tipo-diario')) scheduleAutosave(); });
 
-async function persistirHitosYRestricciones(esDraft) {
-  // Actualizar pct_avance de hitos reales del Gantt
-  for (const h of rdHitos) {
-    if (h.id && h.pct_nuevo !== h.pct_actual) {
+// Efectos secundarios del reporte que NO viven en la fila de `reportes`:
+// el % de avance de las tareas del Gantt y las restricciones estructuradas.
+// Trabaja SOBRE EL PAYLOAD (no sobre el formulario en pantalla) para que la
+// cola offline pueda ejecutarlos igual al reconectar, aunque sean de otro día.
+async function _persistirExtras(payload){
+  if (!payload) return;
+
+  // Avance de los hitos reales del Gantt
+  for (const h of (payload.hitos_dia || [])) {
+    if (h && h.id && h.pct != null && h.pct !== h.pct_actual) {
       try {
         await sbFetch(`/rest/v1/tareas_gantt?id=eq.${h.id}`, {
           method:'PATCH', headers:{'Prefer':'return=minimal'},
-          body: JSON.stringify({ pct_avance: h.pct_nuevo })
+          body: JSON.stringify({ pct_avance: h.pct })
         });
       } catch(e){ console.warn('hito patch', e); }
     }
   }
-  if (esDraft) return;
-  // Insertar restricciones estructuradas en su tabla
-  if (rdRestricciones.length) {
-    const fecha = document.getElementById('rd-fecha').value;
-    const rows = rdRestricciones.filter(r=>r.titulo||r.descripcion).map(r=>({
-      nombre_proyecto: currentProyecto.nombre, fecha,
+
+  if (payload.es_draft) return;   // los borradores no generan restricciones
+
+  const rows = (payload.restricciones || [])
+    .filter(r => r && (r.titulo || r.descripcion))
+    .map(r => ({
+      nombre_proyecto: payload.nombre_proyecto, fecha: payload.fecha_reporte,
       categoria: r.categoria, titulo: r.titulo, descripcion: r.descripcion,
-      impacto: r.impacto, responsable: r.responsable||null,
-      fecha_objetivo: r.fecha_objetivo||null, estado:'abierta',
-      reportada_por: currentUser?.nombre||null
+      impacto: r.impacto, responsable: r.responsable || null,
+      fecha_objetivo: r.fecha_objetivo || null, estado: 'abierta',
+      reportada_por: payload.supervisor || null
     }));
-    if (rows.length) { try { await sbFetch('/rest/v1/restricciones',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(rows)}); } catch(e){ console.warn('restricciones', e); } }
+  if (rows.length) {
+    try { await sbFetch('/rest/v1/restricciones', { method:'POST', headers:{'Prefer':'return=minimal'}, body: JSON.stringify(rows) }); }
+    catch(e){ console.warn('restricciones insert', e); }
   }
 }
 
@@ -11982,20 +12122,20 @@ async function exportarPDF() {
   const plan    = parseFloat(document.getElementById('rd-plan').value)||0;
   const real    = parseFloat(document.getElementById('rd-real').value)||0;
   const spi     = plan>0 ? (real/plan) : 0;
-  const rondasOk  = parseInt(document.getElementById('rd-rondas-ok').value)||0;
-  const rondasTot = parseInt(document.getElementById('rd-rondas-tot').value)||10;
   let personal = 0; ESPECIALIDADES.forEach(e => personal += parseInt(document.getElementById('rd-ob-'+e)?.value)||0);
 
   // Llenar PDF preview
   document.getElementById('pdf-fecha-header').textContent = fecha;
   document.getElementById('pdf-proyecto').textContent    = currentProyecto.nombre;
   document.getElementById('pdf-supervisor').textContent  = currentProyecto.supervisor||currentUser?.nombre||'';
-  document.getElementById('pdf-fin-cont').textContent    = currentProyecto.finCont||'—';
-  document.getElementById('pdf-fin-proy').textContent    = currentProyecto.finCont||'—';
+  document.getElementById('pdf-fin-cont').textContent    = rdFmtFecha(currentProyecto.finCont);
+  // Fin proyectado real: la reprogramación de hoy manda sobre la fecha de PMO
+  const _reproOn = document.getElementById('rd-repro-chk')?.checked;
+  const _reproF  = document.getElementById('rd-repro-fecha')?.value;
+  document.getElementById('pdf-fin-proy').textContent    = rdFmtFecha((_reproOn&&_reproF) ? _reproF : (currentProyecto.finReal||currentProyecto.finCont));
   document.getElementById('pdf-avance').textContent      = real.toFixed(1)+'%';
   document.getElementById('pdf-spi').textContent         = spi.toFixed(2);
   document.getElementById('pdf-eval-ct').textContent     = document.getElementById('kpi-eval').textContent;
-  document.getElementById('pdf-rondas').textContent      = rondasOk+'/'+rondasTot;
 
   const delta = real - plan;
   const enPlan = delta >= -2;
@@ -12014,9 +12154,24 @@ async function exportarPDF() {
   });
   perRow.innerHTML = persHtml || `<span style="font-size:11px;color:#9ca3af;">Personal total: ${personal}</span>`;
 
-  // Rondas chips
-  const rondasEl = document.getElementById('pdf-rondas-chips');
-  rondasEl.innerHTML = Array.from({length:rondasTot},(_,i)=>`<span class="pdf-ronda-chip">${i<rondasOk?'✓':''} R${i+1}</span>`).join('');
+  // Equipos reportados hoy
+  const _eqPdf = (typeof rdEquiposPayload==='function') ? rdEquiposPayload() : [];
+  const _eqLbl = { esperando:'Por llegar', en_obra:'En obra', montaje:'En montaje', instalado:'Instalado', observado:'Observado' };
+  const _eqTitle = document.getElementById('pdf-equipos-title');
+  const _eqTable = document.getElementById('pdf-equipos-table');
+  if (_eqPdf.length){
+    if(_eqTitle) _eqTitle.style.display = '';
+    _eqTable.style.display = '';
+    _eqTable.innerHTML =
+      `<thead><tr><th>Equipo</th><th>Orden</th><th>Proveedor</th><th>ETA</th><th>PMO</th><th>En obra</th><th>Nota</th></tr></thead>
+       <tbody>${_eqPdf.map(e=>`<tr>
+         <td>${e.tipo||'—'}</td><td>${e.doc||'—'}</td><td>${e.proveedor||'—'}</td>
+         <td>${e.eta||'—'}</td><td>${e.st_pmo||'—'}</td>
+         <td>${_eqLbl[e.estado]||'—'}</td><td>${e.nota||''}</td></tr>`).join('')}</tbody>`;
+  } else {
+    if(_eqTitle) _eqTitle.style.display = 'none';
+    if(_eqTable) _eqTable.style.display = 'none';
+  }
 
   // Cargar contratas del reporte
   try {
