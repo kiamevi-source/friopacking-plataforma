@@ -16058,33 +16058,63 @@ function _render(){
   var gSin=rows.filter(function(r){return (r.p.valp||0)>5 && r.v.val<=0 && r.v.pre<=0;});
   var gProc=rows.filter(function(r){return gSin.indexOf(r)<0 && r.v.pre>0;});
   var gVal=rows.filter(function(r){return gSin.indexOf(r)<0 && gProc.indexOf(r)<0 && r.v.val>0;});
-  var kpi=function(l,v,c,sub){return '<div style="background:'+C_+';border:1px solid '+LN+';border-radius:10px;padding:12px 14px;flex:1;min-width:130px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:'+MU+'">'+l+'</div><div style="font-size:20px;font-weight:800;color:'+(c||IN)+'">'+v+'</div>'+(sub?'<div style="font-size:11px;color:'+MU+'">'+sub+'</div>':'')+'</div>';};
-  var pctP=function(v){return v.meta>0?Math.round((v.val+v.pre)/v.meta*100):0;};
+  /* ── métricas para gráficos ── */
+  var comp=activos.filter(function(p){return (p.valp||0)>=95;}).length;
+  var enP=activos.filter(function(p){return (p.valp||0)>=30&&(p.valp||0)<95;}).length;
+  var ini=activos.filter(function(p){return (p.valp||0)<30;}).length;
+  var totP=activos.length||1;
+  var ag=[{l:'0–30 d',v:0,c:'#f59e0b'},{l:'31–60',v:0,c:'#f59e0b'},{l:'61–90',v:0,c:'#f59e0b'},{l:'+90 d',v:0,c:'#ef4444'}];
+  C.forEach(function(x){var d=+x.dias||0,s=+x.saldo_pendiente||0; if(d<=30)ag[0].v+=s; else if(d<=60)ag[1].v+=s; else if(d<=90)ag[2].v+=s; else ag[3].v+=s;});
+  var agMax=Math.max(ag[0].v,ag[1].v,ag[2].v,ag[3].v,1);
+  var top=rows.map(function(r){return {n:r.p.name,v:r.v.meta};}).filter(function(x){return x.v>0;}).sort(function(a,b){return b.v-a.v;}).slice(0,5);
+  var topMax=top.length?top[0].v:1;
+  var flt=W._valFilter||'all';
+  var visibles=flt==='sin'?gSin:flt==='proc'?gProc:flt==='comp'?gVal:rows;
+  /* helpers UI */
+  var kcard=function(l,v,sub,col,ico){return '<div style="flex:1;min-width:175px;background:'+C_+';border:1px solid '+LN+';border-radius:14px;padding:15px 17px;box-shadow:0 1px 2px rgba(15,23,42,.04)"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-size:12px;color:'+MU+';font-weight:600">'+l+'</div><div style="width:32px;height:32px;border-radius:9px;background:'+col+'1f;display:flex;align-items:center;justify-content:center;font-size:15px">'+ico+'</div></div><div style="font-size:25px;font-weight:800;color:'+col+';margin-top:7px;line-height:1">'+v+'</div><div style="font-size:11px;color:'+MU+';margin-top:5px">'+sub+'</div></div>';};
+  var avatar=function(name,col){var w=(name||'').trim().split(/\s+/);var g=(((w[0]||'')[0]||'')+((w[1]||'')[0]||'')).toUpperCase(); return '<span style="width:28px;height:28px;flex:none;border-radius:50%;background:'+col+';color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center">'+g+'</span>';};
+  var badge=function(r){var v=r.v,t=(v.meta>0&&v.val>=v.meta)?['Valorizado','#16a34a']:v.pre>0?['En proceso','#f59e0b']:['Sin valorizar','#ef4444']; return '<span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:'+t[1]+'1a;color:'+t[1]+';white-space:nowrap">'+t[0]+'</span>';};
   var prow=function(r){
-    var p=r.p,v=r.v;
-    var col=(v.meta>0&&v.val>=v.meta)?'#16a34a':v.pre>0?'#e67e22':'#c1272d';
-    var wa='Hola '+(p.sup||'Supervisor')+',\n\n💰 *Valorización — '+p.name+' (Agosto)*\n\nAvance de obra: '+(p.valp||0).toFixed(0)+'%\nMeta del mes: '+_u(v.meta)+'\nValorizado: '+_u(v.val)+'  ·  Presentado: '+_u(v.pre)+'  ·  Pendiente: '+_u(v.pen)+(v.cobrar>0?'\nPor cobrar: '+_u(v.cobrar):'')+'\n\n¿Cuándo coordinamos la valorización pendiente?\n\n_Grupo Friopacking · PMO_';
-    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid '+LN+'">'
-      +'<div style="flex:1;min-width:0"><div style="font-weight:700;color:'+IN+';font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(p.name)+'</div><div style="font-size:11px;color:'+MU+'">'+_esc(p.sup||'—')+' · avance '+(p.valp||0).toFixed(0)+'%</div></div>'
-      +'<div style="width:110px"><div style="height:6px;background:'+LN+';border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pctP(v)+'%;background:'+col+'"></div></div><div style="font-size:10px;color:'+MU+';margin-top:2px">'+pctP(v)+'% valorizado</div></div>'
-      +'<div style="width:88px;text-align:right;font-weight:700;color:'+IN+'">'+_u(v.meta)+'</div>'
-      +'<button class="btn" title="Enviar WhatsApp al supervisor" style="padding:5px 9px" onclick="window.open(\''+waURL(wa)+'\',\'_blank\')">📱</button>'
+    var p=r.p,v=r.v,av=(p.valp||0),avcol=av>=95?'#2dc4a6':av>=30?'#f59e0b':'#ef4444';
+    var wa='Hola '+(p.sup||'Supervisor')+',\n\n💰 *Valorización — '+p.name+' (Agosto)*\n\nAvance de obra: '+av.toFixed(0)+'%\nMeta del mes: '+_u(v.meta)+'\nValorizado: '+_u(v.val)+'  ·  Presentado: '+_u(v.pre)+'  ·  Pendiente: '+_u(v.pen)+(v.cobrar>0?'\nPor cobrar: '+_u(v.cobrar):'')+'\n\n¿Cuándo coordinamos la valorización pendiente?\n\n_Grupo Friopacking · PMO_';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid '+LN+'">'
+      +avatar(p.name,'#3b5bdb')
+      +'<div style="flex:1;min-width:0"><div style="font-weight:700;color:'+IN+';font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(p.name)+'</div><div style="font-size:11px;color:'+MU+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(p.sup||'—')+'</div></div>'
+      +'<div style="width:120px;display:flex;align-items:center;gap:7px"><span style="font-size:12px;font-weight:700;color:'+IN+';width:32px;text-align:right">'+av.toFixed(0)+'%</span><div style="flex:1;height:6px;background:'+LN+';border-radius:3px;overflow:hidden"><div style="height:100%;width:'+Math.min(av,100)+'%;background:'+avcol+'"></div></div></div>'
+      +'<div style="width:74px;text-align:right;font-weight:700;color:'+IN+';font-size:13px">'+_u(v.meta)+'</div>'
+      +'<div style="width:94px;text-align:center">'+badge(r)+'</div>'
+      +'<button class="btn" title="WhatsApp al supervisor" style="padding:4px 8px" onclick="window.open(\''+waURL(wa)+'\',\'_blank\')">📱</button>'
       +'</div>';
   };
-  var sect=function(lbl,arr,col){ if(!arr.length)return''; return '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:'+col+';margin:12px 0 2px">'+lbl+' ('+arr.length+')</div>'+arr.map(prow).join(''); };
-  var th=function(x){return '<th style="text-align:left;padding:5px 8px;color:'+MU+';font-size:10px;text-transform:uppercase;border-bottom:2px solid '+LN+'">'+x+'</th>';};
+  var pill=function(k,l,n){var a=flt===k||(k==='all'&&flt==='all');return '<button onclick="W._valSetFilter(\''+k+'\')" style="font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;border:1px solid '+(a?'#3b5bdb':LN)+';background:'+(a?'#3b5bdb':'transparent')+';color:'+(a?'#fff':MU)+';cursor:pointer">'+l+' ('+n+')</button>';};
+  /* dona SVG */
+  var segs=[{v:comp,c:'#2dc4a6'},{v:enP,c:'#f59e0b'},{v:ini,c:'#ef4444'}],r0=52,circ=2*Math.PI*r0,off=0,arcs='';
+  segs.forEach(function(s){var dash=(s.v/totP)*circ; arcs+='<circle cx="64" cy="64" r="52" fill="none" stroke="'+s.c+'" stroke-width="15" stroke-dasharray="'+dash+' '+(circ-dash)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 64 64)"/>'; off+=dash;});
+  var donut='<svg width="128" height="128" viewBox="0 0 128 128">'+arcs+'<text x="64" y="60" text-anchor="middle" font-size="24" font-weight="800" fill="#fff">'+totP+'</text><text x="64" y="80" text-anchor="middle" font-size="10" fill="#9fb0c8">Proyectos</text></svg>';
+  var leg=function(c,l,n){return '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cfd8e6;margin:6px 0"><span style="width:9px;height:9px;border-radius:50%;background:'+c+'"></span><span style="flex:1">'+l+'</span><b style="color:#fff">'+n+' ('+(totP>0?Math.round(n/totP*100):0)+'%)</b></div>';};
+  /* ── HTML ── */
   var h='<span data-v6 hidden></span>';
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px"><div><h2 style="margin:0;color:'+IN+'">💰 Valorización · Agosto 2026</h2><p style="color:'+MU+';font-size:12px;margin-top:3px">'+L.length+' líneas · '+activos.length+' proyectos activos · fuente: Supabase</p></div><div style="display:flex;gap:6px"><button class="btn" onclick="W._valRefresh()">🔄 Actualizar</button><button class="btn primary" onclick="W._valImport()">📁 Importar Excel</button></div></div>';
-  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+kpi('Meta del mes',_u(meta),'#0d6efd',L.length+' valorizaciones')+kpi('Avanzado',_u(avanzado),'#16a34a',pctAv.toFixed(0)+'% (valorizado+presentado)')+kpi('Pendiente',_u(pendMonto),'#e67e22',(100-pctAv).toFixed(0)+'% de la meta')+kpi('Por cobrar',_u(saldoTot),'#c1272d',venc.length+' vencidas (+90d)')+'</div>';
-  h+='<div style="background:'+C_+';border:1px solid '+LN+';border-radius:10px;padding:8px 14px 14px;margin-bottom:16px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:'+MU+'">Por proyecto · toca 📱 para escribir al supervisor</div>';
-  h+=sect('⚠ Sin valorizar (con avance)',gSin,'#c1272d')+sect('◔ En proceso (presentado)',gProc,'#e67e22')+sect('✓ Valorizado',gVal,'#16a34a');
-  if(!gSin.length&&!gProc.length&&!gVal.length) h+='<div style="padding:16px;color:'+MU+';font-size:12px">Sin cruce proyecto↔valorización.</div>';
+  h+='<div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:16px"><div><div style="display:flex;align-items:baseline;gap:10px"><h1 style="margin:0;font-size:28px;color:'+IN+'">Valorización</h1><span style="font-size:18px;color:#3b5bdb;font-style:italic;font-weight:600">Agosto 2026</span></div><div style="font-size:12px;color:'+MU+';margin-top:3px">'+L.length+' valorizaciones · '+activos.length+' proyectos activos</div></div><div style="display:flex;gap:6px"><button class="btn" onclick="W._valRefresh()">🔄 Actualizar</button><button class="btn primary" onclick="W._valImport()">📁 Importar Excel</button></div></div>';
+  h+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'+kcard('Meta del mes',_u(meta),L.length+' valorizaciones','#3b5bdb','🎯')+kcard('Avanzado',_u(avanzado),pctAv.toFixed(0)+'% del valorizado + presentado','#16a34a','📈')+kcard('Pendiente',_u(pendMonto),(100-pctAv).toFixed(0)+'% de la meta','#f59e0b','⏳')+kcard('Por cobrar',_u(saldoTot),venc.length+' vencidas (+90d)','#ef4444','⚠️')+'</div>';
+  h+='<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">';
+  /* izquierda: estado por proyecto */
+  h+='<div style="flex:1.7;min-width:420px;background:'+C_+';border:1px solid '+LN+';border-radius:14px;padding:16px 18px">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-size:15px;font-weight:800;color:'+IN+'">Estado por proyecto</div></div>';
+  h+='<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px">'+pill('all','Todos',rows.length)+pill('sin','Sin valorizar',gSin.length)+pill('proc','En proceso',gProc.length)+pill('comp','Completados',gVal.length)+'</div>';
+  h+=visibles.length?visibles.map(prow).join(''):'<div style="padding:18px;color:'+MU+';font-size:12px">Sin proyectos en este filtro.</div>';
   h+='</div>';
-  var cv=C.slice().sort(function(a,b){return (+b.dias||0)-(+a.dias||0);}).slice(0,20);
-  h+='<div style="background:'+C_+';border:1px solid '+LN+';border-radius:10px;padding:14px 16px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:'+MU+';margin-bottom:10px">Cuentas por cobrar · '+_u(saldoTot)+' · '+venc.length+' con +90 días</div><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'+['Cliente','Saldo','Días','Últ. factura','WA'].map(th).join('')+'</tr></thead><tbody>'+cv.map(function(x){var d=+x.dias||0,col=d>90?'#c1272d':d>30?'#e67e22':MU;var wa='Hola'+(x.supervisor?' '+x.supervisor:'')+',\n\n📄 *Cobranza pendiente — '+x.cliente+'*\n\nSaldo por cobrar: '+_u(+x.saldo_pendiente||0)+'\nDías desde última factura: '+d+(x.ultima_factura?' (últ. factura '+x.ultima_factura+')':'')+'\n\n¿Podemos gestionar el pago?\n\n_Grupo Friopacking · PMO_';return '<tr><td style="padding:6px 8px;border-bottom:1px solid '+LN+';max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:'+IN+'">'+_esc(x.cliente)+'</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+';font-weight:700">'+_u(+x.saldo_pendiente||0)+'</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+';color:'+col+';font-weight:700">'+d+'d</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+';color:'+MU+'">'+(x.ultima_factura||'—')+'</td><td style="padding:6px 8px;border-bottom:1px solid '+LN+'"><button class="btn" style="padding:3px 8px" title="WhatsApp cobranza" onclick="window.open(\''+waURL(wa)+'\',\'_blank\')">📱</button></td></tr>';}).join('')+'</tbody></table></div>';
+  /* derecha: resumen + cobros + top5 */
+  h+='<div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:16px">';
+  h+='<div style="background:#0f2440;border-radius:14px;padding:16px 18px;color:#fff"><div style="font-size:14px;font-weight:800;margin-bottom:10px">Resumen general</div><div style="display:flex;align-items:center;gap:14px"><div>'+donut+'</div><div style="flex:1">'+leg('#2dc4a6','Completados (≥95%)',comp)+leg('#f59e0b','En proceso (30–94%)',enP)+leg('#ef4444','Inicial (<30%)',ini)+'</div></div></div>';
+  var bars=ag.map(function(a){var hpx=Math.round(a.v/agMax*90)+4;return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:10px;font-weight:700;color:'+IN+'">'+_u(a.v)+'</div><div style="width:60%;height:'+hpx+'px;background:'+a.c+';border-radius:5px 5px 0 0"></div><div style="font-size:10px;color:'+MU+'">'+a.l+'</div></div>';}).join('');
+  h+='<div style="background:'+C_+';border:1px solid '+LN+';border-radius:14px;padding:16px 18px"><div style="font-size:14px;font-weight:800;color:'+IN+'">Por cobrar</div><div style="font-size:22px;font-weight:800;color:#ef4444;margin:2px 0">'+_u(saldoTot)+'</div><div style="font-size:11px;color:'+MU+';margin-bottom:12px">'+venc.length+' vencidas (+90d)</div><div style="display:flex;align-items:flex-end;gap:8px;height:120px">'+bars+'</div></div>';
+  var topH=top.map(function(t,i){return '<div style="display:flex;align-items:center;gap:8px;margin:7px 0"><span style="width:20px;height:20px;flex:none;border-radius:6px;background:#eef1fb;color:#3b5bdb;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">'+(i+1)+'</span><span style="width:96px;font-size:12px;font-weight:600;color:'+IN+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(t.n)+'</span><div style="flex:1;height:8px;background:'+LN+';border-radius:4px;overflow:hidden"><div style="height:100%;width:'+Math.round(t.v/topMax*100)+'%;background:#2dc4a6"></div></div><span style="width:56px;text-align:right;font-size:12px;font-weight:700;color:'+IN+'">'+_u(t.v)+'</span></div>';}).join('');
+  h+='<div style="background:'+C_+';border:1px solid '+LN+';border-radius:14px;padding:16px 18px"><div style="font-size:14px;font-weight:800;color:'+IN+';margin-bottom:8px">Top 5 por valor</div>'+(topH||'<div style="font-size:12px;color:'+MU+'">Sin datos</div>')+'</div>';
+  h+='</div></div>';
   el.innerHTML=h;
 }
 W._valRefresh=function(){ VS.loaded=false; VS.failed=false; _load(true); };
+W._valSetFilter=function(k){ W._valFilter=k; try{_render();}catch(e){} };
 W._valImport=function(){alert('Importador de Excel: próximo paso. Por ahora la data se carga y ya se ve aquí.');};
 W._valRenderV6=_render;
 /* Registro SEGURO: sólo re-asigna el renderer en unos pocos setTimeout FINITOS
