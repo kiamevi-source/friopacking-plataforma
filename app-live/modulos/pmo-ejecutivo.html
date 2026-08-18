@@ -1092,16 +1092,18 @@ function rDIR(){
     return h;
   };
   let h=`<table class="gtbl" style="width:100%;font-size:12px;"><thead><tr>
-    <th class="lh" style="text-align:left;">OBRA</th><th style="text-align:left;">ESTADO</th><th style="text-align:left;">SUPERVISOR (dirige)</th><th>ZONA</th></tr></thead><tbody>`;
+    <th class="lh" style="text-align:left;">OBRA</th><th style="text-align:left;">ESTADO</th><th style="text-align:left;">SUPERVISOR (dirige)</th><th style="text-align:left;">ASISTENTE (también reporta)</th><th>ZONA</th></tr></thead><tbody>`;
   list.forEach(p=>{
+    const asis=accDe(p.cod_proyecto,'asistente');
     h+=`<tr>
       <td style="padding:7px 10px;"><b>${p.nombre||'(sin nombre)'}</b><div style="font-size:10px;color:var(--muted);">${p.cod_proyecto||''}</div></td>
       <td><select onchange="cambiarEstado(${p.id},this.value)" style="font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:7px;font-family:inherit;">${estOpts(p.estado)}</select></td>
       <td><select onchange="asignarSup(${p.id},this.value)" style="font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:7px;font-family:inherit;min-width:200px;">${supOpts(p.supervisor_email)}</select></td>
+      <td><select onchange="asignarAsis(${p.id},this.value)" style="font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:7px;font-family:inherit;min-width:200px;">${supOpts(asis?asis.email:'')}</select></td>
       <td style="text-align:center;color:var(--muted);">${p.zona||'—'}</td>
     </tr>`;
   });
-  h+=`</tbody></table><div style="margin-top:8px;font-size:11px;color:var(--muted);">${list.length} obra(s) activa(s) · los cambios se guardan al instante en <b>proyectos</b>.</div>`;
+  h+=`</tbody></table><div style="margin-top:8px;font-size:11px;color:var(--muted);">${list.length} obra(s) activa(s) · se guarda al instante. El <b>supervisor</b> y el <b>asistente</b> son los únicos que pueden escribir el reporte diario de esa obra: la base de datos rechaza a cualquier otro.</div>`;
   out.innerHTML=h;
 }
 function rCARGA(){
@@ -1155,6 +1157,9 @@ function asignarSup(id,email){
     const nuevo=email?(r?r.n:email):'Sin asignar';
     toast(email?('Asignado a '+(r?r.n:email)):'Supervisor quitado');
     if(prevSup!==nuevo) logBitacora('Reasignar supervisor',nom,prevSup+' → '+nuevo);
+    // El permiso para escribir el reporte vive en proyecto_accesos, no en
+    // proyectos: hay que moverlo también o el nuevo supervisor no podría reportar.
+    if(p0) setAcceso(p0.cod_proyecto,'supervisor',email,p0.nombre,true);
   }).catch(()=>toast('Error al asignar'));
 }
 function cambiarEstado(id,estado){
@@ -1465,6 +1470,40 @@ fetch(SB_URL+'/rest/v1/proyectos?select=id,cod_proyecto,nombre,supervisor,superv
     if(document.getElementById('pane-dir')?.classList.contains('active')) rDIR();
     if(document.getElementById('pane-carga')?.classList.contains('active')) rCARGA();
   }).catch(()=>{});
+/* Accesos por obra: quién puede escribir el reporte diario. Supervisor y
+   asistente tienen los MISMOS permisos. Esta tabla se replica sola a la
+   instancia Supervisor, donde la RLS impide tocar el reporte de otra obra. */
+let ACCESOS=[];
+function cargarAccesos(){
+  return fetch(SB_URL+'/rest/v1/proyecto_accesos?select=id,cod_proyecto,email,rol,activo&activo=eq.true',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+    .then(r=>r.ok?r.json():[]).then(rows=>{ ACCESOS=rows;
+      if(document.getElementById('pane-dir')?.classList.contains('active')) rDIR();
+    }).catch(()=>{});
+}
+cargarAccesos();
+const accDe=(cod,rol)=>ACCESOS.find(a=>a.cod_proyecto===cod&&a.rol===rol);
+
+/* Reemplaza el acceso de un rol en una obra: fuera el anterior, entra el nuevo. */
+function setAcceso(cod,rol,email,nomObra,silencioso){
+  if(!cod){ toast('Esa obra no tiene código de proyecto'); return Promise.resolve(); }
+  const otro=accDe(cod, rol==='supervisor'?'asistente':'supervisor');
+  if(email&&otro&&otro.email===email){ toast('Ya está como '+(rol==='supervisor'?'asistente':'supervisor')+' en esta obra'); rDIR(); return Promise.resolve(); }
+  const prev=accDe(cod,rol);
+  const del=fetch(SB_URL+'/rest/v1/proyecto_accesos?cod_proyecto=eq.'+encodeURIComponent(cod)+'&rol=eq.'+rol,{method:'DELETE',headers:{...SB_H,'Prefer':'return=minimal'}});
+  return del.then(()=>{
+    if(!email) return null;
+    return fetch(SB_URL+'/rest/v1/proyecto_accesos',{method:'POST',headers:{...SB_H,'Prefer':'return=representation'},body:JSON.stringify({cod_proyecto:cod,email,rol})}).then(r=>{ if(!r.ok) throw 0; return r.json(); });
+  }).then(()=>cargarAccesos()).then(()=>{
+    const r=ROSTER.find(x=>x.email===email);
+    const nuevo=email?(r?r.n:email):'sin '+rol;
+    if(!silencioso) toast(rol==='supervisor'?('Supervisor: '+nuevo):('Asistente: '+nuevo));
+    if((prev?prev.email:'')!==(email||'')) logBitacora('Acceso '+rol, nomObra||cod, (prev?prev.email:'—')+' → '+(email||'—'));
+  }).catch(()=>{ toast('Error al cambiar el acceso'); cargarAccesos(); });
+}
+function asignarAsis(id,email){
+  const p0=PROYS.find(x=>x.id===id); if(!p0) return;
+  setAcceso(p0.cod_proyecto,'asistente',email,p0.nombre);
+}
 function autoZona(){
   const nombre=(document.getElementById('f-cli').value||'').trim().toLowerCase();
   const z=PROY_ZONA[nombre]; if(!z) return;
