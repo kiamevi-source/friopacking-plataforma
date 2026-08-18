@@ -177,7 +177,6 @@
     <button class="nav-item" data-view="licitaciones"><svg data-lucide="gavel"></svg>Licitaciones</button>
     <button class="nav-item" data-view="factura"><svg data-lucide="receipt"></svg>Facturación</button>
     <button class="nav-item" data-view="docs"><svg data-lucide="folder-up"></svg>Documentos</button>
-    <button class="nav-item" data-view="perfil"><svg data-lucide="building-2"></svg>Perfil de empresa</button>
 
     <div class="sb-foot">
       <div class="sb-avatar" id="ct-avatar">C</div>
@@ -193,11 +192,34 @@
 
     <!-- RESUMEN -->
     <section class="view on" id="v-resumen">
+      <style>
+        #rs-empresa .rs-card{background:linear-gradient(135deg,#14275C 0%,#1d3570 60%,#24499a 100%);border-radius:18px;padding:20px 24px;color:#fff;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+        #rs-empresa .rs-card::after{content:'';position:absolute;top:-90px;right:-70px;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(47,188,163,.16),transparent 65%);pointer-events:none}
+        #rs-empresa .rs-top{display:flex;align-items:center;gap:16px;position:relative;z-index:1;flex-wrap:wrap}
+        #rs-empresa .rs-logo{width:56px;height:56px;border-radius:14px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;flex-shrink:0}
+        #rs-empresa .rs-emp{font-size:21px;font-weight:800;letter-spacing:-.3px}
+        #rs-empresa .rs-meta{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:6px;font-size:12.5px;color:rgba(255,255,255,.72);font-weight:600}
+        #rs-empresa .rs-meta svg{width:13px;height:13px;vertical-align:-2px;margin-right:4px;color:var(--teal)}
+        #rs-empresa .rs-esp{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;position:relative;z-index:1}
+        #rs-empresa .rs-echip{font-size:11.5px;font-weight:700;background:rgba(47,188,163,.18);border:1px solid rgba(47,188,163,.32);color:#bff0e4;border-radius:999px;padding:4px 11px}
+        #rs-accion .rs-alist{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+        #rs-accion .rs-ai{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-left-width:4px;border-radius:12px;padding:12px 14px;box-shadow:var(--shadow-sm);cursor:pointer;transition:.15s}
+        #rs-accion .rs-ai:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+        #rs-accion .rs-ai.warn{border-left-color:var(--amber)}.rs-ai.crit{border-left-color:var(--danger)}.rs-ai.info{border-left-color:var(--blue)}.rs-ai.ok{border-left-color:var(--ok)}
+        #rs-accion .rs-ic{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        #rs-accion .rs-ic svg{width:17px;height:17px}
+        #rs-accion .rs-ai.warn .rs-ic{background:var(--warn-bg);color:var(--warn)}.rs-ai.crit .rs-ic{background:var(--danger-bg);color:var(--danger)}.rs-ai.info .rs-ic{background:#e7f0ff;color:var(--blue)}.rs-ai.ok .rs-ic{background:var(--ok-bg);color:var(--ok)}
+        #rs-accion .rs-at{font-size:13.5px;font-weight:700;color:var(--ink)}
+        #rs-accion .rs-as{font-size:12px;color:var(--muted);font-weight:600;margin-top:1px}
+      </style>
       <div class="page-head">
         <h1 class="page-title font-display">Hola, bienvenido 👷</h1>
-        <p class="page-sub">Tu portal para reportar avance diario, registrar facturación y subir documentos.</p>
+        <p class="page-sub">Tu centro de control: tus obras, pendientes, facturación y documentos.</p>
       </div>
+      <div id="rs-empresa" style="margin-bottom:16px"></div>
+      <div id="rs-accion" style="margin-bottom:16px"></div>
       <div class="kpis">
+        <div class="kpi"><div class="kpi-l"><svg data-lucide="folder-kanban"></svg>Proyectos</div><div class="kpi-v" id="k-proyectos">0</div><div class="kpi-sub" id="k-proyectos-sub">obras asignadas</div></div>
         <div class="kpi"><div class="kpi-l"><svg data-lucide="clipboard-list"></svg>Informes</div><div class="kpi-v" id="k-informes">0</div><div class="kpi-sub">enviados este mes</div></div>
         <div class="kpi"><div class="kpi-l"><svg data-lucide="receipt"></svg>Facturado</div><div class="kpi-v" id="k-facturado">$0</div><div class="kpi-sub" id="k-facturado-sub">0 facturas</div></div>
         <div class="kpi"><div class="kpi-l"><svg data-lucide="clock"></svg>Por cobrar</div><div class="kpi-v" id="k-porcobrar">$0</div><div class="kpi-sub">pendiente de pago</div></div>
@@ -364,15 +386,6 @@
         </div>
         <div class="file-list" id="file-list"></div>
       </div>
-    </section>
-
-    <!-- PERFIL DE EMPRESA (contratas_cuentas + especialidades desde portafolio) -->
-    <section class="view" id="v-perfil">
-      <div class="page-head">
-        <h1 class="page-title font-display">Perfil de empresa</h1>
-        <p class="page-sub">Tus datos de contacto y especialidades registradas.</p>
-      </div>
-      <div id="perfil-root"><div class="empty">Cargando perfil…</div></div>
     </section>
 
   </main>
@@ -669,6 +682,7 @@
     $('#k-facturado-sub').textContent = facturas.length + (facturas.length===1?' factura':' facturas');
     $('#k-porcobrar').textContent = money(pend);
     $('#k-docs').textContent = docs.length;
+    if(typeof renderResumenHome==='function') renderResumenHome();
   }
 
   // ── Lista de proyectos (desde instancia gerencial) para los selectores ──
@@ -906,15 +920,44 @@
       if(window.lucide) lucide.createIcons();
     }catch(e){ console.warn('mis proyectos', e); root.innerHTML='<div class="empty">No se pudieron cargar tus proyectos.</div>'; }
   }
-  function renderPerfil(){
-    var root=$('#perfil-root'); if(!root) return;
-    if(!CUENTA){ root.innerHTML='<div class="empty">No se encontró tu perfil. Ingresa desde el portal de Contratas.</div>'; return; }
-    function row(k,v){ return '<div style="display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid var(--line)"><span style="color:var(--muted);font-weight:600;font-size:13px">'+esc(k)+'</span><span style="color:var(--ink);font-weight:700;text-align:right">'+esc(v||'—')+'</span></div>'; }
-    var esp={}; MIS_PROYECTOS.forEach(function(r){ if(r.especialidad) esp[r.especialidad]=1; }); var esps=Object.keys(esp);
-    root.innerHTML='<div class="panel"><div class="panel-h"><h3>Datos de la empresa</h3></div>'+
-      row('Empresa',CUENTA.empresa)+row('Encargado',CUENTA.encargado)+row('Teléfono',CUENTA.telefono)+row('Correo (usuario)',CUENTA.email)+'</div>'+
-      '<div class="panel"><div class="panel-h"><h3>Especialidades</h3></div>'+
-      (esps.length? '<div style="display:flex;flex-wrap:wrap;gap:8px">'+esps.map(function(e){ return '<span style="font-size:12.5px;font-weight:700;background:#eef6f4;color:#0d7d70;border:1px solid #cdebe5;border-radius:999px;padding:6px 13px">'+esc(e)+'</span>'; }).join('')+'</div>' : '<div style="color:var(--muted);font-size:13px">Aún no registras especialidades en proyectos.</div>')+'</div>';
+  function renderResumenHome(){
+    // Cabecera de empresa (perfil dentro del Resumen)
+    var eh=$('#rs-empresa');
+    if(eh && CUENTA){
+      var esp={}; MIS_PROYECTOS.forEach(function(r){ if(r.especialidad) esp[r.especialidad]=1; }); var esps=Object.keys(esp);
+      var ini=((CUENTA.empresa||'C').trim()[0]||'C').toUpperCase();
+      eh.innerHTML='<div class="rs-card"><div class="rs-top">'+
+        '<div class="rs-logo">'+esc(ini)+'</div>'+
+        '<div style="flex:1;min-width:0"><div class="rs-emp">'+esc(CUENTA.empresa||'')+'</div>'+
+          '<div class="rs-meta">'+
+            (CUENTA.encargado?'<span><svg data-lucide="user"></svg>'+esc(CUENTA.encargado)+'</span>':'')+
+            (CUENTA.telefono?'<span><svg data-lucide="phone"></svg>'+esc(CUENTA.telefono)+'</span>':'')+
+            (CUENTA.email?'<span><svg data-lucide="mail"></svg>'+esc(CUENTA.email)+'</span>':'')+
+          '</div>'+
+        '</div></div>'+
+        (esps.length?'<div class="rs-esp">'+esps.map(function(e){ return '<span class="rs-echip">'+esc(e)+'</span>'; }).join('')+'</div>':'')+
+      '</div>';
+    }
+    // KPI Proyectos
+    var cliset={}; MIS_PROYECTOS.forEach(function(r){ if(r.cliente) cliset[r.cliente]=1; }); var np=Object.keys(cliset).length;
+    var kp=$('#k-proyectos'); if(kp) kp.textContent=np;
+    // Panel "Requiere tu acción"
+    var ah=$('#rs-accion'); if(!ah) return;
+    var items=[];
+    var hoy=new Date().toISOString().slice(0,10);
+    if(np>0 && !informes.some(function(r){ return r.fecha===hoy; })) items.push({cls:'warn',ic:'clipboard-list',t:'Sube tu informe de hoy',s:'Aún no reportaste avance hoy',go:'informe'});
+    var porResp=(typeof LZ!=='undefined' && LZ.invit)? LZ.invit.filter(function(v){ return ['Oferta enviada','No participa'].indexOf(v.estado)<0; }).length : 0;
+    if(porResp) items.push({cls:'info',ic:'gavel',t:porResp+' licitación(es) por responder',s:'Revisa tus invitaciones y envía tu oferta',go:'licitaciones'});
+    var obs=facturas.filter(function(f){ return f.estado_revision==='observada'; });
+    if(obs.length) items.push({cls:'crit',ic:'receipt',t:obs.length+' factura(s) observada(s)',s:'El supervisor pide corrección — revísalas',go:'factura'});
+    if(!items.length){
+      ah.innerHTML='<div class="panel" style="padding:14px 16px;display:flex;align-items:center;gap:10px;color:var(--ok);font-weight:700;font-size:13px"><svg data-lucide="check-circle" style="width:18px;height:18px"></svg>Todo al día. No tienes pendientes.</div>';
+    } else {
+      ah.innerHTML='<div class="panel" style="padding:15px 16px"><div class="panel-h" style="margin-bottom:10px"><h3>Requiere tu acción</h3><span class="count">'+items.length+'</span></div>'+
+        '<div class="rs-alist">'+items.map(function(a){ return '<div class="rs-ai '+a.cls+'" data-go="'+a.go+'"><div class="rs-ic"><svg data-lucide="'+a.ic+'"></svg></div><div style="min-width:0"><div class="rs-at">'+esc(a.t)+'</div><div class="rs-as">'+esc(a.s)+'</div></div></div>'; }).join('')+'</div></div>';
+      ah.querySelectorAll('[data-go]').forEach(function(b){ b.addEventListener('click', function(){ showView(b.dataset.go); }); });
+    }
+    if(window.lucide) lucide.createIcons();
   }
 
   // ── Init ──
@@ -938,7 +981,7 @@
     await loadCuenta();
     await Promise.all([ loadInformes(), loadFacturas(), loadDocs(), loadLicitaciones(), loadMisProyectos() ]);
     await loadContratos();
-    renderResumen(); renderPerfil();
+    renderResumen(); renderResumenHome();
   })();
 })();
 </script>
