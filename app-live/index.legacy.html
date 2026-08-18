@@ -15606,6 +15606,24 @@ if(!W._valHealer){
     }catch(e){}
   },1000);
 }
+/* Swap INSTANTÁNEO (sin flash): observa #v-valorizacion y, si una capa vieja lo
+   re-renderiza mientras estás en valorización, re-pinta v6 en el mismo microtask
+   (antes del paint del navegador) → no se alcanza a ver la versión vieja. */
+var _valMO=null;
+function _setupMO(){
+  if(_valMO) return;
+  var el=document.getElementById('v-valorizacion'); if(!el || typeof MutationObserver==='undefined') return;
+  _valMO=new MutationObserver(function(){
+    try{
+      if(document.body && document.body.dataset.pmoView!=='valorizacion') return;
+      if(el.querySelector('[data-v6]') || VS.loading) return;   // ya v6 o cargando
+      _render();
+    }catch(e){}
+  });
+  _valMO.observe(el,{childList:true});
+}
+_setupMO();
+[300,1000,2500].forEach(function(ms){ setTimeout(_setupMO,ms); });
 console.log('%c✅ Valorización v6 · Supabase (fuente única)','background:#0D9488;color:#fff;padding:3px 12px;border-radius:6px;font-size:11px');
 })(window);
 </script>

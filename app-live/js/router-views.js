@@ -10,7 +10,7 @@
   'use strict';
 
   const HOME_KEY = 'inicio';
-  const LEGACY_URL = 'index.legacy.html?v=20260818a';
+  const LEGACY_URL = 'index.legacy.html?v=20260818b';
 
   // ── Alias de hash → nombre de vista real en el legacy ──
   // (el legacy tiene algunas vistas con renderers rotos o con nombres distintos)
