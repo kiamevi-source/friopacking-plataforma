@@ -5,7 +5,7 @@
    red (el offline de datos ya lo maneja la cola local `fp_rd_*` de la app).
    Subir la versión (v1 → v2…) al cambiar este archivo para forzar refresco.
    ════════════════════════════════════════════════════════════════ */
-const VERSION   = 'fp-sup-v1';
+const VERSION   = 'fp-sup-v2';   // subir en cada cambio del shell: fuerza refresco del SW
 const APP_SHELL = VERSION + '-shell';
 const RUNTIME   = VERSION + '-runtime';
 

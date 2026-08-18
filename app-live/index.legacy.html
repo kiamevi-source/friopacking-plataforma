@@ -1076,33 +1076,45 @@ window._sbConnected=false;
 async function initFromSupabase(){
   const db=getSB();
   if(!db){console.warn('Supabase JS no cargado');return;}
-  // La foto de respaldo ya no está hardcodeada: se trae de proyectos_snapshot.
-  await _loadProjectsSnapshot();
+  /* La foto de respaldo (proyectos_snapshot) ya no bloquea el arranque: se pide
+     EN PARALELO con los datos vivos. Antes había un `await` acá que costaba
+     ~650 ms en los que ni siquiera se había pedido el dato bueno. */
+  const _snapReady=_loadProjectsSnapshot().catch(e=>{console.warn('snapshot:',e);return PROJECTS;});
   const banner=document.createElement('div');
   banner.id='sb-banner';
   banner.style.cssText='position:fixed;bottom:70px;right:22px;z-index:9998;background:#0d2436;color:#9fb3c8;font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.08)';
   banner.textContent='⏳ Conectando a Supabase…';
   document.body.appendChild(banner);
   try{
-    /* ─── proyectos ─── */
-    const {data:proyectos,error:e1}=await db.from('proyectos').select('*').eq('activo',true).order('nombre');
-    if(e1)throw e1;
+    /* ─── proyectos + reportes EN PARALELO ───
+       Antes eran dos `await` en fila (~330 ms + ~1.9 s) y son independientes.
 
-    /* ─── reportes (todos, no-draft) ─── */
+       El SELECT de reportes YA NO trae `payload`: eran ~1.8 MB de los ~2 MB de
+       la respuesta y no aportaba ni un dato — las columnas reales
+       (fecha_ini_cont, contratas_detalle, venta_codigo, desfase_dias…) están
+       siempre pobladas. Los fallbacks `r.payload&&…` de más abajo se dejan tal
+       cual: sin la columna evalúan a undefined y caen solos al valor por defecto. */
+    const _REP_COLS='nombre_proyecto,fecha_reporte,supervisor,pct_ejecutado,pct_planificado,personal_total,contratas_activas,contratas_nombres,contratas_detalle,spi,actividad';
+    const _REP_COLS_EXT=_REP_COLS+',fecha_ini_cont,fecha_fin_cont,fecha_ini_real,fecha_fin_proy,motivo_proyeccion,desfase_dias,venta_codigo,facturado_codigo';
     // Intentar con columnas contractuales; si falla (columnas no existen), usar solo las seguras
-    let reportes, e2;
-    ({data:reportes,error:e2}=await db.from('reportes')
-      .select('nombre_proyecto,fecha_reporte,supervisor,pct_ejecutado,pct_planificado,personal_total,contratas_activas,contratas_nombres,contratas_detalle,spi,actividad,payload,fecha_ini_cont,fecha_fin_cont,fecha_ini_real,fecha_fin_proy,motivo_proyeccion,desfase_dias,venta_codigo,facturado_codigo')
-      .not('es_draft','is',true)
-      .order('fecha_reporte',{ascending:true}));
+    const [_resProy,_resRep]=await Promise.all([
+      db.from('proyectos').select('*').eq('activo',true).order('nombre'),
+      db.from('reportes').select(_REP_COLS_EXT).not('es_draft','is',true).order('fecha_reporte',{ascending:true})
+    ]);
+    const {data:proyectos,error:e1}=_resProy;
+    if(e1)throw e1;
+    let {data:reportes,error:e2}=_resRep;
     if(e2){
       console.warn('SELECT extendido falló, usando columnas base:',e2.message);
       ({data:reportes,error:e2}=await db.from('reportes')
-        .select('nombre_proyecto,fecha_reporte,supervisor,pct_ejecutado,pct_planificado,personal_total,contratas_activas,contratas_nombres,contratas_detalle,spi,actividad,payload')
+        .select(_REP_COLS)
         .not('es_draft','is',true)
         .order('fecha_reporte',{ascending:true}));
     }
     if(e2)throw e2;
+    /* La foto ya venía en camino desde antes del try; acá solo la esperamos.
+       A esta altura hace rato que respondió, así que no suma latencia. */
+    await _snapReady;
 
     /* ─── fecha de referencia para "reportó hoy"
            Regla 6pm: los reportes se envían después de las 18:00 hora Perú.
@@ -1298,6 +1310,14 @@ async function initFromSupabase(){
     store.reportes=repByProj;
     saveStore(); // persistir datos limpios de Supabase → sobreescribe localStorage
 
+    /* ─── PRIMER PINTADO REAL ───
+       Acá ya está todo lo que necesita la grilla (proyectos + reportes). Las
+       evaluaciones de abajo solo alimentan las vistas Contratistas/Supervisores
+       y tardaban ~900 ms más: esperarlas dejaba la pantalla en el esqueleto sin
+       motivo. Se repinta igual al final para esas vistas. */
+    window._pmoBooting=false;
+    try{renderAll();updateTodayLabel();}catch(re){console.warn('renderAll (1er pintado):',re);}
+
     /* ─── evaluacion_contratistas ─── */
     const {data:evalCt,error:eCt}=await db.from('evaluacion_contratistas').select('*').order('periodo',{ascending:false});
     window.EVAL_CONTRATISTAS=eCt?(console.warn('evaluacion_contratistas:',eCt.message),[]):evalCt||[];
@@ -1328,7 +1348,11 @@ async function initFromSupabase(){
     console.error('Supabase fetch error:',err);
     banner.textContent='⚠️ Sin Supabase — datos locales';
     setTimeout(()=>banner.remove(),4000);
-    showToast('⚠️ Error Supabase: '+err.message,'warn',6000);
+    showToast('⚠️ Error Supabase: '+err.message+' — mostrando la última foto guardada','warn',6000);
+    /* Red caída: RECIÉN acá se pinta la foto de proyectos_snapshot. Es el único
+       caso en que tiene sentido — antes se pintaba SIEMPRE en el arranque. */
+    try{window._pmoSnapshotPaint&&window._pmoSnapshotPaint();renderAll();updateTodayLabel();}
+    catch(re){console.warn('renderAll (respaldo foto):',re);}
     return;
   }
   // renderAll fuera del try para que errores de UI no se confundan con errores de Supabase
@@ -1385,7 +1409,20 @@ window.clearAllUploadedReports=function(){
   showToast('Reportes eliminados. Podés volver a importar.','warn',4000);
 };
 
-window.PROJECTS=PROJECTS.map(p=>({...p,_real:p.valp,_plan:p.plan,_spi:p.spi}));
+/* ARRANQUE: la grilla NACE VACÍA (esqueleto), no con la foto.
+   Antes acá se volcaba `proyectos_snapshot` a `window.PROJECTS` y el boot lo
+   pintaba de una: durante ~3 s se veía una pantalla con los planes de
+   mayo/junio, TODO en "EN PLAN" (el estado está hardcodeado en el mapper de la
+   foto) y proyectos ya cerrados —CAMPOSOL, BERRY HARVEST— dibujados como si
+   estuvieran en obra. La foto sigue viva en `PROJECTS` (scope del módulo) como
+   respaldo de avance, y solo se PINTA si Supabase falla (ver catch de
+   initFromSupabase). */
+window._pmoBooting=true;
+window._pmoSnapshotPaint=function(){
+  window.PROJECTS=PROJECTS.map(p=>({...p,_real:p.valp,_plan:p.plan,_spi:p.spi}));
+  window._pmoBooting=false;
+};
+window.PROJECTS=[];
 const allP=()=>window.PROJECTS;
 // Solo proyectos ACTIVOS: DB filtra por activo=true + estado 'En progreso'
 const activeP=()=>window.PROJECTS.filter(p=>{
@@ -3805,11 +3842,14 @@ document.addEventListener('input',e=>{
 
 /* ====== BOOT: initial render + Supabase connect ====== */
 setTimeout(()=>{
-  // 1. Render static data immediately (embedded PROJECTS)
-  try{renderAll();}catch(e){console.warn('boot renderAll:',e);}
-  // 2. Wire up dato tab default view
+  // 1. Montar la vista PRIMERO: antes se llamaba renderAll() acá arriba, cuando
+  //    #proj-grid todavía no existía en el DOM, y el pintado real terminaba
+  //    ocurriendo dentro de showView() — con la foto de proyectos_snapshot.
   try{showView(app.view||'datos');}catch(e){}
-  // 3. Load live data from Supabase
+  // 2. Esqueleto de carga (window.PROJECTS arranca vacío: no hay dato falso que mostrar)
+  try{renderAll();}catch(e){console.warn('boot renderAll:',e);}
+  // 3. Traer lo real de Supabase; initFromSupabase repinta apenas llegan
+  //    proyectos + reportes, sin esperar a las evaluaciones.
   if(typeof initFromSupabase==='function'){
     initFromSupabase().catch(e=>console.warn('Supabase boot error:',e));
   }
@@ -19979,6 +20019,60 @@ console.log('%c✦ Executive Control Center v1.0 — Premium Project Detail',
   console.log('%c[fp] Editor de proyectos (Ver datos / Editar → Supabase) activo','background:#2E7DD1;color:#fff;padding:4px 8px;border-radius:4px;font-weight:700');
 })(window);
 </script>
+<script id="pmo-boot-skeleton">
+/* ════════════════════════════════════════════════════════════════════
+   ESQUELETO DE ARRANQUE
+   Va al FINAL a propósito: renderProjects/renderKPIs se redefinen 6 veces
+   más arriba en este archivo (Smart Project Cards, v13.x, v15.0…). Guardar
+   la condición dentro de la función base no sirve — la tapa el último
+   override. Acá envolvemos la versión final, sea cual sea.
+
+   Qué resuelve: hasta ahora el arranque pintaba `proyectos_snapshot` (la
+   foto de mayo/junio) como si fuera dato real — planes viejos, todo en
+   "EN PLAN" y proyectos ya cerrados dibujados como si estuvieran en obra —
+   y ~3 s después lo reemplazaba con lo de Supabase.
+   ════════════════════════════════════════════════════════════════════ */
+(function(W){
+  var SHIM='background:linear-gradient(90deg,var(--line,#e6edf0) 25%,rgba(255,255,255,.7) 50%,var(--line,#e6edf0) 75%);background-size:200% 100%;animation:pmoShim 1.15s linear infinite;border-radius:6px';
+  function bar(h,w,mb){return '<div style="'+SHIM+';height:'+h+'px;width:'+w+';margin-bottom:'+mb+'px"></div>';}
+  /* Ojo: las tarjetas del esqueleto NO llevan class "proj". Varios patches
+     tardíos (anillos SPI, badges de prioridad) recorren ".proj" e inyectan
+     adornos; si el esqueleto fuera .proj se los comería. */
+  function cards(n){
+    var card='<div style="background:var(--card,#fff);border:1px solid var(--line,#e6edf0);border-radius:var(--r,12px);padding:14px;pointer-events:none">'+
+      bar(13,'46%',14)+bar(19,'72%',9)+bar(11,'56%',16)+bar(8,'100%',18)+
+      '<div style="display:flex;gap:14px"><div style="'+SHIM+';height:26px;flex:1"></div><div style="'+SHIM+';height:26px;flex:1"></div><div style="'+SHIM+';height:26px;flex:1"></div></div></div>';
+    return '<style>@keyframes pmoShim{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>'+new Array(n+1).join(card);
+  }
+  function esperando(){
+    return W._pmoBooting===true && !(W.PROJECTS&&W.PROJECTS.length);
+  }
+  var origProj=W.renderProjects;
+  W.renderProjects=function(){
+    if(esperando()){
+      var c=document.getElementById('proj-count');if(c)c.textContent='Cargando proyectos…';
+      var g=document.getElementById('proj-grid');if(g)g.innerHTML=cards(6);
+      return;
+    }
+    /* El override final (Smart Project Cards) no reescribe #proj-count, así que
+       el texto de carga se quedaba pegado. Lo limpiamos al primer pintado real. */
+    var c2=document.getElementById('proj-count');
+    if(c2&&c2.textContent==='Cargando proyectos…')c2.textContent='';
+    return origProj.apply(this,arguments);
+  };
+  var origKpis=W.renderKPIs;
+  W.renderKPIs=function(){
+    if(esperando()){
+      var k=document.getElementById('kpis');
+      if(k)k.innerHTML=new Array(7).join('<div class="kpi"><div class="accent"></div><div class="label" style="opacity:.4">&nbsp;</div><div class="v" style="opacity:.3">···</div></div>');
+      return;
+    }
+    return origKpis.apply(this,arguments);
+  };
+  console.log('%c⏳ PMO · esqueleto de arranque activo (la foto ya no se pinta como dato real)','background:#0d2436;color:#2dc4a6;padding:3px 12px;border-radius:6px;font-size:11px');
+})(window);
+</script>
+
 <!-- auto-deploy enabled via Claude Code hook -->
 
 <!-- ──────────────── IMPORTADOR PRESUPUESTO REMOVIDO ────────────────
