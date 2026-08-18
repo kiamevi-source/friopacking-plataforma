@@ -8148,8 +8148,9 @@ body>#gcc-legend{display:none!important}
 /* ══════════════════════════════════════════════
    Equipos · Command Center v2 — Premium Redesign
    ══════════════════════════════════════════════ */
-.eqv2-wrap{--eq-r:14px;--eq-r-sm:10px;--eq-sh-sm:0 1px 2px rgba(13,36,54,.04),0 1px 3px rgba(13,36,54,.03);--eq-sh:0 4px 24px -8px rgba(13,36,54,.08),0 2px 6px rgba(13,36,54,.04);--eq-sh-hi:0 12px 36px -10px rgba(13,36,54,.18),0 4px 12px rgba(13,36,54,.06);--eq-danger:#ef4444;--eq-danger-bg:#fef2f2;--eq-warn:#f59e0b;--eq-warn-bg:#fffbeb;--eq-ok:#22c55e;--eq-ok-bg:#f0fdf4;--eq-info:#6366f1;--eq-info-bg:#eef2ff;--eq-teal:#0d9488;--eq-teal-bg:#f0fdfa;--eq-ink:#0f172a;--eq-ink-2:#475569;--eq-mut:#94a3b8;--eq-line:#e2e8f0;--eq-bg:#f8fafc;padding:4px 0 32px;color:var(--eq-ink)}
-[data-theme="dark"] .eqv2-wrap{--eq-line:#1f3045;--eq-bg:#0a1521;--eq-ink:#e8eef5;--eq-ink-2:#b8c4d2;--eq-mut:#7a8699}
+.eqv2-wrap,.eqd-ov{--eq-r:14px;--eq-r-sm:10px;--eq-sh-sm:0 1px 2px rgba(13,36,54,.04),0 1px 3px rgba(13,36,54,.03);--eq-sh:0 4px 24px -8px rgba(13,36,54,.08),0 2px 6px rgba(13,36,54,.04);--eq-sh-hi:0 12px 36px -10px rgba(13,36,54,.18),0 4px 12px rgba(13,36,54,.06);--eq-danger:#ef4444;--eq-danger-bg:#fef2f2;--eq-warn:#f59e0b;--eq-warn-bg:#fffbeb;--eq-ok:#22c55e;--eq-ok-bg:#f0fdf4;--eq-info:#6366f1;--eq-info-bg:#eef2ff;--eq-teal:#0d9488;--eq-teal-bg:#f0fdfa;--eq-ink:#0f172a;--eq-ink-2:#475569;--eq-mut:#94a3b8;--eq-line:#e2e8f0;--eq-bg:#f8fafc;color:var(--eq-ink)}
+.eqv2-wrap{padding:4px 0 32px}
+[data-theme="dark"] .eqv2-wrap,[data-theme="dark"] .eqd-ov{--eq-line:#1f3045;--eq-bg:#0a1521;--eq-ink:#e8eef5;--eq-ink-2:#b8c4d2;--eq-mut:#7a8699}
 
 /* Command bar */
 .eqv2-cmd{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:14px 18px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.7) 100%);border:1px solid var(--eq-line);border-radius:var(--eq-r);margin-bottom:14px;box-shadow:var(--eq-sh-sm);backdrop-filter:blur(8px)}
@@ -8157,7 +8158,7 @@ body>#gcc-legend{display:none!important}
 .eqv2-cmd-title{display:flex;align-items:center;gap:12px}
 .eqv2-cmd-emoji{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#0d9488,#14b8a6);display:grid;place-items:center;font-size:18px;color:#fff;box-shadow:0 4px 12px -2px rgba(13,148,136,.4),inset 0 1px 0 rgba(255,255,255,.3)}
 .eqv2-cmd-text h2{font-size:17px;font-weight:800;margin:0;letter-spacing:-.01em;color:var(--eq-ink)}
-.eqv2-cmd-summary{font-size:11.5px;color:var(--eq-mut);margin-top:3px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.eqv2-cmd-summary{font-size:11.5px;color:var(--eq-mut);margin-top:3px;display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap}
 .eqv2-cmd-chip{display:inline-flex;align-items:center;gap:5px;font-weight:600}
 .eqv2-cmd-chip.dot::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;animation:eqv2-pulse 2s ease-in-out infinite}
 .eqv2-cmd-chip.crit{color:var(--eq-danger)}
@@ -8258,6 +8259,29 @@ body>#gcc-legend{display:none!important}
 .eqv2-card.transit{--c:#0ea5e9}
 .eqv2-card.aduana{--c:var(--eq-info)}
 .eqv2-card.origen{--c:#8b5cf6}
+/* ── Detalle del equipo (se abre al hacer clic en una tarjeta) ── */
+.eqd-ov{position:fixed;inset:0;background:rgba(8,17,34,.55);backdrop-filter:blur(3px);z-index:9600;display:none;align-items:center;justify-content:center;padding:24px}
+.eqd-ov.on{display:flex}
+.eqd-card{background:#fff;border:1px solid var(--eq-line);border-radius:16px;width:min(620px,100%);max-height:88vh;overflow:auto;box-shadow:0 24px 60px -12px rgba(8,17,34,.4);animation:eqv2-in .22s cubic-bezier(.4,0,.2,1) both}
+[data-theme="dark"] .eqd-card{background:var(--card)}
+.eqd-head{display:flex;align-items:flex-start;gap:12px;padding:18px 20px 14px;border-bottom:1px solid var(--eq-line);position:sticky;top:0;background:inherit;border-radius:16px 16px 0 0}
+.eqd-head-l{flex:1;min-width:0}
+.eqd-tipo{font-size:16px;font-weight:800;color:var(--eq-ink);line-height:1.25}
+.eqd-doc{font-family:monospace;font-size:11.5px;color:var(--eq-mut);margin-top:3px}
+.eqd-x{background:none;border:none;font-size:22px;line-height:1;color:var(--eq-mut);cursor:pointer;padding:0 4px}
+.eqd-x:hover{color:var(--eq-ink)}
+.eqd-body{padding:16px 20px 20px}
+.eqd-sec{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--eq-mut);margin:16px 0 8px}
+.eqd-sec:first-child{margin-top:0}
+.eqd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.eqd-f{background:#f8fafc;border:1px solid var(--eq-line);border-radius:9px;padding:8px 11px}
+[data-theme="dark"] .eqd-f{background:rgba(255,255,255,.03)}
+.eqd-f-l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--eq-mut)}
+.eqd-f-v{font-size:13px;font-weight:700;color:var(--eq-ink);margin-top:2px;word-break:break-word}
+.eqd-f.hi{background:rgba(13,148,136,.07);border-color:rgba(13,148,136,.28)}
+.eqd-warn{margin-top:12px;padding:9px 12px;border-radius:9px;font-size:12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);color:#b91c1c}
+.eqd-note{margin-top:12px;padding:9px 12px;border-radius:9px;font-size:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.28);color:#a16207}
+.eqd-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
 .eqv2-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .eqv2-card-title{flex:1;min-width:0}
 .eqv2-card-tipo{font-size:13.5px;font-weight:800;color:var(--eq-ink);letter-spacing:-.005em;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -8792,15 +8816,146 @@ let _eqFilterProj='';
 let _eqDateFrom='';
 let _eqDateTo='';
 let _eqActiveProj='';   // which project tab is open in "activos" view
+/* Mostrar TODOS los equipos, incluidos los de proyectos que no están en la lista
+   de activos. Antes el módulo los descartaba en silencio (de 234 equipos sólo
+   se pintaban 31) y el buscador tampoco los encontraba, porque sólo filtra lo
+   que ya está en el DOM. */
+let _eqShowAll=false;
 
+/* ── Margen de despacho: de ETA (puerto) a fecha proyectada en obra ──
+   Antes era +5 días fijo para todo. Un contenedor marítimo necesita despacho
+   aduanero e interno; un camión desde Argentina no. Ajustar acá si cambian los
+   tiempos reales de despacho. */
+const EQ_MARGEN_OBRA={maritimo:7,aereo:3,terrestre:2,courier:3};
+const EQ_MARGEN_DEFAULT=5;
+function _eqMargenObra(modalidad){
+  const m=(modalidad||'').toLowerCase();
+  for(const k in EQ_MARGEN_OBRA)if(m.includes(k))return EQ_MARGEN_OBRA[k];
+  return EQ_MARGEN_DEFAULT;
+}
+
+/* ── Proyectos vigentes ──
+   El Excel de importaciones trae 56 nombres distintos, muchos de proyectos
+   cerrados hace años. Sólo se muestran los equipos de proyectos que NO están
+   cerrados; el resto queda detrás del toggle "ver todos". */
+const EQ_ESTADOS_VIGENTES=['en progreso','por iniciar','en puesta en marcha','con obs','pend. valoriz'];
+
+/* ── Alias: nombre en el Excel → nombre canónico del proyecto en PMO ──
+   El cruce por texto se equivocaba (p. ej. "AGROLATINA" se colgaba de
+   "AGROLATINA NAZCA" por prefijo, sin que nadie lo hubiera decidido).
+   Acá va explícito. Agregar filas cuando aparezcan nombres nuevos. */
+const EQ_ALIAS_PROYECTO={
+  'AGROLATINA':'AGROLATINA NAZCA',
+  'AGROBERRIES':'AGROBERRIES VIRU',
+  'AIB':'AIB CHINCHA',
+  'RINTISA JRM':'RINTISA',
+  'PAMPA BAJA':'PAMPA BAJA II',
+  'IMBAREX BOMAREA':'BOMAREA'
+};
+/* Compras a stock, sin proyecto asignado: no son de un proyecto cerrado, así que
+   no deberían desaparecer junto con ellos. Se muestran como grupo aparte. */
+const EQ_STOCK=['PROYECTOS','PROYECTO','STOCK PARA PROYECTOS','REGULARIZACION','REGULARIZACIÓN',''];
+function _eqNorm(s){
+  return (s||'').toString().toUpperCase().trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function _eqProyectoCanonico(nombre){
+  const u=_eqNorm(nombre);
+  if(EQ_ALIAS_PROYECTO[u])return _eqNorm(EQ_ALIAS_PROYECTO[u]);
+  return u;
+}
+function _eqEsStock(nombre){return EQ_STOCK.some(k=>_eqNorm(k)===_eqNorm(nombre));}
+
+/* Fecha de HOY normalizada a medianoche.
+   Antes se usaba `new Date()` (con hora) para comparar contra fechas que SIEMPRE
+   son medianoche: un equipo que llegaba HOY salía marcado VENCIDO, y pasado el
+   mediodía mostraba "-1d" en vez de "HOY". */
+function _eqToday(){
+  const t=new Date();
+  return new Date(t.getFullYear(),t.getMonth(),t.getDate());
+}
+
+/* Parser de fechas tolerante.
+   La versión anterior sólo entendía `dd-mmm-yy` con mes en español (15-ago-26);
+   cualquier otra cosa devolvía null (→ "—" en F. Obra y días en blanco) y un
+   número o Date lanzaba `s.trim is not a function`, que tumbaba el render entero.
+   Ahora acepta: Date, serial de Excel, dd-mmm-yy (es/en), dd/mm/yyyy e ISO. */
 function _eqParseDate(s){
-  if(!s||s.trim()==='')return null;
-  const meses={ene:0,feb:1,mar:2,abr:3,may:4,jun:5,jul:6,ago:7,sep:8,oct:9,nov:10,dic:11};
-  const m=s.trim().toLowerCase().match(/(\d{1,2})[\-\s](\w{3})[\-\s](\d{2,4})/);
-  if(!m)return null;
-  const mes=meses[m[2].slice(0,3)];if(mes===undefined)return null;
-  const yr=parseInt(m[3])<100?2000+parseInt(m[3]):parseInt(m[3]);
-  return new Date(yr,mes,parseInt(m[1]));
+  if(s==null||s==='')return null;
+  // Date ya resuelto (XLSX con cellDates, Supabase, etc.)
+  if(s instanceof Date)return isNaN(s)?null:new Date(s.getFullYear(),s.getMonth(),s.getDate());
+  // Serial de Excel (base 1899-12-30). Rango sano: 1990-2050.
+  if(typeof s==='number'||(/^\d+(\.\d+)?$/.test(String(s).trim())&&Number(s)>32000&&Number(s)<55000)){
+    const n=Number(s);
+    if(!isFinite(n)||n<=0)return null;
+    const d=new Date(Date.UTC(1899,11,30)+Math.round(n)*864e5);
+    return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate());
+  }
+  const txt=String(s).trim();
+  if(!txt)return null;
+  const low=txt.toLowerCase();
+  // ISO: yyyy-mm-dd (o con hora)
+  let m=low.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m)return _eqMkDate(+m[1],+m[2]-1,+m[3]);
+  // dd-mmm-yy / dd mmm yyyy — mes en texto (español o inglés, 3+ letras)
+  const meses={ene:0,jan:0,feb:1,mar:2,abr:3,apr:3,may:4,jun:5,jul:6,ago:7,aug:7,
+               sep:8,set:8,oct:9,nov:10,dic:11,dec:11};
+  m=low.match(/(\d{1,2})[\-\s\/]([a-záéíóú]{3,})[\-\s\/](\d{2,4})/);
+  if(m){
+    const mes=meses[m[2].slice(0,3)];
+    if(mes!==undefined)return _eqMkDate(_eqYear(m[3]),mes,+m[1]);
+  }
+  // dd/mm/yyyy o dd-mm-yyyy (formato numérico local)
+  m=low.match(/^(\d{1,2})[\-\/.](\d{1,2})[\-\/.](\d{2,4})$/);
+  if(m)return _eqMkDate(_eqYear(m[3]),+m[2]-1,+m[1]);
+  return null;
+}
+function _eqYear(y){
+  const n=parseInt(y,10);
+  if(n>=100)return n;
+  // Ventana 00-79 → 2000s, 80-99 → 1900s
+  return n<80?2000+n:1900+n;
+}
+function _eqMkDate(y,mes,dia){
+  if(!(y>=1900&&y<=2100)||!(mes>=0&&mes<=11)||!(dia>=1&&dia<=31))return null;
+  const d=new Date(y,mes,dia);
+  return isNaN(d)?null:d;
+}
+/* Fecha fuera de un rango razonable (±3 años) = probable typo de año en el Excel.
+   Casos reales en la data: "26-may-16", "05-nov-36", "19-jun-21". */
+function _eqDateSuspect(d){
+  if(!d)return false;
+  const y=d.getFullYear(),hoy=new Date().getFullYear();
+  return y<hoy-3||y>hoy+3;
+}
+
+/* ── Corrección automática del año mal tipeado ──
+   El typo siempre cae en las fechas de logística (ETD/ETA/entrega); la fecha del
+   documento viene bien y sirve de ancla, porque la orden se emite primero y
+   recién después se embarca y llega.
+   Se prueba el año del documento y el siguiente, y se acepta el que caiga en
+   rango razonable y no quede antes del documento. Si ninguno cumple se deja la
+   fecha como vino y se marca — nunca se inventa un valor, y toda corrección
+   queda a la vista en la tarjeta y en el detalle. */
+function _eqAnclaAnio(r){
+  const fd=_eqParseDate(r.fecha);
+  if(fd&&!_eqDateSuspect(fd))return fd;
+  for(const c of ['etd','eta','f_entrega','f_real']){
+    const d=_eqParseDate(r[c]);
+    if(d&&!_eqDateSuspect(d))return d;
+  }
+  return null;
+}
+function _eqFixAnio(valor,ancla){
+  const d=_eqParseDate(valor);
+  if(!d)return{d:null,fixed:false};
+  if(!_eqDateSuspect(d)||!ancla)return{d,fixed:false};
+  for(const y of [ancla.getFullYear(),ancla.getFullYear()+1]){
+    const cand=new Date(y,d.getMonth(),d.getDate());
+    if(isNaN(cand)||_eqDateSuspect(cand))continue;
+    if(cand.getTime()>=ancla.getTime())return{d:cand,fixed:true,orig:String(valor)};
+  }
+  return{d,fixed:false};
 }
 
 /* Formato fecha dd-mmm-yy */
@@ -8847,7 +9002,7 @@ function _eqBuildTable(rows,tbodyId){
   let h=`<table class="imp-table"><thead><tr>
     <th>Tipo de Equipo</th><th>Documento</th><th>Proyecto</th><th>Proveedor</th>
     <th>Origen</th><th>ETD (embarque)</th><th>ETA (puerto Perú)</th>
-    <th style="background:rgba(13,148,136,.07)">F. Proy. Obra<br><span style="font-weight:400;font-size:9px;letter-spacing:0">(ETA + 5 días)</span></th>
+    <th style="background:rgba(13,148,136,.07)">F. Proy. Obra<br><span style="font-weight:400;font-size:9px;letter-spacing:0">(ETA + despacho s/ modalidad)</span></th>
     <th>Días a Obra</th><th>Estado (Col N)</th>
   </tr></thead><tbody id="${tbodyId}">`;
   rows.forEach(r=>{
@@ -8959,10 +9114,13 @@ function _eqv2RenderCards(rows){
     const stageIdx=_eqv2StageIdx(r);
     const diasStr=r._diasObra!==null?(r._diasObra===0?'HOY':r._diasObra>0?'+'+r._diasObra+'d':r._diasObra+'d'):'—';
     const obraStr=r._fechaObra?_eqFmtDate(r._fechaObra):'—';
-    const etaStr=r.eta||'—';
+    const etaStr=r._etaTxt||r.eta||'—';
     const ou=(r.origen||'').toUpperCase();
     const origenIco=r.origen?(ou.includes('CHINA')?'🇨🇳':ou.includes('ARGENT')?'🇦🇷':ou.includes('BRAS')?'🇧🇷':ou.includes('ESTADOS')||ou.includes('USA')?'🇺🇸':ou.includes('ITAL')?'🇮🇹':ou.includes('ALEMAN')||ou.includes('GERM')?'🇩🇪':ou.includes('ESPA')?'🇪🇸':'🌐'):'';
     const flag=r._nuevo?'<span class="eqv2-card-flag">NUEVO</span>':r._changed?'<span class="eqv2-card-flag chg">CAMBIO</span>':'';
+    // Año fuera de rango razonable = typo en el Excel (hay casos reales: -16, -36)
+    const dudosa=r._fechaDudosa?' <span title="Año fuera de rango y no se pudo deducir el correcto: revisar el Excel">⚠</span>':'';
+    const corregida=(r._fixes&&r._fixes.length)?` <span style="color:var(--eq-teal)" title="Año corregido automáticamente&#10;${r._fixes.map(f=>f.c+': '+f.de+' → '+f.a).join('&#10;')}">✎</span>`:'';
     const searchKey=((r.doc||'')+' '+(r.proyecto||'')+' '+(r.tipo||'')+' '+(r.proveedor||'')+' '+(r.origen||'')+' '+(r.status_dest||'')).toLowerCase();
     let tl='';
     for(let i=0;i<6;i++){
@@ -8980,7 +9138,7 @@ function _eqv2RenderCards(rows){
       </div>
       <div><span class="eqv2-card-proj">${r.proyecto||'—'}</span></div>
       <div class="eqv2-card-meta">
-        <div><div class="eqv2-card-meta-l">F. Obra</div><div class="eqv2-card-meta-v">${obraStr}</div></div>
+        <div><div class="eqv2-card-meta-l">F. Obra</div><div class="eqv2-card-meta-v">${obraStr}${dudosa}${corregida}</div></div>
         <div><div class="eqv2-card-meta-l">ETA</div><div class="eqv2-card-meta-v">${etaStr}</div></div>
         <div><div class="eqv2-card-meta-l">Origen</div><div class="eqv2-card-meta-v">${origenIco} ${r.origen||'—'}</div></div>
         <div><div class="eqv2-card-meta-l">Modalidad</div><div class="eqv2-card-meta-v">${r.modalidad||'—'}</div></div>
@@ -8998,15 +9156,21 @@ let _eqRenderPending=false;
 let _eqRenderInFlight=false;
 function renderEquiposPremium(){
   const el=document.getElementById('v-equipos');if(!el)return;
-  // Skip render if equipos tab is NOT the active view (prevents wasted work + memory pressure)
-  const activeTab=document.querySelector('.tab.active')?.dataset?.v;
-  if(activeTab && activeTab!=='equipos'){return;}
+  /* Evitar trabajo inútil si la vista no está a la vista.
+     Antes se miraba `.tab.active`, pero el legacy NO tiene una pestaña "equipos"
+     (el módulo se abre desde el shell nuevo), así que .tab.active siempre decía
+     "datos" y el render se saltaba entero: el módulo quedaba con su HTML estático
+     y sólo aparecía si más tarde el shell limpiaba esa clase. Ahora miramos si
+     la vista fue pedida o si el contenedor está realmente oculto. */
+  const _hostHash=(()=>{try{return (window.top!==window?window.top.location.hash:location.hash)||'';}catch(e){return '';}})();
+  const _pedida=_hostHash.replace('#','')==='equipos'||document.body.dataset.pmoView==='equipos';
+  if(!_pedida && el.offsetParent===null){return;}
   // Re-entrancy guard: if already rendering, schedule one more pass and bail
   if(_eqRenderInFlight){_eqRenderPending=true;return;}
   _eqRenderInFlight=true;
   try{
   const imp=W.IMPORTACIONES_DATA||[];
-  const today=new Date();
+  const today=_eqToday();
   const thisYear=today.getFullYear();
 
   // Enrich — reglas:
@@ -9016,44 +9180,79 @@ function renderEquiposPremium(){
   // 4. Histórico: Fecha Obra de año anterior, sin entrega confirmada
   // 5. Vencido: Fecha Obra pasó este año, no entregado ni histórico
   let rows=imp.filter(r=>r.doc||r.proyecto).map(r=>{
-    const eta=_eqParseDate(r.eta);
-    const etd=_eqParseDate(r.etd);
-    const entregaReal=_eqParseDate(r.f_real);
+    // Corregir años mal tipeados ANTES de calcular vencimientos
+    const ancla=_eqAnclaAnio(r);
+    const fxEta=_eqFixAnio(r.eta,ancla), fxEtd=_eqFixAnio(r.etd,ancla),
+          fxReal=_eqFixAnio(r.f_real,ancla), fxEnt=_eqFixAnio(r.f_entrega,ancla);
+    const _fixes=[];
+    if(fxEta.fixed)_fixes.push({c:'ETA',de:fxEta.orig,a:_eqFmtDate(fxEta.d)});
+    if(fxEtd.fixed)_fixes.push({c:'ETD',de:fxEtd.orig,a:_eqFmtDate(fxEtd.d)});
+    if(fxReal.fixed)_fixes.push({c:'Entrega real',de:fxReal.orig,a:_eqFmtDate(fxReal.d)});
+    if(fxEnt.fixed)_fixes.push({c:'F. entrega',de:fxEnt.orig,a:_eqFmtDate(fxEnt.d)});
+    const eta=fxEta.d;
+    const etd=fxEtd.d;
+    const entregaReal=fxReal.d;
     const sdRaw=(r.status_dest||'').toUpperCase().trim();
     // Entregado: Col N dice CULMINADO, o tiene fecha real de entrega
     const entregado=sdRaw==='CULMINADO'||sdRaw.includes('CULMINAD')||!!entregaReal;
-    // Fecha Proyectada en Obra = ETA + 5 días
-    const fechaObra=eta?new Date(eta.getTime()+5*864e5):null;
+    // Fecha Proyectada en Obra = ETA + margen de despacho según modalidad
+    const margen=_eqMargenObra(r.modalidad);
+    const fechaObra=eta?new Date(eta.getTime()+margen*864e5):null;
     const diasObra=fechaObra?Math.round((fechaObra-today)/864e5):null;
     // Histórico: Fecha Obra de año pasado y no entregado formalmente
     const historico=!entregado&&fechaObra&&fechaObra<today&&fechaObra.getFullYear()<thisYear;
     // Vencido: Fecha Obra ya pasó este año, no entregado ni histórico
-    const vencido=!entregado&&!historico&&fechaObra&&fechaObra<today;
+    const vencido=!entregado&&!historico&&fechaObra&&fechaObra.getTime()<today.getTime();
     const prev=_impSnapshot?_impSnapshot[r.doc]:null;
     const changed=prev&&(prev.status_dest!==r.status_dest||prev.eta!==r.eta||prev.etd!==r.etd||prev.f_real!==r.f_real);
     const nuevo=_impSnapshot&&!_impSnapshot[r.doc]&&r.doc;
     return{...r,_eta:eta,_etd:etd,_entregaReal:entregaReal,_entregado:entregado,
       _fechaObra:fechaObra,_diasObra:diasObra,_vencido:vencido,_historico:historico,
-      _changed:changed,_nuevo:nuevo};
+      _changed:changed,_nuevo:nuevo,_fechaDudosa:_eqDateSuspect(fechaObra),_margen:margen,
+      _fixes:_fixes,
+      // Texto ya corregido, para no seguir mostrando el año malo del Excel
+      _etaTxt:fxEta.fixed?_eqFmtDate(fxEta.d):(r.eta||''),
+      _etdTxt:fxEtd.fixed?_eqFmtDate(fxEtd.d):(r.etd||''),
+      _entTxt:fxEnt.fixed?_eqFmtDate(fxEnt.d):(r.f_entrega||''),
+      _realTxt:fxReal.fixed?_eqFmtDate(fxReal.d):(r.f_real||'')};
   });
 
   // ════ Match con proyectos ACTIVOS del tab Datos ════
   // Solo mostramos equipos cuyo proyecto está en la lista de activos
   // (incluye match flexible: uppercase + trim + prefix-of)
   let _allRows=rows;
+  let _ocultosPorActivos=0;
+  let _sinMapear=[];
+  let _rowsStock=[];
   try{
-    const activos=(typeof W.activeP==='function'?W.activeP():[]).map(p=>(p.name||'').toUpperCase().trim()).filter(Boolean);
-    if(activos.length){
-      const matchProj=(proj)=>{
-        const u=(proj||'').toUpperCase().trim();
-        if(!u)return false;
-        const u0=u.split('/')[0].trim();
-        return activos.some(a=>a===u||a===u0||u.startsWith(a)||a.startsWith(u0));
-      };
-      rows=rows.filter(r=>matchProj(r.proyecto));
-      console.log('[Equipos] match con activos:',rows.length,'/',_allRows.length,'(activos:',activos.length+')');
+    // Proyectos vigentes = todo lo que NO esté cerrado (En progreso, Por Iniciar,
+    // Puesta en Marcha, Con obs). Antes se usaba W.activeP(), que sólo trae los
+    // "En progreso": los equipos de un proyecto Por Iniciar —justo cuando están
+    // llegando— quedaban invisibles.
+    const vigentes=new Set();
+    (W.PROJECTS||[]).forEach(p=>{
+      const est=(p._dbEstado||p.estado||'').toLowerCase().trim();
+      if(EQ_ESTADOS_VIGENTES.some(e=>est.includes(e)))vigentes.add(_eqNorm(p.name));
+    });
+    // Compras a stock (sin proyecto asignado): viven en su propia pestaña, no
+    // mezcladas con los equipos de obra — son casi la mitad del universo.
+    _rowsStock=rows.filter(r=>_eqEsStock(r.proyecto));
+    rows=rows.filter(r=>!_eqEsStock(r.proyecto));
+    if(vigentes.size&&!_eqShowAll){
+      const antes=rows.length;
+      rows=rows.filter(r=>vigentes.has(_eqProyectoCanonico(r.proyecto)));
+      _ocultosPorActivos=antes-rows.length;
+      // Nombres que no cruzan con ningún proyecto vigente y tampoco son stock:
+      // o son proyectos cerrados, o falta un alias.
+      const set=new Set();
+      _allRows.forEach(r=>{
+        if(_eqEsStock(r.proyecto))return;
+        if(!vigentes.has(_eqProyectoCanonico(r.proyecto)))set.add((r.proyecto||'(sin proyecto)').trim());
+      });
+      _sinMapear=[...set];
+      console.log('[Equipos] vigentes:',rows.length,'/',_allRows.length,'· nombres sin cruce:',_sinMapear.length,_sinMapear);
     }
-  }catch(e){console.warn('[Equipos] match activos error:',e);rows=_allRows;}
+  }catch(e){console.warn('[Equipos] filtro por estado falló:',e);rows=_allRows;_ocultosPorActivos=0;}
 
   // Update snapshot
   _impSnapshot=_impSnapshot||{};
@@ -9103,8 +9302,10 @@ function renderEquiposPremium(){
       const target=_eqFilterProj.trim();
       out=out.filter(r=>(r.proyecto||'').trim()===target);
     }
-    if(_eqDateFrom){const df=new Date(_eqDateFrom);out=out.filter(r=>!r._fechaObra||r._fechaObra>=df);}
-    if(_eqDateTo){const dt=new Date(_eqDateTo);out=out.filter(r=>!r._fechaObra||r._fechaObra<=dt);}
+    // new Date('2026-08-01') se interpreta como UTC: en Perú caía un día antes.
+    // _eqParseDate resuelve el ISO en hora local.
+    if(_eqDateFrom){const df=_eqParseDate(_eqDateFrom);if(df)out=out.filter(r=>!r._fechaObra||r._fechaObra>=df);}
+    if(_eqDateTo){const dt=_eqParseDate(_eqDateTo);if(dt)out=out.filter(r=>!r._fechaObra||r._fechaObra<=dt);}
     return out;
   };
   let visible=_applyGlobalFilters(rows);
@@ -9155,6 +9356,7 @@ function renderEquiposPremium(){
 
   // ════ Compact alerts (top 4) ════
   const compactAlerts=alertItems.slice(0,4);
+  const corregidos=rows.filter(r=>r._fixes&&r._fixes.length);
 
   // ════ Begin HTML ════
   let h=`<div class="eqv2-wrap">`;
@@ -9175,7 +9377,13 @@ function renderEquiposPremium(){
   }
 
   // ════ Command Bar (smart header) ════
-  const valorImpacto=vencidos*3.5; // proxy: cada vencido ≈ S/3.5K impacto valorización
+  /* Antes acá había `const valorImpacto=vencidos*3.5` y se mostraba como
+     "~S/XXK impactados". Ese 3.5 era un supuesto inventado: la importación no
+     trae el valor de la orden, así que no hay forma de calcular soles.
+     Lo reemplazamos por el atraso acumulado, que sí se puede sostener con datos. */
+  const diasAtrasoTotal=activos.filter(r=>r._vencido&&r._diasObra!=null)
+    .reduce((a,r)=>a+Math.abs(r._diasObra),0);
+  const atrasoProm=vencidos?Math.round(diasAtrasoTotal/vencidos):0;
   h+=`<div class="eqv2-cmd">
     <div class="eqv2-cmd-title">
       <div class="eqv2-cmd-emoji">📦</div>
@@ -9186,8 +9394,22 @@ function renderEquiposPremium(){
           ${proximos>0?`<span class="eqv2-cmd-chip dot warn">${proximos} ETA en riesgo</span>`:''}
           ${enFabActivos>0?`<span class="eqv2-cmd-chip info">🔧 ${enFabActivos} en fabricación</span>`:''}
           <span class="eqv2-cmd-chip ok">✓ ${entregados} entregados</span>
-          ${valorImpacto>0?`<span class="eqv2-cmd-chip">💰 ~S/${valorImpacto.toFixed(0)}K impactados</span>`:''}
+          ${(()=>{const sc=W._eqDataSrc;if(!sc)return '';
+            const et={import:'📥 importado',supabase:'☁️ sincronizado',snapshot:'📄 datos embebidos'}[sc.tipo]||sc.tipo;
+            const cuando=sc.ts?' '+new Date(sc.ts).toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'2-digit'}):'';
+            // La importación es semanal (viernes): pasados 10 días el dato está viejo
+            // y hasta ahora nada lo decía. 
+            const dias=sc.ts?Math.floor((Date.now()-sc.ts)/864e5):null;
+            const viejo=dias!=null&&dias>10;
+            const cls=viejo?'dot warn':'';
+            const extra=viejo?` · hace ${dias} d`:'';
+            const tip=viejo?`Sin importar hace ${dias} días. La actualización es semanal: subí el Excel de importaciones.`:'Origen de los datos que estás viendo';
+            return `<span class="eqv2-cmd-chip ${cls}" title="${tip}">${viejo?'⚠ ':''}${et}${cuando}${viejo?' · '+dias+'d':''}</span>`;})()}
+          ${vencidos>0?`<span class="eqv2-cmd-chip" title="Suma de días de atraso de los equipos vencidos · promedio ${atrasoProm} d por equipo">⏱ ${diasAtrasoTotal} d atraso acum.</span>`:''}
           <span class="eqv2-cmd-chip">🏗 ${activeProjList.length} proyectos activos</span>
+          ${corregidos.length?`<span class="eqv2-cmd-chip" title="Equipos con el año mal tipeado en el Excel, corregido automáticamente:&#10;${corregidos.slice(0,15).map(r=>(r.doc||'?')+' ('+r._fixes.map(f=>f.c).join(', ')+')').join('&#10;')}">✎ ${corregidos.length} con año corregido</span>`:''}
+          ${_ocultosPorActivos>0?`<span class="eqv2-cmd-chip" style="cursor:pointer;border-style:dashed" onclick="W._eqToggleShowAll&&W._eqToggleShowAll()" title="Equipos de proyectos cerrados o sin cruce con un proyecto vigente:&#10;${_sinMapear.slice(0,25).join(', ').replace(/"/g,'')}&#10;&#10;Clic para mostrarlos.">🙈 ${_ocultosPorActivos} no vigentes</span>`:''}
+          ${_eqShowAll?`<span class="eqv2-cmd-chip" style="cursor:pointer;border-style:dashed" onclick="W._eqToggleShowAll&&W._eqToggleShowAll()" title="Volver a mostrar sólo proyectos activos">👁 viendo todos · volver</span>`:''}
         </div>
       </div>
     </div>
@@ -9277,6 +9499,7 @@ function renderEquiposPremium(){
     {id:'proximo',label:'📅 Próximos',cnt:proximos,badge:proximos>0?'warn':null},
     {id:'tipo',label:'Por tipo',cnt:null},
     {id:'entregado',label:'✓ Entregados',cnt:entregados,badge:'mut'},
+    {id:'stock',label:'📦 Stock',cnt:_rowsStock.length,badge:'mut'},
   ];
   h+=`<div class="eqv2-tabs">`;
   tabDefs.forEach(t=>{
@@ -9313,6 +9536,9 @@ function renderEquiposPremium(){
     visible=_applyGlobalFilters(rows).filter(r=>_eqv2StageOf(r)===_eqSubTab);
     visible=_eqSortRows(visible);
   }
+  if(_eqSubTab==='stock'){
+    visible=_eqSortRows(_applyGlobalFilters(_rowsStock));
+  }
   // legacy aliases (KPI cards)
   if(_eqSubTab==='fab'){
     visible=_applyGlobalFilters(rows).filter(r=>_eqv2StageOf(r)==='fabricacion');
@@ -9325,6 +9551,12 @@ function renderEquiposPremium(){
 
   // Banner de filtro activo (cuando viene del pipeline)
   const stageLabels={fabricacion:'🔧 Fabricación',origen:'📍 Origen',transito:'🚢 Tránsito',aduana:'🛃 Aduana',transporte:'🚚 Transporte',obra:'🏗 En Obra',entregado:'✓ Entregado'};
+  if(_eqSubTab==='stock'){
+    h=h.replace('<!--STAGE-BANNER-->',`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.2);border-radius:10px;margin-bottom:12px;font-size:12.5px">
+      <span style="font-weight:800;color:var(--eq-ink)">📦 Compras a stock</span>
+      <span style="color:var(--eq-mut);font-size:11.5px">Equipos sin proyecto asignado (PROYECTOS, STOCK PARA PROYECTOS, REGULARIZACIÓN). No entran en los KPIs ni en el pipeline de arriba.</span>
+    </div>`);
+  }
   if(stageLabels[_eqSubTab]){
     h=h.replace('<!--STAGE-BANNER-->',`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(135deg,rgba(13,148,136,.06),rgba(99,102,241,.04));border:1px solid rgba(13,148,136,.2);border-radius:10px;margin-bottom:12px;font-size:12.5px">
       <span style="font-weight:800;color:var(--eq-ink)">Filtrando por etapa:</span>
@@ -9458,6 +9690,7 @@ function renderEquiposPremium(){
   W._eqSetProjFromPanel=v=>{_eqFilterProj=(_eqFilterProj===v?'':v);_eqActiveProj=v;renderEquiposPremium();};
   W._eqSetDate=(which,v)=>{if(which==='from')_eqDateFrom=v;else _eqDateTo=v;renderEquiposPremium();};
   W._eqClearFilters=()=>{_eqFilterProj='';_eqDateFrom='';_eqDateTo='';renderEquiposPremium();};
+  W._eqToggleShowAll=()=>{_eqShowAll=!_eqShowAll;renderEquiposPremium();};
   W._eqv2ToggleTech=()=>{
     _eqv2TechOpen=!_eqv2TechOpen;
     const t=el.querySelector('.eqv2-tech-toggle');
@@ -9476,6 +9709,85 @@ function renderEquiposPremium(){
       }
     }
   };
+
+  /* ═══ DETALLE DEL EQUIPO — clic en la tarjeta ═══
+     Las tarjetas tenían cursor:pointer y elevación al hover, pero nunca se les
+     cableó un handler: el clic no hacía absolutamente nada. */
+  W._eqRowsByDoc={};
+  rows.forEach(r=>{if(r.doc)W._eqRowsByDoc[r.doc]=r;});
+
+  W._eqCloseCard=()=>{
+    const ov=document.getElementById('eqd-ov');
+    if(ov)ov.classList.remove('on');
+  };
+
+  W._eqOpenCard=doc=>{
+    const r=W._eqRowsByDoc&&W._eqRowsByDoc[doc];
+    if(!r){console.warn('[Equipos] sin datos para el documento',doc);return;}
+    let ov=document.getElementById('eqd-ov');
+    if(!ov){
+      ov=document.createElement('div');
+      ov.id='eqd-ov';ov.className='eqd-ov';
+      ov.innerHTML='<div class="eqd-card" id="eqd-card"></div>';
+      document.body.appendChild(ov);
+      ov.addEventListener('click',e=>{if(e.target===ov)W._eqCloseCard();});
+      document.addEventListener('keydown',e=>{if(e.key==='Escape')W._eqCloseCard();});
+    }
+    const f=(l,v,hi)=>`<div class="eqd-f ${hi?'hi':''}"><div class="eqd-f-l">${l}</div><div class="eqd-f-v">${v||'—'}</div></div>`;
+    const obraStr=r._fechaObra?_eqFmtDate(r._fechaObra):'—';
+    const diasStr=r._diasObra!==null?(r._diasObra===0?'HOY':r._diasObra>0?'faltan '+r._diasObra+' días':Math.abs(r._diasObra)+' días de atraso'):'—';
+    document.getElementById('eqd-card').innerHTML=`
+      <div class="eqd-head">
+        <div class="eqd-head-l">
+          <div class="eqd-tipo">${r.tipo||'Equipo'}</div>
+          <div class="eqd-doc">${r.doc||'sin documento'} · ${r.proyecto||'sin proyecto'}</div>
+        </div>
+        <div class="eqv2-card-badge">${_eqv2BadgeLabel(r)}</div>
+        <button class="eqd-x" onclick="W._eqCloseCard()" title="Cerrar (Esc)">×</button>
+      </div>
+      <div class="eqd-body">
+        <div class="eqd-sec">Fechas</div>
+        <div class="eqd-grid">
+          ${f('ETD · embarque',r._etdTxt||r.etd)}
+          ${f('ETA · puerto Perú',r._etaTxt||r.eta)}
+          ${f('F. proyectada en obra <span style="font-weight:400;text-transform:none">(ETA + '+(r._margen!=null?r._margen:EQ_MARGEN_DEFAULT)+' d)</span>',obraStr,true)}
+          ${f('Días a obra',diasStr)}
+          ${f('F. entrega comprometida',r._entTxt||r.f_entrega)}
+          ${f('Entrega real',r._realTxt||r.f_real)}
+        </div>
+        <div class="eqd-sec">Suministro</div>
+        <div class="eqd-grid">
+          ${f('Proveedor',r.proveedor)}
+          ${f('Origen',r.origen)}
+          ${f('Modalidad',r.modalidad)}
+          ${f('Etapa',(_eqv2StageOf(r)||'').replace(/^./,c=>c.toUpperCase()))}
+          ${f('Status origen',r.status_orig)}
+          ${f('Status final',r.status_dest)}
+        </div>
+        ${r.ref?`<div class="eqd-sec">Referencia</div><div class="eqd-f">${r.ref}</div>`:''}
+        ${r._vencido?`<div class="eqd-warn"><b>Vencido.</b> La fecha proyectada en obra (${obraStr}) ya pasó y el equipo no figura entregado.</div>`:''}
+        ${r._historico?`<div class="eqd-note">Registro histórico: la fecha de obra es de un año anterior y no tiene entrega confirmada.</div>`:''}
+        ${(r._fixes&&r._fixes.length)?`<div class="eqd-note" style="background:rgba(13,148,136,.07);border-color:rgba(13,148,136,.28);color:#0f766e"><b>✎ Año corregido automáticamente.</b> El Excel traía el año mal tipeado; se ajustó al del documento (${r.fecha||'—'}):<br>${r._fixes.map(x=>`&nbsp;&nbsp;· ${x.c}: <s>${x.de}</s> → <b>${x.a}</b>`).join('<br>')}<br><span style="font-size:11px">Conviene corregirlo también en el Excel de origen.</span></div>`:''}
+        ${r._fechaDudosa?`<div class="eqd-note"><b>Revisar la fecha.</b> El año (${r._fechaObra?r._fechaObra.getFullYear():'?'}) está fuera de rango — suele ser un error de tipeo en el Excel de origen.</div>`:''}
+        <div class="eqd-actions">
+          ${r.doc?`<button class="eqv2-btn" onclick="W._eqCloseCard();W._eqHistDetalle&&W._eqHistDetalle('${(r.doc||'').replace(/'/g,"\\'")}')">🕑 Historial de cambios</button>`:''}
+          <button class="eqv2-btn primary" onclick="W._eqCloseCard()">Cerrar</button>
+        </div>
+      </div>`;
+    ov.classList.add('on');
+  };
+
+  // Delegación: sobrevive a cualquier re-render de las tarjetas. Se registra una sola vez.
+  if(!W._eqCardDelegated){
+    document.addEventListener('click',e=>{
+      const card=e.target.closest&&e.target.closest('.eqv2-card[data-doc]');
+      if(!card)return;
+      const doc=card.dataset.doc;
+      if(!doc)return;
+      W._eqOpenCard&&W._eqOpenCard(doc);
+    });
+    W._eqCardDelegated=true;
+  }
 
   W._eqSearch=q=>{
     const low=(q||'').toLowerCase();
@@ -9797,7 +10109,10 @@ function renderEquiposPremium(){
           if(typeof showToast==='function')showToast('Librería XLSX no cargada · recargá la página','alert',5000);
         } else {
           const ab=await file.arrayBuffer();
-          const wb=XLSX.read(ab,{type:'array'});
+          // cellDates: las celdas de fecha llegan como Date reales. Sin esto, XLSX
+          // las formatea según el locale del archivo ("8/15/26", "15-Aug-26") y
+          // el parser no las reconocía → ETA/ETD vacíos en todo el import.
+          const wb=XLSX.read(ab,{type:'array',cellDates:true});
           console.log('[import] (Excel) hojas detectadas:',wb.SheetNames);
           // Smart sheet pick: prefer "NISIRA FP" / "NISIRA", luego cualquier hoja que tenga
           // "Documento" en sus primeras filas (i.e. la hoja con data real).
@@ -9818,7 +10133,7 @@ function renderEquiposPremium(){
           if(!sheetName)sheetName=wb.SheetNames[0];
           console.log('[import] hoja elegida:',sheetName);
           const ws=wb.Sheets[sheetName];
-          raw=XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
+          raw=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
         }
       } else if(fname.match(/\.csv$/i)||ftype.includes('csv')){
         const text=await file.text();
@@ -9953,6 +10268,9 @@ function renderEquiposPremium(){
     if(_eqv2Timeline.length>30)_eqv2Timeline.length=30;
 
     W.IMPORTACIONES_DATA=parsed;
+    // Persistir: antes la importación vivía SÓLO en memoria, así que al refrescar
+    // la página volvían las fechas del snapshot embebido en el HTML.
+    W._eqSaveImport(parsed,file.name);
     _impSnapshot={};
     _eqDiff={nuevos,cambios};
 
@@ -10036,6 +10354,18 @@ function renderEquiposPremium(){
     }
   };
   W._eqParseRows=_eqParseRows;
+  }catch(err){
+    // Antes el try sólo tenía finally: cualquier excepción (p. ej. una fecha en
+    // un formato inesperado) dejaba el módulo en blanco sin explicación.
+    console.error('[Equipos] error al renderizar:',err);
+    try{
+      el.innerHTML=`<div class="eqv2-wrap"><div class="eqv2-empty">
+        <div class="eqv2-empty-ico">⚠️</div>
+        <div class="eqv2-empty-title">No se pudo dibujar el módulo</div>
+        <div class="eqv2-empty-sub">${(err&&err.message)||err}<br>Revisá la consola para el detalle.</div>
+        <div style="margin-top:14px"><button class="eqv2-btn primary" onclick="W.renderEquipos&&W.renderEquipos()">Reintentar</button></div>
+      </div></div>`;
+    }catch(_){}
   }finally{
     _eqRenderInFlight=false;
     if(_eqRenderPending){
@@ -10082,13 +10412,20 @@ function _eqParseRows(raw){
       cod_proyecto:h=>h==='columna1'||h==='cod_proyecto'||h==='pry_codigo'||h.startsWith('a_pry'),
       tipo:        h=>h.includes('tipo producto')||h.includes('tipo_producto')||h==='tipo',
       origen:      h=>h==='origen'||h.startsWith('origen'),
-      // Fecha Entrega — sin requerir trailing space
-      f_entrega:   h=>h.includes('fecha entrega')||h.includes('fecha_entrega')||h==='eta',
+      // Fecha Entrega — sin requerir trailing space.
+      // OJO: ya NO acepta 'eta'; colisionaba con la columna ETA real y hacía que
+      // f_entrega y eta apuntaran a la misma columna.
+      f_entrega:   h=>h.includes('fecha entrega')||h.includes('fecha_entrega'),
       f_real:      h=>h.includes('entrega real')||h.includes('fecha de entrega real'),
-      status_orig: h=>h.includes('status de la entrega')||h.includes('status_orig'),
-      etd:         h=>h==='fecha etd'||h==='etd'||h.includes('fecha etd'),
-      eta:         h=>h==='fecha de eta'||h==='eta'||h.includes('fecha de eta'),
-      status_dest: h=>h.includes('status final')||h.includes('status_final')||h.includes('status de la entrega'),
+      status_orig: h=>h.includes('status de la entrega')||h.includes('status_orig')||h.includes('status origen'),
+      etd:         h=>h==='etd'||h.includes('fecha etd')||h.includes('fecha de etd')||h.includes('fecha_etd')||h.startsWith('etd'),
+      // Antes exigía 'fecha de eta' (con "de") o 'eta' exacto: un header
+      // "FECHA ETA" o "ETA (PUERTO)" no matcheaba y TODO el archivo entraba sin
+      // ETA → F. Obra y días en blanco.
+      eta:         h=>h==='eta'||h.includes('fecha eta')||h.includes('fecha de eta')||h.includes('fecha_eta')||h.startsWith('eta'),
+      // 'status de la entrega' es el status de ORIGEN; incluirlo aquí hacía que
+      // el estado final se leyera de la columna equivocada cuando aparecía antes.
+      status_dest: h=>h.includes('status final')||h.includes('status_final')||h.includes('status destino')||h.includes('status dest'),
       modalidad:   h=>h.includes('modalidad'),
       estado:      h=>h==='estado',
       dias:        h=>h.includes('dias por entregar')||h.includes('días por entregar'),
@@ -10099,19 +10436,129 @@ function _eqParseRows(raw){
     for(let i=0;i<hdr.length;i++){if(m(hdr[i]))return i;}
     return -1;
   };
-  const get=(row,name)=>(row[col(name)]||'').toString().trim();
+  const get=(row,name)=>{const v=row[col(name)];return v==null?'':v.toString().trim();};
+  /* Campos de fecha: el valor puede llegar como Date (Excel con cellDates) o como
+     serial numérico. Los normalizamos al formato canónico dd-mmm-yy que usa el
+     resto del módulo, en vez de dejar caer un "Tue Aug 18 2026 00:00:00 GMT…". */
+  const getD=(row,name)=>{
+    const v=row[col(name)];
+    if(v==null||v==='')return '';
+    if(v instanceof Date||typeof v==='number'){
+      const d=_eqParseDate(v);
+      return d?_eqFmtDate(d):'';
+    }
+    return v.toString().trim();
+  };
+  // Diagnóstico: avisar qué columnas clave no se encontraron en este archivo
+  const faltantes=['doc','proyecto','tipo','eta','etd','status_dest'].filter(k=>col(k)<0);
+  if(faltantes.length)console.warn('[import] columnas NO encontradas en el header:',faltantes.join(', '),'· headers leídos:',hdr);
   return raw.slice(hdrIdx+1)
-    .filter(row=>row.some(c=>c&&c.toString().trim()))
+    .filter(row=>row.some(c=>c!=null&&c!==''&&c.toString().trim()))
     .map(row=>({
-      doc:get(row,'doc'),fecha:get(row,'fecha'),proveedor:get(row,'proveedor'),
+      doc:get(row,'doc'),fecha:getD(row,'fecha'),proveedor:get(row,'proveedor'),
       proyecto:get(row,'proyecto'),tipo:get(row,'tipo'),origen:get(row,'origen'),
-      f_entrega:get(row,'f_entrega'),f_real:get(row,'f_real'),
-      status_orig:get(row,'status_orig'),etd:get(row,'etd'),eta:get(row,'eta'),
+      f_entrega:getD(row,'f_entrega'),f_real:getD(row,'f_real'),
+      status_orig:get(row,'status_orig'),etd:getD(row,'etd'),eta:getD(row,'eta'),
       status_dest:get(row,'status_dest'),modalidad:get(row,'modalidad'),
       estado:get(row,'estado'),dias:get(row,'dias'),ref:get(row,'ref'),
     }))
     .filter(r=>r.doc||r.proyecto);
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   EQUIPOS · PROCEDENCIA DE LOS DATOS
+   Hasta ahora el módulo sólo leía la constante IMPORTACIONES_DATA embebida en
+   este HTML. La importación semanal se guardaba en memoria y se subía a la tabla
+   equipos_pmo (para app-sup), pero gerencia nunca la volvía a leer: bastaba un
+   F5 para que reaparecieran las fechas viejas.
+   Prioridad: última importación guardada en este navegador → equipos_pmo →
+   snapshot embebido (que se conserva siempre como base, porque tiene órdenes
+   que aún no llegaron a la tabla).
+   ═══════════════════════════════════════════════════════════════════ */
+(function(){
+  const EQ_LS_KEY='fp_equipos_import_v1';
+  const SNAPSHOT=(W.IMPORTACIONES_DATA||[]).slice();
+  const SB_URL='https://iiceeajjmugtuzcfqggs.supabase.co';
+  const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpY2VlYWpqbXVndHV6Y2ZxZ2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODg5OTUsImV4cCI6MjA5NDc2NDk5NX0.xeOFlxEGoPsqO5mBLz2_o6UqMCiUw5t8Aghg0ieRqs4';
+
+  W._eqSaveImport=function(rows,fileName){
+    try{
+      localStorage.setItem(EQ_LS_KEY,JSON.stringify({ts:Date.now(),file:fileName||'',rows:rows}));
+      W._eqDataSrc={tipo:'import',ts:Date.now(),file:fileName||'',n:rows.length};
+    }catch(e){console.warn('[Equipos] no se pudo guardar la importación:',e);}
+  };
+
+  const _fromPmo=r=>({
+    doc:r.doc||'',fecha:r.fecha||'',proveedor:r.proveedor||'',
+    proyecto:r.proj||r.proj_csv||'',tipo:r.tipo||'',origen:r.origen||'',
+    f_entrega:r.fe||'',f_real:r.fer||'',status_orig:r.so||'',
+    etd:r.etd||'',eta:r.eta||'',status_dest:r.st||'',
+    modalidad:r.mod||'',estado:'',dias:'',ref:r.ref||''
+  });
+
+  // Une `extra` sobre `base` por documento: gana `extra`, se conservan los docs
+  // que sólo existen en base (órdenes nuevas que aún no se subieron).
+  const _merge=(base,extra)=>{
+    const map=new Map();
+    base.forEach(r=>{if(r&&(r.doc||r.proyecto))map.set(r.doc||('#'+(r.proyecto||'')+(r.tipo||'')),r);});
+    extra.forEach(r=>{if(r&&(r.doc||r.proyecto))map.set(r.doc||('#'+(r.proyecto||'')+(r.tipo||'')),r);});
+    return [...map.values()];
+  };
+
+  async function bootstrap(){
+    // 1) Última importación hecha en este navegador
+    let local=null;
+    try{
+      const raw=localStorage.getItem(EQ_LS_KEY);
+      if(raw){const o=JSON.parse(raw);if(o&&Array.isArray(o.rows)&&o.rows.length)local=o;}
+    }catch(e){console.warn('[Equipos] localStorage ilegible:',e);}
+
+    // 2) equipos_pmo (lo que subió la última importación, desde cualquier equipo)
+    let remote=null,remoteTs=0;
+    try{
+      const res=await fetch(SB_URL+'/rest/v1/equipos_pmo?select=doc,fecha,proveedor,proj,proj_csv,tipo,origen,fe,fer,so,etd,eta,st,mod,ref,updated_at&limit=2000',
+        {headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+      if(res.ok){
+        const rows=await res.json();
+        if(Array.isArray(rows)&&rows.length){
+          rows.forEach(r=>{const t=Date.parse(r.updated_at||'');if(t>remoteTs)remoteTs=t;});
+          remote=rows.map(_fromPmo);
+        }
+      }
+    }catch(e){console.warn('[Equipos] no se pudo leer equipos_pmo:',e);}
+
+    let data=SNAPSHOT,src={tipo:'snapshot',n:SNAPSHOT.length};
+    if(remote){
+      data=_merge(SNAPSHOT,remote);
+      src={tipo:'supabase',ts:remoteTs,n:remote.length};
+    }
+    // La importación local pisa a todo si es más reciente que lo que hay en la tabla
+    if(local&&local.ts>=remoteTs){
+      data=_merge(data,local.rows);
+      src={tipo:'import',ts:local.ts,file:local.file,n:local.rows.length};
+    }
+    W.IMPORTACIONES_DATA=data;
+    W._eqDataSrc=src;
+    console.log('[Equipos] datos:',src.tipo,'·',data.length,'equipos',src.ts?('· '+new Date(src.ts).toLocaleString('es-PE')):'');
+    // Esperar a que la lista de proyectos activos esté cargada antes de pintar:
+    // si no, el primer render sale sin filtrar (234 equipos) y colapsa a los pocos
+    // segundos, que se ve como un parpadeo raro.
+    let intentos=0;
+    const pintar=()=>{
+      try{if(typeof W.renderEquipos==='function')W.renderEquipos();}
+      catch(e){console.warn('[Equipos] render tras bootstrap:',e);}
+    };
+    const esperar=setInterval(()=>{
+      intentos++;
+      const listos=(typeof W.activeP==='function'&&(W.activeP()||[]).length>0);
+      if(listos||intentos>20){clearInterval(esperar);pintar();}
+    },400);
+  }
+
+  // Arrancar sin bloquear la carga de la página
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(bootstrap,800));
+  else setTimeout(bootstrap,800);
+})();
 
 W.renderEquiposPremium=renderEquiposPremium;
 W.renderEquipos=renderEquiposPremium;

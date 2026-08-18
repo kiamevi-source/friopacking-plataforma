@@ -172,10 +172,12 @@
     <div class="sb-eyebrow">Portal de Contratas</div>
 
     <button class="nav-item active" data-view="resumen"><svg data-lucide="layout-dashboard"></svg>Resumen</button>
+    <button class="nav-item" data-view="proyectos"><svg data-lucide="folder-kanban"></svg>Mis proyectos</button>
     <button class="nav-item" data-view="informe"><svg data-lucide="clipboard-list"></svg>Informe diario</button>
     <button class="nav-item" data-view="licitaciones"><svg data-lucide="gavel"></svg>Licitaciones</button>
     <button class="nav-item" data-view="factura"><svg data-lucide="receipt"></svg>Facturación</button>
     <button class="nav-item" data-view="docs"><svg data-lucide="folder-up"></svg>Documentos</button>
+    <button class="nav-item" data-view="perfil"><svg data-lucide="building-2"></svg>Perfil de empresa</button>
 
     <div class="sb-foot">
       <div class="sb-avatar" id="ct-avatar">C</div>
@@ -209,6 +211,26 @@
           <button class="btn ghost" data-go="docs"><svg data-lucide="upload"></svg>Subir documento</button>
         </div>
       </div>
+    </section>
+
+    <!-- MIS PROYECTOS (asignaciones desde portafolio_servicios · PMO) -->
+    <section class="view" id="v-proyectos">
+      <style>
+        #v-proyectos .mp-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow-sm);margin-bottom:12px}
+        #v-proyectos .mp-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+        #v-proyectos .mp-name{font-size:16px;font-weight:800;color:var(--ink)}
+        #v-proyectos .mp-sup{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px}
+        #v-proyectos .mp-sup svg{width:13px;height:13px;vertical-align:-2px;margin-right:3px}
+        #v-proyectos .mp-esp{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+        #v-proyectos .esp-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;background:#eef6f4;color:#0d7d70;border:1px solid #cdebe5;border-radius:999px;padding:5px 11px}
+        #v-proyectos .st{font-size:11px;font-weight:800;padding:4px 11px;border-radius:999px;white-space:nowrap}
+        #v-proyectos .st-proc{background:#e7f0ff;color:#2266b0}.st-ini{background:#fff3e0;color:#b45309}.st-cierre{background:#fef3c7;color:#a16207}.st-fin{background:#e6f7f0;color:#1a7d5e}.st-obs{background:#fdecea;color:#c0453b}
+      </style>
+      <div class="page-head">
+        <h1 class="page-title font-display">Mis proyectos</h1>
+        <p class="page-sub">Las obras en las que estás asignado, con tus especialidades. Fuente: Operaciones (PMO).</p>
+      </div>
+      <div id="mp-root"><div class="empty">Cargando tus proyectos…</div></div>
     </section>
 
     <!-- LICITACIONES (invitaciones recibidas · lee/escribe lic_* en PMO) -->
@@ -342,6 +364,15 @@
         </div>
         <div class="file-list" id="file-list"></div>
       </div>
+    </section>
+
+    <!-- PERFIL DE EMPRESA (contratas_cuentas + especialidades desde portafolio) -->
+    <section class="view" id="v-perfil">
+      <div class="page-head">
+        <h1 class="page-title font-display">Perfil de empresa</h1>
+        <p class="page-sub">Tus datos de contacto y especialidades registradas.</p>
+      </div>
+      <div id="perfil-root"><div class="empty">Cargando perfil…</div></div>
     </section>
 
   </main>
@@ -841,6 +872,51 @@
     }catch(e){ toast('Error al enviar',String(e.message||e)); }
   }
 
+  // ══════════════ CUENTA · MIS PROYECTOS · PERFIL ══════════════
+  var CUENTA=null, MIS_PROYECTOS=[];
+  function nn(s){ return String(s==null?'':s).trim().toLowerCase(); }
+  async function loadCuenta(){
+    if(!sb || !USER_EMAIL) return;
+    try{ var r=await sb.from('contratas_cuentas').select('*').eq('email', USER_EMAIL).maybeSingle(); CUENTA=r.data||null; }catch(e){ console.warn('cuenta', e); }
+    if(CUENTA && CUENTA.empresa){
+      setIdentity(CUENTA.empresa);
+      var rt=document.querySelector('#v-resumen .page-title'); if(rt) rt.textContent='Hola, '+CUENTA.empresa+' 👷';
+    }
+  }
+  function stClass(e){ e=(e||'').toLowerCase(); if(e.indexOf('proceso')>=0) return 'st-proc'; if(e.indexOf('iniciar')>=0) return 'st-ini'; if(e.indexOf('cierre')>=0) return 'st-cierre'; if(e.indexOf('conclu')>=0||e.indexOf('termin')>=0) return 'st-fin'; if(e.indexOf('obs')>=0) return 'st-obs'; return 'st-ini'; }
+  async function loadMisProyectos(){
+    var root=$('#mp-root'); if(!root) return;
+    var aliases=(CUENTA&&CUENTA.aliases)||[];
+    if(!gsb){ root.innerHTML='<div class="empty">Sin conexión a Operaciones.</div>'; return; }
+    if(!aliases.length){ root.innerHTML='<div class="empty">Aún no tienes proyectos asignados.<br><span style="font-size:12px;color:var(--muted)">Cuando Operaciones te asigne una obra, aparecerá aquí.</span></div>'; return; }
+    try{
+      var res=await gsb.from('portafolio_servicios').select('contratista,cliente,especialidad,supervisor,estado,situacion');
+      var mine=(res.data||[]).filter(function(r){ return aliases.indexOf(nn(r.contratista))>=0; });
+      MIS_PROYECTOS=mine;
+      if(!mine.length){ root.innerHTML='<div class="empty">Aún no tienes proyectos asignados.</div>'; return; }
+      var byP={};
+      mine.forEach(function(r){ var k=r.cliente||'—'; if(!byP[k]) byP[k]={cliente:k,esp:[],sup:r.supervisor,estado:r.estado}; byP[k].esp.push(r); });
+      root.innerHTML='<div class="panel" style="padding:12px 15px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);font-weight:600"><svg data-lucide="folder-kanban" style="width:16px;height:16px"></svg>'+Object.keys(byP).length+' proyecto(s) · '+mine.length+' asignación(es)</div>'+
+        Object.keys(byP).map(function(k){ var p=byP[k];
+          return '<div class="mp-card"><div class="mp-top"><div><div class="mp-name">'+esc(p.cliente)+'</div>'+
+            '<div class="mp-sup"><svg data-lucide="user-cog"></svg>Supervisor: '+esc(p.sup||'Sin asignar')+'</div></div>'+
+            '<span class="st '+stClass(p.estado)+'">'+esc(p.estado||'—')+'</span></div>'+
+            '<div class="mp-esp">'+p.esp.map(function(e){ return '<span class="esp-chip"><svg data-lucide="wrench" style="width:12px;height:12px"></svg>'+esc(e.especialidad||'—')+(e.situacion&&e.situacion!=='Contratado'?(' · '+esc(e.situacion)):'')+'</span>'; }).join('')+'</div></div>';
+        }).join('');
+      if(window.lucide) lucide.createIcons();
+    }catch(e){ console.warn('mis proyectos', e); root.innerHTML='<div class="empty">No se pudieron cargar tus proyectos.</div>'; }
+  }
+  function renderPerfil(){
+    var root=$('#perfil-root'); if(!root) return;
+    if(!CUENTA){ root.innerHTML='<div class="empty">No se encontró tu perfil. Ingresa desde el portal de Contratas.</div>'; return; }
+    function row(k,v){ return '<div style="display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid var(--line)"><span style="color:var(--muted);font-weight:600;font-size:13px">'+esc(k)+'</span><span style="color:var(--ink);font-weight:700;text-align:right">'+esc(v||'—')+'</span></div>'; }
+    var esp={}; MIS_PROYECTOS.forEach(function(r){ if(r.especialidad) esp[r.especialidad]=1; }); var esps=Object.keys(esp);
+    root.innerHTML='<div class="panel"><div class="panel-h"><h3>Datos de la empresa</h3></div>'+
+      row('Empresa',CUENTA.empresa)+row('Encargado',CUENTA.encargado)+row('Teléfono',CUENTA.telefono)+row('Correo (usuario)',CUENTA.email)+'</div>'+
+      '<div class="panel"><div class="panel-h"><h3>Especialidades</h3></div>'+
+      (esps.length? '<div style="display:flex;flex-wrap:wrap;gap:8px">'+esps.map(function(e){ return '<span style="font-size:12.5px;font-weight:700;background:#eef6f4;color:#0d7d70;border:1px solid #cdebe5;border-radius:999px;padding:6px 13px">'+esc(e)+'</span>'; }).join('')+'</div>' : '<div style="color:var(--muted);font-size:13px">Aún no registras especialidades en proyectos.</div>')+'</div>';
+  }
+
   // ── Init ──
   renderInformes(); renderFacturas(); renderDocs(); renderResumen();
   loadProyectos();
@@ -859,9 +935,10 @@
     USER_EMAIL = email;
     try{ localStorage.setItem('fp_ct_name', email); }catch(e){}
     setIdentity(email);
-    await Promise.all([ loadInformes(), loadFacturas(), loadDocs(), loadLicitaciones() ]);
+    await loadCuenta();
+    await Promise.all([ loadInformes(), loadFacturas(), loadDocs(), loadLicitaciones(), loadMisProyectos() ]);
     await loadContratos();
-    renderResumen();
+    renderResumen(); renderPerfil();
   })();
 })();
 </script>
