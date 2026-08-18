@@ -557,6 +557,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
   font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1a1a2e;}
 .pdf-header{display:flex;justify-content:space-between;align-items:flex-start;
   border-bottom:3px solid #1B2D5B;padding-bottom:12px;margin-bottom:16px;}
+.pdf-logo-img{height:34px;width:auto;display:block;}
 .pdf-logo{font-size:10px;font-weight:900;letter-spacing:.08em;color:white;
   background:#1B2D5B;padding:5px 10px;border-radius:5px;}
 .pdf-title-block{text-align:right;}
@@ -4067,7 +4068,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
         <div class="rd-card accent">
           <div class="rd-head accent">
             <div class="rd-head-ic"><i data-lucide="layers" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Contratas y avance por especialidad</h4><p>Cada especialidad con su contrata, personal y avance del día · se configura una vez</p></div>
+            <div class="rd-head-tt"><h4>Contratas y avance por especialidad</h4><p>Personal y avance por frente · el % Avance Real del día sale del cronograma, no de aquí</p></div>
             <div class="rd-head-badge teal"><span id="rd-esp-personal">0</span> obreros · Global <strong id="rd-esp-global">0%</strong></div>
           </div>
           <div class="rd-body"><div id="rd-esp-mount"></div></div>
@@ -4083,11 +4084,11 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
           <div class="rd-body">
             <div class="rd-plan">
               <div class="rd-plan-block">
-                <div class="lbl">Deberías ir hoy <span style="font-weight:600;color:var(--text-3);font-size:10px;">· según el cronograma · lo escribes tú</span></div>
+                <div class="lbl">% Avance Planificado <span style="font-weight:600;color:var(--text-3);font-size:10px;">· según el cronograma · lo escribes tú</span></div>
                 <div class="row"><input class="rd-prog-inp" type="number" id="rd-plan" min="0" max="100" step="0.1" oninput="rdPlanBars()"><div class="rd-plan-track plan"><i id="rd-plan-bar" style="width:0%"></i></div></div>
               </div>
               <div class="rd-plan-block">
-                <div class="lbl">Vas de verdad <span style="font-weight:600;color:var(--text-3);font-size:10px;">· se calcula solo, promediando el % de cada especialidad</span></div>
+                <div class="lbl">% Avance Real <span style="font-weight:600;color:var(--text-3);font-size:10px;" id="rd-real-fuente">· se calcula solo</span></div>
                 <div class="row"><input class="rd-prog-inp" type="number" id="rd-real" min="0" max="100" step="0.1" readonly title="Se calcula solo con el promedio ponderado de las especialidades" style="background:var(--surface-2);cursor:not-allowed;"><div class="rd-plan-track real"><i id="rd-real-bar" style="width:0%"></i></div></div>
               </div>
               <div class="rd-diff pos" id="rd-diff"><b>0</b><span>Atraso / adelanto</span></div>
@@ -4827,7 +4828,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
   <div class="pdf-page" id="pdf-page-1">
     <div class="pdf-header">
       <div>
-        <div class="pdf-logo">FRIOPACKING</div>
+        <img class="pdf-logo-img" src="assets/logo-color.png" alt="Grupo Friopacking" crossorigin="anonymous">
       </div>
       <div class="pdf-title-block">
         <div class="pdf-title">Reporte Diario de Obra</div>
@@ -10062,12 +10063,24 @@ function rdHitoInput(i, val){
   const f = document.getElementById('rd-hito-fill-'+i); if (f) f.style.width = rdHitos[i].pct_nuevo + '%';
   recalcAvanceGlobal();
 }
+// FUENTE ÚNICA del "% Avance Real" (decisión de Kiara, 18-ago-2026): el promedio
+// de las tareas del cronograma. Antes lo escribían DOS funciones — especialidades
+// (siempre) e hitos (solo si estaba vacío) — así que mover los hitos no hacía nada.
+// Si el proyecto no tiene cronograma cargado, cae al promedio de especialidades.
+function rdAvanceRealFuente(){
+  if (rdHitos.length) return { valor: rdHitos.reduce((a,h)=>a+(h.pct_nuevo||0),0)/rdHitos.length,
+                               fuente: 'hitos', texto:'· promedio de las ' + rdHitos.length + ' tareas del cronograma' };
+  if (rdEsp.length)   return { valor: rdEspGlobalAvance(),
+                               fuente: 'especialidades', texto:'· sin cronograma: promedio de las especialidades' };
+  return { valor: 0, fuente: 'vacio', texto:'· carga el cronograma o las especialidades' };
+}
 function recalcAvanceGlobal() {
-  if (!rdHitos.length) { const e=document.getElementById('rd-avance-global'); if(e)e.textContent='0%'; return; }
-  const avg = rdHitos.reduce((a,h)=>a+(h.pct_nuevo||0),0)/rdHitos.length;
-  const el = document.getElementById('rd-avance-global'); if (el) el.textContent = avg.toFixed(1)+'%';
-  const real = document.getElementById('rd-real');
-  if (real && !real.value) { real.value = avg.toFixed(1); if (typeof rdPlanBars === 'function') rdPlanBars(); }
+  const f = rdAvanceRealFuente();
+  const e = document.getElementById('rd-avance-global'); if (e) e.textContent = f.valor.toFixed(1)+'%';
+  const real = document.getElementById('rd-real'); if (real) real.value = f.valor.toFixed(1);
+  const hint = document.getElementById('rd-real-fuente'); if (hint) hint.textContent = f.texto;
+  if (typeof rdPlanBars === 'function') rdPlanBars();
+  if (typeof rdUpdateRing === 'function') rdUpdateRing();
 }
 
 // ── Restricciones estructuradas ──
@@ -10539,7 +10552,7 @@ function rdEspCalc(){
   const p=document.getElementById('rd-esp-personal'); if(p) p.textContent=rdEspTotalPersonal();
   const tg=document.getElementById('rd-esp-tg'); if(tg) tg.textContent=g.toFixed(1)+'%';
   const tp=document.getElementById('rd-esp-tp'); if(tp) tp.textContent=rdEspTotalPersonal();
-  const real=document.getElementById('rd-real'); if(real) real.value=g.toFixed(1);
+  if(typeof recalcAvanceGlobal==='function') recalcAvanceGlobal();   // el real lo manda el cronograma
   if(typeof rdPlanBars==='function') rdPlanBars();
   if(typeof rdUpdateRing==='function') rdUpdateRing();
 }
@@ -10717,7 +10730,7 @@ function rdPendRender(){
   const m=document.getElementById('rd-pend-mount'); if(!m) return;
   rdPendEnsureStyles();
   const abiertas=rdPendList.filter(p=>p.estado!=='cerrada').length;
-  let html=`<div class="rd-pend-hd"><div><h3>Pendientes de obra</h3><p>Restricciones, punch list y observaciones en una sola lista, con seguimiento a cierre.</p></div><span class="rd-pend-count">${abiertas} abiertos</span></div>`;
+  let html=`<div class="rd-pend-hd"><div><h3>Pendientes de obra</h3><p>Restricciones, punch list y observaciones en una sola lista, con seguimiento a cierre.</p></div><button class="btn btn-outline btn-sm" onclick="exportarObsPdf()"><i data-lucide="file-down" class="ri" style="width:14px;height:14px"></i> PDF</button><span class="rd-pend-count">${abiertas} abiertos</span></div>`;
   html+=`<div class="rd-pend-form">
     <div class="row">
       <select id="pend-tipo" class="pend-inp">${PEND_TIPOS.map(t=>`<option value="${t.k}">${t.t}</option>`).join('')}</select>
@@ -10833,6 +10846,17 @@ function rdEnsureValgStyles(){
   .rd-valg-i.big .v{color:var(--teal-700,#0e7490);}
   .rd-valg-src{font-size:11px;color:var(--text-3);margin:2px 0 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
   .rd-valg-src b{color:var(--text-2);}
+  .rd-valg-bar{margin-top:12px;}
+  .rd-valg-bar-hd{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;color:var(--text-3);margin-bottom:5px;}
+  .rd-valg-bar-hd b{font-size:15px;color:var(--navy-800,#0f2942);}
+  .rd-valg-track{height:9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);overflow:hidden;}
+  .rd-valg-track i{display:block;height:100%;background:var(--teal-700,#0e7490);border-radius:999px;}
+  .rd-valg-cumpl{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11.5px;font-weight:600;
+    padding:6px 10px;border-radius:8px;background:var(--surface-2);color:var(--text-2);}
+  .rd-valg-cumpl .ri{width:14px;height:14px;}
+  .rd-valg-cumpl.ok{background:#dcfce7;color:#15803d;}
+  .rd-valg-cumpl.warn{background:#fef3c7;color:#b45309;}
+  .rd-valg-cumpl.bad{background:#fee2e2;color:#b91c1c;}
   .rd-valg-none{font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;}
   `;
   const st=document.createElement('style'); st.id='rd-valg-styles'; st.textContent=css; document.head.appendChild(st);
@@ -10866,7 +10890,24 @@ function rdValGRender(){
     return;
   }
   const pct = v.pct_acumulado != null ? (parseFloat(v.pct_acumulado)*100) : null;
-  if(badge) badge.textContent = v.periodo || '—';
+  if(badge) badge.textContent = (v.periodo || '—') + (pct!=null ? ' · ' + pct.toFixed(0) + '%' : '');
+  // Indicador del mes: cuánto se valorizó frente a lo proyectado
+  const proy = parseFloat(v.valorizacion_proyectada)||0;
+  const real = parseFloat(v.valorizacion)||0;
+  const cumpl = proy>0 ? (real/proy*100) : null;
+  const cumplCls = cumpl==null ? '' : cumpl>=100 ? 'ok' : cumpl>=85 ? 'warn' : 'bad';
+  const barra = pct==null ? '' : `
+    <div class="rd-valg-bar">
+      <div class="rd-valg-bar-hd">
+        <span>Avance valorizado del proyecto</span>
+        <b>${pct.toFixed(1)}%</b>
+      </div>
+      <div class="rd-valg-track"><i style="width:${Math.max(0,Math.min(100,pct))}%"></i></div>
+      ${cumpl!=null ? `<div class="rd-valg-cumpl ${cumplCls}">
+        <i data-lucide="${cumpl>=100?'trending-up':'trending-down'}" class="ri"></i>
+        <span>Este mes valorizó <b>${cumpl.toFixed(0)}%</b> de lo proyectado${
+          cumpl>=100 ? ' · meta cumplida' : ' · faltan ' + rdSoles(proy-real)}</span></div>` : ''}
+    </div>`;
   const item = (k,val,sub,cls)=>`<div class="rd-valg-i ${cls||''}"><span class="k">${k}</span><div class="v">${val}</div>${sub?`<div class="s">${sub}</div>`:''}</div>`;
   mount.innerHTML = `
     <div class="rd-valg-src">
@@ -10878,7 +10919,8 @@ function rdValGRender(){
       ${item('Facturación', rdSoles(v.facturacion))}
       ${item('Presupuesto', rdSoles(v.presupuesto))}
       ${item('% acumulado', pct!=null ? pct.toFixed(1)+'%' : '—', v.valorizado!=null?('valorizado '+rdSoles(v.valorizado)):'')}
-    </div>`;
+    </div>
+    ${barra}`;
   rdIcons();
 }
 
@@ -11305,6 +11347,75 @@ async function exportarReporteCompleto(){
   }catch(e){ showToast('Error al exportar (posible bloqueo de imágenes): '+e.message); }
 }
 
+// ═══════════════════════════════════════════════
+// EXPORTACIÓN A PDF DE CUALQUIER TIPO DE REPORTE
+// Los 3 tipos salen con el mismo encabezado y el logo de la empresa.
+// ═══════════════════════════════════════════════
+function _pdfEncabezadoHTML(titulo, subtitulo){
+  const P = currentProyecto || {};
+  const fecha = document.getElementById('rd-fecha')?.value || new Date().toISOString().slice(0,10);
+  const meta = (k,v)=>`<div style="min-width:150px"><div style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#64748b">${k}</div><div style="font-size:12.5px;font-weight:700;color:#0f2942;margin-top:2px">${rdEsc2(v||'—')}</div></div>`;
+  return `
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:20px;padding-bottom:14px;border-bottom:2px solid #0f2942;margin-bottom:16px">
+    <img src="assets/logo-color.png" alt="Grupo Friopacking" style="height:34px;width:auto;display:block">
+    <div style="text-align:right">
+      <div style="font-size:17px;font-weight:800;color:#0f2942">${rdEsc2(titulo)}</div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px">${rdEsc2(subtitulo||'')}</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:22px;flex-wrap:wrap;margin-bottom:18px">
+    ${meta('Proyecto', P.nombre)}${meta('Código', P.cod)}
+    ${meta('Supervisor', P.supervisor || currentUser?.nombre)}${meta('Fecha', rdFmtFecha(fecha))}
+  </div>`;
+}
+
+// Clona el contenido, le pone el encabezado y lo pasa a PDF paginado.
+async function _pdfDesdeNodo(nodo, titulo, subtitulo, archivo){
+  if (!nodo){ showToast('No hay nada que exportar'); return; }
+  if (!window.jspdf || !window.html2canvas){ showToast('Motor PDF no disponible'); return; }
+  showToast('Generando PDF…');
+  const cont = document.createElement('div');
+  cont.style.cssText = 'position:fixed;left:-10000px;top:0;width:820px;padding:28px;background:#fff;color:#0f172a;font-family:inherit;';
+  cont.innerHTML = _pdfEncabezadoHTML(titulo, subtitulo);
+  const copia = nodo.cloneNode(true);
+  // Fuera los controles: en papel no sirven
+  copia.querySelectorAll('button, .rd-chev, input[type=file], .rd-pend-form').forEach(e=>e.remove());
+  cont.appendChild(copia);
+  document.body.appendChild(cont);
+  try{
+    const img0 = cont.querySelector('img');
+    if (img0 && !img0.complete) await new Promise(r=>{ img0.onload=r; img0.onerror=r; });
+    const canvas = await html2canvas(cont, { scale:2, useCORS:true, backgroundColor:'#ffffff', windowWidth: 820 });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
+    const imgW = pw, imgH = canvas.height * imgW / canvas.width;
+    const img = canvas.toDataURL('image/jpeg', 0.92);
+    let hLeft = imgH, pos = 0;
+    pdf.addImage(img,'JPEG',0,pos,imgW,imgH); hLeft -= ph;
+    while (hLeft > 0){ pos = hLeft - imgH; pdf.addPage(); pdf.addImage(img,'JPEG',0,pos,imgW,imgH); hLeft -= ph; }
+    pdf.save(archivo);
+    showToast('PDF generado ✓');
+  }catch(e){ showToast('Error al exportar: '+e.message, 4000); }
+  finally{ cont.remove(); }
+}
+
+function _pdfNombre(prefijo){
+  const nom = (currentProyecto?.nombre||'reporte').replace(/\s+/g,'_');
+  const fch = document.getElementById('rd-fecha')?.value || new Date().toISOString().slice(0,10);
+  return `${prefijo}_${nom}_${fch}.pdf`;
+}
+async function exportarPEMPdf(){
+  await _pdfDesdeNodo(document.getElementById('rd-tipo-pem'),
+    'Reporte de Puesta en Marcha', 'Pre-comisionamiento NH₃ · FPK-PRT-NH3-001',
+    _pdfNombre('PuestaEnMarcha'));
+}
+async function exportarObsPdf(){
+  await _pdfDesdeNodo(document.getElementById('rd-tipo-obs'),
+    'Levantamiento de Observaciones', 'Pendientes de obra · seguimiento a cierre',
+    _pdfNombre('Observaciones'));
+}
+
 let _rvStylesDone = false;
 function rvEnsureStyles(){
   if (_rvStylesDone) return; _rvStylesDone = true;
@@ -11537,7 +11648,7 @@ function _collectReportePayload(esDraft, firmaUrl){
   const cod = currentProyecto?.cod || currentProyecto?.nombre;
   const fecha = document.getElementById('rd-fecha')?.value;
   const plan  = parseFloat(document.getElementById('rd-plan').value)||0;
-  const real  = +rdEspGlobalAvance().toFixed(1);
+  const real  = +rdAvanceRealFuente().valor.toFixed(1);   // misma fuente que muestra la pantalla
   const realCt = parseFloat(document.getElementById('rd-real-contrata')?.value)||0;
   const spi   = plan > 0 ? (real/plan).toFixed(2) : '0';
   const avanceEsp = rdEsp.map(r=>({ esp:r.esp, label:r.label, contrata:(r.contrata||'').trim(), personal:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
@@ -12030,6 +12141,7 @@ function renderPEM(){
       </div>
 
       <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <button class="btn btn-outline" onclick="exportarPEMPdf()"><i data-lucide="file-down" class="ri" style="width:15px;height:15px"></i> PDF</button>
         <button class="btn btn-primary" onclick="guardarPEM()"><i data-lucide="save" class="ri" style="width:15px;height:15px"></i> Guardar Puesta en Marcha</button>
       </div>
     </div>`;
