@@ -5048,8 +5048,29 @@ async function cargarProyectos() {
   try {
     const esAdmin = currentUser && ADMIN_EMAILS.includes((currentUser.email||'').toLowerCase());
     let url = '/rest/v1/proyectos?select=id,nombre,supervisor,supervisor_email,cod_proyecto,estado,fecha_ini_contractual,fecha_fin_contractual,fecha_ini_real,fecha_fin_real,zona&activo=eq.true&order=nombre';
+
+    // ¿A qué obras entra esta persona? Sale de proyecto_accesos (instancia
+    // Supervisor), que soporta supervisor Y asistente en la misma obra y está
+    // protegida por RLS: con su token solo puede leer sus propias filas. Antes
+    // esto era un supervisor_email=eq. armado en el navegador, o sea un filtro
+    // que cualquiera podía borrar desde la consola.
     if (!esAdmin) {
-      url += '&supervisor_email=eq.' + encodeURIComponent((currentUser && currentUser.email) || '__none__');
+      let cods = null;
+      try {
+        const acc = await sbFetch('/rest/v1/proyecto_accesos?select=cod_proyecto&activo=eq.true');
+        cods = [...new Set((acc || []).map(a => a.cod_proyecto).filter(Boolean))];
+      } catch(e) {
+        console.warn('No se pudo leer proyecto_accesos, se cae al filtro por correo:', e);
+      }
+      if (cods && cods.length) {
+        url += '&cod_proyecto=in.(' + cods.map(c => '"' + c + '"').join(',') + ')';
+      } else if (cods) {
+        // Tiene sesión válida pero ninguna obra asignada: lista vacía, no todas.
+        url += '&cod_proyecto=eq.__ninguna__';
+      } else {
+        // Solo si falló la consulta de accesos. Igual de restrictivo: su correo.
+        url += '&supervisor_email=eq.' + encodeURIComponent((currentUser && currentUser.email) || '__none__');
+      }
     }
     // FUENTE ÚNICA de proyectos: la BD de PMO (Gerencia crea/edita; el supervisor solo LEE).
     // El resto de la app (reportes, Gantt, etc.) enlaza por cod_proyecto/nombre, no por id,
