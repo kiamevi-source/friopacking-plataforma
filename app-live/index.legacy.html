@@ -808,6 +808,9 @@ async function _loadProjectsSnapshot(){
     if(snapRes.error||!Array.isArray(snapRes.data))return PROJECTS;
     const porProy={};
     (titRes.data||[]).forEach(t=>{(porProy[t.proyecto_nombre]=porProy[t.proyecto_nombre]||[]).push(t);});
+    /* Tag/estado de finanzas persistido por el módulo Valorización → lookup por nombre */
+    window._snapFinByName=window._snapFinByName||{};
+    snapRes.data.forEach(r=>{ if(r.fin_tag||r.fin_cobranza||r.fin_por_cobrar!=null){ window._snapFinByName[r.proyecto_nombre]={tag:r.fin_tag||'',cob:r.fin_cobranza||'',meta:+r.fin_meta||0,valorizado:+r.fin_valorizado||0,facturado:+r.fin_facturado||0,porCobrar:+r.fin_por_cobrar||0,venc:!!r.fin_venc,upd:r.fin_updated}; } });
     PROJECTS=snapRes.data.map(r=>_snapRowToProj(r,porProy));
     try{localStorage.setItem(PROJECTS_SNAP_LS,JSON.stringify(PROJECTS));}catch(e){}
   }catch(e){console.warn('proyectos_snapshot:',e);}
@@ -1301,6 +1304,9 @@ async function initFromSupabase(){
         personal_total:lastPers,contratas_activas:lastContratas,
         _lastReportDate:lastRepFecha,_reportedToday:reportedToday,
         _cod:p.cod_proyecto||'',
+        // Estado/tag de finanzas escrito por el módulo Valorización (por cod_proyecto)
+        finTag:p.fin_tag||null,finCob:p.fin_cobranza||null,
+        finCobrar:(p.fin_por_cobrar!=null?parseFloat(p.fin_por_cobrar):0)||0,finVenc:!!p.fin_venc,
         // Títulos del contrato (proyectos_titulos). Antes nunca llegaban al objeto
         // vivo, así que la tabla de la pestaña Finanzas jamás se pintaba.
         titulos:(_sp&&_sp.titulos)?_sp.titulos:[]
@@ -1922,6 +1928,7 @@ function renderProjects(){
           ${cfVencida?`<span style="font-size:10px;background:rgba(193,39,45,.18);color:#c1272d;border:1px solid rgba(193,39,45,.4);border-radius:4px;padding:1px 5px;font-weight:700">🚨 CF VENCIDO</span>`:''}
           ${noRepHoy&&!cfVencida?`<span title="Sin reporte hoy" style="font-size:10px;background:rgba(230,126,34,.18);color:#e67e22;border:1px solid rgba(230,126,34,.4);border-radius:4px;padding:1px 5px;font-weight:700">📵 sin reporte</span>`:''}
           <span class="badge ${cfVencida?'b-alert':bcls}">${cfVencida?'VENCIDO':p.estado}</span>
+          ${(function(){var fn=(window._snapFinByName&&window._snapFinByName[p.name])||(window.PMOValFin&&window.PMOValFin.byName&&window.PMOValFin.byName[p.name]);if(!fn||(!fn.tag&&!fn.cob))return '';var c=fn.tag==='Valorizado'?['#16a34a','rgba(22,163,74,.14)']:fn.tag==='En proceso'?['#e67e22','rgba(230,126,34,.14)']:['#c1272d','rgba(193,39,45,.12)'];var t1=fn.tag?`<span title="Estado de valorización" style="font-size:10px;background:${c[1]};color:${c[0]};border:1px solid ${c[0]}55;border-radius:4px;padding:1px 5px;font-weight:700">💰 ${fn.tag}</span>`:'';var t2=fn.cob?`<span title="Cobranza · saldo ${fmtUSD(fn.porCobrar||0)}" style="font-size:10px;background:${fn.venc?'rgba(193,39,45,.14)':'rgba(230,126,34,.14)'};color:${fn.venc?'#c1272d':'#e67e22'};border:1px solid ${fn.venc?'#c1272d':'#e67e22'}55;border-radius:4px;padding:1px 5px;font-weight:700">${fn.venc?'🔴':'💵'} ${fn.cob}</span>`:'';return t1+t2;})()}
         </div>
       </div>
       <div class="proj-bar"><span class="plan" style="width:${planW}%"></span><span class="fill proj-fill-${cfVencida?'alert':cls}" style="width:${realW}%"></span></div>
@@ -16054,9 +16061,10 @@ function _render(){
     if(rz){ lin=L.filter(function(l){return l.cliente===rz;}); }
     else { var pn=norm(p.name); if(pn) lin=L.filter(function(l){var c=norm(l.cliente);return c&&(c.indexOf(pn)>=0||pn.indexOf(c.slice(0,6))>=0);}); if(lin.length)rz=lin[0].cliente; }
     var cob=rz?C.filter(function(c){return c.cliente===rz;}):[];
-    return {rz:rz||p.name, meta:proy(lin), val:proy(lin.filter(function(l){return l.estado==='Valorizado';})), pre:proy(lin.filter(function(l){return l.estado==='Presentado';})), pen:proy(lin.filter(function(l){return l.estado==='Pendiente';})), cobrar:_sum(cob,'saldo_pendiente'), n:lin.length};
+    return {rz:rz||p.name, meta:proy(lin), val:proy(lin.filter(function(l){return l.estado==='Valorizado';})), pre:proy(lin.filter(function(l){return l.estado==='Presentado';})), pen:proy(lin.filter(function(l){return l.estado==='Pendiente';})), cobrar:_sum(cob,'saldo_pendiente'), fac:_sum(cob,'facturado'), venc:cob.some(function(c){return (+c.dias||0)>90 && (+c.saldo_pendiente||0)>0;}), n:lin.length};
   }
   var rows=activos.map(function(p){return {p:p,v:valOf(p)};});
+  _valExposeFin(rows);
   var gSin=rows.filter(function(r){return (r.p.valp||0)>5 && r.v.val<=0 && r.v.pre<=0;});
   var gProc=rows.filter(function(r){return gSin.indexOf(r)<0 && r.v.pre>0;});
   var gVal=rows.filter(function(r){return gSin.indexOf(r)<0 && gProc.indexOf(r)<0 && r.v.val>0;});
@@ -16203,6 +16211,35 @@ async function _pushImport(lineas,cobros,per){
   if(cobros.length){ var ic=await fetch(_VU+'/rest/v1/valorizacion_cobros',{method:'POST',headers:Hmin,body:JSON.stringify(cobros)}); if(!ic.ok)throw new Error('insertar cobros ('+ic.status+') '+(await ic.text()).slice(0,140)); }
   if(oldL>0){ var dl=await fetch(_VU+'/rest/v1/valorizacion_lineas?id=lte.'+oldL,{method:'DELETE',headers:H}); if(!dl.ok)throw new Error('las nuevas líneas se subieron, pero no pude borrar las viejas ('+dl.status+'). Revisa duplicados.'); }
   if(oldC>0){ var dc=await fetch(_VU+'/rest/v1/valorizacion_cobros?id=lte.'+oldC,{method:'DELETE',headers:H}); if(!dc.ok)throw new Error('los nuevos cobros se subieron, pero no pude borrar los viejos ('+dc.status+'). Revisa duplicados.'); }
+}
+/* ── Finanzas por proyecto: expone lookup en vivo (window.PMOValFin) y PERSISTE
+   el snapshot + tag de cada proyecto activo en proyectos_snapshot. Así el módulo
+   Proyectos muestra el estado de facturación aunque no se abra Valorización. ── */
+var _finSyncedFor=null;
+function _finTag(v){ if(!v||v.n===0)return {tag:'',cob:''}; var tag=(v.meta>0&&v.val>=v.meta)?'Valorizado':(v.pre>0?'En proceso':'Sin valorizar'); var cob=(v.cobrar>0)?(v.venc?'Vencido +90d':'Por cobrar'):''; return {tag:tag,cob:cob}; }
+function _valExposeFin(rows){
+  try{
+    var byName={},byCod={},recs=[],now=new Date().toISOString();
+    rows.forEach(function(r){ var p=r.p,v=r.v,t=_finTag(v); var rec={tag:t.tag,cob:t.cob,meta:v.meta,valorizado:(v.val+v.pre),facturado:v.fac||0,porCobrar:v.cobrar||0,venc:!!v.venc,upd:now}; if(p&&p.name){ byName[p.name]=rec; if(p._cod)byCod[p._cod]=rec; recs.push({name:p.name,cod:p._cod||'',r:rec}); } });
+    W.PMOValFin={byName:byName,byCod:byCod,ready:true};
+    W._snapFinByName=W._snapFinByName||{}; Object.keys(byName).forEach(function(n){ W._snapFinByName[n]=byName[n]; });
+    /* refrescar la grilla de proyectos si el usuario ya la tenía abierta */
+    try{ if(typeof W.renderProjects==='function'){} }catch(e){}
+    var sig=recs.length+'|'+VS.lineas.length+'|'+VS.cobros.length;
+    if(_finSyncedFor!==sig && recs.length){ _finSyncedFor=sig; _valPersistFin(recs); }
+  }catch(e){}
+}
+async function _valPersistFin(recs){
+  try{
+    var H={apikey:_VK,Authorization:'Bearer '+_VK,'Content-Type':'application/json',Prefer:'return=minimal'};
+    for(var i=0;i<recs.length;i++){ var it=recs[i],r=it.r;
+      var body={fin_tag:r.tag||null,fin_cobranza:r.cob||null,fin_meta:r.meta,fin_valorizado:r.valorizado,fin_facturado:r.facturado,fin_por_cobrar:r.porCobrar,fin_venc:r.venc,fin_updated:r.upd};
+      /* fuente que ve el card: tabla proyectos (por cod, cubre TODOS los activos) */
+      if(it.cod){ try{ await fetch(_VU+'/rest/v1/proyectos?cod_proyecto=eq.'+encodeURIComponent(it.cod),{method:'PATCH',headers:H,body:JSON.stringify(body)}); }catch(e){} }
+      /* foto de respaldo: proyectos_snapshot por nombre (si existe la fila) */
+      try{ await fetch(_VU+'/rest/v1/proyectos_snapshot?proyecto_nombre=eq.'+encodeURIComponent(it.name),{method:'PATCH',headers:H,body:JSON.stringify(body)}); }catch(e){}
+    }
+  }catch(e){}
 }
 W._valRenderV6=_render;
 /* Registro SEGURO: sólo re-asigna el renderer en unos pocos setTimeout FINITOS
@@ -17870,6 +17907,7 @@ W.renderProjects = function(){
           <span class="spc-pill ${stateCls}">${estado}</span>
           ${noRepHoy && !cfVencida ? '<span class="spc-pill state-warn">Sin reporte</span>' : ''}
           ${cfVencida ? '<span class="spc-pill state-alert">CF Vencido</span>' : ''}
+          ${(function(){var lk=(window.PMOValFin&&window.PMOValFin.byName&&window.PMOValFin.byName[p.name])||(window._snapFinByName&&window._snapFinByName[p.name]);var tag=p.finTag||(lk&&lk.tag)||'';var cob=p.finCob||(lk&&lk.cob)||'';var venc=(p.finTag!=null?p.finVenc:(lk&&lk.venc))||false;var cobrar=(p.finCobrar||(lk&&lk.porCobrar)||0);if(!tag&&!cob)return '';var c=tag==='Valorizado'?'#16a34a':tag==='En proceso'?'#e67e22':'#c1272d';var t1=tag?`<span class="spc-pill" style="background:${c}1a;color:${c};border-color:${c}55" title="Estado de valorización">💰 ${tag}</span>`:'';var cc=venc?'#c1272d':'#e67e22';var t2=cob?`<span class="spc-pill" style="background:${cc}1a;color:${cc};border-color:${cc}55" title="Cobranza · saldo ${_usdM(cobrar)}">${venc?'🔴':'💵'} ${cob}</span>`:'';return t1+t2;})()}
         </div>
         <div class="spc-score" title="Confiabilidad ${ts}/100">
           <span class="ring-lbl">Score</span>
