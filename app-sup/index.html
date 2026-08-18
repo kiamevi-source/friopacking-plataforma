@@ -4077,20 +4077,20 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
         <div class="rd-card">
           <div class="rd-head">
             <div class="rd-head-ic"><i data-lucide="trending-up" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Avance del día</h4><p>Marca las tareas del Gantt hechas hoy / para mañana y su % de avance</p></div>
+            <div class="rd-head-tt"><h4>Avance del día</h4><p>Cuánto deberías ir según el cronograma, cuánto vas de verdad, y qué tareas tocaste hoy</p></div>
             <div class="rd-head-badge">Global · <strong id="rd-avance-global" style="color:var(--teal-700);">0%</strong></div>
           </div>
           <div class="rd-body">
             <div class="rd-plan">
               <div class="rd-plan-block">
-                <div class="lbl">Planificado</div>
+                <div class="lbl">Deberías ir hoy <span style="font-weight:600;color:var(--text-3);font-size:10px;">· según el cronograma · lo escribes tú</span></div>
                 <div class="row"><input class="rd-prog-inp" type="number" id="rd-plan" min="0" max="100" step="0.1" oninput="rdPlanBars()"><div class="rd-plan-track plan"><i id="rd-plan-bar" style="width:0%"></i></div></div>
               </div>
               <div class="rd-plan-block">
-                <div class="lbl">Ejecutado <span style="font-weight:600;color:var(--text-3);font-size:10px;">· auto por especialidad</span></div>
+                <div class="lbl">Vas de verdad <span style="font-weight:600;color:var(--text-3);font-size:10px;">· se calcula solo, promediando el % de cada especialidad</span></div>
                 <div class="row"><input class="rd-prog-inp" type="number" id="rd-real" min="0" max="100" step="0.1" readonly title="Se calcula solo con el promedio ponderado de las especialidades" style="background:var(--surface-2);cursor:not-allowed;"><div class="rd-plan-track real"><i id="rd-real-bar" style="width:0%"></i></div></div>
               </div>
-              <div class="rd-diff pos" id="rd-diff"><b>0</b><span>Δ puntos</span></div>
+              <div class="rd-diff pos" id="rd-diff"><b>0</b><span>Atraso / adelanto</span></div>
             </div>
             <div id="alerta-diferencia" class="hidden" style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#991b1b;font-weight:600;">⚠ Diferencia detectada entre avance supervisor y contrata. Revisar.</div>
             <input id="rd-hito-search" type="search" placeholder="Buscar tarea del Gantt para marcar Hoy / Mañana…" oninput="rdHitoFilter(this.value)" style="width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:8px 11px;font-size:13px;margin-bottom:10px;background:var(--surface-1);color:var(--text-1);">
@@ -4192,15 +4192,12 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
         <div class="rd-card folded">
           <div class="rd-head click" onclick="rdFold(this,event)">
             <div class="rd-head-ic"><i data-lucide="receipt" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Facturación del mes</h4><p>Meta y avance comercial del proyecto</p></div>
+            <div class="rd-head-tt"><h4>Valorización del mes</h4><p>Cifras oficiales de Gerencia · tú solo proyectas el cierre del mes</p></div>
+            <span class="rd-head-badge" id="rd-val-badge">—</span>
             <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
           </div>
           <div class="rd-body">
-            <div class="form-row">
-              <div class="field"><label>Meta del mes (S/.)</label><input type="number" id="rd-meta-mes" min="0" step="0.01"></div>
-              <div class="field"><label>Facturado a la fecha (S/.)</label><input type="number" id="rd-facturado" min="0" step="0.01"></div>
-              <div class="field"><label>Avance de meta</label><input type="text" id="rd-meta-pct" readonly style="background:var(--surface-2);font-weight:800;"></div>
-            </div>
+            <div id="rd-valg-mount"></div>
             <div id="rd-val-mount" style="margin-top:18px;"></div>
           </div>
         </div>
@@ -4882,6 +4879,16 @@ const PMO_DB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 function pmoDbFetch(path){
   return fetch(PMO_DB_URL + path, { headers:{ apikey: PMO_DB_KEY, Authorization:'Bearer ' + PMO_DB_KEY } })
     .then(r => r.ok ? r.json() : []);
+}
+// Escritura puntual a PMO. Única excepción a "PMO es de solo lectura para el
+// supervisor": la fecha de fin reprogramada, para que mueva el indicador de Gerencia.
+async function pmoDbFetch2(path, opts){
+  const o = Object.assign({}, opts);
+  o.headers = Object.assign({ apikey: PMO_DB_KEY, Authorization:'Bearer ' + PMO_DB_KEY,
+                              'Content-Type':'application/json' }, o.headers || {});
+  const r = await fetch(PMO_DB_URL + path, o);
+  if (!r.ok) throw new Error('PMO ' + r.status + ' ' + (await r.text()).slice(0,120));
+  return r.status === 204 ? null : r.json().catch(()=>null);
 }
 
 const ESPECIALIDADES = ['paneles','mecanico','electrico','aislamiento','montaje_rack','oocc','montaje_eemm'];
@@ -9693,6 +9700,7 @@ async function cargarReporteDiario() {
   const hp = document.getElementById('rd-hero-proj'); if (hp) hp.textContent = currentProyecto.nombre || 'Proyecto';
   const hs = document.getElementById('rd-hero-sup');  if (hs) hs.textContent = currentProyecto.supervisor || currentUser?.nombre || '—';
   rdRenderPlazos();
+  rdReproUltLoad(currentProyecto.cod || currentProyecto.nombre);   // fin proyectado que ya reportó obra
 
   await rdEspLoad(currentProyecto.cod || currentProyecto.nombre, null);
   renderChecklistCierre();
@@ -9783,6 +9791,25 @@ function rdComputeCompleteness(){
   return Math.round(checks.filter(Boolean).length / checks.length * 100);
 }
 
+// ── Última reprogramación REPORTADA desde obra ──
+// La fecha oficial de fin la sigue mandando Gerencia (PMO es dueña de la data
+// del proyecto). Pero si obra ya reportó una reprogramación, el hero debe
+// seguir mostrándola los días siguientes, no volver a la fecha de PMO.
+let rdReproUlt = null;   // { fecha_nueva, motivo, formalizado, fecha_reporte }
+async function rdReproUltLoad(cod){
+  rdReproUlt = null;
+  if(!cod) return;
+  try{
+    const rows = await sbFetch('/rest/v1/v_reportes?cod_proyecto=eq.' + encodeURIComponent(cod) +
+      '&reprogramacion=not.is.null&order=fecha_reporte.desc&limit=1&select=fecha_reporte,reprogramacion');
+    const r = rows && rows[0];
+    if (r && r.reprogramacion && r.reprogramacion.fecha_nueva){
+      rdReproUlt = Object.assign({}, r.reprogramacion, { fecha_reporte: r.fecha_reporte });
+    }
+  }catch(e){ console.warn('última reprogramación', e); }
+  if (typeof rdRenderPlazos==='function') rdRenderPlazos();
+}
+
 // ── Tira de plazos del hero: contractual vs real + SPI en vivo ──
 // Las fechas salen de PMO (Gerencia es dueña); el supervisor solo las ve.
 function rdFmtFecha(f){
@@ -9802,10 +9829,13 @@ function rdRenderPlazos(){
   const P = currentProyecto;
   if(!P){ cont.innerHTML=''; return; }
 
-  // Fin real: el reprogramado de hoy manda sobre el de PMO
+  // Prioridad del fin real: lo reprogramado hoy > la última reprogramación
+  // reportada desde obra > la fecha real que tiene Gerencia en PMO.
   const reproOn = document.getElementById('rd-repro-chk')?.checked;
   const reproF  = document.getElementById('rd-repro-fecha')?.value;
-  const finReal = (reproOn && reproF) ? reproF : (P.finReal || '');
+  const reproHoy = !!(reproOn && reproF);
+  const finReal = reproHoy ? reproF : ((rdReproUlt && rdReproUlt.fecha_nueva) || P.finReal || '');
+  const vieneDeObra = reproHoy || !!(rdReproUlt && rdReproUlt.fecha_nueva);
 
   // Desfase de término: real/proyectado vs contractual
   const desfase = rdDiasEntre(P.finCont, finReal);
@@ -9827,7 +9857,13 @@ function rdRenderPlazos(){
       (()=>{ const d=rdDiasEntre(P.iniCont,P.iniReal); return d==null?'':(d>0?`<span class="s late">+${d} d</span>`:d<0?`<span class="s early">${d} d</span>`:'<span class="s">en fecha</span>'); })(),
       'real') +
     bloque('Fin contractual', rdFmtFecha(P.finCont)) +
-    bloque(reproOn&&reproF?'Fin reprogramado':'Fin real / proyectado', rdFmtFecha(finReal), desfTxt, 'real') +
+    bloque(reproHoy ? 'Fin reprogramado hoy'
+         : vieneDeObra ? 'Fin reprogramado'
+         : 'Fin real / proyectado',
+      rdFmtFecha(finReal),
+      desfTxt + (!reproHoy && vieneDeObra && rdReproUlt.fecha_reporte
+        ? `<span class="s">reportado ${rdFmtFecha(rdReproUlt.fecha_reporte)}</span>` : ''),
+      'real') +
     bloque('SPI del día', plan>0 ? spi.toFixed(2) : '—',
       `<span class="s">${plan>0 ? real.toFixed(1)+'% de '+plan.toFixed(1)+'%' : 'sin plan cargado'}</span>`, 'spi '+spiCls);
 }
@@ -10313,25 +10349,33 @@ function rdEnsureFotoStyles(){
 
 // ═══════════════════════════════════════════════
 // CONTRATAS Y AVANCE POR ESPECIALIDAD
-//  · config por proyecto (especialidad+contrata+peso) en proyecto_config_especialidades
+//  · config por proyecto (especialidad+contrata) en proyecto_config_especialidades
 //  · captura diaria (personal+avance) en reportes.avance_especialidades
-//  · % ejecutado global = promedio PONDERADO por peso
+//  · % ejecutado global = promedio SIMPLE de las especialidades (sin pesos)
 // ═══════════════════════════════════════════════
 const rdEsc2 = s => (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ESP_CAT = [
-  { key:'mecanica',         label:'Mecánica (tubería/rack)', peso:30 },
-  { key:'paneles',          label:'Paneles',                 peso:25 },
-  { key:'electrica',        label:'Eléctrica',               peso:20 },
-  { key:'eemm',             label:'Montaje EEMM',            peso:15 },
-  { key:'oocc',             label:'Obras Civiles',           peso:10 },
-  { key:'aislamiento',      label:'Aislamiento',             peso:10 },
-  { key:'tuberia_glicol',   label:'Tubería de Glicol',       peso:10 },
-  { key:'tuberia_amoniaco', label:'Tubería de Amoníaco',     peso:15 },
+  { key:'mecanica',         label:'Mecánica (tubería/rack)' },
+  { key:'paneles',          label:'Paneles' },
+  { key:'electrica',        label:'Eléctrica' },
+  { key:'eemm',             label:'Montaje EEMM' },
+  { key:'oocc',             label:'Obras Civiles' },
+  { key:'aislamiento',      label:'Aislamiento' },
+  { key:'tuberia_glicol',   label:'Tubería de Glicol' },
+  { key:'tuberia_amoniaco', label:'Tubería de Amoníaco' },
 ];
-let rdEsp = []; // [{esp,label,contrata,peso,personal,avance}]
+let rdEsp = []; // [{esp,label,contrata,personal,avance}]
+let rdEspPrecargado = false;   // fecha del reporte del que se heredaron contratas/personal
+let rdEspOtro = false;   // true = escribiendo una especialidad fuera del catálogo
 function rdEspCatLabel(key){ const c=ESP_CAT.find(x=>x.key===key); return c?c.label:key; }
 function rdEspTotalPersonal(){ return rdEsp.reduce((a,r)=>a+(parseInt(r.personal)||0),0); }
-function rdEspGlobalAvance(){ let sw=0,sp=0; rdEsp.forEach(r=>{ const p=parseFloat(r.peso)||0,a=parseFloat(r.avance)||0; sw+=a*p; sp+=p; }); return sp>0?sw/sp:0; }
+// Global = promedio SIMPLE de las especialidades. Antes era ponderado por peso,
+// pero los pesos nunca sumaban 100% y el número terminaba engañando (Kiara, 18-ago).
+function rdEspGlobalAvance(){
+  if(!rdEsp.length) return 0;
+  const suma = rdEsp.reduce((a,r)=> a + (parseFloat(r.avance)||0), 0);
+  return suma / rdEsp.length;
+}
 
 async function rdEspLoad(cod, reportRow){
   rdEsp = [];
@@ -10339,6 +10383,23 @@ async function rdEspLoad(cod, reportRow){
     const cfg = await sbFetch(`/rest/v1/proyecto_config_especialidades?cod_proyecto=eq.${encodeURIComponent(cod)}&activo=eq.true&order=orden.asc,id.asc`);
     (cfg||[]).forEach(c=> rdEsp.push({ esp:c.especialidad, label:rdEspCatLabel(c.especialidad), contrata:c.contrata||'', peso:parseFloat(c.peso)||0, personal:0, avance:0 }));
   }catch(e){ console.warn('cfg esp', e); }
+  // PRECARGA AUTOMÁTICA del día anterior: especialidades, CONTRATAS y personal.
+  // El % de avance NO se copia: se arrastraría el avance de ayer como si fuera de hoy.
+  if (!reportRow){
+    try{
+      const prev = await sbFetch(`/rest/v1/v_reportes?cod_proyecto=eq.${encodeURIComponent(cod)}&es_draft=is.false&order=fecha_reporte.desc&limit=1&select=fecha_reporte,avance_especialidades`);
+      const ayer = prev && prev[0] && prev[0].avance_especialidades;
+      if (Array.isArray(ayer)) ayer.forEach(a=>{
+        if(!a || !a.esp) return;
+        let row = rdEsp.find(r=>r.esp===a.esp);
+        if(!row){ row = { esp:a.esp, label:a.label||rdEspCatLabel(a.esp), contrata:'', personal:0, avance:0 }; rdEsp.push(row); }
+        if(!row.contrata && a.contrata) row.contrata = a.contrata;      // la contrata sí se hereda
+        if(!row.personal) row.personal = parseInt(a.personal)||0;        // el personal también
+      });
+      rdEspPrecargado = !!(Array.isArray(ayer) && ayer.length) && prev[0].fecha_reporte;
+    }catch(e){ console.warn('precarga esp', e); }
+  }
+
   const av = reportRow && reportRow.avance_especialidades;
   if (Array.isArray(av)) av.forEach(a=>{
     const row=rdEsp.find(r=>r.esp===a.esp);
@@ -10405,33 +10466,37 @@ function rdEspRender(){
   const opciones = ESP_CAT.filter(c=>!rdEsp.some(r=>r.esp===c.key));
   let html = '';
   if (!rdEsp.length){
-    html += `<div class="rd-esp-empty">Este proyecto aún no tiene especialidades configuradas. Agrégalas una vez (con su contrata y peso) y quedan guardadas para todos los días.</div>`;
+    html += `<div class="rd-esp-empty">Este proyecto aún no tiene especialidades configuradas. Agrégalas una vez (con su contrata) y quedan guardadas para todos los días.</div>`;
   } else {
+    if (rdEspPrecargado) html += `<div class="rd-esp-pre">Contratas y personal traídos del reporte del ${rdFmtFecha(rdEspPrecargado)}. El <b>% de avance empieza en 0</b>: ponlo según lo de hoy.</div>`;
     html += `<div class="rd-esp-tblwrap"><table class="rd-esp-tbl"><thead><tr>
-      <th>Especialidad</th><th>Contrata</th><th style="width:82px;">Personal</th><th style="width:120px;">% Avance hoy</th><th style="width:74px;">Peso %</th><th style="width:30px;"></th></tr></thead><tbody>`;
+      <th>Especialidad</th><th>Contrata</th><th style="width:82px;">Personal</th><th style="width:120px;">% Avance hoy</th><th style="width:30px;"></th></tr></thead><tbody>`;
     rdEsp.forEach((r,i)=>{
       html += `<tr>
         <td class="rd-esp-name">${rdEsc2(r.label)}</td>
         <td>${rdContrataCell(i, r)}</td>
         <td><input class="rd-esp-inp num" type="number" min="0" value="${r.personal||0}" oninput="rdEspSet(${i},'personal',this.value)"></td>
         <td><div class="rd-esp-pct"><input class="rd-esp-inp num" type="number" min="0" max="100" step="0.1" value="${r.avance||0}" oninput="rdEspSet(${i},'avance',this.value)"><i class="rd-esp-bar" style="width:${Math.min(100,parseFloat(r.avance)||0)}%"></i></div></td>
-        <td><input class="rd-esp-inp num" type="number" min="0" max="100" step="1" value="${r.peso||0}" oninput="rdEspSet(${i},'peso',this.value)"></td>
         <td><button class="rd-esp-del" title="Quitar" onclick="rdEspRemove(${i})">×</button></td>
       </tr>`;
     });
-    const pesoTot = rdEsp.reduce((a,r)=>a+(parseFloat(r.peso)||0),0);
     html += `</tbody><tfoot><tr class="rd-esp-total">
       <td><strong>GLOBAL</strong></td><td></td>
       <td><strong id="rd-esp-tp">${rdEspTotalPersonal()}</strong></td>
       <td><strong id="rd-esp-tg">${rdEspGlobalAvance().toFixed(1)}%</strong></td>
-      <td><strong style="color:${Math.round(pesoTot)===100?'var(--teal-700)':'#b45309'}">${pesoTot.toFixed(0)}%</strong></td><td></td></tr></tfoot></table></div>`;
-    if (Math.round(pesoTot)!==100) html += `<div class="rd-esp-warn">⚠ Los pesos suman ${pesoTot.toFixed(0)}% (no 100%). El global es un promedio ponderado igual, pero conviene que sumen 100%.</div>`;
+      <td></td></tr></tfoot></table></div>`;
   }
   html += `<div class="rd-esp-add">`;
-  if (opciones.length){
-    html += `<select id="rd-esp-pick" class="rd-esp-inp" style="max-width:240px;"><option value="">+ Agregar especialidad…</option>${opciones.map(c=>`<option value="${c.key}">${rdEsc2(c.label)}</option>`).join('')}</select>
+  if (rdEspOtro){
+    // Especialidad fuera del catálogo: el supervisor escribe el nombre
+    html += `<input id="rd-esp-otro" class="rd-esp-inp" style="max-width:260px;" placeholder="Nombre de la especialidad…"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();rdEspAddOtro();}">
+      <button class="btn btn-teal btn-sm" onclick="rdEspAddOtro()">Agregar</button>
+      <button class="btn btn-outline btn-sm" onclick="rdEspOtro=false;rdEspRender()">Cancelar</button>`;
+  } else {
+    html += `<select id="rd-esp-pick" class="rd-esp-inp" style="max-width:240px;"><option value="">+ Agregar especialidad…</option>${opciones.map(c=>`<option value="${c.key}">${rdEsc2(c.label)}</option>`).join('')}<option value="__otro__">Otro… (escribir)</option></select>
       <button class="btn btn-teal btn-sm" onclick="rdEspAddFromPick()">Agregar</button>`;
-  } else { html += `<span style="font-size:12px;color:var(--text-3);">Todas las especialidades del catálogo ya están agregadas.</span>`; }
+  }
   html += `</div>`;
   m.innerHTML = html;
   if (window.lucide) lucide.createIcons();
@@ -10439,8 +10504,26 @@ function rdEspRender(){
 
 function rdEspAddFromPick(){
   const sel=document.getElementById('rd-esp-pick'); if(!sel||!sel.value) return;
+  if (sel.value === '__otro__'){
+    rdEspOtro = true; rdEspRender();
+    setTimeout(()=>document.getElementById('rd-esp-otro')?.focus(), 20);
+    return;
+  }
   const c=ESP_CAT.find(x=>x.key===sel.value); if(!c) return;
-  rdEsp.push({ esp:c.key, label:c.label, contrata:'', peso:c.peso, personal:0, avance:0 });
+  rdEsp.push({ esp:c.key, label:c.label, contrata:'', personal:0, avance:0 });
+  rdEspRender(); rdEspCalc(); rdEspSaveConfig();
+}
+// Especialidad fuera del catálogo. La clave ES el nombre escrito: así el rótulo
+// sobrevive al guardado (la tabla de config solo guarda `especialidad`, sin label).
+function rdEspAddOtro(){
+  const inp = document.getElementById('rd-esp-otro');
+  const nombre = (inp?.value || '').trim().replace(/\s+/g,' ');
+  if (!nombre){ showToast('Escribe el nombre de la especialidad'); inp?.focus(); return; }
+  const yaEsta = rdEsp.some(r => (r.label||r.esp||'').toLowerCase() === nombre.toLowerCase())
+              || ESP_CAT.some(c => c.label.toLowerCase() === nombre.toLowerCase() && rdEsp.some(r=>r.esp===c.key));
+  if (yaEsta){ showToast('Esa especialidad ya está en la lista'); inp?.focus(); return; }
+  rdEsp.push({ esp:nombre, label:nombre, contrata:'', personal:0, avance:0 });
+  rdEspOtro = false;
   rdEspRender(); rdEspCalc(); rdEspSaveConfig();
 }
 function rdEspRemove(i){ rdEsp.splice(i,1); rdEspRender(); rdEspCalc(); rdEspSaveConfig(); }
@@ -10448,8 +10531,7 @@ function rdEspSet(i,field,val){
   if(!rdEsp[i]) return;
   rdEsp[i][field] = (field==='contrata') ? val : (parseFloat(val)||0);
   rdEspCalc();
-  if(field==='peso'){ rdEspRender(); }
-  if(field==='contrata'||field==='peso') rdEspSaveConfigDebounced();
+  if(field==='contrata') rdEspSaveConfigDebounced();
 }
 function rdEspCalc(){
   const g=rdEspGlobalAvance();
@@ -10477,6 +10559,8 @@ let _espStyles=false;
 function rdEnsureEspStyles(){
   if(_espStyles) return; _espStyles=true;
   const css=`
+  .rd-esp-pre{font-size:11.5px;color:var(--teal-700,#0e7490);background:rgba(14,116,144,.07);
+    border:1px solid rgba(14,116,144,.22);border-radius:9px;padding:8px 11px;margin-bottom:10px;}
   .rd-ct-cell{display:flex;align-items:center;gap:6px;}
   .rd-ct-cell input{flex:1;min-width:96px;}
   .rd-ct-back{border:1px solid var(--border-strong);background:var(--surface-1);color:var(--text-3);
@@ -10725,23 +10809,77 @@ function rdPendEnsureStyles(){
 // ── Comercial: facturado + meta del mes ──
 async function cargarComercialReporte() {
   const cod = currentProyecto?.cod;
-  // Traer último valor conocido del reporte previo, si existe
-  try {
-    const rows = await sbFetch(`/rest/v1/v_reportes?cod_proyecto=eq.${encodeURIComponent(cod)}&order=fecha_reporte.desc&limit=1`);
-    if (rows && rows.length) {
-      const r = rows[0];
-      if (r.meta_mes != null) document.getElementById('rd-meta-mes').value = r.meta_mes;
-      if (r.facturado_codigo != null) document.getElementById('rd-facturado').value = r.facturado_codigo;
-    }
-  } catch(e){}
-  recalcMetaMes();
-  await rvalLoad(currentProyecto?.cod || currentProyecto?.nombre);
+  // Las cifras comerciales ya NO las escribe el supervisor: salen de la
+  // Valorización de Gerencia. Acá solo se leen.
+  await rdValGLoad(cod);
+  await rvalLoad(cod || currentProyecto?.nombre);
 }
-function recalcMetaMes() {
-  const meta = parseFloat(document.getElementById('rd-meta-mes')?.value)||0;
-  const fact = parseFloat(document.getElementById('rd-facturado')?.value)||0;
-  const el = document.getElementById('rd-meta-pct');
-  if (el) el.value = meta>0 ? ((fact/meta)*100).toFixed(1)+'%' : '—';
+
+// ── Valorización del mes: cifras OFICIALES de Gerencia (PMO.valorizacion_lineas) ──
+// El supervisor ya no escribe meta ni facturado: los lee de acá. Lo único que
+// captura es la proyección de cierre del mes (bloque de abajo), que se compara
+// contra estas cifras.
+let rdValG = null;      // última línea de valorización del proyecto
+let _valgStyles = false;
+function rdEnsureValgStyles(){
+  if(_valgStyles) return; _valgStyles = true;
+  const css = `
+  .rd-valg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+  .rd-valg-i{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
+  .rd-valg-i .k{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
+  .rd-valg-i .v{font-size:16px;font-weight:800;color:var(--navy-800,#0f2942);margin-top:3px;}
+  .rd-valg-i .s{font-size:10.5px;color:var(--text-3);margin-top:1px;}
+  .rd-valg-i.big{background:linear-gradient(135deg,rgba(14,116,144,.10),rgba(14,116,144,.03));border-color:rgba(14,116,144,.28);}
+  .rd-valg-i.big .v{color:var(--teal-700,#0e7490);}
+  .rd-valg-src{font-size:11px;color:var(--text-3);margin:2px 0 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .rd-valg-src b{color:var(--text-2);}
+  .rd-valg-none{font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;}
+  `;
+  const st=document.createElement('style'); st.id='rd-valg-styles'; st.textContent=css; document.head.appendChild(st);
+}
+function rdSoles(v){
+  const n = parseFloat(v);
+  if (isNaN(n)) return '—';
+  return 'S/ ' + n.toLocaleString('es-PE',{minimumFractionDigits:0, maximumFractionDigits:0});
+}
+async function rdValGLoad(cod){
+  rdValG = null;
+  const mount = document.getElementById('rd-valg-mount');
+  const badge = document.getElementById('rd-val-badge');
+  if(!mount) return;
+  rdEnsureValgStyles();
+  if(!cod){ mount.innerHTML = `<div class="rd-valg-none">Selecciona un proyecto.</div>`; if(badge) badge.textContent='—'; return; }
+  mount.innerHTML = `<div class="rd-valg-none"><span class="spinner"></span> Leyendo la valorización de Gerencia…</div>`;
+  try{
+    const rows = await pmoDbFetch('/rest/v1/valorizacion_lineas?cod_proyecto=eq.' + encodeURIComponent(cod) + '&order=periodo.desc,fecha_valorizacion.desc&limit=1');
+    rdValG = (rows && rows[0]) || null;
+  }catch(e){ console.warn('valorizacion gerencia', e); }
+  rdValGRender();
+}
+function rdValGRender(){
+  const mount = document.getElementById('rd-valg-mount'); if(!mount) return;
+  const badge = document.getElementById('rd-val-badge');
+  const v = rdValG;
+  if(!v){
+    mount.innerHTML = `<div class="rd-valg-none">Gerencia todavía no tiene valorización cargada para este proyecto.</div>`;
+    if(badge) badge.textContent = '—';
+    return;
+  }
+  const pct = v.pct_acumulado != null ? (parseFloat(v.pct_acumulado)*100) : null;
+  if(badge) badge.textContent = v.periodo || '—';
+  const item = (k,val,sub,cls)=>`<div class="rd-valg-i ${cls||''}"><span class="k">${k}</span><div class="v">${val}</div>${sub?`<div class="s">${sub}</div>`:''}</div>`;
+  mount.innerHTML = `
+    <div class="rd-valg-src">
+      <i data-lucide="lock" class="ri" style="width:13px;height:13px;"></i>
+      <span>Lo pone <b>Gerencia</b> (Valorización) · periodo <b>${rdEsc2(v.periodo||'—')}</b>${v.fecha_valorizacion?` · al ${rdFmtFecha(v.fecha_valorizacion)}`:''}${v.estado?` · <b>${rdEsc2(v.estado)}</b>`:''}</span>
+    </div>
+    <div class="rd-valg">
+      ${item('Valorización del mes', rdSoles(v.valorizacion), v.valorizacion_proyectada!=null?('proyectada '+rdSoles(v.valorizacion_proyectada)):'', 'big')}
+      ${item('Facturación', rdSoles(v.facturacion))}
+      ${item('Presupuesto', rdSoles(v.presupuesto))}
+      ${item('% acumulado', pct!=null ? pct.toFixed(1)+'%' : '—', v.valorizado!=null?('valorizado '+rdSoles(v.valorizado)):'')}
+    </div>`;
+  rdIcons();
 }
 
 // ── Checklist de cierre ──
@@ -11010,12 +11148,15 @@ function rvRenderReporte(r){
   // Contratas y avance por especialidad (modelo nuevo); fallback a lo viejo si el reporte no lo trae
   const avEsp = rvArr(r.avance_especialidades).filter(x=>x && (x.label||x.esp));
   if (avEsp.length){
+    // Reportes viejos traen pesos → ponderado. Los nuevos ya no → promedio simple.
     let sw=0,sp=0; avEsp.forEach(a=>{ sw+=rvNum(a.avance)*rvNum(a.peso); sp+=rvNum(a.peso); });
-    const glob = sp>0?sw/sp:0, tp = avEsp.reduce((a,x)=>a+rvNum(x.personal),0);
+    const glob = sp>0 ? sw/sp : (avEsp.reduce((a,x)=>a+rvNum(x.avance),0) / avEsp.length);
+    const hayPesos = sp>0;
+    const tp = avEsp.reduce((a,x)=>a+rvNum(x.personal),0);
     html += card('layers','Contratas y avance por especialidad', `${tp} obreros · Global ${glob.toFixed(1)}%`,
-      `<div class="rv-table-wrap"><table class="rv-table"><thead><tr><th>Especialidad</th><th>Contrata</th><th>Personal</th><th>% Avance</th><th>Peso</th></tr></thead><tbody>
-        ${avEsp.map(a=>`<tr><td><strong>${rvEsc(a.label||a.esp)}</strong></td><td>${rvEsc(a.contrata||'—')}</td><td>${rvNum(a.personal)}</td><td>${rvNum(a.avance).toFixed(1)}%</td><td>${rvNum(a.peso)}%</td></tr>`).join('')}
-        <tr style="border-top:2px solid var(--border-strong);font-weight:800;"><td>GLOBAL</td><td></td><td>${tp}</td><td>${glob.toFixed(1)}%</td><td></td></tr>
+      `<div class="rv-table-wrap"><table class="rv-table"><thead><tr><th>Especialidad</th><th>Contrata</th><th>Personal</th><th>% Avance</th>${hayPesos?'<th>Peso</th>':''}</tr></thead><tbody>
+        ${avEsp.map(a=>`<tr><td><strong>${rvEsc(a.label||a.esp)}</strong></td><td>${rvEsc(a.contrata||'—')}</td><td>${rvNum(a.personal)}</td><td>${rvNum(a.avance).toFixed(1)}%</td>${hayPesos?`<td>${rvNum(a.peso)}%</td>`:''}</tr>`).join('')}
+        <tr style="border-top:2px solid var(--border-strong);font-weight:800;"><td>GLOBAL</td><td></td><td>${tp}</td><td>${glob.toFixed(1)}%</td>${hayPesos?'<td></td>':''}</tr>
       </tbody></table></div>`);
   } else {
     html += card('users','Personal por especialidad', `${personal} personas en obra`,
@@ -11286,9 +11427,6 @@ async function hidratarReporte(r, cod){
     if (typeof rdToggleRepro==='function') rdToggleRepro(true);
   } else if (typeof rdToggleRepro==='function') { if (g('rd-repro-chk')) g('rd-repro-chk').checked = false; rdToggleRepro(false); }
   if (Array.isArray(r.checklist_cierre)) r.checklist_cierre.forEach((c,i)=>{ const el=g('rd-chk-'+i); if (el) el.checked = !!c.ok; });
-  if (r.meta_mes!=null && g('rd-meta-mes')) g('rd-meta-mes').value = r.meta_mes;
-  if (r.facturado_codigo!=null && g('rd-facturado')) g('rd-facturado').value = r.facturado_codigo;
-  recalcMetaMes();
   if (typeof rdPlanBars==='function') rdPlanBars();
   if (typeof rdUpdateRing==='function') rdUpdateRing();
 }
@@ -11337,7 +11475,6 @@ document.addEventListener('input', (e) => {
     if (ct > 0 && Math.abs(sup - ct) > 2) alerta.classList.remove('hidden');
     else alerta.classList.add('hidden');
   }
-  if (['rd-meta-mes','rd-facturado'].includes(e.target.id)) recalcMetaMes();
 });
 
 // ── Guardar reporte ──
@@ -11356,10 +11493,16 @@ async function guardarReporte(esDraft = false, silent = false) {
   setSyncStatus('syncing','Guardando…');
   let firmaUrl = null;
   try { firmaUrl = await subirFirma(); } catch(e){}
+  let firmaEncolada = false;
   if (!esDraft && !silent && _firmaDirty && !firmaUrl) {
-    showToast('No se pudo subir la firma (revisa tu conexión). El reporte NO se envió; intenta de nuevo.');
-    setSyncStatus('error','Firma no subió');
-    return;
+    // Sin señal (o Storage caído): la firma se guarda en el equipo y el reporte
+    // SÍ se cierra. Al reconectar sube la firma y el reporte se re-postea con ella.
+    firmaEncolada = await _encolarFirmaOffline(cod, fecha);
+    if (!firmaEncolada){
+      showToast('No se pudo guardar la firma. El reporte NO se envió; intenta de nuevo.');
+      setSyncStatus('error','Firma no subió');
+      return;
+    }
   }
   window._lastFirmaUrl = firmaUrl;
   const payload = _collectReportePayload(esDraft, firmaUrl);
@@ -11382,7 +11525,9 @@ async function guardarReporte(esDraft = false, silent = false) {
     const off = !navigator.onLine;
     setSyncStatus('error', off ? 'Sin señal · guardado aquí' : 'Error al guardar');
     if(!silent) showToast(off
-      ? 'Sin señal: el reporte quedó guardado en este equipo y se subirá solo al reconectar.'
+      ? (firmaEncolada
+          ? 'Sin señal: el reporte quedó FIRMADO y guardado en este equipo. Se envía solo al reconectar.'
+          : 'Sin señal: el reporte quedó guardado en este equipo y se subirá solo al reconectar.')
       : ('Error al guardar: ' + e.message), 4200);
   }
 }
@@ -11395,7 +11540,7 @@ function _collectReportePayload(esDraft, firmaUrl){
   const real  = +rdEspGlobalAvance().toFixed(1);
   const realCt = parseFloat(document.getElementById('rd-real-contrata')?.value)||0;
   const spi   = plan > 0 ? (real/plan).toFixed(2) : '0';
-  const avanceEsp = rdEsp.map(r=>({ esp:r.esp, label:r.label, contrata:(r.contrata||'').trim(), peso:parseFloat(r.peso)||0, personal:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
+  const avanceEsp = rdEsp.map(r=>({ esp:r.esp, label:r.label, contrata:(r.contrata||'').trim(), personal:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
   const especialidades = {}; let personalTotal = 0;
   rdEsp.forEach(r=>{ especialidades[r.esp]=parseInt(r.personal)||0; personalTotal+=parseInt(r.personal)||0; });
   const checklist = RD_CHECKLIST.map((item,i)=>({ item, ok: !!document.getElementById('rd-chk-'+i)?.checked }));
@@ -11410,8 +11555,10 @@ function _collectReportePayload(esDraft, firmaUrl){
         return (h.nombre||'').trim() + pct;
       }).filter(x=>x.trim()).join(' · ')
     : null;
-  const metaMes = parseFloat(document.getElementById('rd-meta-mes').value)||null;
-  const facturado = parseFloat(document.getElementById('rd-facturado').value)||null;
+  // Se siguen enviando (Gerencia los lee de `reportes`), pero su origen es la
+  // Valorización de Gerencia, no un campo que llene el supervisor.
+  const metaMes   = rdValG && rdValG.valorizacion_proyectada != null ? parseFloat(rdValG.valorizacion_proyectada) : null;
+  const facturado = rdValG && rdValG.facturacion != null ? parseFloat(rdValG.facturacion) : null;
   return {
     fecha_reporte: fecha,
     supervisor: currentProyecto?.supervisor || currentUser?.nombre,
@@ -11462,7 +11609,7 @@ function _collectReportePayload(esDraft, firmaUrl){
     checklist_cierre: checklist,
     checklist_ok: checklistOk,
     es_draft: esDraft,
-    firmado: !esDraft && !!firmaUrl,
+    firmado: !esDraft && (!!firmaUrl || _firmaDirty),   // firmado aunque la imagen suba después
     enviado: !esDraft
   };
 }
@@ -11515,7 +11662,11 @@ async function _flushOutbox(){
 }
 // Al reconectar / periódicamente: primero suben las FOTOS pendientes (para que el
 // reporte lleve sus URLs reales), luego se re-postean los reportes de la cola.
-function _flushTodo(){ return _flushFotos().catch(()=>0).then(()=>_flushOutbox()); }
+function _flushTodo(){
+  return _flushFotos().catch(()=>0)
+    .then(()=>_flushFirmas().catch(()=>0))
+    .then(()=>_flushOutbox());
+}
 window.addEventListener('online', ()=>{ _flushTodo(); });
 setInterval(()=>{ if(navigator.onLine) _flushTodo(); }, 60000);
 setTimeout(()=>{ if(navigator.onLine) _flushTodo(); }, 4000);   // intento de subida al abrir la app
@@ -11526,11 +11677,15 @@ window.addEventListener('beforeunload', ()=>{ try{ _mirrorLocal(); }catch(e){} }
 //  Sin señal la foto se guarda en el equipo y se sube al reconectar,
 //  junto con el reporte. NO se envía al servidor hasta tener URL real.
 // ══════════════════════════════════════════════════════════════════
-const _IDB_NAME = 'fp_sup_offline', _IDB_STORE = 'fotos';
+const _IDB_NAME = 'fp_sup_offline', _IDB_STORE = 'fotos', _IDB_FIRMAS = 'firmas';
 function _idbOpen(){
   return new Promise((res, rej)=>{
-    let rq; try{ rq = indexedDB.open(_IDB_NAME, 1); }catch(e){ return rej(e); }
-    rq.onupgradeneeded = ()=>{ const db = rq.result; if(!db.objectStoreNames.contains(_IDB_STORE)) db.createObjectStore(_IDB_STORE, { keyPath:'localId' }); };
+    // v2 agrega el almacén de FIRMAS: sin él, enviar sin señal era imposible
+    // (la firma subía a Storage antes de cerrar el reporte).
+    let rq; try{ rq = indexedDB.open(_IDB_NAME, 2); }catch(e){ return rej(e); }
+    rq.onupgradeneeded = ()=>{ const db = rq.result;
+      if(!db.objectStoreNames.contains(_IDB_STORE)) db.createObjectStore(_IDB_STORE, { keyPath:'localId' });
+      if(!db.objectStoreNames.contains(_IDB_FIRMAS)) db.createObjectStore(_IDB_FIRMAS, { keyPath:'id' }); };
     rq.onsuccess = ()=>res(rq.result);
     rq.onerror   = ()=>rej(rq.error);
   });
@@ -11539,6 +11694,55 @@ async function _idbPutFoto(rec){ const db = await _idbOpen(); return new Promise
 async function _idbGetFoto(localId){ const db = await _idbOpen(); return new Promise((res,rej)=>{ const tx = db.transaction(_IDB_STORE,'readonly'); const rq = tx.objectStore(_IDB_STORE).get(localId); rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>rej(rq.error); }); }
 async function _idbAllFotos(){ const db = await _idbOpen(); return new Promise((res,rej)=>{ const tx = db.transaction(_IDB_STORE,'readonly'); const rq = tx.objectStore(_IDB_STORE).getAll(); rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error); }); }
 async function _idbDelFoto(localId){ const db = await _idbOpen(); return new Promise((res,rej)=>{ const tx = db.transaction(_IDB_STORE,'readwrite'); tx.objectStore(_IDB_STORE).delete(localId); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
+
+async function _idbPutFirma(rec){ const db = await _idbOpen(); return new Promise((res,rej)=>{ const tx = db.transaction(_IDB_FIRMAS,'readwrite'); tx.objectStore(_IDB_FIRMAS).put(rec); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error); }); }
+async function _idbAllFirmas(){ const db = await _idbOpen(); return new Promise((res,rej)=>{ const tx = db.transaction(_IDB_FIRMAS,'readonly'); const rq = tx.objectStore(_IDB_FIRMAS).getAll(); rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error); }); }
+async function _idbDelFirma(id){ const db = await _idbOpen(); return new Promise((res,rej)=>{ const tx = db.transaction(_IDB_FIRMAS,'readwrite'); tx.objectStore(_IDB_FIRMAS).delete(id); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error); }); }
+
+// Guarda la firma dibujada en el equipo para subirla al reconectar.
+async function _encolarFirmaOffline(cod, fecha){
+  const cv = document.getElementById('rd-firma-canvas');
+  if (!cv || !_firmaDirty) return false;
+  try{
+    const blob = await new Promise(res=>cv.toBlob(res,'image/png'));
+    if(!blob) return false;
+    await _idbPutFirma({ id:_draftKey(cod,fecha), cod, fecha, blob, ts:Date.now() });
+    return true;
+  }catch(e){ console.warn('encolar firma', e); return false; }
+}
+
+// Sube las firmas pendientes y las mete en el borrador local, para que el
+// re-envío del reporte ya lleve la URL real (mismo patrón que las fotos).
+async function _flushFirmas(){
+  if (!navigator.onLine) return 0;
+  let pend = []; try{ pend = await _idbAllFirmas(); }catch(e){ return 0; }
+  let subidas = 0;
+  for (const f of pend){
+    try{
+      const codSafe = String(f.cod||'sin-cod').replace(/[^a-zA-Z0-9._-]/g,'_');
+      const path = `${codSafe}/firmas/${f.ts||Date.now()}.png`;
+      const token = localStorage.getItem('sb_token');
+      const res = await fetch(`${SB_URL}/storage/v1/object/reporte-fotos/${path}`, {
+        method:'POST',
+        headers:{ 'apikey':SB_KEY, 'Authorization':'Bearer '+(token||SB_KEY), 'Content-Type':'image/png', 'x-upsert':'true' },
+        body: f.blob
+      });
+      if(!res.ok) continue;
+      const url = `${SB_URL}/storage/v1/object/public/reporte-fotos/${path}`;
+      try{
+        const rec = JSON.parse(localStorage.getItem(f.id) || 'null');
+        if (rec && rec.payload){
+          rec.payload.firma_url = url; rec.payload.firmado = true;
+          rec.pending = true;                       // que el outbox lo re-postee con la firma
+          localStorage.setItem(f.id, JSON.stringify(rec));
+        }
+      }catch(e){}
+      await _idbDelFirma(f.id);
+      subidas++;
+    }catch(e){ /* sigue pendiente */ }
+  }
+  return subidas;
+}
 
 // Guarda una foto comprimida en el equipo y la agrega a rdFotos como "pendiente".
 async function _encolarFotoOffline(c, cod){
@@ -11661,7 +11865,20 @@ async function _persistirExtras(payload){
     }
   }
 
-  if (payload.es_draft) return;   // los borradores no generan restricciones
+  if (payload.es_draft) return;   // los borradores no generan restricciones ni mueven fechas
+
+  // Reprogramación → fecha de fin REAL del proyecto en PMO.
+  // Decisión de Kiara (18-ago-2026): que mueva el indicador de Gerencia, no
+  // que se quede solo dentro del reporte.
+  const _rp = payload.reprogramacion;
+  if (_rp && _rp.fecha_nueva && payload.cod_proyecto){
+    try{
+      await pmoDbFetch2('/rest/v1/proyectos?cod_proyecto=eq.' + encodeURIComponent(payload.cod_proyecto), {
+        method:'PATCH', headers:{'Prefer':'return=minimal'},
+        body: JSON.stringify({ fecha_fin_real: _rp.fecha_nueva })
+      });
+    }catch(e){ console.warn('PMO fecha_fin_real', e); }
+  }
 
   const rows = (payload.restricciones || [])
     .filter(r => r && (r.titulo || r.descripcion))
@@ -12132,7 +12349,8 @@ async function exportarPDF() {
   // Fin proyectado real: la reprogramación de hoy manda sobre la fecha de PMO
   const _reproOn = document.getElementById('rd-repro-chk')?.checked;
   const _reproF  = document.getElementById('rd-repro-fecha')?.value;
-  document.getElementById('pdf-fin-proy').textContent    = rdFmtFecha((_reproOn&&_reproF) ? _reproF : (currentProyecto.finReal||currentProyecto.finCont));
+  document.getElementById('pdf-fin-proy').textContent    = rdFmtFecha((_reproOn&&_reproF) ? _reproF
+    : ((rdReproUlt && rdReproUlt.fecha_nueva) || currentProyecto.finReal || currentProyecto.finCont));
   document.getElementById('pdf-avance').textContent      = real.toFixed(1)+'%';
   document.getElementById('pdf-spi').textContent         = spi.toFixed(2);
   document.getElementById('pdf-eval-ct').textContent     = document.getElementById('kpi-eval').textContent;
