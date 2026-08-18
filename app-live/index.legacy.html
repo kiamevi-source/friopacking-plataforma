@@ -16036,6 +16036,8 @@ function _render(){
     _load(); return;   // dispara la carga UNA vez (guardada); _load re-pinta al terminar
   }
   var L=VS.lineas,C=VS.cobros;
+  var _perLabel=function(){ var cnt={}; L.forEach(function(x){ if(x.periodo)cnt[x.periodo]=(cnt[x.periodo]||0)+1; }); var top='',n=-1; for(var k in cnt){ if(cnt[k]>n){n=cnt[k];top=k;} } var m=/^(\d{4})-(\d{2})$/.exec(top); if(!m)return 'Agosto 2026'; var MS=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']; return (MS[+m[2]]||m[2])+' '+m[1]; };
+  var perLabel=_perLabel();
   var byEst=function(e){return L.filter(function(x){return x.estado===e;});};
   var val=byEst('Valorizado'),pre=byEst('Presentado'),pen=byEst('Pendiente');
   var proy=function(a){return _sum(a,'valorizacion_proyectada');};
@@ -16094,7 +16096,7 @@ function _render(){
   var leg=function(c,l,n){return '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cfd8e6;margin:6px 0"><span style="width:9px;height:9px;border-radius:50%;background:'+c+'"></span><span style="flex:1">'+l+'</span><b style="color:#fff">'+n+' ('+(totP>0?Math.round(n/totP*100):0)+'%)</b></div>';};
   /* ── HTML ── */
   var h='<span data-v6 hidden></span>';
-  h+='<div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:16px"><div><div style="display:flex;align-items:baseline;gap:10px"><h1 style="margin:0;font-size:28px;color:'+IN+'">Valorización</h1><span style="font-size:18px;color:#3b5bdb;font-style:italic;font-weight:600">Agosto 2026</span></div><div style="font-size:12px;color:'+MU+';margin-top:3px">'+L.length+' valorizaciones · '+activos.length+' proyectos activos</div></div><div style="display:flex;gap:6px"><button class="btn" onclick="W._valRefresh()">🔄 Actualizar</button><button class="btn primary" onclick="W._valImport()">📁 Importar Excel</button></div></div>';
+  h+='<div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:16px"><div><div style="display:flex;align-items:baseline;gap:10px"><h1 style="margin:0;font-size:28px;color:'+IN+'">Valorización</h1><span style="font-size:18px;color:#3b5bdb;font-style:italic;font-weight:600">'+perLabel+'</span></div><div style="font-size:12px;color:'+MU+';margin-top:3px">'+L.length+' valorizaciones · '+activos.length+' proyectos activos</div></div><div style="display:flex;gap:6px"><button class="btn" onclick="W._valRefresh()">🔄 Actualizar</button><button class="btn primary" onclick="W._valImport()">📁 Importar Excel</button></div></div>';
   h+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'+kcard('Meta del mes',_u(meta),L.length+' valorizaciones','#3b5bdb','🎯')+kcard('Avanzado',_u(avanzado),pctAv.toFixed(0)+'% del valorizado + presentado','#16a34a','📈')+kcard('Pendiente',_u(pendMonto),(100-pctAv).toFixed(0)+'% de la meta','#f59e0b','⏳')+kcard('Por cobrar',_u(saldoTot),venc.length+' vencidas (+90d)','#ef4444','⚠️')+'</div>';
   h+='<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">';
   /* izquierda: estado por proyecto */
@@ -16115,7 +16117,93 @@ function _render(){
 }
 W._valRefresh=function(){ VS.loaded=false; VS.failed=false; _load(true); };
 W._valSetFilter=function(k){ W._valFilter=k; try{_render();}catch(e){} };
-W._valImport=function(){alert('Importador de Excel: próximo paso. Por ahora la data se carga y ya se ve aquí.');};
+/* ── Importador de Excel (hoja "Data" + "Proyectos Pendientes (2)") ──
+   Lee el Excel en el navegador con SheetJS, mapea por NOMBRE de encabezado,
+   y REEMPLAZA por completo las 2 tablas (regla: lo que subes es el mes, sin arrastre). */
+var _period='2026-08';
+function _norm(s){ return (s==null?'':String(s)).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim(); }
+function _num(v){ if(v==null||v===''){return null;} var n=Number(v); return isNaN(n)?null:n; }
+function _d(v){ if(v==null||v==='')return null; if(v instanceof Date&&!isNaN(v)){var z=new Date(v.getTime()-v.getTimezoneOffset()*60000);return z.toISOString().slice(0,10);} return null; }
+function _estL(raw){ var n=_norm(raw); if(n.indexOf('presentado')>=0)return 'Presentado'; if(n.indexOf('valorizado')>=0)return 'Valorizado'; return 'Pendiente'; }
+function _findHdr(rows,must){ for(var i=0;i<rows.length;i++){ if(!rows[i])continue; var set=rows[i].map(_norm); var ok=must.every(function(h){return set.indexOf(h)>=0;}); if(ok)return i; } return -1; }
+function _cmap(hr){ var m={}; hr.forEach(function(h,ix){ var n=_norm(h); if(n&&!(n in m))m[n]=ix; }); return m; }
+function _ensureXLSX(cb){
+  if(W.XLSX)return cb(null);
+  var srcs=['https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js','https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'];
+  var i=0;(function next(){ if(i>=srcs.length)return cb('No se pudo cargar el lector (sin internet o bloqueado).'); var s=document.createElement('script'); s.src=srcs[i++]; s.onload=function(){cb(null);}; s.onerror=function(){next();}; document.head.appendChild(s); })();
+}
+W._valImport=function(){
+  var inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xlsm'; inp.style.display='none';
+  document.body.appendChild(inp);
+  inp.addEventListener('change',function(){ var f=inp.files&&inp.files[0]; try{document.body.removeChild(inp);}catch(e){} if(!f)return; _ensureXLSX(function(err){ if(err){alert(err);return;} _readXlsx(f); }); });
+  inp.click();
+};
+function _readXlsx(f){
+  var rd=new FileReader();
+  rd.onload=function(){ try{ var wb=W.XLSX.read(new Uint8Array(rd.result),{type:'array',cellDates:true}); var res=_parseWb(wb); if(res.err){alert(res.err);return;} _confirmImport(res); }catch(e){ alert('Error leyendo el Excel: '+(e&&e.message||e)); } };
+  rd.onerror=function(){ alert('No se pudo leer el archivo.'); };
+  rd.readAsArrayBuffer(f);
+}
+function _parseWb(wb){
+  var XU=W.XLSX.utils;
+  var shD=wb.Sheets['Data']||wb.Sheets[(wb.SheetNames.filter(function(n){return _norm(n)==='data';})[0])];
+  if(!shD)return {err:'No encuentro la hoja "Data" en el Excel.'};
+  var RD=XU.sheet_to_json(shD,{header:1,raw:true,cellDates:true,defval:null});
+  var hi=_findHdr(RD,['proyecto','cliente','estado']); if(hi<0)return {err:'No encuentro los encabezados (Proyecto/Cliente/Estado) en "Data".'};
+  var cm=_cmap(RD[hi]), lineas=[];
+  var g=function(r,k){ var ix=cm[k]; return ix==null?null:r[ix]; };
+  for(var i=hi+1;i<RD.length;i++){ var r=RD[i]; if(!r)continue; var cod=g(r,'proyecto'); if(cod==null||String(cod).trim()==='')continue; var raw=g(r,'estado');
+    lineas.push({ periodo:_period, proyeccion:(r[0]==null?null:String(r[0]).trim()||null), cod_proyecto:String(cod).trim(), cliente:g(r,'cliente')||null, supervisor:g(r,'supervisor')||null, estado:_estL(raw), estado_raw:(raw==null?null:String(raw).trim()), valorizacion_proyectada:_num(g(r,'valorizacion proyectada')), valorizacion:_num(g(r,'valorizacion')), facturacion:_num(g(r,'facturacion')), presupuesto:_num(g(r,'presupuesto')), valorizado:_num(g(r,'valorizado')), pct_acumulado:_num(g(r,'% acumulado')), fecha_valorizacion:_d(g(r,'fecha de valorizacion')), comentario:null }); }
+  var cobros=[], skipAdic=0;
+  var shC=wb.Sheets['Proyectos Pendientes (2)']||wb.Sheets[(wb.SheetNames.filter(function(n){return _norm(n).indexOf('pendientes')>=0;})[0])];
+  if(shC){ var RC=XU.sheet_to_json(shC,{header:1,raw:true,cellDates:true,defval:null}); var hc=_findHdr(RC,['proyecto','cliente','saldo pendiente']);
+    if(hc>=0){ var cc=_cmap(RC[hc]); var gc=function(r,k){ var ix=cc[k]; return ix==null?null:r[ix]; };
+      for(var j=hc+1;j<RC.length;j++){ var rc=RC[j]; if(!rc)continue; var cx=gc(rc,'proyecto'); if(cx==null||String(cx).trim()==='')continue; var tipo=gc(rc,'tipo de v.'); if(_norm(tipo)!=='proyecto'){ if(_norm(tipo)==='adicional')skipAdic++; continue; }
+        cobros.push({ periodo:_period, cod_proyecto:String(cx).trim(), adicional:(gc(rc,'adicional')==null?null:String(gc(rc,'adicional')).trim()), cliente:gc(rc,'cliente')||null, supervisor:gc(rc,'supervisor')||null, coordinador:gc(rc,'coordinador')||null, departamento:gc(rc,'departamento')||null, tipo_v:(tipo==null?null:String(tipo).trim()), presupuesto:_num(gc(rc,'presupuesto')), valorizacion_facturada:_num(gc(rc,'valorizacion facturada')), valorizacion_real:_num(gc(rc,'valorizacion real')), facturado:_num(gc(rc,'facturado')), por_facturar:_num(gc(rc,'por facturar')), pagado:_num(gc(rc,'pagado')), saldo_pendiente:_num(gc(rc,'saldo pendiente')), ultima_factura:_d(gc(rc,'ultima factura')), dias:_num(gc(rc,'dias')), forma_pago:gc(rc,'forma de pago')||null, comentario:gc(rc,'comentarios operaciones - cc')||null, estado:(gc(rc,'estado')==null?null:String(gc(rc,'estado')).trim()) }); } } }
+  if(!lineas.length)return {err:'No se encontraron líneas de valorización en "Data".'};
+  return {lineas:lineas, cobros:cobros, skipAdic:skipAdic};
+}
+function _confirmImport(res){
+  var meta=0; res.lineas.forEach(function(l){meta+=(+l.valorizacion_proyectada||0);});
+  var cobro=0; res.cobros.forEach(function(c){cobro+=(+c.saldo_pendiente||0);});
+  var ov=document.createElement('div'); ov.id='_valImpOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(8,24,64,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:460px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3);font-family:inherit">'
+    +'<div style="font-size:18px;font-weight:800;color:#0d2436;margin-bottom:4px">Importar valorización</div>'
+    +'<div style="font-size:12px;color:#64748b;margin-bottom:16px">Reemplaza <b>todos</b> los datos actuales por lo que trae este Excel (el mes que subes es el mes completo, sin arrastre).</div>'
+    +'<div style="display:flex;gap:10px;margin-bottom:14px"><div style="flex:1;background:#f1f5fb;border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#64748b">Líneas</div><div style="font-size:20px;font-weight:800;color:#3b5bdb">'+res.lineas.length+'</div><div style="font-size:10px;color:#64748b">Meta '+_u(meta)+'</div></div>'
+    +'<div style="flex:1;background:#f1f5fb;border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#64748b">Cobros (Proyecto)</div><div style="font-size:20px;font-weight:800;color:#ef4444">'+res.cobros.length+'</div><div style="font-size:10px;color:#64748b">Saldo '+_u(cobro)+'</div></div></div>'
+    +(res.skipAdic?'<div style="font-size:11px;color:#e67e22;margin-bottom:12px">⚠ Se omiten '+res.skipAdic+' cobros tipo <b>Adicional</b> (solo se cargan los de tipo Proyecto, igual que hoy).</div>':'')
+    +'<label style="font-size:12px;color:#0d2436;font-weight:600;display:block;margin-bottom:4px">Periodo (AAAA-MM)</label>'
+    +'<input id="_valImpPer" value="'+_period+'" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e0ee;border-radius:8px;font-size:14px;margin-bottom:18px">'
+    +'<div id="_valImpMsg" style="font-size:12px;color:#64748b;margin-bottom:12px;min-height:16px"></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end"><button id="_valImpCancel" class="btn" style="padding:8px 16px">Cancelar</button><button id="_valImpGo" class="btn primary" style="padding:8px 16px">Reemplazar datos</button></div>'
+    +'</div>';
+  document.body.appendChild(ov);
+  var close=function(){ try{document.body.removeChild(ov);}catch(e){} };
+  ov.addEventListener('click',function(e){ if(e.target===ov)close(); });
+  document.getElementById('_valImpCancel').onclick=close;
+  document.getElementById('_valImpGo').onclick=function(){
+    var per=(document.getElementById('_valImpPer').value||'').trim(); if(!/^\d{4}-\d{2}$/.test(per)){ document.getElementById('_valImpMsg').innerHTML='<span style="color:#ef4444">Periodo inválido. Usa AAAA-MM (ej. 2026-08).</span>'; return; }
+    var go=document.getElementById('_valImpGo'); go.disabled=true; go.textContent='Subiendo…';
+    document.getElementById('_valImpMsg').textContent='Reemplazando datos en Supabase…';
+    _pushImport(res.lineas,res.cobros,per).then(function(){ close(); W._valFilter='all'; W._valRefresh(); alert('✓ Valorización actualizada: '+res.lineas.length+' líneas y '+res.cobros.length+' cobros ('+per+').'); })
+      .catch(function(e){ go.disabled=false; go.textContent='Reemplazar datos'; document.getElementById('_valImpMsg').innerHTML='<span style="color:#ef4444">Error: '+_esc(e&&e.message||String(e))+'</span>'; });
+  };
+}
+async function _maxId(tbl){ var H={apikey:_VK,Authorization:'Bearer '+_VK}; try{ var r=await fetch(_VU+'/rest/v1/'+tbl+'?select=id&order=id.desc&limit=1',{headers:H}); if(!r.ok)return 0; var j=await r.json(); return (j[0]&&j[0].id)||0; }catch(e){ return 0; } }
+/* Estrategia segura: INSERTA primero, y sólo si el insert OK BORRA las filas viejas
+   (id <= max previo). Si el insert falla, la data anterior queda intacta (sin ventana vacía). */
+async function _pushImport(lineas,cobros,per){
+  lineas.forEach(function(l){l.periodo=per;}); cobros.forEach(function(c){c.periodo=per;});
+  var H={apikey:_VK,Authorization:'Bearer '+_VK,'Content-Type':'application/json'};
+  var Hmin={apikey:_VK,Authorization:'Bearer '+_VK,'Content-Type':'application/json',Prefer:'return=minimal'};
+  var oldL=await _maxId('valorizacion_lineas'), oldC=await _maxId('valorizacion_cobros');
+  var il=await fetch(_VU+'/rest/v1/valorizacion_lineas',{method:'POST',headers:Hmin,body:JSON.stringify(lineas)}); if(!il.ok)throw new Error('insertar líneas ('+il.status+') '+(await il.text()).slice(0,140));
+  if(cobros.length){ var ic=await fetch(_VU+'/rest/v1/valorizacion_cobros',{method:'POST',headers:Hmin,body:JSON.stringify(cobros)}); if(!ic.ok)throw new Error('insertar cobros ('+ic.status+') '+(await ic.text()).slice(0,140)); }
+  if(oldL>0){ var dl=await fetch(_VU+'/rest/v1/valorizacion_lineas?id=lte.'+oldL,{method:'DELETE',headers:H}); if(!dl.ok)throw new Error('las nuevas líneas se subieron, pero no pude borrar las viejas ('+dl.status+'). Revisa duplicados.'); }
+  if(oldC>0){ var dc=await fetch(_VU+'/rest/v1/valorizacion_cobros?id=lte.'+oldC,{method:'DELETE',headers:H}); if(!dc.ok)throw new Error('los nuevos cobros se subieron, pero no pude borrar los viejos ('+dc.status+'). Revisa duplicados.'); }
+}
 W._valRenderV6=_render;
 /* Registro SEGURO: sólo re-asigna el renderer en unos pocos setTimeout FINITOS
    (NO setInterval) para sobrevivir a los overrides tardíos del legacy. La carga
