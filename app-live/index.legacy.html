@@ -15560,7 +15560,7 @@ function _render(){
   var kpi=function(l,v,c,sub){return '<div style="background:'+C_+';border:1px solid '+LN+';border-radius:10px;padding:12px 14px;flex:1;min-width:130px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:'+MU+'">'+l+'</div><div style="font-size:20px;font-weight:800;color:'+(c||IN)+'">'+v+'</div>'+(sub?'<div style="font-size:11px;color:'+MU+'">'+sub+'</div>':'')+'</div>';};
   var fcard=function(lbl,arr,col){var m=proy(arr);return '<div style="flex:1;min-width:150px;background:'+C_+';border:1px solid '+LN+';border-top:3px solid '+col+';border-radius:10px;padding:12px 14px"><div style="font-size:12px;font-weight:700;color:'+col+'">'+lbl+' ('+arr.length+')</div><div style="font-size:18px;font-weight:800;margin-top:4px;color:'+IN+'">'+_u(m)+'</div><div style="font-size:11px;color:'+MU+'">'+(meta>0?(m/meta*100).toFixed(0)+'% de la meta':'')+'</div></div>';};
   var th=function(x){return '<th style="text-align:left;padding:5px 8px;color:'+MU+';font-size:10px;text-transform:uppercase;border-bottom:2px solid '+LN+'">'+x+'</th>';};
-  var h='';
+  var h='<span data-v6 hidden></span>';   // marcador barato: el healer detecta v6 sin reflow
   h+='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px"><div><h2 style="margin:0;color:'+IN+'">💰 Valorización · Agosto 2026</h2><p style="color:'+MU+';font-size:12px;margin-top:3px">'+L.length+' líneas · '+C.length+' cuentas por cobrar · fuente: Supabase</p></div><div style="display:flex;gap:6px"><button class="btn" onclick="W._valRefresh()">🔄 Actualizar</button><button class="btn primary" onclick="W._valImport()">📁 Importar Excel</button></div></div>';
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+kpi('Meta a cerrar',_u(meta),'#0d6efd',L.length+' valorizaciones')+kpi('Avanzado',_u(avanzado),'#16a34a',pctAv.toFixed(0)+'% (Valorizado + Presentado)')+kpi('Pendiente',_u(pendMonto),'#e67e22',(100-pctAv).toFixed(0)+'% de la meta')+kpi('Por cobrar',_u(saldoTot),'#c1272d',venc.length+' vencidas (+90d) · '+_u(saldoVenc))+'</div>';
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+fcard('Valorizado',val,'#16a34a')+fcard('Presentado',pre,'#e67e22')+fcard('Pendiente',pen,'#c1272d')+'</div>';
@@ -15590,7 +15590,22 @@ function _valRegister(){
 }
 _valRegister();
 [0,300,1000,2500,5000].forEach(function(ms){ setTimeout(_valRegister,ms); });
-/* (Sin setInterval: el dispatch es por el wrap de showView + el registro. Cero jank.) */
+/* Healer BARATO y seguro: sólo actúa cuando valorización es la vista activa
+   (body.dataset.pmoView, que setea el router) y aún no está mi v6 (marcador
+   [data-v6], detectado con querySelector — NO innerText/offsetParent, así que
+   no fuerza reflow → sin jank). _render es one-shot bounded → no puede colgar.
+   Cuando no estás en valorización, el tick es un solo read de dataset (nulo). */
+if(!W._valHealer){
+  W._valHealer=setInterval(function(){
+    try{
+      if(document.body && document.body.dataset.pmoView!=='valorizacion') return;
+      var el=document.getElementById('v-valorizacion');
+      if(!el || el.querySelector('[data-v6]')) return;   // ya es v6
+      if(VS.loading) return;
+      _render();
+    }catch(e){}
+  },1000);
+}
 console.log('%c✅ Valorización v6 · Supabase (fuente única)','background:#0D9488;color:#fff;padding:3px 12px;border-radius:6px;font-size:11px');
 })(window);
 </script>
