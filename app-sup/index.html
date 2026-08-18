@@ -4482,6 +4482,10 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
                       style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);font-family:inherit">
                 <option value="">Todas las categorías</option>
               </select>
+              <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);cursor:pointer;user-select:none" title="Solo partidas de instalación / mano de obra">
+                <input type="checkbox" id="costos-solo-lic" onchange="renderCostos()" style="width:14px;height:14px;accent-color:#d97706;cursor:pointer">
+                🔨 Solo licitables
+              </label>
               <button class="btn btn-outline btn-sm" onclick="toggleCostoExpandAll()" title="Expandir/colapsar todas las partidas">⇕ Expandir todo</button>
               <button class="btn btn-outline btn-sm" onclick="loadCostos(true)" title="Refrescar desde Supabase">⟳</button>
             </div>
@@ -4551,10 +4555,12 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 
           <!-- STEP 2: Preview -->
           <div id="imp-pres-step2" class="hidden">
-            <div class="kpi-grid" id="imp-pres-summary" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px"></div>
+            <div class="kpi-grid" id="imp-pres-summary" style="grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px"></div>
+
+            <div id="imp-pres-avisos"></div>
 
             <div style="padding:10px 14px;border-radius:var(--r);background:var(--surface-2);border:1px solid var(--border);font-size:12px;margin-bottom:12px;color:var(--text-2)">
-              Revisá cada partida. Podés cambiar la <b>categoría</b> del dropdown si el sistema clasificó mal. Cuando estés OK, dale <b>Importar</b>.
+              Revisá cada partida. Podés cambiar la <b>categoría</b> y marcar/desmarcar si va a <b>licitación</b> (todo lo que sea instalación o mano de obra se marca solo). Cuando estés OK, dale <b>Importar</b>.
             </div>
 
             <div style="border:1px solid var(--border);border-radius:var(--r);overflow:auto;max-height:55vh;background:var(--surface)">
@@ -4570,6 +4576,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
                     <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700;text-align:right">Margen</th>
                     <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700;text-align:right">Venta Total</th>
                     <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700">Categoría</th>
+                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700;text-align:center">Licitación</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -13301,6 +13308,7 @@ let _dashSources = null;
 
   // ── Estado del importador ────────────────────────────────────────
   let _impRows = [];          // partidas parseadas (editables)
+  let _impMeta = null;        // meta del parseo (totales del Excel, factores, avisos)
   let _impBatch = '';
 
   const CATS = ['equipo','materiales','infraestructura','instalacion','tuberia','electrico','pem','gastos_generales','staff','otro'];
@@ -13315,8 +13323,48 @@ let _dashSources = null;
     gastos_generales:'#9333ea', staff:'#0891b2', otro:'#64748b'
   };
 
-  // ── Clasificador heurístico ──────────────────────────────────────
-  function classifyPartida(descripcion, hoja, subcat){
+  // ══════════════════════════════════════════════════════════════════
+  // MOTOR DE LECTURA DE CUADROS DE COSTO  ·  multi-formato
+  // ------------------------------------------------------------------
+  // Soporta:
+  //  · Formato "clásico": una sola columna de descripción, sub-detalles
+  //    prefijados con "-" (RESUMEN de DANPER, BOMAREA, AGROBERRIES…).
+  //  · Formato "por sangría": la jerarquía se expresa corriendo la
+  //    descripción una columna a la derecha (nivel 1 en D, nivel 2 en E)
+  //    + columnas-marca COMPRA / SERVICIO (Propuesta Económica R5).
+  // Regla de negocio: todo lo que sea INSTALACIÓN / MANO DE OBRA /
+  // MONTAJE va a licitación (se ejecuta con contrata).
+  // ══════════════════════════════════════════════════════════════════
+
+  // Palabras que delatan trabajo de contrata
+  const RE_LICITACION = /(instalaci[oó]n|instalacion|instalar|mano\s*de\s*obra|\bm\.?\s*o\.?\b|montaje|desmontaje|desmantel|tendido|soldadura|soldador|habilitaci[oó]n|prefabricad)/i;
+  // Materiales COMPRADOS *para* una instalación: nombran "instalación" pero no se licitan
+  const RE_MATERIAL_PARA = /^(kit|suministro\s+de|suministros\s+de|materiales?|accesorios|perfiles|repuestos)\b/i;
+  const RE_PARA_INSTALAR = /\bpara\s+(la\s+|el\s+)?(instalaci[oó]n|montaje|soldar)/i;
+  // Servicios que ejecuta FrioPacking (staff / logística): NO se licitan
+  const RE_NO_LICITA = /(supervisor|prevension|prevencion|residente|jefe\s+de\s+obra|vi[aá]tico|transporte|flete|desaduanaje|caseta|movilidad|hospedaje|combustible|\bepp\b|\bsctr\b|examen\s+m[eé]d|gastos\s+generales|seguro|garant[ií]a|ingenier[ií]a\s+de\s+detalle)/i;
+
+  function esTextoLicitable(t){
+    const s = String(t||'').replace(/^[-•\s]+/, '').trim();
+    if(!s || RE_NO_LICITA.test(s)) return false;
+    if(!RE_LICITACION.test(s)) return false;
+    if(RE_PARA_INSTALAR.test(s)) return false;
+    if(RE_MATERIAL_PARA.test(s) && !/^suministro\s+e\s+instalaci/i.test(s)) return false;
+    return true;
+  }
+  // "Suministro e instalación de X" en una sola línea: sabemos que hay
+  // licitación adentro, pero no cuánto. No inventamos el monto.
+  function esMixtoIndeterminado(t){
+    const s = String(t||'').replace(/^[-•\s]+/, '').trim();
+    return /suministro/i.test(s) && RE_LICITACION.test(s) && !RE_PARA_INSTALAR.test(s);
+  }
+
+  const RE_TITULO_SECCION = /^(suministro|servicio|servicios|instalaci[oó]n|instalacion|materiales|mano de obra|equipos|obra civil)\s*\.?$/i;
+  const RE_SUBTOTAL      = /^(inversi[oó]n|sub\s*total|subtotal|total\b|descuento|precio\s+total)/i;
+  const RE_GRAN_TOTAL    = /^(inversi[oó]n|inversion|precio|total)\s+(total|final|estimad[oa]s?\s+total|general|de\s+venta\s+total)/i;
+
+  // ── Clasificador heurístico de categoría ─────────────────────────
+  function classifyPartida(descripcion, hoja, subcat, marca){
     const d = (descripcion||'').toLowerCase() + ' ' + (subcat||'').toLowerCase();
     const h = (hoja||'').toLowerCase();
     const sub = (subcat||'').toLowerCase().trim();
@@ -13339,19 +13387,21 @@ let _dashSources = null;
     if(h.includes('tub') && (h.includes('cu') || h.includes('cobre') || h.includes('aislamiento'))) return 'tuberia';
     if(h.includes('material') && h.includes('electric')) return 'electrico';
 
-    if(hay('residente','supervis','viático','viatico','jefe de obra')) return 'staff';
-    if(hay('movilidad','epp','examen méd','examen med','sctr','combustible','hospedaje','alquiler de grúa','alquiler de grua','retiro de desechos')) return 'gastos_generales';
-    if(hay('puesta en marcha','pem','refrigerante','carga de gas','carga r507','carga nh3','prueba de presión','prueba de presion','prueba elect')) return 'pem';
+    if(hay('residente','supervis','viático','viatico','jefe de obra','prevension')) return 'staff';
+    if(hay('movilidad','epp','examen méd','examen med','sctr','combustible','hospedaje','alquiler de grúa','alquiler de grua','retiro de desechos','transporte de','caseta en obra','gastos generales')) return 'gastos_generales';
+    if(hay('puesta en marcha','puesto en marcha','pem','refrigerante','carga de gas','carga r507','carga nh3','prueba de presión','prueba de presion','prueba elect','presurizado')) return 'pem';
     if(hay('montaje','instalación','instalacion','mano de obra','soldadura','soldador','tendido')) return 'instalacion';
-    if(hay('tubería','tuberia','cobre','hdpe','ppr','fe.ne','fierro negro','aislamiento de tub')) return 'tuberia';
-    if(hay('cable','tablero','bandeja','sensor','solenoide','arrancador','contactor','rz1','disyuntor','luminaria','iluminación','iluminacion','termometría','termometria')) return 'electrico';
-    if(hay('panel','puerta','poliestireno','plancha','lona','cortina','aislamiento de pared','aislamiento de techo','alquitrán','alquitran','cumbrera','prepintad')) return 'infraestructura';
-    if(hay('compresor','condensador','evaporador','smartcold','bitzer','rack','chiller','bomba','tanque','intercambiador','unidad cond','gas cooler','desrecalentador','ventilador de túnel','ventilador de tunel','válvula de control','valvula de control','válvula nh3','valvula nh3','válvula glicol','valvula glicol')) return 'equipo';
+    if(hay('tubería','tuberia','cobre','hdpe','ppr','fe.ne','fierro negro','aislamiento de tub','armaflex')) return 'tuberia';
+    if(hay('cable','tablero','bandeja','sensor','solenoide','arrancador','contactor','rz1','disyuntor','luminaria','iluminación','iluminacion','termometría','termometria','interruptor')) return 'electrico';
+    if(hay('panel','puerta','poliestireno','plancha','lona','cortina','aislamiento de pared','aislamiento de techo','alquitrán','alquitran','cumbrera','prepintad','ventana','nivelador')) return 'infraestructura';
+    if(hay('compresor','condensador','evaporador','smartcold','bitzer','rack','chiller','bomba','tanque','intercambiador','unidad cond','gas cooler','desrecalentador','ventilador','válvula','valvula','batería','bateria')) return 'equipo';
 
+    if(marca === 'servicio') return 'instalacion';
+    if(marca === 'compra')   return 'materiales';
     return 'otro';
   }
 
-  // ── Parser del Excel ─────────────────────────────────────────────
+  // ── Detección de hojas ───────────────────────────────────────────
   function isSummarySheet(name){
     const n = (name||'').toLowerCase();
     return n.includes('resumen') || (n.includes('cuadro') && n.includes('precio'));
@@ -13368,8 +13418,12 @@ let _dashSources = null;
     }
     return -1;
   }
-  function locateColumns(headerRow){
-    const idx = {item:-1, desc:-1, unidad:-1, cant:-1, costo_u:-1, costo_t:-1, margen:-1, venta_u:-1, venta_t:-1};
+
+  // ── Ubicación de columnas ────────────────────────────────────────
+  function locateColumns(headerRow, subRow){
+    subRow = subRow || [];
+    const idx = {item:-1, desc:-1, unidad:-1, cant:-1, costo_u:-1, costo_t:-1,
+                 margen:-1, venta_u:-1, venta_t:-1, compra:-1, servicio:-1};
     // PASADA 1: matches estrictos (formato "Precio Costo" / "Precio Venta" con sub-cols)
     for(let c=0; c<headerRow.length; c++){
       const v = String(headerRow[c]||'').toLowerCase().trim();
@@ -13391,9 +13445,7 @@ let _dashSources = null;
         else if(idx.venta_t<0) idx.venta_t = c;
       }
     }
-    // PASADA 2: formato simplificado (hoja RESUMEN tipo BOMAREA)
-    // "Costo" solo (sin "precio") → costo_total directo
-    // "Inversión" / "Venta" solo → venta_total directo
+    // PASADA 2: formato simplificado ("Costo" / "Inversión" sin prefijo)
     for(let c=0; c<headerRow.length; c++){
       const v = String(headerRow[c]||'').toLowerCase().trim();
       if(!v) continue;
@@ -13403,6 +13455,15 @@ let _dashSources = null;
       if(idx.venta_u<0 && idx.venta_t<0 && (v==='inversión' || v==='inversion' || v==='venta' || v==='venta total' || v.startsWith('inversión us') || v.startsWith('inversion us') || v.startsWith('inversión $') || v.startsWith('venta us'))){
         idx.venta_t = c;
       }
+    }
+    // PASADA 3: columnas-marca COMPRA / SERVICIO (viven en la fila de sub-encabezado)
+    const wide = Math.max(headerRow.length, subRow.length);
+    for(let c=0; c<wide; c++){
+      const a = String(headerRow[c]||'').toLowerCase().trim();
+      const b = String(subRow[c]||'').toLowerCase().trim();
+      const lbl = (a+' '+b).trim();
+      if(idx.compra<0 && (lbl==='compra'||lbl==='compras'||lbl==='suministro'||lbl==='suministros')) idx.compra = c;
+      if(idx.servicio<0 && (lbl==='servicio'||lbl==='servicios'||lbl==='mano de obra'||lbl==='m.o.'||lbl==='mo')) idx.servicio = c;
     }
     return idx;
   }
@@ -13423,6 +13484,16 @@ let _dashSources = null;
     }
     return idx;
   }
+  // Banda de descripción: de la col "Descripción" hasta justo antes de la
+  // siguiente columna reconocida. Si mide más de 1 col, la hoja usa sangría.
+  function descBand(idx){
+    const others = [idx.unidad, idx.cant, idx.costo_u, idx.costo_t, idx.margen,
+                    idx.venta_u, idx.venta_t, idx.compra, idx.servicio]
+                   .filter(c => c>=0 && c>idx.desc);
+    const end = others.length ? Math.min(...others) - 1 : idx.desc;
+    return { start: idx.desc, end: Math.max(end, idx.desc) };
+  }
+
   function _num(v){
     if(v===null||v===undefined||v==='') return null;
     if(typeof v === 'number') return isFinite(v)? v : null;
@@ -13430,106 +13501,260 @@ let _dashSources = null;
     const n = parseFloat(s);
     return isNaN(n)? null : n;
   }
+  function _txt(v){ return (v===null||v===undefined)? '' : String(v).trim(); }
+  function _itemCode(v){
+    // Excel guarda "1.2" como float → evita items tipo 1.2000000000000002
+    if(typeof v === 'number') return String(parseFloat(v.toFixed(4)));
+    return _txt(v);
+  }
+  function isItemCode(v){
+    if(typeof v === 'number') return true;
+    const s = String(v).trim();
+    if(!s) return false;
+    if(/^[A-Za-z]$/.test(s)) return true;
+    return /^\d+(\.\d+)*\.?$/.test(s);
+  }
+
   // ── Detectar tipo de componente (sub-detalle) ──
-  function detectarTipoComponente(desc){
+  function detectarTipoComponente(desc, marca){
+    if(marca === 'servicio') return RE_NO_LICITA.test(desc||'') ? 'servicio_propio' : 'mano_de_obra';
+    if(marca === 'compra')   return 'materiales';
     const d = (desc||'').toLowerCase().replace(/\.$/,'').trim();
     if(d === 'materiales' || d.startsWith('material')) return 'materiales';
     if(d === 'mano de obra' || d.startsWith('mano de obra')) return 'mano_de_obra';
+    if(esTextoLicitable(d)) return 'mano_de_obra';
     return 'componente';  // equipo físico u otro sub-item
+  }
+
+  // ═════════════════ MOTOR ═════════════════
+  function parseRows(rows, sheetName){
+    const headerIdx = findHeaderRow(rows);
+    if(headerIdx < 0) return { partidas:[], meta:{ hoja:sheetName, error:'sin encabezado' } };
+    let idx = locateColumns(rows[headerIdx], rows[headerIdx+1] || []);
+    idx = refineColumns(rows, headerIdx, idx);
+    if(idx.desc < 0) return { partidas:[], meta:{ hoja:sheetName, error:'sin columna descripción' } };
+
+    const band = descBand(idx);
+    const hasMarkers = (idx.compra >= 0 || idx.servicio >= 0);
+    const jerarquiaPorColumna = (band.end > band.start);
+    const moneyKey = (idx.venta_t >= 0) ? 'venta_total' : 'costo_total';
+
+    const roots = [];
+    const stack = [];
+    let lastComercial = null, currentBlock = null;
+    let granTotal = null, descuento = null;
+
+    function pushNode(node){
+      while(stack.length && stack[stack.length-1].level >= node.level) stack.pop();
+      const parent = stack.length ? stack[stack.length-1] : null;
+      if(parent) parent.hijos.push(node); else roots.push(node);
+      stack.push(node);
+      return node;
+    }
+
+    const from = (idx.item>=0) ? Math.min(idx.item, band.start) : band.start;
+
+    for(let i = headerIdx + 2; i < rows.length; i++){
+      const r = rows[i] || [];
+
+      // ── item + descripción dentro de la banda ──
+      let item = null, desc = '', descCol = -1;
+      for(let c = from; c <= band.end; c++){
+        const v = r[c];
+        if(v === '' || v === null || v === undefined) continue;
+        if(item === null && desc === '' && isItemCode(v)){ item = _itemCode(v); continue; }
+        desc = _txt(v); descCol = c; break;
+      }
+      if(!desc) continue;
+
+      const dlow = desc.toLowerCase();
+      const cantidad    = _num(r[idx.cant]);
+      const costo_unit  = _num(r[idx.costo_u]);
+      const costo_total = _num(r[idx.costo_t]);
+      const venta_unit  = _num(r[idx.venta_u]);
+      const venta_total = _num(r[idx.venta_t]);
+      const margen      = _num(r[idx.margen]);
+      let marca = null;
+      if(idx.compra   >= 0 && _txt(r[idx.compra]))   marca = 'compra';
+      if(idx.servicio >= 0 && _txt(r[idx.servicio])) marca = 'servicio';
+
+      // ── totales y subtotales: nunca son partidas ──
+      if(RE_SUBTOTAL.test(dlow)){
+        if(/^descuento/i.test(dlow)){
+          descuento = (venta_total != null ? venta_total : costo_total);
+          continue;
+        }
+        if(RE_GRAN_TOTAL.test(dlow)){
+          const gt = (venta_total != null ? venta_total : costo_total);
+          if(gt != null && (granTotal === null || gt > granTotal)) granTotal = gt;
+          continue;
+        }
+        // Subtotal de bloque: "Inversión por equipos de frío para 3 túneles"
+        if(currentBlock){
+          (currentBlock.subtotales = currentBlock.subtotales || []).push({
+            cant: cantidad, venta: venta_total, costo: costo_total, texto: desc
+          });
+        }
+        continue;
+      }
+
+      // ── títulos de sección sin plata ("Suministro.", "Instalación.") ──
+      const sinPlata = !costo_total && !venta_total && !costo_unit && !venta_unit;
+      if(RE_TITULO_SECCION.test(desc) && sinPlata && !marca && !item) continue;
+
+      const depth = Math.max(0, descCol - band.start);
+      const tieneMoney = ((moneyKey === 'venta_total' ? venta_total : costo_total) || 0) !== 0;
+
+      const node = {
+        item: item,
+        descripcion: desc.replace(/^[-•\s]+/, '').trim(),
+        unidad: _txt(r[idx.unidad]) || null,
+        cantidad, costo_unit, costo_total, venta_unit, venta_total,
+        margen_pct: margen, marca: marca, fila: i+1,
+        hijos: [], detalle: []
+      };
+
+      if(item){
+        node.level = depth;
+        pushNode(node);
+        lastComercial = node;
+        if(depth === 0) currentBlock = node;
+        continue;
+      }
+
+      // Sin ítem: ¿es una línea comercial (se vende) o el desglose interno de la anterior?
+      const esComercial = !!marca || tieneMoney ||
+                          (!hasMarkers && !jerarquiaPorColumna && /^[-•]/.test(desc));
+      if(esComercial){
+        node.level = depth + 1;
+        pushNode(node);
+        lastComercial = node;
+      } else {
+        const host = lastComercial || (stack.length ? stack[stack.length-1] : null);
+        if(host) host.detalle.push({
+          descripcion: node.descripcion, unidad: node.unidad, cantidad,
+          costo_unit, costo_total, venta_unit, venta_total, margen_pct: margen
+        });
+      }
+    }
+
+    // ── consolidar plata de abajo hacia arriba ──
+    function consolidar(n){
+      n.hijos.forEach(consolidar);
+      const detCosto = n.detalle.reduce((a,d) => a + (d.costo_total||0), 0);
+      const detVenta = n.detalle.reduce((a,d) => a + (d.venta_total||0), 0);
+      if(!n.costo_total && detCosto) n.costo_total = detCosto;
+      if(!n.venta_total && detVenta) n.venta_total = detVenta;
+      const hCosto = n.hijos.reduce((a,h) => a + (h.costo_total||0), 0);
+      const hVenta = n.hijos.reduce((a,h) => a + (h.venta_total||0), 0);
+      if(!n.costo_total && hCosto) n.costo_total = hCosto;
+      if(!n.venta_total && hVenta) n.venta_total = hVenta;
+    }
+    roots.forEach(consolidar);
+
+    // ── factor de repetición por bloque (×3 túneles, ×2 cámaras…) ──
+    // Solo se aplica si el subtotal del Excel confirma la multiplicación.
+    const factores = [];
+    roots.forEach(b => {
+      b.factor = 1;
+      if(!b.subtotales || !b.subtotales.length) return;
+      const sumaHijos = b.hijos.reduce((a,h) => a + (h.venta_total||0), 0) || b.venta_total || 0;
+      const last = b.subtotales[b.subtotales.length-1];
+      const f = last.cant || 1;
+      if(f > 1 && sumaHijos > 0 && last.venta &&
+         Math.abs(last.venta - sumaHijos * f) <= 0.01 * Math.abs(last.venta)){
+        b.factor = f;
+        factores.push({ bloque: b.descripcion, factor: f, total: last.venta });
+      }
+    });
+
+    // ── aplanar a partidas ──
+    const partidas = [];
+    function recolectar(n, bloque, factor){
+      const conItem = n.hijos.filter(h => !!h.item);
+      if(conItem.length){
+        conItem.forEach(h => recolectar(h, bloque || n, factor));
+        return;
+      }
+      const comps = n.hijos.map(h => {
+        const tipo = detectarTipoComponente(h.descripcion, h.marca);
+        const lic  = !RE_NO_LICITA.test(h.descripcion||'') &&
+                     ((h.marca === 'servicio') || tipo === 'mano_de_obra' || esTextoLicitable(h.descripcion));
+        const ind  = lic && !h.marca && esMixtoIndeterminado(h.descripcion);
+        return {
+          tipo, descripcion: h.descripcion, unidad: h.unidad,
+          cantidad: h.cantidad, costo_unit: h.costo_unit, costo_total: h.costo_total,
+          margen_pct: h.margen_pct, venta_unit: h.venta_unit, venta_total: h.venta_total,
+          marca: h.marca || null, es_licitacion: !!lic, licitacion_indeterminada: !!ind,
+          detalle: (h.detalle && h.detalle.length) ? h.detalle : undefined
+        };
+      });
+
+      const propioLic = !RE_NO_LICITA.test(n.descripcion||'') &&
+                        ((n.marca === 'servicio') || esTextoLicitable(n.descripcion));
+      let montoLic = comps.reduce((a,c) =>
+        a + ((c.es_licitacion && !c.licitacion_indeterminada) ? (c.venta_total||0) : 0), 0);
+      const hayMezcla = comps.some(c => c.es_licitacion) && comps.some(c => !c.es_licitacion);
+      let indeterminada = false;
+      if(montoLic === 0 && (comps.some(c => c.licitacion_indeterminada) ||
+                            (propioLic && esMixtoIndeterminado(n.descripcion)))){
+        indeterminada = true;
+      } else if(propioLic && montoLic === 0){
+        // La partida misma es instalación / mano de obra y ningún componente
+        // separa el monto → se licita completa.
+        montoLic = n.venta_total || 0;
+      }
+      let tipoSum = indeterminada            ? 'mixto'
+                  : n.marca === 'servicio'   ? 'servicio'
+                  : n.marca === 'compra'     ? 'compra'
+                  : hayMezcla                ? 'mixto'
+                  : (comps.length && comps.every(c => c.es_licitacion)) ? 'servicio'
+                  : comps.length             ? 'compra'
+                  : (propioLic ? 'servicio' : 'compra');
+      // Una partida que va a licitación nunca se rotula "compra"
+      if(tipoSum === 'compra' && (propioLic || montoLic > 0 || indeterminada)){
+        tipoSum = propioLic ? 'servicio' : 'mixto';
+      }
+
+      partidas.push({
+        item: n.item || null,
+        descripcion: n.descripcion,
+        subcategoria: (bloque && bloque !== n) ? bloque.descripcion : null,
+        unidad: n.unidad,
+        cantidad: n.cantidad != null ? n.cantidad * factor : null,
+        costo_unit: n.costo_unit,
+        costo_total: n.costo_total != null ? n.costo_total * factor : null,
+        margen_pct: n.margen_pct,
+        venta_unit: n.venta_unit,
+        venta_total: n.venta_total != null ? n.venta_total * factor : null,
+        factor_bloque: factor,
+        hoja_origen: sheetName,
+        componentes: comps,
+        es_licitacion: !!(propioLic || montoLic > 0 || indeterminada),
+        licitacion_indeterminada: indeterminada,
+        tipo_suministro: tipoSum,
+        monto_licitacion: montoLic * factor,
+        categoria: classifyPartida(n.descripcion, sheetName, bloque ? bloque.descripcion : null, n.marca)
+      });
+    }
+    roots.forEach(b => recolectar(b, b, b.factor || 1));
+
+    const conPlata = partidas.filter(p => (p.costo_total||0) > 0 || (p.venta_total||0) > 0);
+
+    return {
+      partidas: conPlata,
+      meta: { hoja: sheetName, headerIdx, idx, band, hasMarkers, jerarquiaPorColumna,
+              granTotal, descuento, factores }
+    };
   }
 
   function parseSheet(wb, sheetName){
     const ws = wb.Sheets[sheetName];
-    if(!ws) return [];
+    if(!ws) return { partidas:[], meta:{ hoja:sheetName, error:'hoja vacía' } };
     const rows = window.XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
-    const headerIdx = findHeaderRow(rows);
-    if(headerIdx < 0) return [];
-    let idx = locateColumns(rows[headerIdx]);
-    idx = refineColumns(rows, headerIdx, idx);
-    if(idx.desc < 0) return [];
-
-    const out = [];
-    let currentPartida = null;  // partida nivel 1 en construcción
-
-    for(let i = headerIdx + 2; i < rows.length; i++){
-      const r = rows[i] || [];
-      const desc = String(r[idx.desc]||'').trim();
-      if(!desc) continue;
-      const dlow = desc.toLowerCase();
-      if(dlow.startsWith('inversión total') || dlow.startsWith('inversion total') || dlow === 'total') break;
-      if(dlow.startsWith('sub total') || dlow.startsWith('subtotal')) continue;
-
-      // Leer ITEM crudo (string trimeado, vacío si no hay)
-      let itemRaw = '';
-      if(idx.item >= 0){
-        const v = r[idx.item];
-        if(v !== '' && v !== null && v !== undefined){
-          itemRaw = String(v).trim();
-        }
-      }
-
-      const cantidad = _num(r[idx.cant]);
-      const costo_unit = _num(r[idx.costo_u]);
-      const costo_total = _num(r[idx.costo_t]);
-      const venta_unit = _num(r[idx.venta_u]);
-      const venta_total = _num(r[idx.venta_t]);
-      const margen = _num(r[idx.margen]);
-
-      if(itemRaw){
-        // ─── ES UNA PARTIDA NIVEL 1 (tiene ITEM numerado) ───
-        // Cerrar la partida anterior antes de abrir la nueva
-        if(currentPartida) out.push(currentPartida);
-        currentPartida = {
-          item: itemRaw,
-          descripcion: desc,
-          unidad: String(r[idx.unidad]||'').trim() || null,
-          cantidad,
-          costo_unit,
-          costo_total,
-          margen_pct: margen,
-          venta_unit,
-          venta_total,
-          hoja_origen: sheetName,
-          subcategoria: null,
-          componentes: [],
-          categoria: classifyPartida(desc, sheetName, null)
-        };
-      } else if(desc.startsWith('-') || desc.startsWith('•')){
-        // ─── ES UN SUB-DETALLE de la partida actual ───
-        if(currentPartida){
-          const cleanDesc = desc.replace(/^[-•\s]+/, '').trim();
-          currentPartida.componentes.push({
-            tipo: detectarTipoComponente(cleanDesc),
-            descripcion: cleanDesc,
-            unidad: String(r[idx.unidad]||'').trim() || null,
-            cantidad,
-            costo_unit,
-            costo_total,
-            margen_pct: margen,
-            venta_unit,
-            venta_total
-          });
-        }
-        // si no hay partida actual, lo ignoramos (es un sub-detalle huérfano)
-      }
-      // else: descripción sin ITEM y sin "-" → probablemente título de sección o nota → skip
-    }
-
-    // Cerrar última partida
-    if(currentPartida) out.push(currentPartida);
-
-    // Filtrar: solo guardar partidas que tienen $ propio O sus componentes tienen $
-    return out.filter(p => {
-      const ownMoney = (p.costo_total||0) > 0 || (p.venta_total||0) > 0;
-      const compMoney = p.componentes.some(c => (c.costo_total||0) > 0 || (c.venta_total||0) > 0);
-      // Si no tiene $ propio pero sí en componentes, sumar al total de la partida (consolidación)
-      if(!ownMoney && compMoney){
-        p.costo_total = p.componentes.reduce((a,c) => a + (c.costo_total||0), 0) || null;
-        p.venta_total = p.componentes.reduce((a,c) => a + (c.venta_total||0), 0) || null;
-      }
-      return ownMoney || compMoney;
-    });
+    return parseRows(rows, sheetName);
   }
+
   function parseWorkbook(wb){
     const summarySheets = wb.SheetNames.filter(isSummarySheet);
 
@@ -13545,23 +13770,42 @@ let _dashSources = null;
     //   - Si hay SUMMARY (RESUMEN) → usar SUMMARY (es el consolidado real,
     //     incluye flete/desaduanaje/overhead que las hojas detalle ignoran)
     //   - Si NO hay SUMMARY → fallback a hojas detalle
-    let result = [];
+    let partidas = [];
+    let metas = [];
     let strategy = '';
+    const warnings = [];
+
+    const correr = (hojas) => {
+      hojas.forEach(sn => {
+        const res = parseSheet(wb, sn);
+        if(res.partidas.length) metas.push(res.meta);
+        partidas.push(...res.partidas);
+      });
+    };
+
     if(summarySheets.length){
       strategy = 'summary-only (RESUMEN tiene el consolidado real)';
-      summarySheets.forEach(sn => result.push(...parseSheet(wb, sn)));
-      // Si el summary devolvió 0 partidas con datos monetarios, fallback a detalle
-      const tieneDinero = result.some(r => (r.costo_total||0) > 0 || (r.venta_total||0) > 0);
+      correr(summarySheets);
+      const tieneDinero = partidas.some(r => (r.costo_total||0) > 0 || (r.venta_total||0) > 0);
       if(!tieneDinero && detailSheets.length){
         strategy = 'fallback: summary sin $ → uso hojas detalle';
-        result = [];
-        detailSheets.forEach(sn => result.push(...parseSheet(wb, sn)));
+        partidas = []; metas = [];
+        correr(detailSheets);
       }
     } else {
       strategy = 'detail-only (no hay summary)';
-      detailSheets.forEach(sn => result.push(...parseSheet(wb, sn)));
+      correr(detailSheets);
     }
-    return result;
+
+    const hojasUsadas = metas.map(m => m.hoja);
+    if(hojasUsadas.length > 1){
+      warnings.push(`Se leyeron ${hojasUsadas.length} hojas resumen (${hojasUsadas.join(', ')}) y se sumaron entre sí. Si una es un sub-cuadro de la otra, el total queda inflado.`);
+    }
+    const granTotal = metas.reduce((a,m) => (m.granTotal||0) > a ? m.granTotal : a, 0) || null;
+    const descuento = metas.reduce((a,m) => a + (m.descuento||0), 0) || null;
+    const factores  = metas.reduce((a,m) => a.concat(m.factores||[]), []);
+
+    return { partidas, meta:{ strategy, hojasUsadas, warnings, granTotal, descuento, factores } };
   }
 
   // ── Formateadores ────────────────────────────────────────────────
@@ -13600,6 +13844,7 @@ let _dashSources = null;
   }
   window.impPresReset = function(){
     _impRows = [];
+    _impMeta = null;
     const fi = document.getElementById('imp-pres-file');
     if(fi) fi.value = '';
     impPresStep(1);
@@ -13623,12 +13868,14 @@ let _dashSources = null;
     reader.onload = (e) => {
       try{
         const wb = window.XLSX.read(e.target.result, {type:'array'});
-        const rows = parseWorkbook(wb);
+        const parsed = parseWorkbook(wb);
+        const rows = parsed.partidas || [];
         if(!rows.length){
-          try{ window.showToast('No se encontraron partidas. Revisá la hoja Resumen de Cuadro de Precio.','5000','warn'); }catch(e){}
+          try{ window.showToast('No se encontraron partidas. Revisá la hoja Resumen / Presupuesto del Excel.','5000','warn'); }catch(e){}
           return;
         }
         _impRows = rows;
+        _impMeta = parsed.meta || null;
         _impBatch = 'pres_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
         renderPreview();
         impPresStep(2);
@@ -13642,9 +13889,14 @@ let _dashSources = null;
   }
 
   // ── Preview render ───────────────────────────────────────────────
+  const LIC_LBL = { compra:'Compra', servicio:'Servicio', mixto:'Mixto' };
+  const LIC_COL = { compra:'#0d9488', servicio:'#d97706', mixto:'#7c3aed' };
+
   function renderPreview(){
     const tot_costo = _impRows.reduce((a,r) => a + (r.costo_total||0), 0);
     const tot_venta = _impRows.reduce((a,r) => a + (r.venta_total||0), 0);
+    const tot_lic   = _impRows.reduce((a,r) => a + (r.es_licitacion ? (r.monto_licitacion||0) : 0), 0);
+    const n_lic     = _impRows.filter(r => r.es_licitacion).length;
     const margen = tot_venta > 0 ? (tot_venta - tot_costo) / tot_venta : 0;
 
     document.getElementById('imp-pres-summary').innerHTML = `
@@ -13652,16 +13904,54 @@ let _dashSources = null;
       <div class="kpi-card"><div class="kpi-lbl">Costo Comercial</div><div class="kpi-val">${fmtMoney(tot_costo)}</div></div>
       <div class="kpi-card"><div class="kpi-lbl">Venta Comercial</div><div class="kpi-val">${fmtMoney(tot_venta)}</div></div>
       <div class="kpi-card"><div class="kpi-lbl">Margen Comercial</div><div class="kpi-val">${fmtPct(margen)}</div></div>
+      <div class="kpi-card">
+        <div class="kpi-lbl">A licitar</div>
+        <div class="kpi-val" style="color:#d97706">${fmtMoney(tot_lic)}</div>
+        <div style="font-size:10px;color:var(--text-3);margin-top:3px">${n_lic} partidas · ${tot_venta?fmtPct(tot_lic/tot_venta):'—'} de la venta</div>
+      </div>
     `;
 
+    // ── Avisos: cuadre contra el total del Excel + multiplicadores ──
+    const av = [];
+    const m = _impMeta || {};
+    if(m.granTotal){
+      const dif = tot_venta - m.granTotal;
+      const ok = Math.abs(dif) <= Math.max(1, 0.005 * m.granTotal);
+      av.push(`<div style="padding:10px 14px;border-radius:var(--r);margin-bottom:10px;font-size:12px;
+        background:${ok?'var(--success-bg)':'var(--warning-bg,#fff7ed)'};border:1px solid ${ok?'var(--success-2)':'#fdba74'};
+        color:${ok?'var(--success)':'#b45309'}">
+        ${ok?'✓':'⚠'} <b>Cuadre con el Excel:</b> partidas leídas ${fmtMoney(tot_venta)} vs. total del cuadro ${fmtMoney(m.granTotal)}
+        ${ok?'· coincide.':`· diferencia de <b>${fmtMoney(dif)}</b>. Revisá si hay filas fuera del rango leído.`}
+        ${m.descuento?` <span style="opacity:.85">(el Excel además aplica un descuento de ${fmtMoney(m.descuento)})</span>`:''}
+      </div>`);
+    }
+    if(m.factores && m.factores.length){
+      av.push(`<div style="padding:10px 14px;border-radius:var(--r);margin-bottom:10px;font-size:12px;
+        background:var(--surface-2);border:1px solid var(--border);color:var(--text-2)">
+        <b>Bloques repetidos detectados:</b> ${m.factores.map(f => `${escapeHtml(String(f.bloque).slice(0,46))} <b>×${f.factor}</b>`).join(' · ')}.
+        Las cantidades y los montos de esas partidas ya vienen multiplicados.
+      </div>`);
+    }
+    (m.warnings||[]).forEach(w => {
+      av.push(`<div style="padding:10px 14px;border-radius:var(--r);margin-bottom:10px;font-size:12px;
+        background:var(--warning-bg,#fff7ed);border:1px solid #fdba74;color:#b45309">⚠ ${escapeHtml(w)}</div>`);
+    });
+    const avEl = document.getElementById('imp-pres-avisos');
+    if(avEl) avEl.innerHTML = av.join('');
+
     const tbody = document.querySelector('#imp-pres-table tbody');
-    tbody.innerHTML = _impRows.map((r,i) => `
+    tbody.innerHTML = _impRows.map((r,i) => {
+      const nComp = (r.componentes||[]).length;
+      const tSum  = r.tipo_suministro || 'compra';
+      return `
       <tr style="border-bottom:1px solid var(--border)">
         <td style="padding:7px 10px;font-size:11px;color:var(--text-3);vertical-align:top">${r.item||''}</td>
         <td style="padding:7px 10px;vertical-align:top">
           <div style="font-weight:500;color:var(--text)">${escapeHtml(r.descripcion)}</div>
           ${r.subcategoria?`<div style="font-size:10px;color:var(--text-3);margin-top:2px">↳ ${escapeHtml(r.subcategoria)}</div>`:''}
-          <div style="font-size:9px;color:var(--text-3);margin-top:3px">📄 ${escapeHtml(r.hoja_origen)}</div>
+          <div style="font-size:9px;color:var(--text-3);margin-top:3px">
+            📄 ${escapeHtml(r.hoja_origen)}${nComp?` · ${nComp} componente${nComp!==1?'s':''}`:''}${(r.factor_bloque||1)>1?` · <b>×${r.factor_bloque}</b>`:''}
+          </div>
         </td>
         <td style="padding:7px 10px;font-size:11px;vertical-align:top">${r.unidad||'—'}</td>
         <td style="padding:7px 10px;text-align:right;font-variant-numeric:tabular-nums;vertical-align:top">${fmtNum(r.cantidad)}</td>
@@ -13675,11 +13965,21 @@ let _dashSources = null;
             ${CATS.map(c => `<option value="${c}" ${c===r.categoria?'selected':''}>${CAT_LABELS[c]}</option>`).join('')}
           </select>
         </td>
+        <td style="padding:7px 10px;vertical-align:top;text-align:center">
+          <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
+            <input type="checkbox" ${r.es_licitacion?'checked':''} onchange="impPresToggleLic(${i}, this.checked)"
+                   style="width:14px;height:14px;accent-color:#d97706;cursor:pointer">
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;color:${LIC_COL[tSum]||'var(--text-3)'}">${LIC_LBL[tSum]||tSum}</span>
+          </label>
+          <div id="imp-lic-monto-${i}" style="font-size:10px;color:var(--text-3);margin-top:2px;font-variant-numeric:tabular-nums">
+            ${r.es_licitacion ? (r.licitacion_indeterminada ? 'monto s/desglose' : fmtMoney(r.monto_licitacion)) : '—'}
+          </div>
+        </td>
       </tr>
-    `).join('');
+    `;}).join('');
 
     document.getElementById('imp-pres-foot').textContent =
-      `Proyecto: ${currentProyecto.nombre} · Batch: ${_impBatch.slice(-8)} · ${_impRows.length} partidas`;
+      `Proyecto: ${currentProyecto.nombre} · Batch: ${_impBatch.slice(-8)} · ${_impRows.length} partidas · ${n_lic} a licitar`;
   }
 
   function escapeHtml(s){
@@ -13692,6 +13992,24 @@ let _dashSources = null;
       const sel = document.querySelector(`select.imp-cat-sel[data-row="${i}"]`);
       if(sel) sel.style.color = CAT_COLORS[v] || 'var(--text)';
     }
+  };
+
+  // Marcar/desmarcar a mano una partida como licitable
+  window.impPresToggleLic = function(i, checked){
+    const r = _impRows[i];
+    if(!r) return;
+    // guardamos el monto que detectó el parser para poder restaurarlo
+    if(r._montoAuto === undefined) r._montoAuto = r.monto_licitacion || 0;
+    r.es_licitacion = !!checked;
+    if(!checked){
+      r.monto_licitacion = 0;
+    } else if(r._montoAuto > 0){
+      r.monto_licitacion = r._montoAuto;
+    } else if(!r.licitacion_indeterminada){
+      // sin desglose que lo separe → se licita la partida completa
+      r.monto_licitacion = r.venta_total || 0;
+    }
+    renderPreview();
   };
 
   // ── Commit a Supabase ────────────────────────────────────────────
@@ -13724,6 +14042,10 @@ let _dashSources = null;
         subcategoria: r.subcategoria,
         hoja_origen: r.hoja_origen,
         componentes: r.componentes || [],   // ← sub-detalles (Materiales, Mano de obra, equipos)
+        es_licitacion: !!r.es_licitacion,
+        tipo_suministro: r.tipo_suministro || null,
+        monto_licitacion: r.es_licitacion ? (r.monto_licitacion || 0) : 0,
+        factor_bloque: r.factor_bloque || 1,
         import_batch: _impBatch
       }));
 
@@ -13742,6 +14064,7 @@ let _dashSources = null;
 
       const tot_costo = _impRows.reduce((a,r) => a + (r.costo_total||0), 0);
       const tot_venta = _impRows.reduce((a,r) => a + (r.venta_total||0), 0);
+      const tot_lic   = _impRows.reduce((a,r) => a + (r.es_licitacion ? (r.monto_licitacion||0) : 0), 0);
       const margen = tot_venta > 0 ? (tot_venta - tot_costo) / tot_venta : 0;
       const byCat = {};
       _impRows.forEach(r => { byCat[r.categoria] = (byCat[r.categoria]||0) + (r.venta_total||0); });
@@ -13755,6 +14078,12 @@ let _dashSources = null;
           <div class="kpi-card"><div class="kpi-lbl">Costo Comercial</div><div class="kpi-val">${fmtMoney(tot_costo)}</div></div>
           <div class="kpi-card"><div class="kpi-lbl">Venta Comercial</div><div class="kpi-val">${fmtMoney(tot_venta)}</div></div>
           <div class="kpi-card"><div class="kpi-lbl">Margen Comercial</div><div class="kpi-val">${fmtPct(margen)}</div></div>
+        </div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">
+          <b>A licitar (contratas):</b>
+          <span style="color:#d97706;font-weight:700">${fmtMoney(tot_lic)}</span>
+          · ${_impRows.filter(r=>r.es_licitacion).length} partidas de instalación / mano de obra
+          ${tot_venta ? `· ${fmtPct(tot_lic/tot_venta)} de la venta` : ''}
         </div>
         <div style="font-size:12px;color:var(--text-2)">
           <b>Distribución por categoría (venta comercial):</b>
@@ -14011,6 +14340,8 @@ let _dashSources = null;
     const tot_venta = rows.reduce((a,r) => a + (Number(r.venta_total)||0), 0);
     const margen_abs = tot_venta - tot_costo;
     const margen_pct = tot_venta > 0 ? margen_abs / tot_venta : 0;
+    const licRows  = rows.filter(r => r.es_licitacion);
+    const tot_lic  = licRows.reduce((a,r) => a + (Number(r.monto_licitacion)||0), 0);
 
     // Cuántos items hay por categoría
     const byCat = {};
@@ -14042,6 +14373,11 @@ let _dashSources = null;
         <div class="kpi-lbl">Margen Comercial</div>
         <div class="kpi-val" style="color:${margen_pct >= 0.15 ? 'var(--success)' : margen_pct >= 0.08 ? 'var(--warning)' : 'var(--danger)'}">${_fmtPct(margen_pct)}</div>
         <div style="font-size:10px;color:var(--text-3);margin-top:3px">${_fmtMoneyCompact(margen_abs)} absoluto</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-lbl">A licitar (contratas)</div>
+        <div class="kpi-val" style="color:#d97706">${_fmtMoneyCompact(tot_lic)}</div>
+        <div style="font-size:10px;color:var(--text-3);margin-top:3px">${licRows.length} partidas · ${tot_venta?_fmtPct(tot_lic/tot_venta):'—'} de la venta</div>
       </div>
       <div class="kpi-card" style="opacity:.55">
         <div class="kpi-lbl">Venta Real</div>
@@ -14101,7 +14437,9 @@ let _dashSources = null;
     // Tabla detalle (con filtros aplicados)
     const txt = (document.getElementById('costos-filter')?.value || '').toLowerCase().trim();
     const catF = document.getElementById('costos-cat-filter')?.value || '';
+    const soloLic = !!document.getElementById('costos-solo-lic')?.checked;
     const filtered = rows.filter(r => {
+      if(soloLic && !r.es_licitacion) return false;
       if(catF && r.categoria !== catF) return false;
       if(txt){
         const hay = (r.descripcion||'').toLowerCase() + ' ' + (r.subcategoria||'').toLowerCase() + ' ' + (r.item||'');
@@ -14116,9 +14454,10 @@ let _dashSources = null;
     } else {
       // Iconos por tipo de componente
       const tipoIcono = {
-        materiales:   {ic:'📦', lbl:'Materiales',    col:'#0d9488'},
-        mano_de_obra: {ic:'👷', lbl:'Mano de obra',  col:'#d97706'},
-        componente:   {ic:'⚙️', lbl:'Equipo',        col:'#2563eb'}
+        materiales:      {ic:'📦', lbl:'Materiales',     col:'#0d9488'},
+        mano_de_obra:    {ic:'👷', lbl:'Mano de obra',   col:'#d97706'},
+        servicio_propio: {ic:'🏢', lbl:'Servicio propio',col:'#0891b2'},
+        componente:      {ic:'⚙️', lbl:'Equipo',         col:'#2563eb'}
       };
 
       tbody.innerHTML = filtered.map(r => {
@@ -14141,6 +14480,7 @@ let _dashSources = null;
               </td>
               <td style="padding:5px 10px;vertical-align:top">
                 <span style="display:inline-block;padding:1px 6px;border-radius:4px;background:${t.col}22;color:${t.col};font-size:9px;font-weight:700;text-transform:uppercase">${t.lbl}</span>
+                ${c.es_licitacion ? `<span title="Va a licitación" style="display:inline-block;margin-left:4px;padding:1px 5px;border-radius:4px;background:#d9770622;color:#d97706;font-size:9px;font-weight:700">🔨 LIC</span>` : ''}
               </td>
               <td style="padding:5px 10px;text-align:right;font-variant-numeric:tabular-nums;vertical-align:top;font-size:11px;color:var(--text-2)">${_fmtNum(c.cantidad)}<div style="font-size:9px;color:var(--text-3)">${c.unidad||''}</div></td>
               <td style="padding:5px 10px;text-align:right;font-variant-numeric:tabular-nums;vertical-align:top;font-size:11px;color:var(--text-2)">${_fmtMoney(c.costo_total)}</td>
@@ -14162,6 +14502,7 @@ let _dashSources = null;
             </td>
             <td style="padding:7px 10px;vertical-align:top">
               <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 7px;border-radius:5px;background:${COSTOS_CAT_COLORS[cat]}22;color:${COSTOS_CAT_COLORS[cat]};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">${COSTOS_CAT_LABELS[cat]||cat}</span>
+              ${r.es_licitacion ? `<div style="margin-top:4px"><span title="Instalación / mano de obra → va a licitación${(Number(r.monto_licitacion)||0)>0?' · '+_fmtMoney(r.monto_licitacion):''}" style="display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:5px;background:#d9770622;color:#d97706;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">🔨 Licitación${(Number(r.monto_licitacion)||0)>0?' · '+_fmtMoneyCompact(r.monto_licitacion):''}</span></div>` : ''}
             </td>
             <td style="padding:7px 10px;text-align:right;font-variant-numeric:tabular-nums;vertical-align:top">${_fmtNum(r.cantidad)}<div style="font-size:9px;color:var(--text-3)">${r.unidad||''}</div></td>
             <td style="padding:7px 10px;text-align:right;font-variant-numeric:tabular-nums;vertical-align:top;font-weight:600">${_fmtMoney(r.costo_total)}</td>
@@ -14174,7 +14515,7 @@ let _dashSources = null;
     }
 
     document.getElementById('costos-foot').textContent =
-      `Mostrando ${filtered.length} de ${rows.length} partidas · Proyecto: ${currentProyecto.nombre}`;
+      `Mostrando ${filtered.length} de ${rows.length} partidas · ${licRows.length} van a licitación (${_fmtMoney(tot_lic)}) · Proyecto: ${currentProyecto.nombre}`;
   };
 
   // ── Hook into showTab + cargarProyecto ──
