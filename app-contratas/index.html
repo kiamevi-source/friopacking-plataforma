@@ -225,6 +225,7 @@
         <div class="kpi"><div class="kpi-l"><svg data-lucide="clock"></svg>Por cobrar</div><div class="kpi-v" id="k-porcobrar">$0</div><div class="kpi-sub">pendiente de pago</div></div>
         <div class="kpi"><div class="kpi-l"><svg data-lucide="folder"></svg>Documentos</div><div class="kpi-v" id="k-docs">0</div><div class="kpi-sub">archivos subidos</div></div>
       </div>
+      <div id="rs-contratos" style="margin-bottom:16px"></div>
       <div class="panel">
         <div class="panel-h"><h3>Accesos rápidos</h3></div>
         <div style="display:flex;gap:12px;flex-wrap:wrap">
@@ -595,11 +596,11 @@
         var e = ESTADO[r.estado] || ESTADO.emitida;
         var rv = ESTADO_REV[r.estado_revision] || ESTADO_REV.pendiente;
         var nd = docs.filter(function(d){ return d.factura_id === r.id; }).length;
-        var obs = (r.estado_revision==='observada' && r.obs_supervisor) ? ' title="'+esc(r.obs_supervisor)+'"' : '';
+        var motivo = (r.estado_revision==='observada' && r.obs_supervisor) ? '<div style="font-size:11px;color:var(--danger);font-weight:600;margin-top:5px;line-height:1.35;max-width:240px">⚠ '+esc(r.obs_supervisor)+'</div>' : '';
         return '<tr><td><b>'+esc(r.num)+'</b></td><td>'+esc(r.proyecto)+'</td><td>'+fmtDate(r.fecha)+'</td>'+
           '<td><b>'+money2(r.monto)+'</b></td><td><span class="tag '+e.c+'">'+e.t+'</span></td>'+
           '<td>'+(nd?('<span class="tag info">📎 '+nd+'</span>'):'<span style="color:var(--muted)">—</span>')+'</td>'+
-          '<td><span class="tag '+rv.c+'"'+obs+'>'+rv.t+'</span></td>'+
+          '<td><span class="tag '+rv.c+'">'+rv.t+'</span>'+motivo+'</td>'+
           '<td style="text-align:right"><button class="row-act" data-del-fac="'+r.id+'" title="Eliminar"><svg data-lucide="trash-2"></svg></button></td></tr>';
       }).join('');
     }
@@ -956,6 +957,19 @@
       ah.innerHTML='<div class="panel" style="padding:15px 16px"><div class="panel-h" style="margin-bottom:10px"><h3>Requiere tu acción</h3><span class="count">'+items.length+'</span></div>'+
         '<div class="rs-alist">'+items.map(function(a){ return '<div class="rs-ai '+a.cls+'" data-go="'+a.go+'"><div class="rs-ic"><svg data-lucide="'+a.ic+'"></svg></div><div style="min-width:0"><div class="rs-at">'+esc(a.t)+'</div><div class="rs-as">'+esc(a.s)+'</div></div></div>'; }).join('')+'</div></div>';
       ah.querySelectorAll('[data-go]').forEach(function(b){ b.addEventListener('click', function(){ showView(b.dataset.go); }); });
+    }
+    // Mis contratos (saldo) en el home
+    var ch=$('#rs-contratos');
+    if(ch){
+      if(typeof LZ!=='undefined' && LZ.contratos && LZ.contratos.length){
+        var ms=function(l,v,col){ return '<div style="background:var(--bg2);border-radius:11px;padding:11px 12px"><div style="font-size:11px;color:var(--muted);font-weight:700">'+l+'</div><div style="font-size:16px;font-weight:800;color:'+col+';margin-top:2px">'+lzMoney(v,"PEN")+'</div></div>'; };
+        var tA=0,tF=0; LZ.contratos.forEach(function(a){ tA+=Number(a.monto_adjudicado||0); tF+=facturadoDe(a.contrato_codigo); }); var tS=tA-tF;
+        ch.innerHTML='<div class="panel" style="padding:15px 16px"><div class="panel-h" style="margin-bottom:10px"><h3>Mis contratos</h3><span class="count">'+LZ.contratos.length+'</span></div>'+
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">'+ms('Adjudicado',tA,'var(--ink)')+ms('Facturado',tF,'var(--teal)')+ms('Saldo por facturar',tS,tS>0?'var(--blue)':'var(--danger)')+'</div>'+
+          LZ.contratos.map(function(a){ var adj=Number(a.monto_adjudicado||0),fac=facturadoDe(a.contrato_codigo),s=adj-fac,pct=adj?Math.min(100,Math.round(fac/adj*100)):0;
+            return '<div style="padding:9px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px"><span style="font-weight:800">'+esc(a.contrato_codigo||'—')+' <span style="color:var(--muted);font-weight:600">· '+esc(a.licitacion_codigo||'')+'</span></span><span style="color:var(--muted);font-weight:600;white-space:nowrap">'+lzMoney(s,"PEN")+' por facturar</span></div><div style="height:6px;border-radius:4px;background:var(--bg2);overflow:hidden;margin-top:6px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--teal),var(--blue))"></div></div></div>';
+          }).join('')+'</div>';
+      } else { ch.innerHTML=''; }
     }
     if(window.lucide) lucide.createIcons();
   }
