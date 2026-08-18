@@ -9754,7 +9754,15 @@ function rdPlanBars(){
   const rb = document.getElementById('rd-real-bar'); if (rb) rb.style.width = Math.min(100, real) + '%';
   const d = real - plan;
   const diff = document.getElementById('rd-diff');
-  if (diff) { diff.className = 'rd-diff ' + (d >= 0 ? 'pos' : 'neg'); const b = diff.querySelector('b'); if (b) b.textContent = (d > 0 ? '+' : '') + d.toFixed(1); }
+  if (diff) {
+    // Una sola palabra, no "atraso / adelanto": la que corresponda al signo.
+    const enFecha = Math.abs(d) < 0.05;
+    diff.className = 'rd-diff ' + (enFecha ? 'pos' : d > 0 ? 'pos' : 'neg');
+    const b = diff.querySelector('b');
+    if (b) b.textContent = enFecha ? '0' : (d > 0 ? '+' : '') + d.toFixed(1);
+    const lb = diff.querySelector('span');
+    if (lb) lb.textContent = enFecha ? 'En fecha' : d > 0 ? 'Adelanto (puntos)' : 'Atraso (puntos)';
+  }
   // Alerta diferencia supervisor vs contrata
   const ct = parseFloat(document.getElementById('rd-real-contrata')?.value);
   const al = document.getElementById('alerta-diferencia');
@@ -9996,8 +10004,8 @@ async function cargarHitosReporte() {
   if (cod) {
     try {
       // Trae las TAREAS del cronograma (no solo milestones): hitos primero, luego actividades, ordenadas por fecha
-      const rows = await sbFetch(`/rest/v1/tareas_gantt?cod_proyecto=eq.${encodeURIComponent(cod)}&select=id,nombre_tarea,pct_avance,es_hito,nivel,fecha_inicio_base&order=es_hito.desc,fecha_inicio_base.asc&limit=400`);
-      (rows||[]).forEach(r => rdHitos.push({ id:r.id, nombre:r.nombre_tarea, pct_actual:Number(r.pct_avance)||0, pct_nuevo:Number(r.pct_avance)||0, manual:false, es_hito:!!r.es_hito, nivel:Number(r.nivel)||3, hoy:false, manana:false }));
+      const rows = await sbFetch(`/rest/v1/tareas_gantt?cod_proyecto=eq.${encodeURIComponent(cod)}&select=id,nombre_tarea,pct_avance,es_hito,nivel,duracion_dias,fecha_inicio_base&order=es_hito.desc,fecha_inicio_base.asc&limit=400`);
+      (rows||[]).forEach(r => rdHitos.push({ id:r.id, nombre:r.nombre_tarea, pct_actual:Number(r.pct_avance)||0, pct_nuevo:Number(r.pct_avance)||0, manual:false, es_hito:!!r.es_hito, nivel:r.nivel, dur:Number(r.duracion_dias)||0, hoy:false, manana:false }));
     } catch(e){ /* sin gantt */ }
   }
   renderHitos();
@@ -10028,12 +10036,31 @@ function renderHitos() {
       empty.textContent = q ? 'Ninguna tarea coincide con la búsqueda.' : `Busca una tarea del Gantt para marcarla como Hoy / Mañana (${total} tareas).`;
     } else empty.style.display='none';
   }
+  const cuentan = rdTareasQueCuentan();
   wrap.innerHTML = visibles.map(({h,i})=>{
     const delta = (h.pct_nuevo||0) - (h.pct_actual||0);
     const sub = h.manual ? '<small>manual</small>'
       : `<small>antes ${h.pct_actual}%${delta ? ` · <b style="color:${delta>0?'var(--success)':'var(--danger)'}">${delta>0?'+':''}${delta.toFixed(1)}</b>` : ''}</small>`;
-    return `<div class="rd-prog-card">
-      <div class="rd-prog-name">${(h.nombre||'').replace(/</g,'&lt;')}${sub}
+    // Un HITO no tiene avance parcial: ocurrió o no ocurrió.
+    if (h.es_hito){
+      const cumplido = (h.pct_nuevo||0) >= 100;
+      return `<div class="rd-prog-card hito">
+        <div class="rd-prog-name"><span class="rd-hito-tag">Hito</span> ${(h.nombre||'').replace(/</g,'&lt;')}
+          <small>no cuenta para el % de avance</small>
+          <div class="rd-hito-tog">
+            <button class="rd-hito-b hoy ${h.hoy?'on':''}" onclick="rdHitoToggle(${i},'hoy')">✓ Hoy</button>
+            <button class="rd-hito-b man ${h.manana?'on':''}" onclick="rdHitoToggle(${i},'manana')">→ Mañana</button>
+          </div>
+        </div>
+        <div class="rd-hito-estado">
+          <button class="rd-hito-e ${cumplido?'on':''}" onclick="rdHitoCumplido(${i},true)">Cumplido</button>
+          <button class="rd-hito-e ${cumplido?'':'on pend'}" onclick="rdHitoCumplido(${i},false)">Pendiente</button>
+        </div>
+      </div>`;
+    }
+    const esTitulo = !h.manual && !cuentan.includes(h);
+    return `<div class="rd-prog-card${esTitulo?' titulo':''}">
+      <div class="rd-prog-name">${(h.nombre||'').replace(/</g,'&lt;')}${esTitulo?'<span class="rd-hito-tag gris">Título · no suma</span>':''}${sub}
         <div class="rd-hito-tog">
           <button class="rd-hito-b hoy ${h.hoy?'on':''}" onclick="rdHitoToggle(${i},'hoy')">✓ Hoy</button>
           <button class="rd-hito-b man ${h.manana?'on':''}" onclick="rdHitoToggle(${i},'manana')">→ Mañana</button>
@@ -10047,12 +10074,28 @@ function renderHitos() {
   recalcAvanceGlobal();
   rdIcons();
 }
+function rdHitoCumplido(i, ok){
+  if(!rdHitos[i]) return;
+  rdHitos[i].pct_nuevo = ok ? 100 : 0;   // se guarda igual en el cronograma
+  renderHitos();
+  if(typeof scheduleAutosave==='function') scheduleAutosave();
+}
 function rdHitoToggle(i, field){ if(!rdHitos[i]) return; rdHitos[i][field]=!rdHitos[i][field]; renderHitos(); if(typeof scheduleAutosave==='function') scheduleAutosave(); }
 let _hitoTogStyles=false;
 function rdEnsureHitoTogStyles(){
   if(_hitoTogStyles) return; _hitoTogStyles=true;
   const css=`
   .rd-hito-tog{display:inline-flex;gap:6px;margin-left:8px;}
+  .rd-hito-tag{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+    padding:2px 7px;border-radius:999px;background:#dbeafe;color:#1d4ed8;margin-right:6px;}
+  .rd-hito-tag.gris{background:var(--surface-2);color:var(--text-3);margin-left:6px;margin-right:0;}
+  .rd-prog-card.titulo{opacity:.72;}
+  .rd-hito-estado{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;}
+  .rd-hito-e{border:none;background:var(--surface-1);padding:6px 12px;font-size:11.5px;font-weight:700;
+    color:var(--text-3);cursor:pointer;border-left:1px solid var(--border-strong);}
+  .rd-hito-e:first-child{border-left:none;}
+  .rd-hito-e.on{background:#15803d;color:#fff;}
+  .rd-hito-e.on.pend{background:var(--surface-2);color:var(--text-2);}
   .rd-hito-b{border:1px solid var(--border-strong);border-radius:7px;padding:3px 9px;font-size:11px;font-weight:700;color:var(--text-3);background:var(--surface-1);cursor:pointer;}
   .rd-hito-b.hoy.on{background:#059669;color:#fff;border-color:#059669;}
   .rd-hito-b.man.on{background:#0369a1;color:#fff;border-color:#0369a1;}`;
@@ -10067,9 +10110,33 @@ function rdHitoInput(i, val){
 // de las tareas del cronograma. Antes lo escribían DOS funciones — especialidades
 // (siempre) e hitos (solo si estaba vacío) — así que mover los hitos no hacía nada.
 // Si el proyecto no tiene cronograma cargado, cae al promedio de especialidades.
+// REGLA DEL AVANCE FÍSICO (decisión de Kiara, 18-ago-2026):
+// promedio PONDERADO POR DURACIÓN sobre las tareas reales del cronograma.
+//  · fuera los HITOS: son un evento (cumplido / pendiente), no trabajo con avance parcial.
+//  · fuera los TÍTULOS: las filas de nivel superior contienen a las de abajo; promediarlas
+//    cuenta el mismo trabajo dos veces y las arrastra a 0 (en QALI los niveles 1 y 2 están
+//    todos en 0 y el trabajo real vive en el nivel 3).
+// El trabajo real se toma como el nivel MÁS PROFUNDO que traiga el cronograma.
+// Limitación conocida: la duración no es el costo. Lo correcto sería ponderar por
+// horas-hombre o por el monto de cada partida, pero el cronograma no los tiene.
+function rdTareasQueCuentan(){
+  const noHitos = rdHitos.filter(h => !h.es_hito);
+  if (!noHitos.length) return [];
+  const niveles = noHitos.map(h => h.nivel).filter(n => n != null);
+  if (!niveles.length) return noHitos;                       // cronograma sin niveles: todas cuentan
+  const hondo = Math.max(...niveles);
+  return noHitos.filter(h => h.nivel == null || h.nivel === hondo || h.manual);
+}
 function rdAvanceRealFuente(){
-  if (rdHitos.length) return { valor: rdHitos.reduce((a,h)=>a+(h.pct_nuevo||0),0)/rdHitos.length,
-                               fuente: 'hitos', texto:'· promedio de las ' + rdHitos.length + ' tareas del cronograma' };
+  const reales = rdTareasQueCuentan();
+  if (reales.length){
+    let num = 0, den = 0;
+    reales.forEach(h => { const peso = (h.dur && h.dur > 0) ? h.dur : 1; num += (h.pct_nuevo||0)*peso; den += peso; });
+    return { valor: den > 0 ? num/den : 0, fuente:'cronograma',
+             texto:'· ponderado por duración sobre ' + reales.length + ' tarea' + (reales.length===1?'':'s') + ' del cronograma' };
+  }
+  if (rdHitos.length) return { valor: 0, fuente:'hitos',
+                               texto:'· el cronograma solo tiene hitos: márcalos cumplidos' };
   if (rdEsp.length)   return { valor: rdEspGlobalAvance(),
                                fuente: 'especialidades', texto:'· sin cronograma: promedio de las especialidades' };
   return { valor: 0, fuente: 'vacio', texto:'· carga el cronograma o las especialidades' };
