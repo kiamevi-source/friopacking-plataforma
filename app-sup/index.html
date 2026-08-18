@@ -3469,7 +3469,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
   /* Anti-parpadeo: si ya hay sesión sembrada (p.ej. desde el hub), oculta el
      login de inmediato —antes del primer pintado— para que no destelle mientras
      se valida el token de forma asíncrona en el evento load. */
-  if (localStorage.getItem('sb_token') || localStorage.getItem('sb_user_fallback')) {
+  if (localStorage.getItem('sb_token')) {
     document.getElementById('login-screen').classList.add('hidden');
   }
 </script>
@@ -5008,7 +5008,6 @@ async function iniciarApp() {
 // Auto-login si hay token
 window.addEventListener('load', async () => {
   const token = localStorage.getItem('sb_token');
-  const fallback = localStorage.getItem('sb_user_fallback');
   if (token) {
     // Verificar token
     try {
@@ -5024,11 +5023,9 @@ window.addEventListener('load', async () => {
       }
     } catch(e) {}
   }
-  if (fallback) {
-    currentUser = JSON.parse(fallback);
-    iniciarApp();
-    return;
-  }
+  // Aquí vivía un bypass: si el "hub" sembraba sb_user_fallback en localStorage,
+  // se entraba a la app SIN token, y todo salía con la clave anónima. Ya nadie lo
+  // sembraba, pero cualquiera podía ponérselo a mano. Fuera.
   // Sin sesión válida → volver a mostrar el login (se ocultó síncronamente para evitar parpadeo)
   document.getElementById('login-screen').classList.remove('hidden');
   // Enter en password
@@ -8922,7 +8919,10 @@ async function qaUploadPhoto(taskId) {
   if (!f) return null;
   const ext = (f.name.split('.').pop() || 'jpg').toLowerCase();
   const path = `${taskId || 'sin-id'}/${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
-  const token = localStorage.getItem('sb_token') || SB_KEY;
+  // Sin sesión no se sube: antes caía a la anon key y la foto quedaba subida
+  // por un anónimo, sin rastro de quién.
+  const token = localStorage.getItem('sb_token');
+  if (!token) throw new Error('Tu sesión venció. Vuelve a entrar para subir la foto.');
   const url = SB_URL + '/storage/v1/object/avance-fotos/' + path;
   const resp = await fetch(url, {
     method: 'POST',
