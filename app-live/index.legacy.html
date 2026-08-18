@@ -16053,14 +16053,27 @@ function _render(){
   var C_='var(--card,#fff)',LN='var(--line,#e6edf5)',IN='var(--ink,#0d2436)',MU='var(--muted,#64748b)';
   var norm=function(s){return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');};
   var waURL=function(m){return 'https://wa.me/?text='+encodeURIComponent(m);};
-  /* Cruce proyecto activo ↔ valorización: por cod_proyecto (15/17) y, si no, por cliente. */
+  /* Cruce proyecto activo ↔ valorización.
+     La valorización se agrupa por RAZÓN SOCIAL (cliente); una razón social puede tener
+     varios cods que SE SUMAN (p.ej. BOMAREA S.R.L. = 3 cods = $795K, aprobado por Kiara).
+     Match: 1) por cod_proyecto (línea o cobro); 2) fallback por TOKEN distintivo del
+     nombre (DROKASA, LARAN…) ignorando palabras corporativas — así "DROKASA ICA" cruza
+     con "SOCIEDAD AGRICOLA DROKASA S.A.". */
+  var _STOP={SAC:1,SA:1,SAA:1,SRL:1,EIRL:1,SOCIEDAD:1,AGRICOLA:1,AGROINDUSTRIAL:1,AGRO:1,CORPORACION:1,COMERCIAL:1,INDUSTRY:1,INDUSTRIAL:1,INDUSTRIAS:1,PERU:1,DEL:1,LOS:1,LAS:1,SUR:1,NORTE:1,CENTRO:1,PROCESADORA:1,INVERSIONES:1,NEGOCIOS:1,GENERALES:1,GNRLES:1,EXPORT:1,EXPORTADORA:1,IMPORT:1,FARMS:1,FRUITS:1,FOODS:1,FOOD:1,GROUP:1,COMPANY:1,CIA:1,PERUANA:1,SERVICIOS:1};
+  var normSp=function(s){return (s==null?'':String(s)).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();};
+  var _toks=function(s){return normSp(s).split(' ').filter(function(t){return t.length>=4 && !_STOP[t];});};
   var activos=(typeof W.activeP==='function'?W.activeP():(W.PROJECTS||[])).filter(function(p){return p&&p.name;});
   function valOf(p){
-    var cod=p._cod||'', rz=null, lin=[];
-    if(cod){var hit=L.find(function(l){return l.cod_proyecto===cod;}); if(hit)rz=hit.cliente;}
-    if(rz){ lin=L.filter(function(l){return l.cliente===rz;}); }
-    else { var pn=norm(p.name); if(pn) lin=L.filter(function(l){var c=norm(l.cliente);return c&&(c.indexOf(pn)>=0||pn.indexOf(c.slice(0,6))>=0);}); if(lin.length)rz=lin[0].cliente; }
-    var cob=rz?C.filter(function(c){return c.cliente===rz;}):[];
+    var cod=p._cod||'', rz=null;
+    if(cod){ var hit=L.find(function(l){return l.cod_proyecto===cod;}); if(hit){rz=hit.cliente;}
+             else { var hc=C.find(function(c){return c.cod_proyecto===cod;}); if(hc)rz=hc.cliente; } }
+    if(!rz){ var pt=_toks(p.name);
+      if(pt.length){ var score={};
+        L.forEach(function(l){ var ct=_toks(l.cliente); for(var i=0;i<pt.length;i++){ if(ct.indexOf(pt[i])>=0) score[l.cliente]=(score[l.cliente]||0)+1; } });
+        var ks=Object.keys(score); if(ks.length){ ks.sort(function(a,b){return score[b]-score[a];}); rz=ks[0]; } }
+    }
+    var lin=rz?L.filter(function(l){return l.cliente===rz;}):[];
+    var cob=rz?C.filter(function(c){return c.cliente===rz && _norm(c.estado).indexOf('anul')<0;}):[];
     return {rz:rz||p.name, meta:proy(lin), val:proy(lin.filter(function(l){return l.estado==='Valorizado';})), pre:proy(lin.filter(function(l){return l.estado==='Presentado';})), pen:proy(lin.filter(function(l){return l.estado==='Pendiente';})), cobrar:_sum(cob,'saldo_pendiente'), fac:_sum(cob,'facturado'), venc:cob.some(function(c){return (+c.dias||0)>90 && (+c.saldo_pendiente||0)>0;}), n:lin.length};
   }
   var rows=activos.map(function(p){return {p:p,v:valOf(p)};});
