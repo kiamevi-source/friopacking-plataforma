@@ -3644,7 +3644,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
         <!-- placeholders mientras carga; cargarDashboard reemplaza el contenido -->
         <div class="kpi"><div class="kpi-top"><div class="kpi-icon"></div><span class="kpi-name">Avance real</span></div><div class="kpi-value"><span id="kpi-avance">—</span><span class="kpi-unit">%</span></div><div class="kpi-foot"><span class="kpi-sub2">% físico</span><span class="kpi-spark"></span></div></div>
         <div class="kpi"><div class="kpi-top"><div class="kpi-icon"></div><span class="kpi-name">Plan acum.</span></div><div class="kpi-value"><span id="kpi-plan">—</span><span class="kpi-unit">%</span></div><div class="kpi-foot"><span class="kpi-sub2">% planificado</span><span class="kpi-spark"></span></div></div>
-        <div class="kpi"><div class="kpi-top"><div class="kpi-icon"></div><span class="kpi-name">SPI</span></div><div class="kpi-value"><span id="kpi-spi">—</span></div><div class="kpi-foot"><span class="kpi-sub2">Schedule Performance</span><span class="kpi-spark"></span></div></div>
+        <div class="kpi"><div class="kpi-top"><div class="kpi-icon"></div><span class="kpi-name">Cumplimiento del plazo</span></div><div class="kpi-value"><span id="kpi-spi">—</span></div><div class="kpi-foot"><span class="kpi-sub2">avance real ÷ plan</span><span class="kpi-spark"></span></div></div>
         <div class="kpi"><div class="kpi-top"><div class="kpi-icon"></div><span class="kpi-name">Eval. contratas</span></div><div class="kpi-value"><span id="kpi-eval">—</span></div><div class="kpi-foot"><span class="kpi-sub2">Promedio hoy</span><span class="kpi-spark"></span></div></div>
         <div class="kpi"><div class="kpi-top"><div class="kpi-icon"></div><span class="kpi-name">Rondas</span></div><div class="kpi-value"><span id="kpi-rondas">—</span></div><div class="kpi-foot"><span class="kpi-sub2">completadas hoy</span><span class="kpi-spark"></span></div></div>
         <div class="kpi"><div class="kpi-top"><div class="kpi-icon"></div><span class="kpi-name">Personal hoy</span></div><div class="kpi-value"><span id="kpi-personal">—</span></div><div class="kpi-foot"><span class="kpi-sub2">personas en obra</span><span class="kpi-spark"></span></div></div>
@@ -3727,14 +3727,14 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
         <div class="equipos-head">
           <span class="eq-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-            Equipos del proyecto · PMO Live
+            Equipos del proyecto · Gerencia
           </span>
           <span class="eq-spacer"></span>
           <span class="eq-live" id="equipos-dash-live"><span class="eq-live-dot"></span><span>Live · —</span></span>
-          <button class="btn btn-outline btn-sm" onclick="syncPMO(true)" title="Sincronizar PMO">⟳ Refrescar</button>
+          <button class="btn btn-outline btn-sm" onclick="syncPMO(true)" title="Sincronizar con Gerencia">⟳ Refrescar</button>
         </div>
         <div id="equipos-dash-body">
-          <div class="eq-empty"><div class="ic">🚢</div>Conectando con PMO…</div>
+          <div class="eq-empty"><div class="ic">🚢</div>Conectando con Gerencia…</div>
         </div>
       </section>
 
@@ -3764,9 +3764,9 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
         <div class="sec-head">
           <span class="sec-title">Cronograma operativo</span>
           <!-- PMO Live Bridge indicator -->
-          <div class="pmo-pill" id="pmo-pill" onclick="syncPMO(true)" title="Sincroniza con Centro de Control PMO">
+          <div class="pmo-pill" id="pmo-pill" onclick="syncPMO(true)" title="Sincroniza con Gerencia">
             <span class="pmo-dot"></span>
-            <span><b>PMO</b> · <span class="pmo-label-meta" id="pmo-label">conectando…</span></span>
+            <span><b>Gerencia</b> · <span class="pmo-label-meta" id="pmo-label">conectando…</span></span>
             <svg class="refresh-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
           </div>
           <button class="btn btn-outline btn-sm" onclick="confirmarLimpiarGantt()" title="Borrar todo el cronograma del proyecto actual">Limpiar</button>
@@ -3778,14 +3778,14 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
           <div class="equipos-head">
             <span class="eq-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-              Equipos del proyecto · PMO Live
+              Equipos del proyecto · Gerencia
             </span>
             <span class="eq-spacer"></span>
             <span class="eq-live" id="equipos-gantt-live"><span class="eq-live-dot"></span><span>Live · —</span></span>
             <button class="btn btn-outline btn-sm" onclick="syncPMO(true)">⟳ Refrescar</button>
           </div>
           <div id="equipos-gantt-body">
-            <div class="eq-empty"><div class="ic">🚢</div>Conectando con PMO…</div>
+            <div class="eq-empty"><div class="ic">🚢</div>Conectando con Gerencia…</div>
           </div>
         </section>
 
@@ -4121,7 +4121,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
         <div class="rd-card folded">
           <div class="rd-head click" onclick="rdFold(this,event)">
             <div class="rd-head-ic"><i data-lucide="package" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Equipos del proyecto</h4><p>Órdenes de importación desde PMO · marca el estado en obra de los que aplican</p></div>
+            <div class="rd-head-tt"><h4>Equipos del proyecto</h4><p>Órdenes de importación desde Gerencia · marca el estado en obra de los que aplican</p></div>
             <span class="rd-head-badge teal" id="rd-eq-badge">0</span>
             <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
           </div>
@@ -4850,7 +4850,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
     </div>
     <div class="pdf-kpi-row">
       <div class="pdf-kpi"><div class="pdf-kpi-val" id="pdf-avance"></div><div class="pdf-kpi-lbl">Avance físico</div></div>
-      <div class="pdf-kpi"><div class="pdf-kpi-val" id="pdf-spi"></div><div class="pdf-kpi-lbl">SPI</div></div>
+      <div class="pdf-kpi"><div class="pdf-kpi-val" id="pdf-spi"></div><div class="pdf-kpi-lbl">Cumplimiento del plazo</div></div>
       <div class="pdf-kpi"><div class="pdf-kpi-val" id="pdf-eval-ct"></div><div class="pdf-kpi-lbl">Eval. contratas</div></div>
     </div>
     <div class="pdf-status en-plan" id="pdf-status-bar">
@@ -4912,7 +4912,7 @@ let rdContratas = [];      // [{id, nombre, especialidad, obreros, eval:{...}}]
 let rdRestricciones = [];  // [{id, categoria, titulo, descripcion, impacto, responsable, fecha_objetivo}]
 let rdFotos = [];          // [{url, nombre}]
 const RD_CATEGORIAS = ['materiales','personal','frentes','otros'];
-const RD_CHECKLIST = ['Charla de seguridad realizada','Personal con EPP completo','Frentes de trabajo liberados','Materiales disponibles','Avance registrado y validado','Área de trabajo ordenada al cierre'];
+const RD_CHECKLIST = ['Charla de seguridad realizada','Personal con equipo de protección completo','Frentes de trabajo liberados','Materiales disponibles','Avance registrado y validado','Área de trabajo ordenada al cierre'];
 
 // ═══════════════════════════════════════════════
 // SUPABASE FETCH
@@ -5290,9 +5290,9 @@ async function cargarDashboard() {
 
     // ── Project Health (topbar) ──
     if (spi == null) setProjectHealth('idle','Sin plan cargado');
-    else if (stateSpi === 'good' && stateAvance === 'good') setProjectHealth('good','En plan · SPI '+spi.toFixed(2));
-    else if (stateSpi === 'good' || stateSpi === 'warn') setProjectHealth('warn','Atención · SPI '+spi.toFixed(2));
-    else setProjectHealth('bad','Crítico · SPI '+spi.toFixed(2));
+    else if (stateSpi === 'good' && stateAvance === 'good') setProjectHealth('good','En plan · cumplimiento '+spi.toFixed(2));
+    else if (stateSpi === 'good' || stateSpi === 'warn') setProjectHealth('warn','Atención · cumplimiento '+spi.toFixed(2));
+    else setProjectHealth('bad','Crítico · cumplimiento '+spi.toFixed(2));
 
     // ── Señales para prioridades / briefing ──
     const hoyStr = new Date().toISOString().slice(0,10);
@@ -5469,7 +5469,7 @@ function renderTablaReportes(reportes) {
   el.innerHTML = `
   <table class="gantt-table">
     <thead><tr>
-      <th>Fecha</th><th>% Plan</th><th>% Real</th><th>SPI</th><th>Personal</th><th>Rondas</th>
+      <th>Fecha</th><th>% Plan</th><th>% Real</th><th>Cumplimiento del plazo</th><th>Personal</th><th>Rondas</th>
     </tr></thead>
     <tbody>${reportes.map(r => `
       <tr>
@@ -6130,7 +6130,7 @@ function pmoSubscribe(fn) {
    HISTORIAL DE CAMBIOS DE EQUIPOS (overlay + alerta full-screen)
    Lee la tabla equipos_cambios (misma instancia Supervisor).
    ═══════════════════════════════════════════════ */
-const EQ_HIST_LABELS={eta:'ETA (arribo)',etd:'ETD (salida)',fe:'Fecha entrega',fer:'Entrega real',so:'Status origen',st:'Status destino',mod:'Modalidad',proj:'Proyecto',proveedor:'Proveedor',nuevo:'Nuevo equipo',eliminado:'Eliminado'};
+const EQ_HIST_LABELS={eta:'Llegada estimada',etd:'Salida de origen',fe:'Fecha entrega',fer:'Entrega real',so:'Status origen',st:'Status destino',mod:'Modalidad',proj:'Proyecto',proveedor:'Proveedor',nuevo:'Nuevo equipo',eliminado:'Eliminado'};
 const _histCampoLabel=c=>EQ_HIST_LABELS[c]||c;
 const _histIcon=c=>c==='nuevo'?'✨':c==='eliminado'?'🗑':/eta|etd|fe|fer/.test(c)?'📅':(c==='st'||c==='so')?'🔄':c==='proj'?'🏗':c==='proveedor'?'🏢':'✏️';
 const _histFmtDT=iso=>{try{return new Date(iso).toLocaleString('es-PE',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(e){return iso||'';}};
@@ -6243,7 +6243,7 @@ async function openEquiposHistorial(){
         <span class="eqh-chip on" data-campo="todos" onclick="histSetCampo('todos')">Todos</span>
         <span class="eqh-chip" data-campo="nuevo" onclick="histSetCampo('nuevo')">✨ Nuevos</span>
         <span class="eqh-chip" data-campo="modificados" onclick="histSetCampo('modificados')">✏️ Modificados</span>
-        <span class="eqh-chip" data-campo="eta" onclick="histSetCampo('eta')">📅 ETA</span>
+        <span class="eqh-chip" data-campo="eta" onclick="histSetCampo('eta')">📅 Llegada</span>
         <span class="eqh-chip" data-campo="st" onclick="histSetCampo('st')">🔄 Estado</span>
         <span class="eqh-chip" data-campo="eliminado" onclick="histSetCampo('eliminado')">🗑 Eliminados</span>
         <select id="eq-hist-proj" onchange="histSetProj(this.value)"><option value="">Todos los proyectos</option></select>
@@ -6630,14 +6630,14 @@ function _fmtFechaES(d) {
 function _equipoEtaInfo(e) {
   const stCls = _eqStatusClass(e.st);
   const eta = _pmoParseDate(e.eta);
-  if (!eta) return { etaDate:null, label:'Sin ETA', sub:'', cls:'' };
+  if (!eta) return { etaDate:null, label:'Sin fecha de llegada', sub:'', cls:'' };
   const daysAgo = _daysFromToday(eta);
   if (stCls === 'culminado') {
     if (daysAgo > 0)  return { etaDate:eta, label:'Llegó', sub:`hace ${daysAgo}d`, cls:'done' };
     if (daysAgo === 0) return { etaDate:eta, label:'Llegó', sub:'hoy', cls:'done' };
-    return { etaDate:eta, label:'ETA', sub:_fmtFechaES(eta), cls:'done' };
+    return { etaDate:eta, label:'Llegó', sub:_fmtFechaES(eta), cls:'done' };
   }
-  if (daysAgo > 0) return { etaDate:eta, label:`+${daysAgo}d atrasado`, sub:'ETA '+_fmtFechaES(eta), cls:'late' };
+  if (daysAgo > 0) return { etaDate:eta, label:`+${daysAgo}d atrasado`, sub:'Llega '+_fmtFechaES(eta), cls:'late' };
   if (daysAgo === 0) return { etaDate:eta, label:'Llega hoy', sub:_fmtFechaES(eta), cls:'warn' };
   const diasFalta = Math.abs(daysAgo);
   if (diasFalta <= 7)  return { etaDate:eta, label:`En ${diasFalta}d`, sub:_fmtFechaES(eta), cls:'warn' };
@@ -6704,7 +6704,7 @@ function openEquipoDetail(doc) {
     </div>
     <div class="eqd-eta-info">
       <div class="lbl">Fecha de llegada</div>
-      <div class="val">${eta.etaDate ? _fmtFechaES(eta.etaDate) : 'Sin ETA'}</div>
+      <div class="val">${eta.etaDate ? _fmtFechaES(eta.etaDate) : 'Sin fecha de llegada'}</div>
       <div class="sub">${eta.label}${eta.sub?' · '+eta.sub:''}</div>
     </div>
   </div>`;
@@ -6750,13 +6750,13 @@ function openEquipoDetail(doc) {
     <div class="eqd-field"><div class="lbl">Fecha de orden</div><div class="val">${fechaOrden?_fmtFechaES(fechaOrden):'—'}</div></div>
     <div class="eqd-field"><div class="lbl">Fecha exportación (fe)</div><div class="val">${fe?_fmtFechaES(fe):'—'}</div></div>
     <div class="eqd-field"><div class="lbl">Fecha recepción fact. (fer)</div><div class="val">${fer?_fmtFechaES(fer):'—'}</div></div>
-    <div class="eqd-field"><div class="lbl">ETD · salida estimada</div><div class="val">${etd?_fmtFechaES(etd):'—'}</div></div>
-    <div class="eqd-field full"><div class="lbl">ETA · llegada estimada</div><div class="val" style="color:${eta.cls==='late'?'var(--danger)':eta.cls==='done'?'var(--success)':'var(--navy-800)'}">${eta.etaDate?_fmtFechaES(eta.etaDate):'—'}${eta.sub?` · ${eta.sub}`:''}</div></div>
+    <div class="eqd-field"><div class="lbl">Salida de origen</div><div class="val">${etd?_fmtFechaES(etd):'—'}</div></div>
+    <div class="eqd-field full"><div class="lbl">Llegada estimada</div><div class="val" style="color:${eta.cls==='late'?'var(--danger)':eta.cls==='done'?'var(--success)':'var(--navy-800)'}">${eta.etaDate?_fmtFechaES(eta.etaDate):'—'}${eta.sub?` · ${eta.sub}`:''}</div></div>
   </div>`;
 
   // Body completo
   document.getElementById('eqd-body').innerHTML = etaCard + timeline + fields + fechas +
-    `<div style="font-size:10px;color:var(--text-3);text-align:right;margin-top:14px;">Fuente: Centro de Control PMO · live</div>`;
+    `<div style="font-size:10px;color:var(--text-3);text-align:right;margin-top:14px;">Fuente: Gerencia · en vivo</div>`;
 
   // Abrir
   bg.classList.add('open');
@@ -6821,7 +6821,7 @@ function refreshRecoveryBanner() {
   if (det.atrasadas.length > 0) parts.push(`${det.atrasadas.length} atrasadas`);
   if (det.critRiesgo.length > 0) parts.push(`${det.critRiesgo.length} críticas en riesgo`);
   if (det.sinMov.length > 0) parts.push(`${det.sinMov.length} sin movimiento`);
-  if (det.spi != null && det.spi < 0.96) parts.push(`SPI ${det.spi.toFixed(2)}`);
+  if (det.spi != null && det.spi < 0.96) parts.push(`Cumplimiento ${det.spi.toFixed(2)}`);
   banner.innerHTML = `
     <div class="rb-icon">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/><polyline points="23 20 23 14 17 14"/></svg>
@@ -6945,7 +6945,7 @@ function recoveryGenerarAcciones(det) {
     acciones.push({
       cls:'critica', icon:_rmIcons.cliente, score: 90,
       title:'Comunicar al cliente · solicitar negociación de hitos',
-      desc:`Cuando el SPI < 0.85 o hay múltiples hitos en riesgo, conviene proactivamente alinear con el cliente: re-baseline, mover hitos no críticos, o pedir prórroga formal. Cuesta más resolverlo al final.`,
+      desc:`Cuando el cumplimiento del plazo < 0.85 o hay múltiples hitos en riesgo, conviene proactivamente alinear con el cliente: re-baseline, mover hitos no críticos, o pedir prórroga formal. Cuesta más resolverlo al final.`,
       recover: 7, cost:'Bajo', tasks:hitosRiesgo.length
     });
   }
@@ -6955,7 +6955,7 @@ function recoveryGenerarAcciones(det) {
     acciones.push({
       cls:'baja', icon:_rmIcons.reportar, score: 30,
       title:'Actualizar reporte diario hoy',
-      desc:`Mantén trazabilidad. El reporte diario alimenta los KPIs del dashboard y la curva S. Tomar 10 min puede revelar avances no registrados que mejoran el SPI.`,
+      desc:`Mantén trazabilidad. El reporte diario alimenta los KPIs del dashboard y la curva S. Tomar 10 min puede revelar avances no registrados que mejoran el cumplimiento del plazo.`,
       recover: 1, cost:'Mínimo', tasks: 0
     });
   }
@@ -6976,7 +6976,7 @@ function openRecoveryModal() {
     <div class="rm-stat bad"><div class="lbl">Atrasadas</div><div class="val">${det.atrasadas.length}</div><div class="sub">tareas vencidas</div></div>
     <div class="rm-stat warn"><div class="lbl">Sin movimiento</div><div class="val">${det.sinMov.length}</div><div class="sub">≥5d sin avance</div></div>
     <div class="rm-stat ${det.critRiesgo.length>0?'bad':''}"><div class="lbl">Críticas en riesgo</div><div class="val">${det.critRiesgo.length}</div><div class="sub">ruta crítica</div></div>
-    <div class="rm-stat ${det.spi!=null&&det.spi<0.85?'bad':det.spi!=null&&det.spi<0.96?'warn':'good'}"><div class="lbl">SPI proyecto</div><div class="val">${det.spi!=null?det.spi.toFixed(2):'—'}</div><div class="sub">Schedule Perf.</div></div>
+    <div class="rm-stat ${det.spi!=null&&det.spi<0.85?'bad':det.spi!=null&&det.spi<0.96?'warn':'good'}"><div class="lbl">Cumplimiento del plazo</div><div class="val">${det.spi!=null?det.spi.toFixed(2):'—'}</div><div class="sub">real ÷ plan</div></div>
     <div class="rm-stat good"><div class="lbl">Potencial recup.</div><div class="val">~${totalRec}d</div><div class="sub">si aplicas el plan</div></div>
   `;
 
@@ -7190,15 +7190,15 @@ function renderEquiposPanel(bodyId, liveId) {
     return;
   }
   if (_pmoState.status === 'error') {
-    body.innerHTML = `<div class="eq-empty"><div class="ic">⚠</div>PMO sin conexión. <span style="color:var(--teal-700);cursor:pointer" onclick="syncPMO(true)">Reintentar</span></div>`;
+    body.innerHTML = `<div class="eq-empty"><div class="ic">⚠</div>Gerencia sin conexión. <span style="color:var(--teal-700);cursor:pointer" onclick="syncPMO(true)">Reintentar</span></div>`;
     return;
   }
   if (_pmoState.status === 'idle' || _pmoState.status === 'syncing') {
-    body.innerHTML = `<div class="eq-empty"><div class="ic">⟳</div>Sincronizando con PMO…</div>`;
+    body.innerHTML = `<div class="eq-empty"><div class="ic">⟳</div>Sincronizando con Gerencia…</div>`;
     return;
   }
   if (equipos.length === 0) {
-    body.innerHTML = `<div class="eq-empty"><div class="ic">📦</div>Este proyecto no tiene equipos asignados en el PMO.<br><span style="font-size:10.5px;">Si agregas equipos en el Centro de Control PMO aparecerán aquí en <60s.</span></div>`;
+    body.innerHTML = `<div class="eq-empty"><div class="ic">📦</div>Este proyecto no tiene equipos asignados en Gerencia.<br><span style="font-size:10.5px;">Si agregas equipos en Gerencia aparecerán aquí en <60s.</span></div>`;
     return;
   }
 
@@ -7232,7 +7232,7 @@ function renderEquiposPanel(bodyId, liveId) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           ${eta.label}
          </div>`
-      : `<div class="eq-eta" style="opacity:.55">Sin ETA</div>`;
+      : `<div class="eq-eta" style="opacity:.55">Sin fecha</div>`;
     const etaDate = eta.etaDate ? `<div class="eq-eta-date">${_fmtFechaES(eta.etaDate)}</div>` : '';
     return `<div class="eq-card ${stClass}" onclick="openEquipoDetail('${(e.doc||'').replace(/'/g,'\\\'')}')">
       ${etaPill}
@@ -8436,7 +8436,7 @@ function abrirTaskPanel(t) {
       </button>
       <button class="tp-tab" data-tab="pmo" onclick="tpSwitch('pmo')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <span>Equipo PMO</span><span class="tp-tab-cnt" id="tp-cnt-pmo">—</span>
+        <span>Equipo de proyectos</span><span class="tp-tab-cnt" id="tp-cnt-pmo">—</span>
       </button>
       <button class="tp-tab" data-tab="historico" onclick="tpSwitch('historico')">
         ${_gIcons.clock}<span>Histórico</span><span class="tp-tab-cnt" id="tp-cnt-hist">—</span>
@@ -8450,7 +8450,7 @@ function abrirTaskPanel(t) {
       </button>
     </div>
     <div class="tp-pane active" id="tp-pane-detalles"></div>
-    <div class="tp-pane" id="tp-pane-pmo"><div class="dim-loading"><span class="spinner"></span>Cargando equipo PMO…</div></div>
+    <div class="tp-pane" id="tp-pane-pmo"><div class="dim-loading"><span class="spinner"></span>Cargando equipo de proyectos…</div></div>
     <div class="tp-pane" id="tp-pane-historico"><div class="dim-loading"><span class="spinner"></span>Cargando histórico…</div></div>
     <div class="tp-pane" id="tp-pane-productividad"><div class="dim-loading"><span class="spinner"></span>Calculando productividad…</div></div>
     <div class="tp-pane" id="tp-pane-accion"></div>
@@ -8526,7 +8526,7 @@ function tpRenderDetalles(t) {
     <div class="tp-grid">
       <div class="tp-stat"><div class="lbl">Estado</div><div class="val" style="font-size:14px">${statusLabels[a.status]||'—'}</div><div class="sub">${t.es_critico?'En ruta crítica':''}</div></div>
       <div class="tp-stat ${desvClass}"><div class="lbl">Desviación</div><div class="val">${desv}%</div><div class="sub">vs ${pctEsp}% esperado</div></div>
-      <div class="tp-stat ${spiClass}"><div class="lbl">SPI tarea</div><div class="val">${spi}</div><div class="sub">${spiClass==='good'?'Saludable':spiClass==='warn'?'Atención':spiClass==='bad'?'Crítico':'—'}</div></div>
+      <div class="tp-stat ${spiClass}"><div class="lbl">Cumplimiento de la tarea</div><div class="val">${spi}</div><div class="sub">${spiClass==='good'?'Saludable':spiClass==='warn'?'Atención':spiClass==='bad'?'Crítico':'—'}</div></div>
       <div class="tp-stat"><div class="lbl">Sin movimiento</div><div class="val" style="font-size:18px">${sinMov}</div><div class="sub">desde última actualización</div></div>
     </div>
 
@@ -8561,12 +8561,12 @@ function tpRenderPMO(t) {
   if (!pane) return;
 
   if (_pmoState.status === 'error') {
-    pane.innerHTML = `<div class="pmo-empty">⚠ PMO sin conexión. Reintentando…</div>`;
+    pane.innerHTML = `<div class="pmo-empty">⚠ Gerencia sin conexión. Reintentando…</div>`;
     if (cnt) cnt.textContent = '—';
     return;
   }
   if (_pmoState.status === 'idle' || _pmoState.status === 'syncing') {
-    pane.innerHTML = `<div class="dim-loading"><span class="spinner"></span>Esperando PMO…</div>`;
+    pane.innerHTML = `<div class="dim-loading"><span class="spinner"></span>Esperando a Gerencia…</div>`;
     return;
   }
 
@@ -8590,15 +8590,15 @@ function tpRenderPMO(t) {
     const spiPmo = parseFloat(proj.spi||0);
     const spiClass = spiPmo >= 0.96 ? 'good' : spiPmo >= 0.85 ? 'warn' : 'bad';
     projHtml = `<div class="tp-section">
-      <h4>${_gIcons.flag} Proyecto en PMO · live</h4>
+      <h4>${_gIcons.flag} Proyecto en Gerencia · en vivo</h4>
       <div class="tp-grid">
-        <div class="tp-stat ${valpClass}"><div class="lbl">% Avance PMO</div><div class="val">${valp.toFixed(1)}%</div><div class="sub">según PMO</div></div>
-        <div class="tp-stat ${spiClass}"><div class="lbl">SPI PMO</div><div class="val">${spiPmo.toFixed(2)}</div><div class="sub">${proj.estado||''}</div></div>
+        <div class="tp-stat ${valpClass}"><div class="lbl">% Avance en Gerencia</div><div class="val">${valp.toFixed(1)}%</div><div class="sub">según Gerencia</div></div>
+        <div class="tp-stat ${spiClass}"><div class="lbl">Cumplimiento en Gerencia</div><div class="val">${spiPmo.toFixed(2)}</div><div class="sub">${proj.estado||''}</div></div>
         <div class="tp-stat"><div class="lbl">Venta</div><div class="val" style="font-size:14px">$ ${fmtM(proj.venta)}</div></div>
         <div class="tp-stat"><div class="lbl">Facturado</div><div class="val" style="font-size:14px">$ ${fmtM(proj.fact)}</div></div>
       </div>
       <div style="font-size:11px;color:var(--text-3);margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;">
-        <span><b style="color:var(--navy-700);">Supervisor PMO:</b> ${proj.sup||'—'}</span>
+        <span><b style="color:var(--navy-700);">Supervisor en Gerencia:</b> ${proj.sup||'—'}</span>
         <span><b style="color:var(--navy-700);">Depto:</b> ${proj.dep||'—'}</span>
         <span><b style="color:var(--navy-700);">Tipo:</b> ${proj.tipo||'—'}</span>
         <span><b style="color:var(--navy-700);">Inicio:</b> ${proj.ci||'—'}</span>
@@ -8606,7 +8606,7 @@ function tpRenderPMO(t) {
       </div>
     </div>`;
   } else {
-    projHtml = `<div class="tp-section"><h4>${_gIcons.flag} Proyecto en PMO</h4><div class="pmo-empty">Proyecto no encontrado en PMO live.</div></div>`;
+    projHtml = `<div class="tp-section"><h4>${_gIcons.flag} Proyecto en Gerencia</h4><div class="pmo-empty">Proyecto no encontrado en Gerencia.</div></div>`;
   }
 
   // Equipos: priorizar los relevantes, luego mostrar el resto
@@ -8629,7 +8629,7 @@ function tpRenderPMO(t) {
 
   let equiposHtml = '';
   if (totalEquipos === 0) {
-    equiposHtml = `<div class="tp-section"><h4>${_gIcons.warn} Equipos asignados</h4><div class="pmo-empty">No hay equipos asignados a este proyecto en PMO.</div></div>`;
+    equiposHtml = `<div class="tp-section"><h4>${_gIcons.warn} Equipos asignados</h4><div class="pmo-empty">No hay equipos asignados a este proyecto en Gerencia.</div></div>`;
   } else {
     const rel = equiposRelevantes.slice(0, 8);
     const otros = equipos.filter(e => !equiposRelevantes.includes(e)).slice(0, 6);
@@ -8649,7 +8649,7 @@ function tpRenderPMO(t) {
 
   const ts = new Date(_pmoState.lastFetch).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   pane.innerHTML = projHtml + equiposHtml +
-    `<div style="font-size:10px;color:var(--text-3);text-align:right;margin-top:10px;">⟳ PMO sincronizado ${ts} · <span style="color:var(--teal-700);cursor:pointer" onclick="syncPMO(true)">Refrescar ahora</span></div>`;
+    `<div style="font-size:10px;color:var(--text-3);text-align:right;margin-top:10px;">⟳ Gerencia sincronizada ${ts} · <span style="color:var(--teal-700);cursor:pointer" onclick="syncPMO(true)">Refrescar ahora</span></div>`;
 }
 
 // ── Tab 3 · HISTÓRICO (avance_log de la tarea) ──
@@ -9901,7 +9901,7 @@ function rdRenderPlazos(){
       desfTxt + (!reproHoy && vieneDeObra && rdReproUlt.fecha_reporte
         ? `<span class="s">reportado ${rdFmtFecha(rdReproUlt.fecha_reporte)}</span>` : ''),
       'real') +
-    bloque('SPI del día', plan>0 ? spi.toFixed(2) : '—',
+    bloque('Cumplimiento del día', plan>0 ? spi.toFixed(2) : '—',
       `<span class="s">${plan>0 ? real.toFixed(1)+'% de '+plan.toFixed(1)+'%' : 'sin plan cargado'}</span>`, 'spi '+spiCls);
 }
 
@@ -10271,7 +10271,7 @@ function rdEquiposRender(){
 
   if (!lista.length){
     m.innerHTML = `<div class="rd-eq-empty">${currentProyecto
-      ? 'Este proyecto no tiene equipos registrados en PMO.'
+      ? 'Este proyecto no tiene equipos registrados en Gerencia.'
       : 'Selecciona un proyecto para ver sus equipos.'}</div>`;
     return;
   }
@@ -10286,12 +10286,12 @@ function rdEquiposRender(){
     const doc = e.doc || '';
     const st  = rdEquipos[doc] || {};
     const cls = _eqStatusClass(e.st);
-    const sub = [ e.proveedor, e.mod, e.eta ? 'ETA ' + e.eta : '' ].filter(Boolean)
+    const sub = [ e.proveedor, e.mod, e.eta ? 'Llega ' + e.eta : '' ].filter(Boolean)
                   .map(x=>`<span>${rdEsc2(x)}</span>`).join('');
     return `<div class="rd-eq-row">
       <div class="rd-eq-id">
         <div class="rd-eq-tt">${rdEsc2(e.tipo || 'Equipo')} <span style="font-weight:600;color:var(--text-3);">· ${rdEsc2(doc)}</span></div>
-        <div class="rd-eq-sub">${sub}<span class="rd-eq-pmo ${cls}">PMO: ${rdEsc2(e.st||'—')}</span></div>
+        <div class="rd-eq-sub">${sub}<span class="rd-eq-pmo ${cls}">Gerencia: ${rdEsc2(e.st||'—')}</span></div>
       </div>
       <div class="rd-eq-seg">${EQ_ESTADOS.filter(x=>x.k).map(x=>
         `<button class="rd-eq-b ${x.cls} ${st.estado===x.k?'on':''}" onclick="rdEqSet('${rdEsc2(doc)}','estado','${x.k}')">${x.lbl}</button>`).join('')}</div>
@@ -10300,7 +10300,7 @@ function rdEquiposRender(){
   }).join('');
   if (culminados.length){
     m.innerHTML += `<button class="rd-eq-toggle" onclick="rdEqVerTodos=!rdEqVerTodos;rdEquiposRender()">${
-      rdEqVerTodos ? 'Ocultar los culminados' : `Ver todos · ${culminados.length} culminado(s) en PMO`}</button>`;
+      rdEqVerTodos ? 'Ocultar los culminados' : `Ver todos · ${culminados.length} culminado(s) en Gerencia`}</button>`;
   }
   rdIcons();
 }
@@ -10466,7 +10466,7 @@ const ESP_CAT = [
   { key:'mecanica',         label:'Mecánica (tubería/rack)' },
   { key:'paneles',          label:'Paneles' },
   { key:'electrica',        label:'Eléctrica' },
-  { key:'eemm',             label:'Montaje EEMM' },
+  { key:'eemm',             label:'Montaje de estructuras metálicas' },
   { key:'oocc',             label:'Obras Civiles' },
   { key:'aislamiento',      label:'Aislamiento' },
   { key:'tuberia_glicol',   label:'Tubería de Glicol' },
@@ -11147,7 +11147,7 @@ async function buildHistoria(){
     </div>
     <div class="rd-ai-body">
       <div class="rd-ai-summary">El proyecto reporta <strong>${num(today.pct_ejecutado).toFixed(1)}%</strong> de avance frente a <strong>${num(today.pct_planificado).toFixed(1)}%</strong> planificado (${diff>=0?'a favor':'en contra'} por ${Math.abs(diff).toFixed(1)} pts), con <strong>${today.personal_total||0} personas</strong> en obra y <strong>${riesgosArr.length} riesgo(s)</strong> identificados${altos?` (${altos} ALTO)`:''}. ${diff>=0&&altos===0?'El día se desarrolla dentro de parámetros esperados.':'Hay puntos que requieren atención del supervisor.'}</div>
-      <div class="rd-gauges">${g3('Cumplimiento (SPI)',gSpi,'#22c55e')}${hayRondas?g3('Calidad rondas',rondasPct,'#0891b2'):''}${hayRiesgos?g3('Gestión de riesgo',gRiesgo,'#f59e0b'):''}</div>
+      <div class="rd-gauges">${g3('Cumplimiento del plazo',gSpi,'#22c55e')}${hayRondas?g3('Calidad rondas',rondasPct,'#0891b2'):''}${hayRiesgos?g3('Gestión de riesgo',gRiesgo,'#f59e0b'):''}</div>
       <div class="rd-ai-cols">
         <div class="rd-ai-block"><h5><i data-lucide="check-circle-2" class="ri"></i> Fortalezas</h5>${bien.map(x=>`<div class="rd-ai-li good"><i data-lucide="check" class="ri"></i><span>${x}</span></div>`).join('')}</div>
         <div class="rd-ai-block"><h5><i data-lucide="alert-triangle" class="ri"></i> Atención</h5>${(atencion.length?atencion:['Sin alertas relevantes hoy.']).map(x=>`<div class="rd-ai-li bad"><i data-lucide="alert-circle" class="ri"></i><span>${x}</span></div>`).join('')}</div>
@@ -11270,7 +11270,7 @@ function rvRenderReporte(r){
     ${stat(real.toFixed(1)+'%','Avance ejecutado')}
     ${stat(plan.toFixed(1)+'%','Planificado')}
     ${stat((diff>=0?'+':'')+diff.toFixed(1),'Δ vs plan', diff>=0?'pos':'neg')}
-    ${stat(spi.toFixed(2),'SPI', spi>=1?'pos':(spi>=0.9?'':'neg'))}
+    ${stat(spi.toFixed(2),'Cumplimiento', spi>=1?'pos':(spi>=0.9?'':'neg'))}
     ${r.rondas_total ? stat((r.rondas_ok||0)+'/'+(r.rondas_total||0),'Rondas de calidad') : ''}
   </div>`;
 
@@ -11397,7 +11397,7 @@ function rvRenderReporte(r){
       `<div class="rv-list">${equiposDia.map(e=>`<div class="rv-li">
         <span class="rv-tag ${EQ_TONO[e.estado]||''}">${rvEsc(EQ_LBL[e.estado]||'Sin estado')}</span>
         <div><b>${rvEsc(e.tipo||'Equipo')}</b> · ${rvEsc(e.doc||'')}
-          ${e.proveedor?`<br><small>${rvEsc(e.proveedor)}${e.eta?' · ETA '+rvEsc(e.eta):''}${e.st_pmo?' · PMO: '+rvEsc(e.st_pmo):''}</small>`:''}
+          ${e.proveedor?`<br><small>${rvEsc(e.proveedor)}${e.eta?' · llega '+rvEsc(e.eta):''}${e.st_pmo?' · Gerencia: '+rvEsc(e.st_pmo):''}</small>`:''}
           ${e.nota?`<br><span>${rvEsc(e.nota)}</span>`:''}</div>
       </div>`).join('')}</div>`);
   }
@@ -12153,8 +12153,8 @@ const PEM_SECCIONES = [
     {t:'Estado — Inyección líquido TK'}, {t:'Estado — Bajo nivel'}, {t:'Estado — Alto nivel'},
     {t:'Estado — Compresor'}, {t:'Estado — Condensador'} ], coment:'Postcarga del programa' },
   { icon:'thermometer', titulo:'Pruebas a temperatura de seteo (vacío y con producto)', items:[
-    {t:'Túneles MP'}, {t:'Pasillo MP'}, {t:'Cámara MP'}, {t:'Sala de Procesos'},
-    {t:'Túneles PT'}, {t:'Pasillo PT'}, {t:'Cámara PT'}, {t:'Contramuestras'}, {t:'Despacho'} ], coment:'Temperatura de seteo' }
+    {t:'Túneles de materia prima'}, {t:'Pasillo de materia prima'}, {t:'Cámara de materia prima'}, {t:'Sala de Procesos'},
+    {t:'Túneles de producto terminado'}, {t:'Pasillo de producto terminado'}, {t:'Cámara de producto terminado'}, {t:'Contramuestras'}, {t:'Despacho'} ], coment:'Temperatura de seteo' }
 ];
 const PEM_COMENT_EXTRA = ['Cambio de aceite (200 H)', 'Limpieza de filtro (200 H)'];
 const PEM_FIRMAS = ['Friopacking', 'Contratista Frigorista', 'Friopacking — Control de Riesgos'];
@@ -12373,7 +12373,7 @@ async function cargarPersonalHist() {
     const rows = await sbFetch(`/rest/v1/ingreso_personal?proyecto=ilike.${encodeURIComponent('%'+nombre+'%')}&order=fecha.desc&limit=20`);
     if (!rows || rows.length === 0) { el.innerHTML = '<p style="color:var(--muted);padding:20px;">Sin registros.</p>'; return; }
     el.innerHTML = `<table class="gantt-table">
-      <thead><tr><th>Fecha</th><th>Paneles</th><th>Mecánico</th><th>Eléctrico</th><th>Aislamiento</th><th>Rack</th><th>OO.CC</th><th>EEMM</th><th>Total</th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Paneles</th><th>Mecánico</th><th>Eléctrico</th><th>Aislamiento</th><th>Rack</th><th>Obras civiles</th><th>Estructuras metálicas</th><th>Total</th></tr></thead>
       <tbody>${rows.map(r=>`<tr>
         <td>${r.fecha||''}</td>
         ${ESPECIALIDADES.map(e=>`<td>${r[e]||0}</td>`).join('')}
@@ -12568,7 +12568,7 @@ async function exportarPDF() {
   sb.className = 'pdf-status ' + (enPlan?'en-plan':'atrasado');
   document.getElementById('pdf-status-label').textContent = enPlan?'EN PLAN':'ATRASADO';
   document.getElementById('pdf-status-detail').textContent = `Real ${real.toFixed(1)}% · Plan ${plan.toFixed(1)}% · Delta ${delta.toFixed(1)}%`;
-  document.getElementById('pdf-spi-badge').textContent = 'SPI '+spi.toFixed(2);
+  document.getElementById('pdf-spi-badge').textContent = 'Cumplimiento '+spi.toFixed(2);
 
   // Personal chips
   const perRow = document.getElementById('pdf-personal-row');
@@ -12588,7 +12588,7 @@ async function exportarPDF() {
     if(_eqTitle) _eqTitle.style.display = '';
     _eqTable.style.display = '';
     _eqTable.innerHTML =
-      `<thead><tr><th>Equipo</th><th>Orden</th><th>Proveedor</th><th>ETA</th><th>PMO</th><th>En obra</th><th>Nota</th></tr></thead>
+      `<thead><tr><th>Equipo</th><th>Orden</th><th>Proveedor</th><th>Llegada estimada</th><th>Estado en Gerencia</th><th>En obra</th><th>Nota</th></tr></thead>
        <tbody>${_eqPdf.map(e=>`<tr>
          <td>${e.tipo||'—'}</td><td>${e.doc||'—'}</td><td>${e.proveedor||'—'}</td>
          <td>${e.eta||'—'}</td><td>${e.st_pmo||'—'}</td>
@@ -12604,7 +12604,7 @@ async function exportarPDF() {
     if (rows && rows.length > 0 && rows[0].contratas_detalle) {
       const contratas = rows[0].contratas_detalle;
       document.getElementById('pdf-contratas-table').innerHTML =
-        `<thead><tr><th>Empresa</th><th>Especialidad</th><th>Pers.</th><th>EPP</th><th>Hig.</th><th>Punt.</th><th>Unif.</th><th>Comp.</th><th>Orden</th><th>Prom.</th></tr></thead>
+        `<thead><tr><th>Empresa</th><th>Especialidad</th><th>Pers.</th><th>Equipo de protección</th><th>Hig.</th><th>Punt.</th><th>Unif.</th><th>Comp.</th><th>Orden</th><th>Prom.</th></tr></thead>
         <tbody>${(Array.isArray(contratas)?contratas:[]).map(c=>`<tr>
           <td>${c.empresa||c.contratista||'—'}</td><td>${c.especialidad||'—'}</td>
           <td>${c.personal||0}</td><td>${c.epp||c.eval_epp||'—'}</td>
@@ -12662,10 +12662,10 @@ function showTab(tab) {
 
 /* ════ Checklist de preparación de obra (kick-off) — captura Supervisor ════ */
 const CHK_SECCIONES = [
-  { key:'planos',    label:'Planos',    base:['Mecánico','Eléctrico','Civil','EEMM','Otros'] },
-  { key:'equipos',   label:'Equipos',   base:['Equipos','Paneles','Racks','EEMM','Otros'] },
+  { key:'planos',    label:'Planos',    base:['Mecánico','Eléctrico','Civil','Estructuras metálicas','Otros'] },
+  { key:'equipos',   label:'Equipos',   base:['Equipos','Paneles','Racks','Estructuras metálicas','Otros'] },
   { key:'compras',   label:'Compras',   base:['Tuberías','Cables','Paneles','Lonas','Otros'] },
-  { key:'servicios', label:'Servicios', base:['Montaje de paneles','Montaje EEMM','Estructuras metálicas','Obras civiles','Otros'] },
+  { key:'servicios', label:'Servicios', base:['Montaje de paneles','Montaje de estructuras metálicas','Estructuras metálicas','Obras civiles','Otros'] },
   { key:'recursos',  label:'Recursos',  base:['Caseta','Almacén','Almacenero','Internet (Starlink)','Otros'] }
 ];
 let chkState = null, chkSaveTimer = null;
@@ -12960,7 +12960,7 @@ function renderKPIs(d) {
   grid.innerHTML = [
     card({ id:'kpi-avance',  icon:'avance',   name:'Avance real',     value:d.avance,  unit:'%', decimals:1, delta:d.deltaAvance, state:d.stateAvance, sub:'% físico ejecutado',           spark:d.sparkAvance }),
     card({ id:'kpi-plan',    icon:'plan',     name:'Plan acum.',      value:d.plan,    unit:'%', decimals:1, delta:d.deltaPlan,   state:'neutral',     sub:'% planificado a la fecha',     spark:d.sparkPlan }),
-    card({ id:'kpi-spi',     icon:'spi',      name:'SPI',             value:d.spi,     unit:'',  decimals:2, delta:d.deltaSpi, deltaUnit:'', state:d.stateSpi, sub:'Schedule Performance Index', spark:d.sparkSpi }),
+    card({ id:'kpi-spi',     icon:'spi',      name:'Cumplimiento del plazo',             value:d.spi,     unit:'',  decimals:2, delta:d.deltaSpi, deltaUnit:'', state:d.stateSpi, sub:'avance real ÷ plan', spark:d.sparkSpi }),
     card({ id:'kpi-eval',    icon:'eval',     name:'Eval. contratas', value:d.evalCt,  unit:'',  decimals:1, delta:d.deltaEval, deltaUnit:'', state:d.stateEval, sub:'Puntaje promedio',          spark:d.sparkEval }),
     card({ id:'kpi-rondas',  icon:'rondas',   name:'Rondas',          value:d.rondasPct, unit:'%', decimals:0, delta:d.deltaRondas, state:d.stateRondas, sub:`${d.rondasOk||0}/${d.rondasTot||10} hoy`, spark:d.sparkRondas }),
     card({ id:'kpi-personal',icon:'personal', name:'Personal hoy',    value:d.personal, unit:'', decimals:0, delta:d.deltaPersonal, deltaUnit:'p', state:'neutral', sub:'personas en obra',          spark:d.sparkPersonal })
@@ -13003,13 +13003,13 @@ function generarBriefingDeterministico(ctx) {
   // SPI / avance
   if (ctx.spi != null && !isNaN(ctx.spi)) {
     if (ctx.spi < 0.85) {
-      lines.push(`El avance está <strong>significativamente por debajo</strong> del plan (SPI ${ctx.spi.toFixed(2)}). Requiere acción inmediata.`);
-      insights.push({ tone:'danger', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', t:'Avance crítico', d:`SPI ${ctx.spi.toFixed(2)} · ${ctx.avance.toFixed(1)}% real vs ${ctx.plan.toFixed(1)}% plan` });
+      lines.push(`El avance está <strong>significativamente por debajo</strong> del plan (cumplimiento ${ctx.spi.toFixed(2)}). Requiere acción inmediata.`);
+      insights.push({ tone:'danger', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', t:'Avance crítico', d:`Cumplimiento ${ctx.spi.toFixed(2)} · ${ctx.avance.toFixed(1)}% real vs ${ctx.plan.toFixed(1)}% plan` });
     } else if (ctx.spi < 0.96) {
-      lines.push(`El avance está <strong>ligeramente atrasado</strong> (SPI ${ctx.spi.toFixed(2)}).`);
-      insights.push({ tone:'warn', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', t:'SPI bajo umbral', d:`SPI ${ctx.spi.toFixed(2)} · objetivo ≥ 0.96` });
+      lines.push(`El avance está <strong>ligeramente atrasado</strong> (cumplimiento ${ctx.spi.toFixed(2)}).`);
+      insights.push({ tone:'warn', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', t:'Cumplimiento bajo umbral', d:`Cumplimiento ${ctx.spi.toFixed(2)} · objetivo ≥ 0.96` });
     } else {
-      insights.push({ tone:'success', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>', t:'Cronograma en línea', d:`SPI ${ctx.spi.toFixed(2)} · ritmo saludable` });
+      insights.push({ tone:'success', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>', t:'Cronograma en línea', d:`Cumplimiento ${ctx.spi.toFixed(2)} · ritmo saludable` });
     }
   }
 
@@ -13106,10 +13106,10 @@ function renderPrioridades(ctx) {
 
   if (ctx.spi != null && ctx.spi < 0.85) {
     items.push({ imp:'crit', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>',
-      title:'Avance crítico', desc:`SPI ${ctx.spi.toFixed(2)} · real ${ctx.avance.toFixed(1)}% vs plan ${ctx.plan.toFixed(1)}%`, tab:'diario', score: 100 });
+      title:'Avance crítico', desc:`Cumplimiento ${ctx.spi.toFixed(2)} · real ${ctx.avance.toFixed(1)}% vs plan ${ctx.plan.toFixed(1)}%`, tab:'diario', score: 100 });
   } else if (ctx.spi != null && ctx.spi < 0.96) {
     items.push({ imp:'high', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
-      title:'SPI por debajo de umbral', desc:`SPI ${ctx.spi.toFixed(2)} · revisar plan vs ejecutado`, tab:'diario', score: 70 });
+      title:'Cumplimiento del plazo por debajo del umbral', desc:`Cumplimiento ${ctx.spi.toFixed(2)} · revisar plan vs ejecutado`, tab:'diario', score: 70 });
   }
 
   if (ctx.riesgosAltos > 0) {
@@ -13255,7 +13255,7 @@ function renderFeed(sources) {
   (sources.reportes||[]).slice(0,6).forEach(r => {
     if (!r.fecha_reporte) return;
     events.push({ ts: r.created_at || (r.fecha_reporte+'T08:00:00'), kind:'reporte',
-      tag: 'Reporte', msg: `<b>Reporte diario</b> guardado · avance <b>${parseFloat(r.pct_ejecutado||0).toFixed(1)}%</b> · SPI <b>${r.spi||'—'}</b>` });
+      tag: 'Reporte', msg: `<b>Reporte diario</b> guardado · avance <b>${parseFloat(r.pct_ejecutado||0).toFixed(1)}%</b> · cumplimiento <b>${r.spi||'—'}</b>` });
   });
   (sources.riesgos||[]).slice(0,8).forEach(r => {
     if (!r.created_at) return;
@@ -13314,7 +13314,7 @@ let _dashSources = null;
   const CATS = ['equipo','materiales','infraestructura','instalacion','tuberia','electrico','pem','gastos_generales','staff','otro'];
   const CAT_LABELS = {
     equipo:'Equipo', materiales:'Materiales', infraestructura:'Infraestructura', instalacion:'Instalación',
-    tuberia:'Tubería', electrico:'Eléctrico', pem:'PEM',
+    tuberia:'Tubería', electrico:'Eléctrico', pem:'Puesta en marcha',
     gastos_generales:'Gastos Generales', staff:'Staff', otro:'Otro'
   };
   const CAT_COLORS = {
@@ -14270,7 +14270,7 @@ let _dashSources = null;
 
   const COSTOS_CAT_LABELS = {
     equipo:'Equipo', materiales:'Materiales', infraestructura:'Infraestructura', instalacion:'Instalación',
-    tuberia:'Tubería', electrico:'Eléctrico', pem:'PEM',
+    tuberia:'Tubería', electrico:'Eléctrico', pem:'Puesta en marcha',
     gastos_generales:'Gastos Generales', staff:'Staff', otro:'Otro'
   };
   const COSTOS_CAT_COLORS = {
@@ -14884,7 +14884,7 @@ let _dashSources = null;
               <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700">Alcance / Partida</th>
               <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700">Fecha necesidad</th>
               <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700">Estado</th>
-              <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700;text-align:right">Presupuesto MO</th>
+              <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700;text-align:right">Presupuesto de mano de obra</th>
               <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700">Contratista</th>
               <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700">Monto adj. + Δ</th>
               <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700">F. adj.</th>
@@ -15023,20 +15023,20 @@ let _dashSources = null;
       return {
         txt:'Acción crítica requerida',
         title:'Tu proyecto requiere recuperación',
-        sub: `${h.atrasadas} atrasadas · ${h.sinMov} sin movimiento · SPI ${h.spi != null ? h.spi.toFixed(2) : '—'}`
+        sub: `${h.atrasadas} atrasadas · ${h.sinMov} sin movimiento · cumplimiento ${h.spi != null ? h.spi.toFixed(2) : '—'}`
       };
     }
     if(h.severity === 'warn'){
       return {
         txt:'Atención · desviaciones detectadas',
         title:'Proyecto requiere ajuste',
-        sub: `${h.atrasadas} atrasadas · ${h.sinMov} sin movimiento · SPI ${h.spi != null ? h.spi.toFixed(2) : '—'}`
+        sub: `${h.atrasadas} atrasadas · ${h.sinMov} sin movimiento · cumplimiento ${h.spi != null ? h.spi.toFixed(2) : '—'}`
       };
     }
     return {
       txt:'Proyecto en plan',
       title:'Sin acciones críticas',
-      sub: `${h.total} tareas activas · SPI ${h.spi != null ? h.spi.toFixed(2) : '—'}`
+      sub: `${h.total} tareas activas · cumplimiento ${h.spi != null ? h.spi.toFixed(2) : '—'}`
     };
   }
 
@@ -15168,8 +15168,8 @@ let _dashSources = null;
     if(det.spi != null){
       const spiTone = det.spi < 0.85 ? 'critical' : det.spi < 0.95 ? 'warn' : 'good';
       chips.push({
-        tone: spiTone, ic:'∿', num: det.spi.toFixed(2), lbl:'SPI',
-        hint:`Schedule Performance Index · &lt; 0.95 indica desvío`,
+        tone: spiTone, ic:'∿', num: det.spi.toFixed(2), lbl:'Cumplimiento del plazo',
+        hint:`avance real ÷ plan · &lt; 0.95 indica desvío`,
         action: null
       });
     }
