@@ -30,7 +30,7 @@
   const sf3 = v => v < 65 ? '#8B2323' : v < 80 ? '#0D2B45' : '#3DD6B5';       // celdas .sf/.sn (3 niveles)
 
   const CRITS = [
-    { k: 'ssoma', p: 'ssoma', short: 'SSOMA',   name: 'SSOMA',        ico: '🦺', t: '🦺 SSOMA / Seguridad — Ranking Completo',      lbl: 'SSOMA / Seguridad',      sub: 'Controles EPP · supervisión · normas' },
+    { k: 'ssoma', p: 'ssoma', short: 'SSOMA',   name: 'SSOMA',        ico: '🦺', t: '🦺 SSOMA / Seguridad — Ranking Completo',      lbl: 'SSOMA / Seguridad',      sub: 'Controles Equipo de protección · supervisión · normas' },
     { k: 'cumpl', p: 'cumpl', short: 'Cumpl.',  name: 'Cumplimiento', ico: '📋', t: '📋 Cumplimiento — Ranking Completo',            lbl: 'Cumplimiento',           sub: 'Horario · cronogramas · documentación' },
     { k: 'cal',   p: 'cal',   short: 'Calidad', name: 'Calidad',      ico: '⭐', t: '⭐ Calidad del Servicio — Ranking Completo',     lbl: 'Calidad del Servicio',   sub: 'Estándares técnicos · retrabajos' },
     { k: 'gest',  p: 'gest',  short: 'Gestión', name: 'Gestión',      ico: '🤝', t: '🤝 Gestión Administrativa — Ranking Completo',   lbl: 'Gestión Administrativa', sub: 'Reuniones · respuesta · responsabilidad' },

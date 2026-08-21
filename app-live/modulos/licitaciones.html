@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Licitaciones — Centro de Control PMO · Grupo Friopacking</title>
+<title>Licitaciones — Centro de Control · Grupo Friopacking</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -468,7 +468,7 @@ function openPendientes(){
     title:'Pendientes por licitar', sub:'Partidas con mano de obra (presupuesto del módulo Supervisor) que aún no se han licitado.',
     wide:false,
     body: items.length
-      ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Proyecto</th><th class="num">Partidas pend.</th><th class="num">Mano de obra pend.</th><th></th></tr></thead><tbody>'+
+      ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Proyecto</th><th class="num">Partidas pend.</th><th class="num">Mano de obra pendiente</th><th></th></tr></thead><tbody>'+
           items.map(function(m){ return '<tr><td style="font-weight:800">'+esc(m.proyecto)+'</td><td class="num">'+m.count+' <span style="color:#94a3b8;font-weight:600">de '+m.total+'</span></td><td class="num" style="font-weight:800">'+money(m.costo,'PEN')+'</td><td><button class="btn btn-sm btn-primary" data-crear="'+esc(m.proyecto)+'" style="white-space:nowrap"><i data-lucide="plus"></i>Licitar</button></td></tr>'; }).join('')+
           '</tbody></table></div><div style="font-size:11.5px;color:#94a3b8;margin-top:10px;font-weight:600">Cada licitación puede incluir una o varias partidas. Al crear eliges cuáles licitar.</div>'
       : '<div class="empty"><i data-lucide="check-circle-2"></i>No hay partidas pendientes por licitar.</div>',

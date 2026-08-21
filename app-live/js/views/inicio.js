@@ -271,7 +271,7 @@ function renderCriticos(projs, enProgreso, today) {
     const cf = legacyParseD(p.fecha_fin_contractual);
     if (cf) {
       if (nowFull > cf && (p._valp || 0) < 99) {
-        chips.push({ cls: 'crit', ico: 'calendar-x-2', t: 'CF vencida' });
+        chips.push({ cls: 'crit', ico: 'calendar-x-2', t: 'plazo vencido' });
         severity = Math.max(severity, 2);
       } else {
         const d = window.daysUntil(p.fecha_fin_contractual);
@@ -332,7 +332,7 @@ function renderBandeja(ctx) {
   (ctx.spiCritList || []).forEach((p) => {
     if (cfSet.has(p.id)) return;
     items.push({
-      sev: 2, tag: 'Atraso · SPI ' + (p._spi != null ? p._spi.toFixed(2) : '—'), ic: 'trending-down',
+      sev: 2, tag: 'Atraso · Cumplimiento del plazo ' + (p._spi != null ? p._spi.toFixed(2) : '—'), ic: 'trending-down',
       name: p.nombre, act: 'Revisar el retraso de cronograma', owner: owner(p), href: '#proyectos',
     });
   });
@@ -439,7 +439,7 @@ function buildComplianceAlerts(projs, cfVencidasCount, sinReporteCount) {
   // CF vencidas
   if (cfVencidasCount > 0) {
     alerts.push({ type: 'crit', ico: 'alert-circle',
-      t: `${cfVencidasCount} CF vencidas requieren atención`,
+      t: `${cfVencidasCount} plazos vencidos requieren atención`,
       s: 'Proyectos con fecha contractual pasada sin valorización completa',
       href: 'index.html#alertas' });
   }
@@ -648,7 +648,7 @@ function buildKpiDetails(ctx) {
       rows: ctx.valorizacionList.map((p) => projRow(p, (x) => x.estado || '—')),
     },
     cf: {
-      title: 'CF vencidas', ico: 'calendar-x-2', accent: '#dc2626',
+      title: 'plazos vencidos', ico: 'calendar-x-2', accent: '#dc2626',
       href: '#valorizacion', hrefLabel: 'Ir a Valorización',
       empty: 'Sin fechas contractuales vencidas',
       rows: ctx.cfVencidasList.map((p) => projRow(p, (x) => {

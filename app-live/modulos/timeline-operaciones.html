@@ -402,7 +402,7 @@ table.dt td{font-size:12px;color:var(--ink);padding:9px 12px;vertical-align:midd
     <div class="fgrid">
       <div class="fld full"><label>Proyecto *</label><select id="ms-proj"><option value="">&#8212; Selecciona &#8212;</option></select></div>
       <div class="fld full"><label>Nombre completo *</label><input id="ms-name" type="text" list="tl-roster" placeholder="Apellidos Nombres"><datalist id="tl-roster"></datalist></div>
-      <div class="fld"><label>Cargo</label><select id="ms-cargo"><option>Supervisor de Proyecto</option><option>Asistente de Proyecto</option><option>Gerente de Proyecto</option><option>Supervisor EEMM</option><option>Supervisor El&#233;ctrico</option><option>Supervisor Civil</option><option>Asistente Log&#237;stico</option><option>Calidad</option><option>Supervisor</option></select></div>
+      <div class="fld"><label>Cargo</label><select id="ms-cargo"><option>Supervisor de Proyecto</option><option>Asistente de Proyecto</option><option>Gerente de Proyecto</option><option>Supervisor Estructuras metálicas</option><option>Supervisor El&#233;ctrico</option><option>Supervisor Civil</option><option>Asistente Log&#237;stico</option><option>Calidad</option><option>Supervisor</option></select></div>
       <div class="fld"><label style="color:var(--red)">&#128274; Sueldo USD (solo t&#250; lo ves)</label><input id="ms-sal" type="number" placeholder="0" step="100" min="0"><div class="fnote">No aparece en PDF</div></div>
       <div class="fld"><label>Fecha inicio *</label><input id="ms-st" type="date"></div>
       <div class="fld"><label>Fecha fin *</label><input id="ms-en" type="date"></div>
@@ -421,7 +421,7 @@ table.dt td{font-size:12px;color:var(--ink);padding:9px 12px;vertical-align:midd
 <script>
 const PAL=['#1A9E76','#1A5EA0','#7A70D4','#C05A2A','#B87510','#B84070','#2E78CE','#5A8A20','#B03030','#0D6E50','#504AB0','#8A3C18','#6A2038','#3A3085','#356015','#8A3050','#7A4A0A','#2980b9','#8e44ad','#16a085'];
 const APAL=['#1A9E76','#1A5EA0','#7A70D4','#C05A2A','#B87510','#B84070','#0D6E50','#8A3C18'];
-const CC={'Supervisor de Proyecto':'bg-sup','Asistente de Proyecto':'bg-asis','Gerente de Proyecto':'bg-ger','Calidad':'bg-cal','Asistente Logístico':'bg-log','Asistente Logistico':'bg-log','Supervisor EEMM':'bg-eemm','Supervisor Civil':'bg-civil','Supervisor Eléctrico':'bg-sup','Supervisor':'bg-sup'};
+const CC={'Supervisor de Proyecto':'bg-sup','Asistente de Proyecto':'bg-asis','Gerente de Proyecto':'bg-ger','Calidad':'bg-cal','Asistente Logístico':'bg-log','Asistente Logistico':'bg-log','Supervisor Estructuras metálicas':'bg-eemm','Supervisor Civil':'bg-civil','Supervisor Eléctrico':'bg-sup','Supervisor':'bg-sup'};
 const SK='friopacking_v6';
 const AK_KEY='fp_apikey';
 
@@ -467,14 +467,14 @@ const DD=[
   {proj:'AgroBerries',name:'Anthony Rodriguez Meza',cargo:'Asistente de Proyecto',start:'2026-01-21',end:'2026-05-30',salary:0,notes:'',id:12},
   {proj:'Viveros del Tambo',name:'Dylan Marquina Rodriguez',cargo:'Supervisor de Proyecto',start:'2026-04-15',end:'2026-05-22',salary:0,notes:'',id:13},
   {proj:'TYT',name:'Luis Silva Davila',cargo:'Asistente de Proyecto',start:'2026-03-16',end:'2026-05-29',salary:0,notes:'',id:14},
-  {proj:'Imbarex',name:'Carmen Priale Romero',cargo:'Supervisor EEMM',start:'2026-04-28',end:'2026-05-29',salary:0,notes:'',id:15},
+  {proj:'Imbarex',name:'Carmen Priale Romero',cargo:'Supervisor Estructuras metálicas',start:'2026-04-28',end:'2026-05-29',salary:0,notes:'',id:15},
   {proj:'Imbarex',name:'Jean Casas Roncal',cargo:'Supervisor de Proyecto',start:'2026-01-28',end:'2026-05-29',salary:0,notes:'',id:16},
   {proj:'Imbarex',name:'Gianpier Girao Ramos',cargo:'Asistente de Proyecto',start:'2026-01-28',end:'2026-05-29',salary:0,notes:'',id:17},
   {proj:'Tal S.A',name:'Dennis Saravia Abad',cargo:'Gerente de Proyecto',start:'2026-03-09',end:'2026-05-30',salary:0,notes:'',id:18},
   {proj:'Tal S.A',name:'Jorge Hernandez Yepez',cargo:'Asistente de Proyecto',start:'2026-02-24',end:'2026-05-30',salary:0,notes:'',id:19},
   {proj:'Tal S.A',name:'Antero Avila Sanchez',cargo:'Supervisor Eléctrico',start:'2026-03-09',end:'2026-05-30',salary:0,notes:'',id:20},
   {proj:'Tal S.A',name:'Erik Jara Ypanaque',cargo:'Calidad',start:'2026-03-09',end:'2026-05-30',salary:0,notes:'',id:21},
-  {proj:'Berry Harvest',name:'Irwin Gutierrez Campos',cargo:'Supervisor EEMM',start:'2026-01-15',end:'2026-06-01',salary:0,notes:'',id:22},
+  {proj:'Berry Harvest',name:'Irwin Gutierrez Campos',cargo:'Supervisor Estructuras metálicas',start:'2026-01-15',end:'2026-06-01',salary:0,notes:'',id:22},
   {proj:'Torre Blanca',name:'Waldir Saldaña Lopez',cargo:'Supervisor de Proyecto',start:'2026-02-02',end:'2026-06-09',salary:0,notes:'',id:23},
   {proj:'Reiter',name:'Gustavo Martinez Quispe',cargo:'Asistente de Proyecto',start:'2026-04-20',end:'2026-06-15',salary:0,notes:'',id:24},
   {proj:'Smart Packing',name:'Erick Salvador Lizarraga',cargo:'Asistente de Proyecto',start:'2026-04-15',end:'2026-06-15',salary:0,notes:'',id:25},
