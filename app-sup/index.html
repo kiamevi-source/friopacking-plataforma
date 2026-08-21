@@ -13775,32 +13775,87 @@ let _dashSources = null;
     let strategy = '';
     const warnings = [];
 
-    const correr = (hojas) => {
-      hojas.forEach(sn => {
-        const res = parseSheet(wb, sn);
-        if(res.partidas.length) metas.push(res.meta);
-        partidas.push(...res.partidas);
-      });
+    const leer = (hojas) => hojas
+      .map(sn => parseSheet(wb, sn))
+      .filter(res => res.partidas.length);
+
+    // Varias hojas RESUMEN en el mismo libro suelen solaparse: la ejecutiva
+    // consolida y la otra desglosa una de sus líneas. Sumarlas duplica el
+    // presupuesto, así que nos quedamos con UNA.
+    const elegirResumen = (resultados) => {
+      if(resultados.length <= 1) return resultados;
+      const total = r => r.partidas.reduce((a,p) => a + (p.venta_total || p.costo_total || 0), 0);
+      const vivos = resultados.slice();
+      const descartados = [];
+      // 1) Contención: si una hoja tiene una partida que vale lo mismo que el
+      //    total de otra, la segunda es el desglose de esa línea → sobra.
+      for(let i = vivos.length - 1; i >= 0; i--){
+        const tot = total(vivos[i]);
+        if(!(tot > 0)) continue;
+        const contenida = vivos.some((otro, j) => j !== i && otro.partidas.some(p =>
+          Math.abs((p.venta_total || p.costo_total || 0) - tot) <= 0.01 * tot));
+        if(contenida){
+          descartados.push({ hoja: vivos[i].meta.hoja, total: tot, motivo: 'es el desglose de una línea de otra hoja' });
+          vivos.splice(i, 1);
+        }
+      }
+      // 2) Preferimos el nombre canónico ("Resumen", "Resumen Ejecutivo",
+      //    "Resumen de Presupuesto") sobre variantes calificadas como
+      //    "Resumen Banco", que son otra lista de precios del mismo proyecto.
+      const esCanonica = (n) => !String(n||'')
+        .toLowerCase()
+        .replace(/resumen|ejecutiv\w*|presupuesto|propuesta|econ[oó]mica|cuadro|precios?|de|del|la|el|\(\d+\)|\d+|[^a-záéíóúñ]/g, '')
+        .trim();
+      if(vivos.some(r => esCanonica(r.meta.hoja))){
+        for(let i = vivos.length - 1; i >= 0; i--){
+          if(!esCanonica(vivos[i].meta.hoja)){
+            descartados.push({ hoja: vivos[i].meta.hoja, total: total(vivos[i]), motivo: 'parece una variante del mismo cuadro (otra lista de precios)' });
+            vivos.splice(i, 1);
+          }
+        }
+      }
+      // 3) Último recurso: la primera del libro. No adivinamos más.
+      while(vivos.length > 1){
+        const fuera = vivos.pop();
+        descartados.push({ hoja: fuera.meta.hoja, total: total(fuera), motivo: 'no se pudo determinar cuál manda; se tomó la primera del libro' });
+      }
+      if(descartados.length){
+        warnings.push('Este libro tiene ' + resultados.length + ' hojas resumen. Se usó ' +
+          '"' + vivos[0].meta.hoja + '" y se ignoraron: ' +
+          descartados.map(d => '"' + d.hoja + '" (' + d.motivo + ')').join(', ') +
+          '. Antes se sumaban entre sí y el presupuesto salía inflado.');
+      }
+      return vivos;
     };
 
     if(summarySheets.length){
       strategy = 'summary-only (RESUMEN tiene el consolidado real)';
-      correr(summarySheets);
-      const tieneDinero = partidas.some(r => (r.costo_total||0) > 0 || (r.venta_total||0) > 0);
-      if(!tieneDinero && detailSheets.length){
+      let res = elegirResumen(leer(summarySheets));
+      if(!res.length && detailSheets.length){
         strategy = 'fallback: summary sin $ → uso hojas detalle';
-        partidas = []; metas = [];
-        correr(detailSheets);
+        res = leer(detailSheets);
       }
+      metas = res.map(r => r.meta);
+      res.forEach(r => partidas.push(...r.partidas));
     } else {
       strategy = 'detail-only (no hay summary)';
-      correr(detailSheets);
+      const res = leer(detailSheets);
+      metas = res.map(r => r.meta);
+      res.forEach(r => partidas.push(...r.partidas));
     }
 
     const hojasUsadas = metas.map(m => m.hoja);
-    if(hojasUsadas.length > 1){
-      warnings.push(`Se leyeron ${hojasUsadas.length} hojas resumen (${hojasUsadas.join(', ')}) y se sumaron entre sí. Si una es un sub-cuadro de la otra, el total queda inflado.`);
+
+    // Algunos cuadros resumen solo listan PRECIO VENTA (sin columna de costo).
+    // Si importamos de ahí, el margen que muestre el tab Costos no es real.
+    const totVenta = partidas.reduce((a,p) => a + (p.venta_total||0), 0);
+    const totCosto = partidas.reduce((a,p) => a + (p.costo_total||0), 0);
+    if(totVenta > 0 && totCosto < 0.5 * totVenta){
+      warnings.push(totCosto === 0
+        ? `La hoja ${hojasUsadas.join(', ')} no trae costos, solo precio de venta. El margen va a salir en 100%: los costos hay que traerlos de las hojas de detalle.`
+        : `Los costos leídos (${Math.round(100*totCosto/totVenta)}% de la venta) no cubren todas las partidas: esta hoja resumen no detalla costo por línea. Revisá el margen antes de usarlo.`);
     }
+
     const granTotal = metas.reduce((a,m) => (m.granTotal||0) > a ? m.granTotal : a, 0) || null;
     const descuento = metas.reduce((a,m) => a + (m.descuento||0), 0) || null;
     const factores  = metas.reduce((a,m) => a.concat(m.factores||[]), []);
