@@ -19420,7 +19420,6 @@ function _ensureTabsBar(){
     {mv:'resumen',  label:'Executive',     ic:'◈'},
     {mv:'ops',      label:'Operaciones',   ic:'◐'},
     {mv:'risk',     label:'Riesgos',       ic:'◭'},
-    {mv:'fin',      label:'Finanzas',      ic:'◇'},
     {mv:'vault',    label:'Documentos',    ic:'◰'},
     {mv:'lecciones',label:'Lecciones',     ic:'◓'},
     {mv:'equipos',  label:'Equipos',       ic:'◧'},
@@ -19469,7 +19468,7 @@ W.renderModalView = function(){
   const p = _resolveProject();
   if(!p) return;
   W.curProject = p;
-  const mv = W.curMV || 'resumen';
+  const mv = (W.curMV === 'fin' ? 'resumen' : (W.curMV || 'resumen'));  // 'fin' se retiró
 
   // Mark active tab
   document.querySelectorAll('.modal-tab').forEach(t =>
