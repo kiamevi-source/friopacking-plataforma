@@ -176,6 +176,7 @@
     <button class="nav-item" data-view="informe"><svg data-lucide="clipboard-list"></svg>Informe diario</button>
     <button class="nav-item" data-view="licitaciones"><svg data-lucide="gavel"></svg>Licitaciones</button>
     <button class="nav-item" data-view="requisitos"><svg data-lucide="shield-check"></svg>Requisitos SSOMA</button>
+    <button class="nav-item" data-view="homologacion"><svg data-lucide="badge-check"></svg>Homologación</button>
     <button class="nav-item" data-view="factura"><svg data-lucide="receipt"></svg>Facturación</button>
     <button class="nav-item" data-view="docs"><svg data-lucide="folder-up"></svg>Documentos</button>
 
@@ -312,6 +313,31 @@
         <p class="page-sub">Requisitos de seguridad, salud y medio ambiente que debes cumplir antes de iniciar la obra.</p>
       </div>
       <div id="rq-root"><div class="empty">Cargando requisitos…</div></div>
+    </section>
+
+    <!-- HOMOLOGACIÓN (nivel empresa · contratas_cuentas + contratas_homologacion_docs) -->
+    <section class="view" id="v-homologacion">
+      <style>
+        #v-homologacion .hm-banner{border-radius:16px;padding:20px 22px;color:#fff;display:flex;align-items:center;gap:18px;flex-wrap:wrap;box-shadow:var(--shadow);margin-bottom:16px}
+        #v-homologacion .hm-badge{width:64px;height:64px;border-radius:16px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        #v-homologacion .hm-badge svg{width:32px;height:32px}
+        #v-homologacion .hm-st{font-size:22px;font-weight:800}
+        #v-homologacion .hm-sub{font-size:13px;color:rgba(255,255,255,.8);font-weight:600;margin-top:3px}
+        #v-homologacion .hm-doc{display:flex;align-items:center;gap:12px;padding:13px 4px;border-bottom:1px solid var(--line)}
+        #v-homologacion .hm-doc:last-child{border-bottom:none}
+        #v-homologacion .hm-dic{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--bg2);color:var(--muted)}
+        #v-homologacion .hm-dic svg{width:17px;height:17px}
+        #v-homologacion .hm-dt{flex:1;min-width:0}
+        #v-homologacion .hm-dn{font-size:13.5px;font-weight:700;color:var(--ink)}
+        #v-homologacion .hm-dm{font-size:11.5px;color:var(--muted);font-weight:600;margin-top:1px}
+        #v-homologacion .hm-tag{font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap}
+        #v-homologacion .t-ok{background:var(--ok-bg);color:var(--ok)}.t-rev{background:#e7f0ff;color:var(--blue)}.t-obs{background:var(--danger-bg);color:var(--danger)}.t-pend{background:var(--bg2);color:var(--muted)}.t-warn{background:var(--warn-bg);color:var(--warn)}.t-venc{background:var(--danger-bg);color:var(--danger)}
+      </style>
+      <div class="page-head">
+        <h1 class="page-title font-display">Homologación</h1>
+        <p class="page-sub">Estado de homologación de tu empresa y los documentos requeridos, con sus vencimientos.</p>
+      </div>
+      <div id="hm-root"><div class="empty">Cargando homologación…</div></div>
     </section>
 
     <!-- INFORME DIARIO -->
@@ -816,6 +842,91 @@
     if(typeof renderResumenHome==='function') renderResumenHome();
   }
 
+  // ══════════════ HOMOLOGACIÓN (nivel empresa) ══════════════
+  var HOMOL_CATALOG=[
+    {tipo:'Ficha RUC (SUNAT)', ic:'file-text', vence:false},
+    {tipo:'Vigencia de poder', ic:'file-badge', vence:true},
+    {tipo:'SCTR Salud', ic:'heart-pulse', vence:true},
+    {tipo:'SCTR Pensión', ic:'piggy-bank', vence:true},
+    {tipo:'Póliza de Responsabilidad Civil', ic:'shield', vence:true},
+    {tipo:'Seguro Vida Ley', ic:'shield-check', vence:true},
+    {tipo:'Política de SST', ic:'file-check-2', vence:false},
+    {tipo:'Reglamento Interno de SST', ic:'book', vence:false},
+    {tipo:'Plan de SST', ic:'clipboard-list', vence:false},
+    {tipo:'Matriz IPERC', ic:'table-2', vence:false},
+    {tipo:'Registro de entrega de EPPs', ic:'hard-hat', vence:false},
+    {tipo:'Certificado homologación soldadores 6G', ic:'flame', vence:true}
+  ];
+  var HOMOL_DOCS=[];
+  async function loadHomolDocs(){
+    if(!sb || !USER_EMAIL) return;
+    try{ var r=await sb.from('contratas_homologacion_docs').select('*').order('created_at',{ascending:false}); HOMOL_DOCS=r.data||[]; }catch(e){ console.warn('homol docs',e); HOMOL_DOCS=[]; }
+    renderHomologacion();
+  }
+  function homolDias(v){ if(!v) return null; var d=new Date(v+'T12:00:00'); var t=new Date(); t.setHours(0,0,0,0); return Math.round((d-t)/86400000); }
+  function homolEstadoDisplay(){
+    var e=(CUENTA&&CUENTA.homologacion_estado)||'Pendiente';
+    var v=CUENTA&&CUENTA.homologacion_vence; var d=homolDias(v);
+    if(e==='Homologado' && d!==null && d<0) return {estado:'Vencido', grad:'linear-gradient(135deg,#b91c1c,#dc2626)', ic:'shield-off', sub:'Tu homologación venció el '+fmtDate(v)+'. Renueva tus documentos.'};
+    if(e==='Homologado' && d!==null && d<=30) return {estado:'Homologado · por vencer', grad:'linear-gradient(135deg,#b45309,#d97706)', ic:'clock', sub:'Vence el '+fmtDate(v)+' ('+d+' días). Renueva a tiempo.'};
+    if(e==='Homologado') return {estado:'Homologado', grad:'linear-gradient(135deg,#0f7a54,#16a34a)', ic:'badge-check', sub:v?('Vigente hasta el '+fmtDate(v)):'Empresa homologada'};
+    if(e==='En proceso') return {estado:'En proceso', grad:'linear-gradient(135deg,#1d4ed8,#3b82f6)', ic:'loader', sub:'Estamos revisando tus documentos.'};
+    if(e==='Observado') return {estado:'Observado', grad:'linear-gradient(135deg,#b45309,#d97706)', ic:'alert-triangle', sub:(CUENTA&&CUENTA.homologacion_obs)||'Corrige las observaciones y reenvía.'};
+    if(e==='Vencido') return {estado:'Vencido', grad:'linear-gradient(135deg,#b91c1c,#dc2626)', ic:'shield-off', sub:'Renueva tus documentos para volver a homologarte.'};
+    return {estado:'Pendiente', grad:'linear-gradient(135deg,#334155,#475569)', ic:'file-clock', sub:'Sube tus documentos para iniciar la homologación.'};
+  }
+  function docTag(doc, cat){
+    if(!doc) return {cls:'t-pend', txt:'Pendiente'};
+    if(doc.estado==='Observado') return {cls:'t-obs', txt:'Observado'};
+    if(doc.estado==='En revisión') return {cls:'t-rev', txt:'En revisión'};
+    var d=homolDias(doc.vence);
+    if(cat.vence && d!==null && d<0) return {cls:'t-venc', txt:'Vencido'};
+    if(cat.vence && d!==null && d<=30) return {cls:'t-warn', txt:'Por vencer'};
+    return {cls:'t-ok', txt:'Vigente'};
+  }
+  function renderHomologacion(){
+    var root=$('#hm-root'); if(!root) return;
+    if(!CUENTA){ root.innerHTML='<div class="empty">Inicia sesión para ver tu homologación.</div>'; return; }
+    var disp=homolEstadoDisplay();
+    var byTipo={}; HOMOL_DOCS.forEach(function(d){ if(!byTipo[d.tipo]) byTipo[d.tipo]=d; });
+    var vig=HOMOL_CATALOG.filter(function(c){ return docTag(byTipo[c.tipo],c).txt==='Vigente'; }).length;
+    root.innerHTML =
+      '<div class="hm-banner" style="background:'+disp.grad+'">'+
+        '<div class="hm-badge"><svg data-lucide="'+disp.ic+'"></svg></div>'+
+        '<div style="flex:1;min-width:0"><div class="hm-st">'+esc(disp.estado)+'</div><div class="hm-sub">'+esc(disp.sub)+'</div></div>'+
+        '<div style="text-align:right"><div style="font-size:26px;font-weight:800">'+vig+'/'+HOMOL_CATALOG.length+'</div><div class="hm-sub">documentos vigentes</div></div>'+
+      '</div>'+
+      '<div class="panel"><div class="panel-h"><h3>Documentos de homologación</h3></div>'+
+        HOMOL_CATALOG.map(function(c){ var doc=byTipo[c.tipo]; var t=docTag(doc,c);
+          var venceTxt = doc&&doc.vence? ('Vence: '+fmtDate(doc.vence)) : (c.vence?'Requiere vigencia':'Sin vencimiento');
+          return '<div class="hm-doc"><div class="hm-dic"><svg data-lucide="'+(c.ic||'file')+'"></svg></div>'+
+            '<div class="hm-dt"><div class="hm-dn">'+esc(c.tipo)+'</div><div class="hm-dm">'+esc(venceTxt)+(doc&&doc.obs?(' · '+esc(doc.obs)):'')+'</div></div>'+
+            '<span class="hm-tag '+t.cls+'">'+t.txt+'</span>'+
+            '<button class="btn ghost" data-hup="'+esc(c.tipo)+'" style="padding:7px 11px"><svg data-lucide="upload"></svg>'+(doc?'Reemplazar':'Subir')+'</button>'+
+          '</div>';
+        }).join('')+
+      '</div>';
+    root.querySelectorAll('[data-hup]').forEach(function(b){ b.addEventListener('click', function(){ uploadHomolDoc(b.getAttribute('data-hup')); }); });
+    if(window.lucide) lucide.createIcons();
+  }
+  function uploadHomolDoc(tipo){
+    if(!USER_ID){ toast('Sin sesión','Ingresa desde el portal'); return; }
+    var inp=document.createElement('input'); inp.type='file'; inp.style.display='none'; document.body.appendChild(inp);
+    inp.addEventListener('change', async function(){
+      var f=inp.files&&inp.files[0]; if(inp.parentNode) inp.remove(); if(!f) return;
+      if(f.size>MAX){ toast('Archivo muy grande', f.name+' supera 25 MB'); return; }
+      var path=USER_ID+'/homol/'+Date.now()+'_'+safeName(f.name);
+      var up=await sb.storage.from(BUCKET).upload(path, f, { contentType:f.type||undefined });
+      if(up.error){ toast('No se pudo subir', up.error.message); return; }
+      var res=await sb.from('contratas_homologacion_docs').insert({ email:USER_EMAIL, tipo:tipo, nombre_archivo:f.name, path:path, estado:'En revisión' }).select().single();
+      if(res.error){ toast('No se pudo registrar', res.error.message); return; }
+      HOMOL_DOCS.unshift(res.data);
+      renderHomologacion(); if(typeof renderResumenHome==='function') renderResumenHome();
+      toast('Documento subido', tipo+' · en revisión');
+    });
+    inp.click();
+  }
+
   function lzMoney(n,cur){ n=Number(n||0); var s=cur==='USD'?'$':'S/ '; return s+n.toLocaleString('es-PE',{maximumFractionDigits:0}); }
   var LZ_FLOW=['Borrador','Preparación','Publicada','Invitaciones','Ofertas','Evaluación','Adjudicación','Contratada','Cerrada'];
   function lzBadge(est){ var m={'Invitado':'b-inv','Confirmó':'b-conf','Preparando':'b-prep','Oferta enviada':'b-env','No participa':'b-no'}; return '<span class="lz-badge '+(m[est]||'b-inv')+'">'+esc(est)+'</span>'; }
@@ -997,7 +1108,7 @@
       var ini=((CUENTA.empresa||'C').trim()[0]||'C').toUpperCase();
       eh.innerHTML='<div class="rs-card"><div class="rs-top">'+
         '<div class="rs-logo">'+esc(ini)+'</div>'+
-        '<div style="flex:1;min-width:0"><div class="rs-emp">'+esc(CUENTA.empresa||'')+'</div>'+
+        '<div style="flex:1;min-width:0"><div class="rs-emp">'+esc(CUENTA.empresa||'')+(function(){ var hd=homolEstadoDisplay(); var ok=hd.estado==='Homologado'; return '<span style="font-size:10.5px;font-weight:800;padding:3px 10px;border-radius:20px;margin-left:9px;white-space:nowrap;vertical-align:middle;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);color:#fff">'+(ok?'✓ ':'')+esc(hd.estado)+'</span>'; })()+'</div>'+
           '<div class="rs-meta">'+
             (CUENTA.encargado?'<span><svg data-lucide="user"></svg>'+esc(CUENTA.encargado)+'</span>':'')+
             (CUENTA.telefono?'<span><svg data-lucide="phone"></svg>'+esc(CUENTA.telefono)+'</span>':'')+
@@ -1021,6 +1132,7 @@
     if(obs.length) items.push({cls:'crit',ic:'receipt',t:obs.length+' factura(s) observada(s)',s:'El supervisor pide corrección — revísalas',go:'factura'});
     var reqPend=(typeof reqPendTotal==='function')?reqPendTotal():0;
     if(reqPend) items.push({cls:'warn',ic:'shield-check',t:reqPend+' requisito(s) SSOMA por cumplir',s:'Descarga el documento y marca lo entregado',go:'requisitos'});
+    if(CUENTA && typeof homolEstadoDisplay==='function'){ var hd=homolEstadoDisplay(); if(hd.estado!=='Homologado'){ items.push({cls:(hd.estado==='Observado'||hd.estado==='Vencido')?'crit':'warn',ic:'badge-check',t:'Homologación: '+hd.estado,s:hd.sub,go:'homologacion'}); } }
     if(!items.length){
       ah.innerHTML='<div class="panel" style="padding:14px 16px;display:flex;align-items:center;gap:10px;color:var(--ok);font-weight:700;font-size:13px"><svg data-lucide="check-circle" style="width:18px;height:18px"></svg>Todo al día. No tienes pendientes.</div>';
     } else {
@@ -1070,6 +1182,7 @@
     await Promise.all([ loadInformes(), loadFacturas(), loadDocs(), loadLicitaciones(), loadMisProyectos() ]);
     await loadContratos();
     await loadRequisitos();
+    await loadHomolDocs();
     renderResumen(); renderResumenHome();
   })();
 })();
