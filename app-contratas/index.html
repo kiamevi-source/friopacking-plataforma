@@ -175,6 +175,7 @@
     <button class="nav-item" data-view="proyectos"><svg data-lucide="folder-kanban"></svg>Mis proyectos</button>
     <button class="nav-item" data-view="informe"><svg data-lucide="clipboard-list"></svg>Informe diario</button>
     <button class="nav-item" data-view="licitaciones"><svg data-lucide="gavel"></svg>Licitaciones</button>
+    <button class="nav-item" data-view="requisitos"><svg data-lucide="shield-check"></svg>Requisitos SSOMA</button>
     <button class="nav-item" data-view="factura"><svg data-lucide="receipt"></svg>Facturación</button>
     <button class="nav-item" data-view="docs"><svg data-lucide="folder-up"></svg>Documentos</button>
 
@@ -285,6 +286,32 @@
       </div>
       <div id="lz-contratos"></div>
       <div id="lz-root"><div class="empty">Cargando invitaciones…</div></div>
+    </section>
+
+    <!-- REQUISITOS SSOMA (solo para el contratista adjudicado · lic_requisitos en PMO) -->
+    <section class="view" id="v-requisitos">
+      <style>
+        #v-requisitos .rq-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:0;box-shadow:var(--shadow-sm);margin-bottom:16px;overflow:hidden}
+        #v-requisitos .rq-head{background:linear-gradient(135deg,#14275C 0%,#1d3570 100%);color:#fff;padding:16px 20px}
+        #v-requisitos .rq-t{font-size:16px;font-weight:800}
+        #v-requisitos .rq-meta{font-size:12px;color:rgba(255,255,255,.72);font-weight:600;margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 14px}
+        #v-requisitos .rq-body{padding:14px 18px 18px}
+        #v-requisitos .rq-prog{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+        #v-requisitos .rq-bar{flex:1;height:8px;border-radius:6px;background:var(--bg2);overflow:hidden}
+        #v-requisitos .rq-bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--ok))}
+        #v-requisitos .rq-item{display:flex;align-items:flex-start;gap:11px;padding:10px 2px;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer}
+        #v-requisitos .rq-item:last-child{border-bottom:none}
+        #v-requisitos .rq-chk{width:20px;height:20px;border-radius:6px;border:2px solid var(--line);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:.15s}
+        #v-requisitos .rq-item.done .rq-chk{background:var(--ok);border-color:var(--ok);color:#fff}
+        #v-requisitos .rq-item.done .rq-tx{color:var(--muted);text-decoration:line-through}
+        #v-requisitos .rq-n{font-weight:800;color:var(--muted);min-width:22px}
+        #v-requisitos .rq-tx{flex:1;color:var(--ink);font-weight:500;line-height:1.4}
+      </style>
+      <div class="page-head">
+        <h1 class="page-title font-display">Requisitos SSOMA</h1>
+        <p class="page-sub">Requisitos de seguridad, salud y medio ambiente que debes cumplir antes de iniciar la obra.</p>
+      </div>
+      <div id="rq-root"><div class="empty">Cargando requisitos…</div></div>
     </section>
 
     <!-- INFORME DIARIO -->
@@ -751,6 +778,44 @@
       }).join('')+'</div>';
     if(window.lucide) lucide.createIcons();
   }
+  // ══════════════ REQUISITOS SSOMA (solo contratista adjudicado) ══════════════
+  var REQUISITOS = [];
+  async function loadRequisitos(){
+    if(!gsb || !USER_EMAIL) return;
+    try{ var r=await gsb.from('lic_requisitos').select('*').ilike('email', USER_EMAIL).order('created_at',{ascending:false}); REQUISITOS=r.data||[]; }catch(e){ console.warn('requisitos',e); REQUISITOS=[]; }
+    renderRequisitos();
+  }
+  function reqStats(rq){ var cl=rq.checklist||[]; var cum=rq.cumplimiento||{}; var done=cl.filter(function(it){ return cum[it.n]; }).length; return {total:cl.length, done:done, pend:cl.length-done}; }
+  function reqPendTotal(){ var p=0; REQUISITOS.forEach(function(rq){ p+=reqStats(rq).pend; }); return p; }
+  function renderRequisitos(){
+    var root=$('#rq-root'); if(!root) return;
+    if(!REQUISITOS.length){ root.innerHTML='<div class="empty">Aún no tienes requisitos SSOMA asignados.<br><span style="font-size:12px;color:var(--muted)">Cuando ganes una licitación, aquí llegarán los requisitos del proyecto.</span></div>'; return; }
+    root.innerHTML=REQUISITOS.map(function(rq){
+      var st=reqStats(rq); var pct=st.total?Math.round(st.done/st.total*100):0; var cum=rq.cumplimiento||{};
+      return '<div class="rq-card">'+
+        '<div class="rq-head"><div class="rq-t">'+esc(rq.titulo||'Requisitos SSOMA')+'</div>'+
+          '<div class="rq-meta">'+(rq.codigo?'<span>Código: '+esc(rq.codigo)+'</span>':'')+(rq.cliente?'<span>Cliente: '+esc(rq.cliente)+'</span>':'')+(rq.contrato_codigo?'<span>Contrato: '+esc(rq.contrato_codigo)+'</span>':'')+'</div></div>'+
+        '<div class="rq-body">'+
+          (rq.doc_url?'<a class="btn" href="'+esc(rq.doc_url)+'" target="_blank" rel="noopener" style="margin-bottom:14px"><svg data-lucide="download"></svg>Descargar documento de requisitos (PDF)</a>':'')+
+          '<div class="rq-prog"><div class="rq-bar"><i style="width:'+pct+'%"></i></div><span style="font-size:13px;font-weight:800;color:var(--ink);white-space:nowrap">'+st.done+' / '+st.total+'</span></div>'+
+          '<div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Checklist de documentos a presentar</div>'+
+          (rq.checklist||[]).map(function(it){ var done=!!cum[it.n];
+            return '<div class="rq-item'+(done?' done':'')+'" data-req="'+rq.id+'" data-n="'+it.n+'"><div class="rq-chk">'+(done?'<svg data-lucide="check" style="width:13px;height:13px"></svg>':'')+'</div><span class="rq-n">'+it.n+'</span><span class="rq-tx">'+esc(it.texto)+'</span></div>';
+          }).join('')+
+        '</div></div>';
+    }).join('');
+    root.querySelectorAll('[data-req]').forEach(function(el){ el.addEventListener('click', function(){ toggleReq(el.getAttribute('data-req'), el.getAttribute('data-n')); }); });
+    if(window.lucide) lucide.createIcons();
+  }
+  async function toggleReq(reqId, n){
+    var rq=REQUISITOS.find(function(x){return x.id===reqId;}); if(!rq) return;
+    var cum=Object.assign({}, rq.cumplimiento||{});
+    if(cum[n]) delete cum[n]; else cum[n]='entregado';
+    rq.cumplimiento=cum; renderRequisitos();
+    try{ await gsb.from('lic_requisitos').update({cumplimiento:cum}).eq('id',reqId); }catch(e){ console.warn('upd req',e); }
+    if(typeof renderResumenHome==='function') renderResumenHome();
+  }
+
   function lzMoney(n,cur){ n=Number(n||0); var s=cur==='USD'?'$':'S/ '; return s+n.toLocaleString('es-PE',{maximumFractionDigits:0}); }
   var LZ_FLOW=['Borrador','Preparación','Publicada','Invitaciones','Ofertas','Evaluación','Adjudicación','Contratada','Cerrada'];
   function lzBadge(est){ var m={'Invitado':'b-inv','Confirmó':'b-conf','Preparando':'b-prep','Oferta enviada':'b-env','No participa':'b-no'}; return '<span class="lz-badge '+(m[est]||'b-inv')+'">'+esc(est)+'</span>'; }
@@ -954,6 +1019,8 @@
     if(porResp) items.push({cls:'info',ic:'gavel',t:porResp+' licitación(es) por responder',s:'Revisa tus invitaciones y envía tu oferta',go:'licitaciones'});
     var obs=facturas.filter(function(f){ return f.estado_revision==='observada'; });
     if(obs.length) items.push({cls:'crit',ic:'receipt',t:obs.length+' factura(s) observada(s)',s:'El supervisor pide corrección — revísalas',go:'factura'});
+    var reqPend=(typeof reqPendTotal==='function')?reqPendTotal():0;
+    if(reqPend) items.push({cls:'warn',ic:'shield-check',t:reqPend+' requisito(s) SSOMA por cumplir',s:'Descarga el documento y marca lo entregado',go:'requisitos'});
     if(!items.length){
       ah.innerHTML='<div class="panel" style="padding:14px 16px;display:flex;align-items:center;gap:10px;color:var(--ok);font-weight:700;font-size:13px"><svg data-lucide="check-circle" style="width:18px;height:18px"></svg>Todo al día. No tienes pendientes.</div>';
     } else {
@@ -1002,6 +1069,7 @@
     await loadCuenta();
     await Promise.all([ loadInformes(), loadFacturas(), loadDocs(), loadLicitaciones(), loadMisProyectos() ]);
     await loadContratos();
+    await loadRequisitos();
     renderResumen(); renderResumenHome();
   })();
 })();
