@@ -2281,6 +2281,17 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
   font-variant-numeric:tabular-nums;font-weight:700;color:var(--text-2);
   font-size:11px;margin-top:2px;
 }
+/* De qué fecha estamos hablando: la que dio el transportista al embarcar o la
+   que prometió el proveedor en la orden. No es lo mismo y se tiene que ver. */
+.eq-card .eq-eta-src{
+  display:block;font-size:9px;font-weight:700;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--text-3);margin-top:1px;
+}
+.eq-card .eq-eta-src.comp{color:#b45309;}
+.eq-card .eq-eta.sinfecha{
+  background:rgba(15,23,42,.04);color:var(--text-3);
+  border-color:rgba(15,23,42,.10);font-weight:700;
+}
 .eq-card .eq-info{padding-right:90px;}
 .eq-card .eq-progress-strip{
   position:absolute;left:0;right:0;bottom:0;height:3px;
@@ -6639,14 +6650,34 @@ async function cargarProductividad() {
 }
 
 // Parser de fechas formato PMO "01-ago-25" → Date
+/* El Excel de importaciones cambió de formato: antes traía "26-oct-25" y ahora
+   "26/10/2025". El parser sólo entendía el mes en letras, así que TODA fecha
+   numérica caía como nula y las tarjetas salían "Sin fecha" aunque el dato
+   estuviera ahí. Ahora acepta los dos, más el ISO por si acaso. */
 function _pmoParseDate(s) {
   if (!s) return null;
-  const m = String(s).trim().match(/(\d{1,2})[\-\s/]+([a-zñ]{3,4})[\.\-\s/]+(\d{2,4})/i);
-  if (!m) return null;
-  const mo = SPANISH_MONTHS[m[2].toLowerCase().slice(0,3)];
-  if (mo === undefined) return null;
-  let y = parseInt(m[3]); if (y < 100) y += 2000;
-  return new Date(y, mo, parseInt(m[1]));
+  const t = String(s).trim();
+  if (!t) return null;
+  // Mes en letras: 26-oct-25 / 26 oct 2025
+  const m = t.match(/(\d{1,2})[\-\s/]+([a-zñ]{3,4})[\.\-\s/]+(\d{2,4})/i);
+  if (m) {
+    const mo = SPANISH_MONTHS[m[2].toLowerCase().slice(0,3)];
+    if (mo === undefined) return null;
+    let y = parseInt(m[3]); if (y < 100) y += 2000;
+    return new Date(y, mo, parseInt(m[1]));
+  }
+  // Día primero y mes en número: 26/10/2025 · 26-10-2025
+  const n = t.match(/^(\d{1,2})[\-\/.](\d{1,2})[\-\/.](\d{2,4})$/);
+  if (n) {
+    const dd = parseInt(n[1]), mm = parseInt(n[2]);
+    let y = parseInt(n[3]); if (y < 100) y += 2000;
+    if (dd < 1 || dd > 31 || mm < 1 || mm > 12) return null;
+    return new Date(y, mm - 1, dd);
+  }
+  // ISO: 2025-10-26
+  const i = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (i) return new Date(parseInt(i[1]), parseInt(i[2]) - 1, parseInt(i[3]));
+  return null;
 }
 
 // Días entre hoy y la fecha (negativo = futuro, positivo = pasado)
@@ -6663,23 +6694,31 @@ function _fmtFechaES(d) {
   return d.toLocaleDateString('es-PE', { day:'2-digit', month:'short', year:'numeric' }).replace(/\./g,'');
 }
 
-// Calcula info de ETA del equipo
+/* Fecha que se le muestra al supervisor.
+   El proveedor recién da la llegada estimada cuando el equipo embarca; hasta
+   entonces la única fecha que existe es la entrega comprometida en la orden de
+   compra. Antes sólo se miraba la llegada estimada, así que un equipo comprado
+   y ya vencido contra lo prometido aparecía como "Sin fecha". Se usa la llegada
+   si existe y si no la comprometida, diciendo siempre cuál de las dos es. */
 function _equipoEtaInfo(e) {
   const stCls = _eqStatusClass(e.st);
-  const eta = _pmoParseDate(e.eta);
-  if (!eta) return { etaDate:null, label:'Sin fecha de llegada', sub:'', cls:'' };
+  let eta = _pmoParseDate(e.eta), fuente = 'eta';
+  if (!eta) { const c = _pmoParseDate(e.fe); if (c) { eta = c; fuente = 'comprometida'; } }
+  if (!eta) return { etaDate:null, fuente:null, label:'El proveedor no ha dado fecha', sub:'', cls:'' };
   const daysAgo = _daysFromToday(eta);
+  const R = o => Object.assign({ etaDate:eta, fuente }, o);
   if (stCls === 'culminado') {
-    if (daysAgo > 0)  return { etaDate:eta, label:'Llegó', sub:`hace ${daysAgo}d`, cls:'done' };
-    if (daysAgo === 0) return { etaDate:eta, label:'Llegó', sub:'hoy', cls:'done' };
-    return { etaDate:eta, label:'Llegó', sub:_fmtFechaES(eta), cls:'done' };
+    if (daysAgo > 0)  return R({ label:'Llegó', sub:`hace ${daysAgo}d`, cls:'done' });
+    if (daysAgo === 0) return R({ label:'Llegó', sub:'hoy', cls:'done' });
+    return R({ label:'Llegó', sub:_fmtFechaES(eta), cls:'done' });
   }
-  if (daysAgo > 0) return { etaDate:eta, label:`+${daysAgo}d atrasado`, sub:'Llega '+_fmtFechaES(eta), cls:'late' };
-  if (daysAgo === 0) return { etaDate:eta, label:'Llega hoy', sub:_fmtFechaES(eta), cls:'warn' };
+  const verbo = fuente === 'comprometida' ? 'Prometido ' : 'Llega ';
+  if (daysAgo > 0) return R({ label:`+${daysAgo}d atrasado`, sub:verbo+_fmtFechaES(eta), cls:'late' });
+  if (daysAgo === 0) return R({ label:fuente==='comprometida'?'Vence hoy':'Llega hoy', sub:_fmtFechaES(eta), cls:'warn' });
   const diasFalta = Math.abs(daysAgo);
-  if (diasFalta <= 7)  return { etaDate:eta, label:`En ${diasFalta}d`, sub:_fmtFechaES(eta), cls:'warn' };
-  if (diasFalta <= 30) return { etaDate:eta, label:`En ${diasFalta}d`, sub:_fmtFechaES(eta), cls:'' };
-  return { etaDate:eta, label:_fmtFechaES(eta), sub:`En ${diasFalta}d`, cls:'' };
+  if (diasFalta <= 7)  return R({ label:`En ${diasFalta}d`, sub:_fmtFechaES(eta), cls:'warn' });
+  if (diasFalta <= 30) return R({ label:`En ${diasFalta}d`, sub:_fmtFechaES(eta), cls:'' });
+  return R({ label:_fmtFechaES(eta), sub:`En ${diasFalta}d`, cls:'' });
 }
 
 // % aproximado de avance de un equipo según etapa
@@ -6740,8 +6779,8 @@ function openEquipoDetail(doc) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
     </div>
     <div class="eqd-eta-info">
-      <div class="lbl">Fecha de llegada</div>
-      <div class="val">${eta.etaDate ? _fmtFechaES(eta.etaDate) : 'Sin fecha de llegada'}</div>
+      <div class="lbl">${eta.fuente==='comprometida'?'Entrega comprometida':'Fecha de llegada'}</div>
+      <div class="val">${eta.etaDate ? _fmtFechaES(eta.etaDate) : 'El proveedor no ha dado fecha'}</div>
       <div class="sub">${eta.label}${eta.sub?' · '+eta.sub:''}</div>
     </div>
   </div>`;
@@ -6785,8 +6824,8 @@ function openEquipoDetail(doc) {
   </div>
   <div class="eqd-grid">
     <div class="eqd-field"><div class="lbl">Fecha de orden</div><div class="val">${fechaOrden?_fmtFechaES(fechaOrden):'—'}</div></div>
-    <div class="eqd-field"><div class="lbl">Fecha exportación (fe)</div><div class="val">${fe?_fmtFechaES(fe):'—'}</div></div>
-    <div class="eqd-field"><div class="lbl">Fecha recepción fact. (fer)</div><div class="val">${fer?_fmtFechaES(fer):'—'}</div></div>
+    <div class="eqd-field"><div class="lbl">Entrega comprometida</div><div class="val">${fe?_fmtFechaES(fe):'—'}</div></div>
+    <div class="eqd-field"><div class="lbl">Entrega real</div><div class="val">${fer?_fmtFechaES(fer):'—'}</div></div>
     <div class="eqd-field"><div class="lbl">Salida de origen</div><div class="val">${etd?_fmtFechaES(etd):'—'}</div></div>
     <div class="eqd-field full"><div class="lbl">Llegada estimada</div><div class="val" style="color:${eta.cls==='late'?'var(--danger)':eta.cls==='done'?'var(--success)':'var(--navy-800)'}">${eta.etaDate?_fmtFechaES(eta.etaDate):'—'}${eta.sub?` · ${eta.sub}`:''}</div></div>
   </div>`;
@@ -7269,8 +7308,10 @@ function renderEquiposPanel(bodyId, liveId) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           ${eta.label}
          </div>`
-      : `<div class="eq-eta" style="opacity:.55">Sin fecha</div>`;
-    const etaDate = eta.etaDate ? `<div class="eq-eta-date">${_fmtFechaES(eta.etaDate)}</div>` : '';
+      : `<div class="eq-eta sinfecha">Sin fecha del proveedor</div>`;
+    const etaDate = eta.etaDate
+      ? `<div class="eq-eta-date">${_fmtFechaES(eta.etaDate)}<span class="eq-eta-src${eta.fuente==='comprometida'?' comp':''}">${eta.fuente==='comprometida'?'entrega comprometida':'llegada estimada'}</span></div>`
+      : '';
     return `<div class="eq-card ${stClass}" onclick="openEquipoDetail('${(e.doc||'').replace(/'/g,'\\\'')}')">
       ${etaPill}
       <div class="eq-avatar">${ini}</div>
@@ -10323,7 +10364,13 @@ function rdEquiposRender(){
     const doc = e.doc || '';
     const st  = rdEquipos[doc] || {};
     const cls = _eqStatusClass(e.st);
-    const sub = [ e.proveedor, e.mod, e.eta ? 'Llega ' + e.eta : '' ].filter(Boolean)
+    // Misma regla que las tarjetas: llegada estimada si existe, si no la entrega
+    // comprometida, y siempre diciendo cuál de las dos se está mostrando.
+    const fx = (typeof _equipoEtaInfo==='function') ? _equipoEtaInfo(e) : null;
+    const fTxt = fx && fx.etaDate
+      ? (fx.fuente==='comprometida' ? 'Comprometida ' : 'Llega ') + _fmtFechaES(fx.etaDate)
+      : 'Sin fecha del proveedor';
+    const sub = [ e.proveedor, e.mod, fTxt ].filter(Boolean)
                   .map(x=>`<span>${rdEsc2(x)}</span>`).join('');
     return `<div class="rd-eq-row">
       <div class="rd-eq-id">
