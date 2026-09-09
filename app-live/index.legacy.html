@@ -9426,6 +9426,7 @@ function renderEquiposPremium(){
       </div>
       <input type="file" id="eq-import-input" accept=".csv,.xlsx,.xls,.pdf,application/pdf" style="display:none" onchange="W.onEquiposImport&&W.onEquiposImport(event)">
       <button class="eqv2-btn primary" onclick="document.getElementById('eq-import-input').click()">📂 Importar</button>
+      <button class="eqv2-btn" onclick="W.eqSyncNow&&W.eqSyncNow()" title="Subir a supervisores los equipos que estás viendo, sin volver a cargar el Excel">☁️ Sincronizar</button>
       <button class="eqv2-btn" onclick="W.openEquiposHistorial&&W.openEquiposHistorial()" title="Historial de cambios">🕑 Historial</button>
       <button class="eqv2-btn icon-only" onclick="W.renderEquipos&&W.renderEquipos()" title="Refrescar">🔄</button>
     </div>
@@ -9893,21 +9894,62 @@ function renderEquiposPremium(){
     return {logged:cambios.length,resumen};
   }
   W.syncEquiposToSupervisor=async rows=>{
-    const payload=(rows||[]).filter(r=>r&&(r.doc||'').toString().trim()).map(_eqToPmoRow);
+    const crudo=(rows||[]).filter(r=>r&&(r.doc||'').toString().trim()).map(_eqToPmoRow);
+    /* El Excel de importaciones repite a veces el mismo documento en dos líneas
+       (p. ej. 0002-0001665 de CARTAMA). Postgres rechaza el UPSERT completo si la
+       misma clave viene dos veces en el mismo lote ("cannot affect row a second
+       time"), así que la sincronización entera moría: el historial sí se escribía
+       y equipos_pmo se quedaba congelada. Nos quedamos con la última línea. */
+    const _uniq=new Map();
+    crudo.forEach(r=>_uniq.set(r.doc,r));
+    const payload=[..._uniq.values()];
+    const duplicados=crudo.length-payload.length;
     if(!payload.length)return {ok:false,count:0,reason:'sin equipos con documento'};
     // Registrar el historial ANTES del upsert (para comparar contra el estado previo)
     let hist={logged:0,resumen:null};
     try{hist=await logEquiposChanges(payload);}catch(e){console.warn('[historial] error registrando cambios:',e);}
     const url=SUP_SB_URL+'/rest/v1/equipos_pmo?on_conflict=doc';
     const headers=_sbHeaders({Prefer:'resolution=merge-duplicates,return=minimal'});
-    let synced=0;
-    for(let i=0;i<payload.length;i+=200){
-      const chunk=payload.slice(i,i+200);
+    let synced=0;const fallos=[];
+    const enviar=async chunk=>{
       const res=await fetch(url,{method:'POST',headers,body:JSON.stringify(chunk)});
       if(!res.ok){const txt=await res.text().catch(()=>'');throw new Error('HTTP '+res.status+' '+txt.slice(0,200));}
-      synced+=chunk.length;
+    };
+    for(let i=0;i<payload.length;i+=200){
+      const chunk=payload.slice(i,i+200);
+      try{await enviar(chunk);synced+=chunk.length;}
+      catch(e){
+        /* Un lote malo ya no tumba la sincronización entera: reintentamos fila a
+           fila para salvar todo lo que sí entra y dejar por escrito lo que no. */
+        console.warn('[sync equipos] lote rechazado, reintentando fila a fila:',e.message||e);
+        for(const row of chunk){
+          try{await enviar([row]);synced++;}
+          catch(e2){fallos.push({doc:row.doc,error:(e2.message||String(e2))});}
+        }
+      }
     }
-    return {ok:true,count:synced,cambios:hist.logged,resumen:hist.resumen};
+    if(fallos.length)console.warn('[sync equipos] filas rechazadas:',fallos);
+    return {ok:synced>0,count:synced,total:payload.length,cambios:hist.logged,resumen:hist.resumen,duplicados,fallos};
+  };
+
+  /* Empuja a supervisores los equipos que gerencia tiene cargados en este momento,
+     sin volver a subir el Excel: la última importación vive en localStorage. Sirve
+     para recuperar una sincronización que falló sin pedirle el archivo a nadie. */
+  W._eqSyncReport=r=>{
+    if(typeof showToast!=='function')return;
+    if(!r||!r.ok){showToast('⚠️ No se sincronizó con supervisores: '+((r&&r.reason)||'sin filas aceptadas'),'alert',6000);return;}
+    const rs=r.resumen;
+    const detalle=rs?` · ${r.cambios} cambios (${rs.nuevos} nuevos, ${rs.modificados} modif., ${rs.eliminados} elim.)`:'';
+    const dup=r.duplicados?` · ${r.duplicados} doc duplicado${r.duplicados!==1?'s':''} unificado${r.duplicados!==1?'s':''}`:'';
+    const mal=r.fallos&&r.fallos.length?` · ⚠ ${r.fallos.length} rechazado${r.fallos.length!==1?'s':''} (${r.fallos.slice(0,3).map(f=>f.doc).join(', ')})`:'';
+    showToast(`✅ ${r.count} de ${r.total} equipos sincronizados con supervisores${detalle}${dup}${mal}`,mal?'warn':'success',6500);
+  };
+  W.eqSyncNow=async()=>{
+    const rows=W.IMPORTACIONES_DATA||[];
+    if(!rows.length){if(typeof showToast==='function')showToast('No hay equipos cargados para sincronizar','warn',4000);return;}
+    if(typeof showToast==='function')showToast(`📡 Sincronizando ${rows.length} equipos con supervisores…`,'info',3000);
+    try{W._eqSyncReport(await W.syncEquiposToSupervisor(rows));}
+    catch(e){console.error('[sync equipos→sup] error:',e);if(typeof showToast==='function')showToast('⚠️ Error al sincronizar con supervisores: '+(e.message||e),'alert',6000);}
   };
 
   /* ═══ HISTORIAL DE CAMBIOS DE EQUIPOS (overlay global + doble clic al detalle) ═══ */
@@ -10310,14 +10352,7 @@ function renderEquiposPremium(){
     (async()=>{
       try{
         if(typeof showToast==='function')showToast('📡 Sincronizando equipos con supervisores…','info',3000);
-        const rsync=await W.syncEquiposToSupervisor(parsed);
-        if(rsync.ok){
-          const rs=rsync.resumen;
-          const detalle=rs?` · ${rsync.cambios} cambios (${rs.nuevos} nuevos, ${rs.modificados} modif., ${rs.eliminados} elim.)`:'';
-          if(typeof showToast==='function')showToast(`✅ ${rsync.count} equipos sincronizados con supervisores${detalle}`,'success',5500);
-        }else if(typeof showToast==='function'){
-          showToast('⚠️ No se sincronizó con supervisores: '+(rsync.reason||''),'warn',5000);
-        }
+        W._eqSyncReport(await W.syncEquiposToSupervisor(parsed));
       }catch(e){
         console.error('[sync equipos→sup] error:',e);
         if(typeof showToast==='function')showToast('⚠️ Error al sincronizar con supervisores: '+(e.message||e),'alert',6000);

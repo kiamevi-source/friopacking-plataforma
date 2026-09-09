@@ -6063,7 +6063,7 @@ async function pmoFetchLive(force = false) {
     // (rellenada con la data histórica del PMO live recuperada de git)
     let equipos = [];
     try {
-      const rows = await sbFetch('/rest/v1/equipos_pmo?select=doc,fecha,proveedor,proj,proj_csv,tipo,origen,fe,fer,so,etd,eta,mod,ref,st&order=doc.desc&limit=500');
+      const rows = await sbFetch('/rest/v1/equipos_pmo?select=doc,fecha,proveedor,proj,proj_csv,tipo,origen,fe,fer,so,etd,eta,mod,ref,st&order=doc.desc&limit=2000');
       equipos = Array.isArray(rows) ? rows : [];
     } catch (e) {
       console.warn('equipos_pmo fetch falló, intentando HTML legacy:', e);
@@ -6351,18 +6351,55 @@ function pmoCurrentProject() {
     || (p.name||'').toLowerCase().includes(nm) || nm.includes((p.name||'').toLowerCase()));
 }
 
-// Buscar equipos del proyecto activo en equipos_pmo (Supabase)
+// Normaliza un nombre de proyecto para compararlo: sin tildes, sin signos,
+// en minúsculas y con un solo espacio entre palabras.
+function _eqNorm(s) {
+  return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,' ').trim();
+}
+
+/* Qué tan bien le calza a un proyecto el nombre que trae el equipo.
+   1000 = idéntico; si no, uno tiene al otro como palabras completas y vale
+   cuántas palabras comparten; -1 = no calza. Comparar por palabras completas
+   evita que "BOMAREA" se lleve equipos de cualquier nombre que la contenga
+   como pedazo suelto. */
+function _eqScore(nm, et) {
+  if (!nm || !et) return -1;
+  if (nm === et) return 1000;
+  const A = ' '+nm+' ', B = ' '+et+' ';
+  if (A.includes(B)) return et.split(' ').length;
+  if (B.includes(A)) return nm.split(' ').length;
+  return -1;
+}
+
+// Nombres de los proyectos reales (los del selector). Sirven para desempatar.
+function _eqProyectosReales() {
+  const sel = document.getElementById('sel-proyecto');
+  const nombres = [];
+  if (sel) Array.from(sel.options).forEach(o => { if (o.dataset && o.dataset.nombre) nombres.push(_eqNorm(o.dataset.nombre)); });
+  if (!nombres.length) (_pmoState.projects||[]).forEach(p => nombres.push(_eqNorm(p.name)));
+  return nombres.filter(Boolean);
+}
+
+/* Buscar equipos del proyecto activo en equipos_pmo (Supabase).
+   Antes bastaba que un nombre contuviera al otro como texto, así que
+   "AGROLATINA" se llevaba los equipos de "AGROLATINA NAZCA" y al revés. Ahora
+   cada equipo se queda con el proyecto que mejor le calza: si otro proyecto le
+   calza mejor, este no lo muestra. */
 function pmoCurrentEquipos() {
   if (!currentProyecto) return [];
-  const nm = (currentProyecto.nombre||'').toLowerCase().trim();
-  const cod = (currentProyecto.cod||'').toLowerCase().trim();
+  const nm  = _eqNorm(currentProyecto.nombre);
+  const cod = _eqNorm(currentProyecto.cod);
   if (!nm && !cod) return [];
+  const otros = _eqProyectosReales().filter(n => n !== nm);
   return (_pmoState.equipos||[]).filter(e => {
-    const pc = (e.proj_csv||'').toLowerCase();
-    const pj = (e.proj||'').toLowerCase();
-    // Match si nombre o código coincide en proj_csv O proj
-    return (nm && (pc === nm || pj === nm || pc.includes(nm) || pj.includes(nm) || nm.includes(pc) || nm.includes(pj)))
-        || (cod && (pc.includes(cod) || pj.includes(cod)));
+    const et = _eqNorm(e.proj_csv) || _eqNorm(e.proj);
+    if (!et) return false;
+    if (cod && et === cod) return true;
+    const mio = _eqScore(nm, et);
+    if (mio < 0) return false;
+    // Sólo lo reclamo si ningún otro proyecto le calza mejor.
+    return !otros.some(o => _eqScore(o, et) > mio);
   });
 }
 
