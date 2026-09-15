@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mapa de flujo · Plataforma Unificada FrioPacking</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+<style>
+  :root{
+    --navy:#14275C; --navy-2:#1d3570; --teal:#2FBCA3; --teal-600:#27a691;
+    --blue:#4F8DF5; --amber:#E08A2B; --ink:#0f1b34; --muted:#5b6b86;
+    --line:#e4eaf3; --card:#fff; --bg:#f3f7fd;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+    color:var(--ink);background:var(--bg);overflow:hidden;
+  }
+
+  /* ── barra superior ── */
+  .top{
+    position:fixed;top:0;left:0;right:0;height:58px;z-index:30;
+    display:flex;align-items:center;gap:14px;padding:0 18px;
+    background:rgba(255,255,255,.92);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .top h1{font-size:15px;font-weight:800;color:var(--navy);letter-spacing:-.01em;white-space:nowrap}
+  .top .sub{font-size:12px;color:var(--muted);white-space:nowrap}
+  .spacer{flex:1}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    height:32px;min-width:32px;padding:0 11px;font-size:12.5px;font-weight:600;
+    color:var(--navy);background:#fff;border:1px solid var(--line);border-radius:9px;
+    cursor:pointer;transition:.15s;white-space:nowrap;font-family:inherit;
+  }
+  .btn:hover{border-color:var(--teal);color:var(--teal-600)}
+  .btn.on{background:var(--navy);border-color:var(--navy);color:#fff}
+  .zoomlvl{font-size:12px;color:var(--muted);min-width:42px;text-align:center;font-variant-numeric:tabular-nums}
+
+  /* ── lienzo ── */
+  #stage{position:fixed;inset:94px 0 0 0;overflow:hidden;cursor:grab;
+    background-image:radial-gradient(#dae3f0 1px,transparent 1px);background-size:22px 22px}
+  #stage.grabbing{cursor:grabbing}
+  #canvas{position:absolute;top:0;left:0;transform-origin:0 0;width:1600px;height:1320px}
+  #wires{position:absolute;top:0;left:0;width:1600px;height:1320px;pointer-events:none;overflow:visible}
+
+  /* ── tarjetas ── */
+  .node{
+    position:absolute;background:var(--card);border:1.5px solid var(--line);
+    border-radius:12px;box-shadow:0 10px 30px -18px rgba(20,39,92,.4);
+    overflow:hidden;transition:box-shadow .15s,border-color .15s,opacity .18s;
+  }
+  .node .hd{
+    display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:grab;
+    border-bottom:1px solid var(--line);background:#fbfcfe;user-select:none;
+  }
+  .node .hd:active{cursor:grabbing}
+  .node .dot{width:9px;height:9px;border-radius:3px;flex:none}
+  .node .ti{font-size:12.5px;font-weight:800;color:var(--navy);letter-spacing:-.01em;line-height:1.25}
+  .node .st{font-size:10.5px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .node .rows{padding:3px 0}
+  .row{
+    display:flex;align-items:center;gap:7px;height:26px;padding:0 12px;
+    font-size:11.5px;color:#33415c;white-space:nowrap;
+  }
+  .row .pip{width:5px;height:5px;border-radius:50%;background:#c3cfe2;flex:none}
+  .row.key .pip{background:var(--teal)}
+  .row.key{font-weight:650;color:var(--navy)}
+  .node .note{padding:8px 12px 10px;font-size:11px;color:var(--muted);line-height:1.45;white-space:normal}
+
+  .n-persona{width:196px}
+  .n-persona .hd{background:#fff}
+  .n-app{width:288px;border-color:#c9dcff}
+  .n-app .hd{background:#eef4ff}
+  .n-db{width:300px;border-color:#bfeade}
+  .n-db .hd{background:#e9faf5}
+  .n-ext{width:216px;border-color:#f3ddbc}
+  .n-ext .hd{background:#fdf5e8}
+  .n-ext.off{opacity:.72;border-style:dashed}
+
+  /* resaltado */
+  body.focusing .node{opacity:.22}
+  body.focusing .node.hot{opacity:1;border-color:var(--navy);box-shadow:0 14px 36px -14px rgba(20,39,92,.55)}
+  body.focusing #wires path.wire{opacity:.07}
+  body.focusing #wires path.wire.hot{opacity:1;stroke-width:2.6}
+  body.focusing #wires .lbl{opacity:.12}
+  body.focusing #wires .lbl.hot{opacity:1}
+
+  path.wire{fill:none;stroke-linecap:round;transition:opacity .18s}
+  .w-nav{stroke:#9fb0c9;stroke-width:1.6;stroke-dasharray:1 5}
+  .w-dueno{stroke:var(--teal-600);stroke-width:2.2}
+  .w-lee{stroke:var(--blue);stroke-width:1.8;stroke-dasharray:6 5}
+  .w-sync{stroke:var(--navy);stroke-width:2.2}
+  .w-entrada{stroke:var(--amber);stroke-width:1.8}
+  .lbl rect{fill:#fff;stroke:var(--line);stroke-width:1}
+  .lbl text{font-size:10.5px;font-weight:650;fill:var(--navy);font-family:inherit}
+
+  /* leyenda */
+  .legend{
+    position:fixed;top:58px;left:0;right:0;z-index:26;display:flex;align-items:center;gap:22px;
+    height:36px;padding:0 18px;overflow-x:auto;
+    background:rgba(255,255,255,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(10px);
+  }
+  .legend h2{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700;white-space:nowrap}
+  .lg{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#33415c;white-space:nowrap}
+  .lg i{width:26px;height:0;border-top-width:2.4px;border-top-style:solid;flex:none;display:block}
+  .hint{
+    position:fixed;right:16px;bottom:16px;z-index:25;font-size:11.5px;color:var(--muted);
+    background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:10px;padding:8px 12px;
+  }
+  @media(max-width:700px){ .top .sub{display:none} .legend h2{display:none} }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>Mapa de flujo · Plataforma Unificada</h1>
+  <span class="sub">Clic en una tarjeta para aislar sus conexiones</span>
+  <span class="spacer"></span>
+  <button class="btn" id="b-out">−</button>
+  <span class="zoomlvl" id="zl">100%</span>
+  <button class="btn" id="b-in">+</button>
+  <button class="btn" id="b-fit">Ajustar</button>
+  <button class="btn" id="b-reset">Reiniciar</button>
+  <a class="btn" href="./FLUJO.md" style="text-decoration:none">Letra chica</a>
+</div>
+
+<div id="stage">
+  <div id="canvas">
+    <svg id="wires"></svg>
+  </div>
+</div>
+
+<div class="legend">
+  <h2>Cómo leer las líneas</h2>
+  <div class="lg"><i style="border-color:#9fb0c9;border-top-style:dotted"></i> Quién entra a qué app</div>
+  <div class="lg"><i style="border-color:#27a691"></i> La app es dueña de esa base</div>
+  <div class="lg"><i style="border-color:#4F8DF5;border-top-style:dashed"></i> Lee otra instancia</div>
+  <div class="lg"><i style="border-color:#14275C"></i> Sincronización automática</div>
+  <div class="lg"><i style="border-color:#E08A2B"></i> Entrada de información</div>
+</div>
+<div class="hint">Arrastra el fondo para mover · rueda para acercar · arrastra una tarjeta para reacomodar</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   DATOS DEL FLUJO — esto es lo único que se edita cuando algo cambia.
+   Revisado: 15 de septiembre de 2026
+   ═══════════════════════════════════════════════════════════════════ */
+const MAPA = {
+  nodes:[
+    /* ── quién entra ── */
+    {id:'p-ger', tipo:'persona', x:40,  y:66,  color:'#14275C', titulo:'Gerencia y PMO', nota:'Dueña de la información base de cada obra.'},
+    {id:'p-sup', tipo:'persona', x:40,  y:496, color:'#2FBCA3', titulo:'Supervisor y asistente', nota:'Solo ve las obras que tiene asignadas.'},
+    {id:'p-ct',  tipo:'persona', x:40,  y:966, color:'#E08A2B', titulo:'Contratista externo', nota:'Una cuenta por empresa contratista.'},
+
+    /* ── entradas de información ── */
+    {id:'x-val',    tipo:'ext', x:40,  y:196, titulo:'Excel de valorización', sub:'hojas Data y Pendientes'},
+    {id:'x-eq',     tipo:'ext', x:40,  y:296, titulo:'Excel de importaciones', sub:'equipos por obra'},
+    {id:'x-costos', tipo:'ext', x:40,  y:626, titulo:'Cuadros de costo', sub:'presupuestos por partida'},
+    {id:'x-gantt',  tipo:'ext', x:40,  y:726, titulo:'Gantt en PDF', sub:'cronograma de obra'},
+    {id:'x-obs',    tipo:'ext', x:40,  y:826, titulo:'Excel de observaciones', sub:'punch list y restricciones'},
+    {id:'x-netlify',tipo:'ext', x:1352,y:60,  titulo:'Netlify viejo', sub:'donde reportan hoy'},
+    {id:'x-nisira', tipo:'ext', x:1352,y:170, titulo:'NISIRA', sub:'Orden de Proyectos · copia manual'},
+
+    /* ── las tres apps ── */
+    {id:'a-ger', tipo:'app', x:338, y:40, color:'#14275C', titulo:'Gerencia · PMO', sub:'app-live', filas:[
+      {id:'inicio', t:'Inicio · KPIs'},
+      {id:'proyectos', t:'Proyectos', key:true},
+      {id:'gerencial', t:'Dashboard gerencial'},
+      {id:'mapa', t:'Mapa de obras'},
+      {id:'reportes', t:'Reportes'},
+      {id:'equipos', t:'Equipos', key:true},
+      {id:'contratistas', t:'Contratistas · 10 vistas'},
+      {id:'licitaciones', t:'Licitaciones', key:true},
+      {id:'pmoej', t:'PMO Ejecutivo'},
+      {id:'eval', t:'Evaluación 360'},
+      {id:'valorizacion', t:'Valorización', key:true}
+    ]},
+    {id:'a-sup', tipo:'app', x:338, y:470, color:'#2FBCA3', titulo:'Supervisión · Campo', sub:'app-sup', filas:[
+      {id:'dash', t:'Dashboard de obra'},
+      {id:'prep', t:'Preparación · kick-off'},
+      {id:'diario', t:'Reporte diario', key:true},
+      {id:'gantt', t:'Gantt y avance', key:true},
+      {id:'personal', t:'Histograma y personal'},
+      {id:'planos', t:'Planos'},
+      {id:'riesgos', t:'Levantamiento de observaciones', key:true},
+      {id:'costos', t:'Costos y presupuestos', key:true},
+      {id:'facturas', t:'Facturas'},
+      {id:'contratas', t:'Contratas en obra'},
+      {id:'equipos', t:'Equipos en obra'},
+      {id:'historico', t:'Histórico'}
+    ]},
+    {id:'a-ct', tipo:'app', x:338, y:940, color:'#E08A2B', titulo:'Contratas · Externo', sub:'app-contratas', filas:[
+      {id:'resumen', t:'Resumen y perfil'},
+      {id:'proyectos', t:'Mis proyectos'},
+      {id:'licitaciones', t:'Licitaciones', key:true},
+      {id:'docs', t:'Documentos'},
+      {id:'homologacion', t:'Homologación'},
+      {id:'ssoma', t:'Requisitos SSOMA'},
+      {id:'facturas', t:'Facturas'},
+      {id:'informes', t:'Informes'}
+    ]},
+
+    /* ── las tres bases ── */
+    {id:'d-pmo', tipo:'db', x:800, y:40, titulo:'Supabase · PMO', sub:'vsplox…', filas:[
+      {id:'proyectos', t:'proyectos', key:true},
+      {id:'reportes', t:'reportes', key:true},
+      {id:'proyecto_accesos', t:'proyecto_accesos', key:true},
+      {id:'tareas_gantt', t:'tareas_gantt'},
+      {id:'valorizacion', t:'valorizacion_lineas · cobros'},
+      {id:'portafolio', t:'portafolio_servicios'},
+      {id:'lic', t:'lic_* · 12 tablas', key:true},
+      {id:'eval360', t:'eval360_* · evaluaciones'},
+      {id:'supervisores', t:'supervisores_equipo'},
+      {id:'hitos', t:'hitos_proyectos · timeline'},
+      {id:'snapshot', t:'proyectos_snapshot · títulos'}
+    ]},
+    {id:'d-sup', tipo:'db', x:800, y:520, titulo:'Supabase · Supervisor', sub:'iicee…', filas:[
+      {id:'reportes', t:'reportes', key:true},
+      {id:'v_reportes', t:'v_reportes · lectura'},
+      {id:'historico', t:'reportes_historico'},
+      {id:'pem', t:'reportes_pem'},
+      {id:'gantt', t:'tareas_gantt · avance_log'},
+      {id:'equipos_pmo', t:'equipos_pmo', key:true},
+      {id:'presupuestos', t:'presupuestos · costos_reales'},
+      {id:'planos', t:'planos'},
+      {id:'riesgos', t:'riesgos · pendientes'},
+      {id:'checklist', t:'checklist_proyecto'},
+      {id:'accesos', t:'proyecto_accesos', key:true},
+      {id:'personal', t:'ingreso_personal · histograma'},
+      {id:'nisira', t:'nisira_* · sin datos'}
+    ]},
+    {id:'d-ct', tipo:'db', x:800, y:1010, titulo:'Supabase · Contratas', sub:'uijuo…', filas:[
+      {id:'cuentas', t:'contratas_cuentas'},
+      {id:'docs', t:'contratas_documentos'},
+      {id:'homologacion', t:'contratas_homologacion_docs'},
+      {id:'facturas', t:'contratas_facturas'},
+      {id:'informes', t:'contratas_informes'},
+      {id:'sups', t:'contratas_supervisores'}
+    ]}
+  ],
+
+  edges:[
+    /* quién entra a qué */
+    {from:'p-ger', to:'a-ger', tipo:'nav'},
+    {from:'p-sup', to:'a-sup', tipo:'nav'},
+    {from:'p-ct',  to:'a-ct',  tipo:'nav'},
+
+    /* cada app y su base */
+    {from:'a-ger', to:'d-pmo', tipo:'dueno', label:'lee y escribe'},
+    {from:'a-sup', to:'d-sup', tipo:'dueno', label:'lee y escribe'},
+    {from:'a-ct',  to:'d-ct',  tipo:'dueno', label:'lee y escribe'},
+
+    /* lecturas cruzadas entre instancias */
+    {from:'a-sup:dash', to:'d-pmo:proyectos', tipo:'lee', label:'obras y valorización'},
+    {from:'a-ct:licitaciones', to:'d-pmo:lic', tipo:'lee', label:'licitaciones y obras'},
+    {from:'a-ger:equipos', to:'d-sup:equipos_pmo', tipo:'lee', label:'escribe equipos importados'},
+    {from:'a-ger:proyectos', to:'d-sup:checklist', tipo:'lee', label:'lee la preparación'},
+    {from:'a-ger:licitaciones', to:'d-sup:presupuestos', tipo:'lee', label:'partidas licitables por rubro'},
+    {from:'a-sup:costos', to:'d-pmo:lic', tipo:'lee', label:'estado de cada licitación'},
+
+    /* sincronización automática */
+    {from:'d-sup:reportes', to:'d-pmo:reportes', tipo:'sync', fromSide:'r', toSide:'r', bulge:80,  label:'cron 2 min · sube reportes'},
+    {from:'d-pmo:reportes', to:'d-sup:reportes', tipo:'sync', fromSide:'r', toSide:'r', bulge:150, label:'espejo 2 min · baja los del netlify'},
+    {from:'d-pmo:proyecto_accesos', to:'d-sup:accesos', tipo:'sync', fromSide:'r', toSide:'r', bulge:220, label:'cron 5 min · quién reporta'},
+
+    /* entradas de información */
+    {from:'x-val', to:'a-ger:valorizacion', tipo:'entrada'},
+    {from:'x-eq', to:'a-ger:equipos', tipo:'entrada'},
+    {from:'x-costos', to:'a-sup:costos', tipo:'entrada'},
+    {from:'x-gantt', to:'a-sup:gantt', tipo:'entrada'},
+    {from:'x-obs', to:'a-sup:riesgos', tipo:'entrada', label:'importador'},
+    {from:'x-netlify', to:'d-pmo:reportes', tipo:'entrada', label:'escribe directo'},
+    {from:'x-nisira', to:'d-pmo:proyectos', tipo:'entrada', label:'copia manual · obras nuevas'}
+  ]
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   Render
+   ═══════════════════════════════════════════════════════════════════ */
+const canvas = document.getElementById('canvas');
+const svg    = document.getElementById('wires');
+const stage  = document.getElementById('stage');
+const els    = {};
+
+function esc(s){ return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+MAPA.nodes.forEach(n => {
+  const d = document.createElement('div');
+  d.className = 'node n-' + n.tipo + (n.off ? ' off' : '');
+  d.id = 'n-' + n.id;
+  d.style.left = n.x + 'px';
+  d.style.top  = n.y + 'px';
+
+  let h = '<div class="hd">';
+  if (n.color) h += '<span class="dot" style="background:' + n.color + '"></span>';
+  h += '<span><span class="ti">' + esc(n.titulo) + '</span>';
+  if (n.sub) h += '<br><span class="st">' + esc(n.sub) + '</span>';
+  h += '</span></div>';
+
+  if (n.filas){
+    h += '<div class="rows">';
+    n.filas.forEach(f => {
+      h += '<div class="row' + (f.key ? ' key' : '') + '" data-row="' + f.id + '">' +
+           '<span class="pip"></span>' + esc(f.t) + '</div>';
+    });
+    h += '</div>';
+  }
+  if (n.nota) h += '<div class="note">' + esc(n.nota) + '</div>';
+
+  d.innerHTML = h;
+  canvas.appendChild(d);
+  els[n.id] = d;
+});
+
+/* anclas ─────────────────────────────────────────────────────────── */
+function anchor(ref, side){
+  const [nid, rid] = String(ref).split(':');
+  const el = els[nid];
+  const x0 = el.offsetLeft, y0 = el.offsetTop, w = el.offsetWidth, h = el.offsetHeight;
+  let cy = y0 + h / 2;
+  if (rid){
+    const r = el.querySelector('[data-row="' + rid + '"]');
+    if (r) cy = y0 + r.offsetTop + r.offsetHeight / 2;
+  }
+  return { x: side === 'r' ? x0 + w : x0, y: cy, side, nid };
+}
+
+function sides(e){
+  const a = els[String(e.from).split(':')[0]], b = els[String(e.to).split(':')[0]];
+  if (e.fromSide && e.toSide) return [e.fromSide, e.toSide];
+  return a.offsetLeft < b.offsetLeft ? ['r','l'] : ['l','r'];
+}
+
+function bez(p, q, bulge){
+  const dx = Math.abs(q.x - p.x);
+  const k  = bulge || Math.max(60, Math.min(190, dx * 0.55));
+  const c1 = p.x + (p.side === 'r' ? k : -k);
+  const c2 = q.x + (q.side === 'r' ? k : -k);
+  return {
+    d: `M ${p.x} ${p.y} C ${c1} ${p.y}, ${c2} ${q.y}, ${q.x} ${q.y}`,
+    mx: (p.x + 3*c1 + 3*c2 + q.x) / 8,
+    my: (p.y + 3*p.y + 3*q.y + q.y) / 8
+  };
+}
+
+const COLOR = { nav:'#9fb0c9', dueno:'#27a691', lee:'#4F8DF5', sync:'#14275C', entrada:'#E08A2B' };
+
+function draw(){
+  let defs = '<defs>';
+  Object.entries(COLOR).forEach(([k,c]) => {
+    defs += `<marker id="ar-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">` +
+            `<path d="M 0 0 L 10 5 L 0 10 z" fill="${c}"/></marker>`;
+  });
+  defs += '</defs>';
+
+  let paths = '', labels = '';
+  MAPA.edges.forEach((e, i) => {
+    const [sa, sb] = sides(e);
+    const p = anchor(e.from, sa), q = anchor(e.to, sb);
+    const b = bez(p, q, e.bulge);
+    const hot = `data-a="${p.nid}" data-b="${q.nid}" data-i="${i}"`;
+    paths += `<path class="wire w-${e.tipo}" ${hot} d="${b.d}" marker-end="url(#ar-${e.tipo})"/>`;
+    if (e.label){
+      const w = e.label.length * 5.9 + 16;
+      labels += `<g class="lbl" ${hot}>` +
+        `<rect x="${b.mx - w/2}" y="${b.my - 10}" width="${w}" height="20" rx="7"/>` +
+        `<text x="${b.mx}" y="${b.my + 4}" text-anchor="middle">${esc(e.label)}</text></g>`;
+    }
+  });
+  svg.innerHTML = defs + paths + labels;
+}
+draw();
+
+/* ── zoom y paneo ────────────────────────────────────────────────── */
+let tx = 0, ty = 0, sc = 1;
+function apply(){
+  canvas.style.transform = `translate(${tx}px, ${ty}px) scale(${sc})`;
+  document.getElementById('zl').textContent = Math.round(sc * 100) + '%';
+}
+let tocado = false;                       // el usuario ya movió el lienzo
+function fit(){
+  const pad = 40;
+  const r = stage.getBoundingClientRect();
+  if (r.width < 60 || r.height < 60) return;   // el panel aún no tiene tamaño
+  sc = Math.max(0.2, Math.min((r.width - pad*2) / 1520, (r.height - pad*2) / 1260, 1));
+  tx = pad; ty = pad;
+  apply();
+}
+document.getElementById('b-in').onclick  = () => { sc = Math.min(2.2, sc * 1.2); tocado = true; apply(); };
+document.getElementById('b-out').onclick = () => { sc = Math.max(0.2, sc / 1.2); tocado = true; apply(); };
+document.getElementById('b-fit').onclick = () => { tocado = false; fit(); };
+document.getElementById('b-reset').onclick = () => { location.reload(); };
+
+stage.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  const r = stage.getBoundingClientRect();
+  const mx = ev.clientX - r.left, my = ev.clientY - r.top;
+  const f = ev.deltaY < 0 ? 1.12 : 1/1.12;
+  const ns = Math.max(0.2, Math.min(2.2, sc * f));
+  tx = mx - (mx - tx) * (ns / sc);
+  ty = my - (my - ty) * (ns / sc);
+  sc = ns; tocado = true; apply();
+}, { passive:false });
+
+let pan = null;
+stage.addEventListener('mousedown', ev => {
+  if (ev.target.closest('.node')) return;
+  pan = { x:ev.clientX - tx, y:ev.clientY - ty }; tocado = true;
+  stage.classList.add('grabbing');
+  if (!ev.target.closest('.wire')) clearFocus();
+});
+window.addEventListener('mousemove', ev => {
+  if (pan){ tx = ev.clientX - pan.x; ty = ev.clientY - pan.y; apply(); }
+  if (drag){
+    const n = drag.node;
+    n.style.left = Math.round((ev.clientX - drag.dx) / sc) + 'px';
+    n.style.top  = Math.round((ev.clientY - drag.dy) / sc) + 'px';
+    draw(); paintFocus();
+  }
+});
+window.addEventListener('mouseup', () => { pan = null; drag = null; stage.classList.remove('grabbing'); });
+
+/* ── arrastrar tarjetas ──────────────────────────────────────────── */
+let drag = null;
+canvas.querySelectorAll('.node .hd').forEach(hd => {
+  hd.addEventListener('mousedown', ev => {
+    ev.stopPropagation();
+    const n = hd.parentElement;
+    drag = { node:n, dx: ev.clientX - n.offsetLeft * sc, dy: ev.clientY - n.offsetTop * sc };
+  });
+});
+
+/* ── resaltar conexiones ─────────────────────────────────────────── */
+let focused = null;
+function paintFocus(){
+  if (!focused) return;
+  document.querySelectorAll('.node').forEach(n => n.classList.remove('hot'));
+  svg.querySelectorAll('.wire, .lbl').forEach(w => w.classList.remove('hot'));
+  els[focused].classList.add('hot');
+  svg.querySelectorAll('[data-a]').forEach(w => {
+    if (w.dataset.a === focused || w.dataset.b === focused){
+      w.classList.add('hot');
+      const other = w.dataset.a === focused ? w.dataset.b : w.dataset.a;
+      if (els[other]) els[other].classList.add('hot');
+    }
+  });
+}
+function clearFocus(){
+  focused = null;
+  document.body.classList.remove('focusing');
+  document.querySelectorAll('.node').forEach(n => n.classList.remove('hot'));
+  svg.querySelectorAll('.wire, .lbl').forEach(w => w.classList.remove('hot'));
+}
+MAPA.nodes.forEach(n => {
+  els[n.id].addEventListener('click', ev => {
+    if (ev.target.closest('.hd') && drag) return;
+    if (focused === n.id){ clearFocus(); return; }
+    focused = n.id;
+    document.body.classList.add('focusing');
+    paintFocus();
+  });
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') clearFocus(); });
+
+fit();
+new ResizeObserver(() => { if (!tocado) fit(); }).observe(stage);
+window.addEventListener('resize', () => { draw(); if (!tocado) fit(); });
+</script>
+</body>
+</html>

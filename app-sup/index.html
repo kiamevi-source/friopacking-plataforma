@@ -80,6 +80,10 @@
   --green: var(--success); --amber: var(--warning); --red: var(--danger);
   --bg: var(--bg-base); --bg2: #e8ecf5;
   --muted: var(--text-2); --white:#fff;
+  /* Alias usados en bloques inyectados por JS (rval/valg/pendientes). Sin
+     estas dos, cada var() sin fallback invalidaba la declaracion completa:
+     tarjetas sin fondo e inputs sin color. */
+  --surface-1: var(--surface); --text-1: var(--text);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
@@ -5132,6 +5136,12 @@ async function cargarProyecto() {
     finReal: opt.dataset.finReal,
     zona: opt.dataset.zona
   };
+
+  // Si el usuario esta parado en Levantamiento de Observaciones, la lista es de
+  // la obra anterior hasta que recargue: refrescarla con el proyecto nuevo.
+  if (document.getElementById('rd-tipo-obs')?.classList.contains('on')) {
+    try { rdPendLoad(); } catch(e){}
+  }
 
   document.getElementById('header-project-name').textContent = currentProyecto.nombre;
   const badgeCod = document.getElementById('badge-cod');
@@ -10885,73 +10895,260 @@ function rvalEnsureStyles(){
 }
 
 // ═══════════════════════════════════════════════
-// PENDIENTES UNIFICADOS (restricción / punch / observación en una sola tabla)
+// LEVANTAMIENTO DE OBSERVACIONES · Pendientes de obra
+// Restricciones, punch list y observaciones en una sola lista con seguimiento
+// a cierre. Incluye importador de Excel para las obras que ya llevan su lista
+// en un archivo y no van a retipearla.
 // ═══════════════════════════════════════════════
 const PEND_TIPOS=[{k:'restriccion',t:'Restricción'},{k:'punch',t:'Punch list'},{k:'observacion',t:'Observación'}];
 function rdPendTipoLabel(k){ const x=PEND_TIPOS.find(t=>t.k===k); return x?x.t:k; }
-let rdPendList=[], rdPendFTipo='todos', rdPendFEstado='abiertas';
+
+let rdPendList=[], rdPendFTipo='todos', rdPendFEstado='abiertas', rdPendQ='';
+let rdPendFormOn=false, rdPendImpOn=false, rdPendImpData=null;
+
+function rdPendCod(){ return (currentProyecto && (currentProyecto.cod || currentProyecto.nombre)) || ''; }
+function rdPendHoy(){ return new Date().toISOString().slice(0,10); }
+// Días desde hoy hasta la fecha objetivo. Negativo = vencida.
+function rdPendDias(iso){
+  if(!iso) return null;
+  const a=new Date(String(iso).slice(0,10)+'T00:00:00'), b=new Date(rdPendHoy()+'T00:00:00');
+  if(isNaN(a.getTime())) return null;
+  return Math.round((a-b)/86400000);
+}
+function rdPendVencida(p){
+  if(!p || p.estado==='cerrada' || !p.fecha_objetivo) return false;
+  const d=rdPendDias(p.fecha_objetivo); return d!==null && d<0;
+}
+function rdPendFechaCorta(iso){
+  if(!iso) return '';
+  const s=String(iso).slice(0,10).split('-');
+  return s.length===3 ? (s[2]+'/'+s[1]) : String(iso);
+}
+
 async function rdPendLoad(){
-  const cod=currentProyecto?.cod||currentProyecto?.nombre;
-  const m=document.getElementById('rd-pend-mount');
-  if(!cod){ if(m){ rdPendEnsureStyles(); m.innerHTML='<div class="rd-pend-empty">Selecciona un proyecto para ver sus pendientes.</div>'; } return; }
-  try{ rdPendList=await sbFetch(`/rest/v1/pendientes?cod_proyecto=eq.${encodeURIComponent(cod)}&order=estado.asc,created_at.desc`)||[]; }
-  catch(e){ rdPendList=[]; }
+  const m=document.getElementById('rd-pend-mount'); if(!m) return;
+  rdPendEnsureStyles();
+  const cod=rdPendCod();
+  if(!cod){
+    m.innerHTML='<div class="pend-blank"><i data-lucide="clipboard-list" class="ri"></i>'
+      +'<b>Selecciona una obra</b><span>El levantamiento de observaciones se lleva por proyecto.</span></div>';
+    if(window.lucide) lucide.createIcons();
+    return;
+  }
+  try{ rdPendList=await sbFetch('/rest/v1/pendientes?cod_proyecto=eq.'+encodeURIComponent(cod)+'&order=estado.asc,created_at.desc')||[]; }
+  catch(e){ rdPendList=[]; console.warn('pendientes load', e); }
   rdPendRender();
 }
+
 function rdPendFiltrada(){
+  const q=rdPendQ.trim().toLowerCase();
   return rdPendList.filter(p=>{
     if(rdPendFTipo!=='todos' && p.tipo!==rdPendFTipo) return false;
     if(rdPendFEstado==='abiertas' && p.estado==='cerrada') return false;
+    if(rdPendFEstado==='vencidas' && !rdPendVencida(p)) return false;
+    if(q){
+      const blob=[p.titulo,p.descripcion,p.categoria,p.responsable].map(x=>(x||'').toLowerCase()).join(' ');
+      if(blob.indexOf(q)===-1) return false;
+    }
     return true;
   });
 }
+
 function rdPendRender(){
   const m=document.getElementById('rd-pend-mount'); if(!m) return;
   rdPendEnsureStyles();
-  const abiertas=rdPendList.filter(p=>p.estado!=='cerrada').length;
-  let html=`<div class="rd-pend-hd"><div><h3>Pendientes de obra</h3><p>Restricciones, punch list y observaciones en una sola lista, con seguimiento a cierre.</p></div><button class="btn btn-outline btn-sm" onclick="exportarObsPdf()"><i data-lucide="file-down" class="ri" style="width:14px;height:14px"></i> PDF</button><span class="rd-pend-count">${abiertas} abiertos</span></div>`;
-  html+=`<div class="rd-pend-form">
-    <div class="row">
-      <select id="pend-tipo" class="pend-inp">${PEND_TIPOS.map(t=>`<option value="${t.k}">${t.t}</option>`).join('')}</select>
-      <select id="pend-impacto" class="pend-inp"><option value="alto">Impacto alto</option><option value="medio" selected>Impacto medio</option><option value="bajo">Impacto bajo</option></select>
-      <input id="pend-titulo" class="pend-inp grow" placeholder="Título del pendiente">
-    </div>
-    <div class="row">
-      <input id="pend-cat" class="pend-inp" placeholder="Categoría (ej: Materiales)">
-      <input id="pend-resp" class="pend-inp" placeholder="Responsable">
-      <input id="pend-fecha" type="date" class="pend-inp">
-      <button class="btn btn-teal btn-sm" onclick="rdPendAdd()">+ Agregar</button>
-    </div>
-    <textarea id="pend-desc" class="pend-inp" rows="2" placeholder="Descripción / detalle (opcional)"></textarea>
-  </div>`;
-  html+=`<div class="rd-pend-filtros">
-    <div class="seg">${['todos'].concat(PEND_TIPOS.map(t=>t.k)).map(k=>`<button class="pend-fb ${rdPendFTipo===k?'on':''}" onclick="rdPendSetTipo('${k}')">${k==='todos'?'Todos':rdPendTipoLabel(k)}</button>`).join('')}</div>
-    <div class="seg"><button class="pend-fb ${rdPendFEstado==='abiertas'?'on':''}" onclick="rdPendSetEstado('abiertas')">Abiertas</button><button class="pend-fb ${rdPendFEstado==='todas'?'on':''}" onclick="rdPendSetEstado('todas')">Todas</button></div>
-  </div>`;
+
+  const total=rdPendList.length;
+  const abiertas=rdPendList.filter(p=>p.estado==='abierta').length;
+  const proceso =rdPendList.filter(p=>p.estado==='en_proceso').length;
+  const cerradas=rdPendList.filter(p=>p.estado==='cerrada').length;
+  const vencidas=rdPendList.filter(rdPendVencida).length;
+  const pct = total ? Math.round(cerradas*100/total) : 0;
+  const C = 119.4;   // circunferencia del anillo (r=19)
+
+  // ── Cabecera: identidad de la obra + anillo de avance de cierre ──
+  let html='<div class="pend-print" id="pend-print">';
+  html+='<div class="pend-hero">'
+    + '<div class="pend-hero-l">'
+      + '<span class="pend-eyebrow">Levantamiento de observaciones</span>'
+      + '<h2>'+rdEsc2((currentProyecto&&currentProyecto.nombre)||'Obra')+'</h2>'
+      + '<div class="pend-hero-meta">'
+        + '<span><i data-lucide="folder-open" class="ri"></i>'+rdEsc2(rdPendCod())+'</span>'
+        + '<span><i data-lucide="list-checks" class="ri"></i>'+total+' registrados</span>'
+        + (vencidas?'<span class="warn"><i data-lucide="alarm-clock" class="ri"></i>'+vencidas+' vencidos</span>':'')
+      + '</div>'
+    + '</div>'
+    + '<div class="pend-ringwrap">'
+      + '<svg viewBox="0 0 44 44" class="pend-ring"><circle class="tr" cx="22" cy="22" r="19"></circle>'
+      + '<circle class="fg" cx="22" cy="22" r="19" stroke-dasharray="'+C+'" stroke-dashoffset="'+(C*(1-pct/100)).toFixed(1)+'"></circle></svg>'
+      + '<div class="pend-ringtxt"><b>'+pct+'<i>%</i></b><span>levantado</span></div>'
+    + '</div>'
+  + '</div>';
+
+  // ── Semáforo: 4 tiles, cada uno filtra ──
+  html+='<div class="pend-kpis">'
+    + rdPendKpi('abiertas','Abiertas',abiertas,'circle-dot', rdPendFEstado==='abiertas')
+    + rdPendKpi('proceso','En proceso',proceso,'loader', false)
+    + rdPendKpi('vencidas','Vencidas',vencidas,'alarm-clock', rdPendFEstado==='vencidas')
+    + rdPendKpi('cerradas','Cerradas',cerradas,'check-check', false)
+  + '</div>';
+
+  // ── Barra de cierre ──
+  html+='<div class="pend-prog"><div class="pend-prog-hd"><span>Avance de cierre</span><b>'+cerradas+' de '+total+'</b></div>'
+    + '<div class="pend-track"><i style="width:'+pct+'%"></i></div></div>';
+
+  // ── Acciones ──
+  html+='<div class="pend-bar">'
+    + '<div class="pend-bar-l">'
+      + '<button class="pend-act primary" onclick="rdPendToggleForm()"><i data-lucide="'+(rdPendFormOn?'x':'plus')+'" class="ri"></i>'+(rdPendFormOn?'Cerrar':'Nuevo pendiente')+'</button>'
+      + '<button class="pend-act" onclick="rdPendImpToggle()"><i data-lucide="file-spreadsheet" class="ri"></i>Importar Excel</button>'
+    + '</div>'
+    + '<div class="pend-bar-r">'
+      + '<div class="pend-search"><i data-lucide="search" class="ri"></i><input id="pend-q" placeholder="Buscar…" value="'+rdEsc2(rdPendQ)+'" oninput="rdPendSetQ(this.value)"></div>'
+      + '<button class="pend-act" onclick="exportarObsPdf()"><i data-lucide="file-down" class="ri"></i>PDF</button>'
+    + '</div>'
+  + '</div>';
+
+  // ── Alta manual (colapsable: no ocupa pantalla si no se usa) ──
+  if(rdPendFormOn){
+    html+='<div class="pend-form">'
+      + '<div class="row">'
+        + '<select id="pend-tipo" class="pend-inp">'+PEND_TIPOS.map(t=>'<option value="'+t.k+'">'+t.t+'</option>').join('')+'</select>'
+        + '<select id="pend-impacto" class="pend-inp"><option value="alto">Impacto alto</option><option value="medio" selected>Impacto medio</option><option value="bajo">Impacto bajo</option></select>'
+        + '<input id="pend-titulo" class="pend-inp grow" placeholder="Título del pendiente" onkeydown="if(event.key===\'Enter\')rdPendAdd()">'
+      + '</div>'
+      + '<div class="row">'
+        + '<input id="pend-cat" class="pend-inp" placeholder="Categoría (ej: Materiales)">'
+        + '<input id="pend-resp" class="pend-inp" placeholder="Responsable">'
+        + '<input id="pend-fecha" type="date" class="pend-inp" title="Fecha objetivo">'
+        + '<button class="pend-act primary" onclick="rdPendAdd()"><i data-lucide="check" class="ri"></i>Agregar</button>'
+      + '</div>'
+      + '<textarea id="pend-desc" class="pend-inp" rows="2" placeholder="Descripción / detalle (opcional)"></textarea>'
+    + '</div>';
+  }
+
+  // ── Importador de Excel (colapsable) ──
+  if(rdPendImpOn){
+    html+='<label class="import-drop pend-drop" for="pend-file" id="pend-drop"'
+      + ' ondragover="rdPendImpDrag(event,1)" ondragleave="rdPendImpDrag(event,0)" ondrop="rdPendImpDrop(event)">'
+      + '<div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+      + '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></div>'
+      + '<div class="body"><div class="title">Importar observaciones desde Excel</div>'
+      + '<div class="sub">Arrastra el archivo o haz clic. Reconoce solo los encabezados: Título, Descripción, Tipo, Categoría, Responsable, Fecha objetivo, Impacto y Estado — en el orden que sea.</div>'
+      + '<div class="formats"><span class="fmt xlsx">.xlsx</span><span class="fmt xlsx">.xls</span><span class="fmt csv">.csv</span>'
+      + '<span class="fmt link" onclick="event.preventDefault();event.stopPropagation();rdPendPlantilla()">Descargar plantilla</span></div></div>'
+      + '<span class="cta">Seleccionar archivo</span>'
+      + '<input type="file" id="pend-file" accept=".xlsx,.xls,.csv" onchange="rdPendImpFile(this)">'
+    + '</label>';
+  }
+
+  // ── Filtros por tipo ──
+  html+='<div class="pend-filtros"><div class="seg">'
+    + ['todos'].concat(PEND_TIPOS.map(t=>t.k)).map(k=>{
+        const n = k==='todos' ? rdPendList.length : rdPendList.filter(p=>p.tipo===k).length;
+        return '<button class="pend-fb '+(rdPendFTipo===k?'on':'')+'" onclick="rdPendSetTipo(\''+k+'\')">'
+             + (k==='todos'?'Todos':rdPendTipoLabel(k))+'<i>'+n+'</i></button>';
+      }).join('')
+    + '</div>'
+    + '<button class="pend-fb ghost '+(rdPendFEstado==='todas'?'on':'')+'" onclick="rdPendSetEstado(\''+(rdPendFEstado==='todas'?'abiertas':'todas')+'\')">'
+    + '<i data-lucide="eye" class="ri"></i>'+(rdPendFEstado==='todas'?'Viendo todas':'Ver también cerradas')+'</button>'
+  + '</div>';
+
+  // ── Lista ──
   const lista=rdPendFiltrada();
-  html+= lista.length ? lista.map(rdPendCard).join('') : `<div class="rd-pend-empty">Sin pendientes para este filtro.</div>`;
+  if(lista.length){
+    html+='<div class="pend-list">'+lista.map((p,i)=>rdPendCard(p,i)).join('')+'</div>';
+  } else if(total===0){
+    html+='<div class="pend-blank"><i data-lucide="clipboard-check" class="ri"></i>'
+      + '<b>Sin observaciones registradas</b>'
+      + '<span>Empieza por una, o sube el Excel que ya lleva la obra.</span>'
+      + '<div class="pend-blank-a"><button class="pend-act primary" onclick="rdPendToggleForm()"><i data-lucide="plus" class="ri"></i>Agregar la primera</button>'
+      + '<button class="pend-act" onclick="rdPendImpToggle()"><i data-lucide="file-spreadsheet" class="ri"></i>Importar Excel</button></div></div>';
+  } else {
+    html+='<div class="pend-blank sm"><i data-lucide="filter" class="ri"></i><b>Nada con este filtro</b>'
+      + '<span>'+total+' pendientes registrados en la obra.</span></div>';
+  }
+  html+='</div>';
+
   m.innerHTML=html;
   if(window.lucide) lucide.createIcons();
 }
-function rdPendCard(p){
+
+function rdPendKpi(k,label,n,icon,on){
+  return '<button class="pend-kpi k-'+k+(on?' on':'')+(n?'':' zero')+'" onclick="rdPendKpiClick(\''+k+'\')">'
+    + '<span class="ic"><i data-lucide="'+icon+'" class="ri"></i></span>'
+    + '<b>'+n+'</b><span class="lb">'+label+'</span></button>';
+}
+function rdPendKpiClick(k){
+  if(k==='vencidas')      rdPendFEstado = (rdPendFEstado==='vencidas'?'abiertas':'vencidas');
+  else if(k==='cerradas') rdPendFEstado = 'todas';
+  else                    rdPendFEstado = 'abiertas';
+  if(k==='proceso'){ rdPendFEstado='abiertas'; }
+  rdPendRender();
+}
+
+function rdPendCard(p,i){
   const impCls=p.impacto==='alto'?'alto':(p.impacto==='bajo'?'bajo':'medio');
   const estCls=p.estado==='cerrada'?'cer':(p.estado==='en_proceso'?'proc':'ab');
   const estTxt={cerrada:'Cerrada',en_proceso:'En proceso',abierta:'Abierta'}[p.estado]||p.estado;
+
+  // Vencimiento: el dato que convierte la lista en seguimiento y no en inventario.
+  let plazo='';
+  if(p.fecha_objetivo && p.estado!=='cerrada'){
+    const d=rdPendDias(p.fecha_objetivo);
+    if(d!==null){
+      const cls = d<0 ? 'venc' : (d<=3 ? 'pronto' : '');
+      const txt = d<0 ? ('vencida hace '+Math.abs(d)+'d') : (d===0 ? 'vence hoy' : ('faltan '+d+'d'));
+      plazo='<span class="pend-plazo '+cls+'"><i data-lucide="alarm-clock" class="ri"></i>'+rdPendFechaCorta(p.fecha_objetivo)+' · '+txt+'</span>';
+    }
+  } else if(p.fecha_objetivo){
+    plazo='<span class="pend-plazo"><i data-lucide="calendar-check" class="ri"></i>'+rdPendFechaCorta(p.fecha_objetivo)+'</span>';
+  }
+
   let acc;
-  if(p.estado==='abierta') acc=`<button class="btn btn-outline btn-sm" onclick="rdPendEstado(${p.id},'en_proceso')">En proceso</button><button class="btn btn-teal btn-sm" onclick="rdPendEstado(${p.id},'cerrada')">Cerrar</button>`;
-  else if(p.estado==='en_proceso') acc=`<button class="btn btn-teal btn-sm" onclick="rdPendEstado(${p.id},'cerrada')">Cerrar</button><button class="btn btn-outline btn-sm" onclick="rdPendEstado(${p.id},'abierta')">Reabrir</button>`;
-  else acc=`<button class="btn btn-outline btn-sm" onclick="rdPendEstado(${p.id},'abierta')">Reabrir</button>`;
-  return `<div class="rd-pend-card ${estCls}">
-    <div class="rd-pend-top"><span class="pend-tag t-${p.tipo}">${rdPendTipoLabel(p.tipo)}</span><strong>${rdEsc2(p.titulo)}</strong><span class="pend-tag imp ${impCls}">${rdEsc2(p.impacto||'medio')}</span><span class="pend-est ${estCls}">${estTxt}</span></div>
-    ${p.descripcion?`<p class="rd-pend-desc">${rdEsc2(p.descripcion)}</p>`:''}
-    <div class="rd-pend-meta">${p.categoria?`<span>${rdEsc2(p.categoria)}</span>`:''}${p.responsable?`<span>👤 ${rdEsc2(p.responsable)}</span>`:''}${p.fecha_objetivo?`<span>🎯 ${rdEsc2(p.fecha_objetivo)}</span>`:''}</div>
-    <div class="rd-pend-acc">${acc}</div>
-  </div>`;
+  if(p.estado==='abierta')          acc='<button class="pend-mini" onclick="rdPendEstado('+p.id+',\'en_proceso\')">En proceso</button><button class="pend-mini go" onclick="rdPendEstado('+p.id+',\'cerrada\')"><i data-lucide="check" class="ri"></i>Cerrar</button>';
+  else if(p.estado==='en_proceso')  acc='<button class="pend-mini go" onclick="rdPendEstado('+p.id+',\'cerrada\')"><i data-lucide="check" class="ri"></i>Cerrar</button><button class="pend-mini" onclick="rdPendEstado('+p.id+',\'abierta\')">Reabrir</button>';
+  else                              acc='<button class="pend-mini" onclick="rdPendEstado('+p.id+',\'abierta\')"><i data-lucide="rotate-ccw" class="ri"></i>Reabrir</button>';
+
+  return '<article class="pend-card '+estCls+' imp-'+impCls+(rdPendVencida(p)?' vencida':'')+'" style="animation-delay:'+Math.min(i*22,340)+'ms">'
+    + '<div class="pend-card-hd">'
+      + '<span class="pend-tag t-'+rdEsc2(p.tipo)+'">'+rdPendTipoLabel(p.tipo)+'</span>'
+      + '<strong>'+rdEsc2(p.titulo)+'</strong>'
+      + '<span class="pend-est '+estCls+'">'+estTxt+'</span>'
+    + '</div>'
+    + (p.descripcion?'<p class="pend-desc">'+rdEsc2(p.descripcion)+'</p>':'')
+    + '<div class="pend-meta">'
+      + '<span class="pend-imp '+impCls+'">Impacto '+rdEsc2(p.impacto||'medio')+'</span>'
+      + (p.categoria?'<span><i data-lucide="tag" class="ri"></i>'+rdEsc2(p.categoria)+'</span>':'')
+      + (p.responsable?'<span><i data-lucide="user" class="ri"></i>'+rdEsc2(p.responsable)+'</span>':'')
+      + plazo
+      + (p.origen==='excel'?'<span class="pend-src"><i data-lucide="file-spreadsheet" class="ri"></i>Excel</span>':'')
+      + '<span class="pend-acc">'+acc+'</span>'
+    + '</div>'
+  + '</article>';
 }
+
 function rdPendSetTipo(k){ rdPendFTipo=k; rdPendRender(); }
 function rdPendSetEstado(k){ rdPendFEstado=k; rdPendRender(); }
+function rdPendSetQ(v){
+  rdPendQ=v;
+  // Re-render parcial: repintar todo mataria el foco del buscador.
+  const cont=document.querySelector('#rd-pend-mount .pend-list');
+  const lista=rdPendFiltrada();
+  if(cont){
+    cont.innerHTML = lista.length ? lista.map((p,i)=>rdPendCard(p,i)).join('')
+      : '<div class="pend-blank sm"><b>Nada coincide con “'+rdEsc2(v)+'”</b></div>';
+    if(window.lucide) lucide.createIcons();
+  } else { rdPendRender(); }
+}
+function rdPendToggleForm(){
+  rdPendFormOn=!rdPendFormOn; if(rdPendFormOn) rdPendImpOn=false;
+  rdPendRender();
+  if(rdPendFormOn){ const t=document.getElementById('pend-titulo'); if(t) t.focus(); }
+}
+
 async function rdPendAdd(){
-  const cod=currentProyecto?.cod||currentProyecto?.nombre; if(!cod){ showToast('Selecciona un proyecto'); return; }
+  const cod=rdPendCod(); if(!cod){ showToast('Selecciona un proyecto'); return; }
   const titulo=(document.getElementById('pend-titulo')?.value||'').trim();
   if(!titulo){ showToast('Escribe un título'); return; }
   const row={ cod_proyecto:cod, nombre_proyecto:currentProyecto?.nombre||null,
@@ -10962,39 +11159,493 @@ async function rdPendAdd(){
     fecha_objetivo:document.getElementById('pend-fecha')?.value||null,
     descripcion:(document.getElementById('pend-desc')?.value||'').trim()||null,
     estado:'abierta', origen:'manual', supervisor:currentProyecto?.supervisor||currentUser?.nombre||null };
-  try{ await sbFetch('/rest/v1/pendientes',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)}); showToast('Pendiente agregado ✓'); await rdPendLoad(); }
-  catch(e){ showToast('Error al agregar'); }
+  try{
+    await sbFetch('/rest/v1/pendientes',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
+    showToast('Pendiente agregado ✓'); rdPendFormOn=false; await rdPendLoad();
+  }catch(e){ console.warn('pendiente add', e); showToast('Error al agregar'); }
 }
 async function rdPendEstado(id, estado){
   const patch={ estado }; patch.fecha_cierre = (estado==='cerrada') ? new Date().toISOString() : null;
-  try{ await sbFetch(`/rest/v1/pendientes?id=eq.${id}`,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(patch)}); await rdPendLoad(); }
-  catch(e){ showToast('Error'); }
+  try{ await sbFetch('/rest/v1/pendientes?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(patch)}); await rdPendLoad(); }
+  catch(e){ console.warn('pendiente estado', e); showToast('Error'); }
 }
+
+// ═══════════════════════════════════════════════
+// IMPORTADOR DE EXCEL
+// El encabezado NO tiene que estar en la fila 1 ni en un orden fijo: se busca
+// la fila que mas alias reconoce y desde ahi se mapea columna -> campo.
+// ═══════════════════════════════════════════════
+const PEND_ALIAS = {
+  titulo:        ['titulo','observacion','pendiente','item','asunto','punto','hallazgo','descripcion corta','detalle corto','observaciones levantadas'],
+  descripcion:   ['descripcion','detalle','comentario','comentarios','observaciones','nota','notas','detalle de la observacion'],
+  tipo:          ['tipo','clase','tipo de pendiente','tipo de observacion','tipo de registro'],
+  categoria:     ['categoria','especialidad','area','disciplina','sistema','rubro','partida','frente'],
+  responsable:   ['responsable','encargado','asignado','asignado a','contratista','contrata','empresa','a cargo'],
+  fecha_objetivo:['fecha objetivo','fecha compromiso','fecha limite','fecha de cierre','fecha comprometida','vence','vencimiento','plazo','fecha de levantamiento'],
+  impacto:       ['impacto','prioridad','criticidad','severidad','nivel'],
+  estado:        ['estado','status','situacion','condicion']
+};
+const PEND_CAMPO_LBL = { titulo:'Título', descripcion:'Descripción', tipo:'Tipo', categoria:'Categoría',
+  responsable:'Responsable', fecha_objetivo:'Fecha objetivo', impacto:'Impacto', estado:'Estado' };
+
+function rdPendNorm(s){
+  return String(s==null?'':s).toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')   // fuera tildes
+    .replace(/\(.*?\)/g,' ').replace(/[^a-z0-9\s]/g,' ')
+    .replace(/\s+/g,' ').trim();
+}
+function rdPendCampoDe(header){
+  const h=rdPendNorm(header); if(!h) return null;
+  for(const campo in PEND_ALIAS){
+    const al=PEND_ALIAS[campo];
+    if(al.indexOf(h)!==-1) return campo;                       // match exacto primero
+  }
+  for(const campo in PEND_ALIAS){
+    if(PEND_ALIAS[campo].some(a=>h.indexOf(a)!==-1)) return campo;   // luego por contencion
+  }
+  return null;
+}
+function rdPendVTipo(v){
+  const s=rdPendNorm(v);
+  if(!s) return 'observacion';
+  if(s.indexOf('restric')!==-1) return 'restriccion';
+  if(s.indexOf('punch')!==-1)   return 'punch';
+  return 'observacion';
+}
+function rdPendVImpacto(v){
+  const s=rdPendNorm(v);
+  if(!s) return 'medio';
+  if(/alt|crit|urgen|mayor|grave|^1$|^a$/.test(s)) return 'alto';
+  if(/baj|menor|leve|^3$|^c$/.test(s))             return 'bajo';
+  return 'medio';
+}
+function rdPendVEstado(v){
+  const s=rdPendNorm(v);
+  if(!s) return 'abierta';
+  if(/cerrad|levantad|resuelt|subsanad|conforme|ok|100/.test(s)) return 'cerrada';
+  if(/proceso|curso|ejecu|avance|parcial|tramite/.test(s))       return 'en_proceso';
+  return 'abierta';
+}
+// Excel entrega fechas como Date, como serial numerico o como texto. Las tres.
+function rdPendVFecha(v){
+  if(v==null || v==='') return null;
+  if(v instanceof Date && !isNaN(v.getTime())){
+    return new Date(v.getTime()-v.getTimezoneOffset()*60000).toISOString().slice(0,10);
+  }
+  if(typeof v==='number' && isFinite(v)){
+    if(v<1 || v>60000) return null;
+    const d=new Date(Date.UTC(1899,11,30)+v*86400000);
+    return isNaN(d.getTime())?null:d.toISOString().slice(0,10);
+  }
+  const s=String(v).trim();
+  let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return m[1]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2);
+  m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if(m){
+    let y=m[3].length===2?('20'+m[3]):m[3];
+    return y+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);   // dd/mm/aaaa (formato PE)
+  }
+  return null;
+}
+
+function rdPendImpToggle(){
+  rdPendImpOn=!rdPendImpOn; if(rdPendImpOn) rdPendFormOn=false;
+  rdPendRender();
+}
+function rdPendImpDrag(ev,on){
+  ev.preventDefault();
+  const d=document.getElementById('pend-drop'); if(d) d.classList.toggle('drag',!!on);
+}
+function rdPendImpDrop(ev){
+  ev.preventDefault(); rdPendImpDrag(ev,0);
+  const f=ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+  if(f) rdPendImpParse(f);
+}
+function rdPendImpFile(input){
+  const f=input && input.files && input.files[0];
+  if(f) rdPendImpParse(f);
+  if(input) input.value='';
+}
+
+async function rdPendImpParse(file){
+  if(!window.XLSX){ showToast('SheetJS no cargó. Recarga la página.',4000); return; }
+  if(!rdPendCod()){ showToast('Selecciona un proyecto'); return; }
+  showToast('Leyendo '+file.name+'…',1800);
+  let wb;
+  try{
+    const buf=await file.arrayBuffer();
+    wb=window.XLSX.read(buf,{type:'array',cellDates:true});
+  }catch(e){ console.warn('xlsx read', e); showToast('No se pudo leer el archivo',4000); return; }
+
+  // Hoja: la que mas filas trae (los cuadros suelen venir con hojas sueltas al lado).
+  let mejorHoja=null, mejorFilas=[];
+  wb.SheetNames.forEach(n=>{
+    const rows=window.XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:'',raw:false,dateNF:'yyyy-mm-dd'});
+    if(rows.length>mejorFilas.length){ mejorFilas=rows; mejorHoja=n; }
+  });
+  if(!mejorFilas.length){ showToast('El archivo está vacío',4000); return; }
+
+  // Fila de encabezado: la de las primeras 25 que reconoce mas alias.
+  let hIdx=-1, hMap=null, hScore=0;
+  for(let i=0;i<Math.min(25,mejorFilas.length);i++){
+    const map={}; let score=0;
+    mejorFilas[i].forEach((cell,j)=>{
+      const campo=rdPendCampoDe(cell);
+      if(campo && map[campo]===undefined){ map[campo]=j; score++; }
+    });
+    if(score>hScore){ hScore=score; hIdx=i; hMap=map; }
+  }
+  if(hIdx===-1 || !hMap || (hMap.titulo===undefined && hMap.descripcion===undefined)){
+    rdPendImpModal({ error:true, archivo:file.name, hoja:mejorHoja,
+      encabezados:(mejorFilas[0]||[]).filter(x=>String(x).trim()).slice(0,12) });
+    return;
+  }
+
+  // Fechas: releer la hoja con celdas Date para no perder el tipo.
+  const crudas=window.XLSX.utils.sheet_to_json(wb.Sheets[mejorHoja],{header:1,defval:'',raw:true,cellDates:true});
+  const cod=rdPendCod();
+  const yaHay=new Set(rdPendList.map(p=>rdPendNorm(p.titulo)));
+  const filas=[], dups=[], vacias=[];
+
+  for(let i=hIdx+1;i<crudas.length;i++){
+    const r=crudas[i]||[];
+    const get=c=>(hMap[c]===undefined?'':r[hMap[c]]);
+    const titulo=String(get('titulo')||'').trim();
+    const desc  =String(get('descripcion')||'').trim();
+    if(!titulo && !desc) continue;                    // fila en blanco: ni se cuenta
+    const t = titulo || desc.slice(0,120);
+    if(!t){ vacias.push(i+1); continue; }
+    const key=rdPendNorm(t);
+    const row={
+      cod_proyecto:cod, nombre_proyecto:(currentProyecto&&currentProyecto.nombre)||null,
+      tipo:rdPendVTipo(get('tipo')),
+      titulo:t.slice(0,300),
+      descripcion:(titulo&&desc)?desc:null,
+      categoria:String(get('categoria')||'').trim()||null,
+      responsable:String(get('responsable')||'').trim()||null,
+      fecha_objetivo:rdPendVFecha(get('fecha_objetivo')),
+      impacto:rdPendVImpacto(get('impacto')),
+      estado:rdPendVEstado(get('estado')),
+      origen:'excel',
+      supervisor:(currentProyecto&&currentProyecto.supervisor)||(currentUser&&currentUser.nombre)||null
+    };
+    if(yaHay.has(key)){ dups.push(row); continue; }
+    yaHay.add(key);
+    filas.push(row);
+  }
+
+  rdPendImpData=filas;
+  rdPendImpModal({ archivo:file.name, hoja:mejorHoja, filaEnc:hIdx+1, map:hMap,
+    headers:crudas[hIdx]||mejorFilas[hIdx]||[], filas, dups:dups.length, vacias:vacias.length });
+}
+
+function rdPendImpModal(info){
+  rdPendEnsureStyles();
+  let box=document.getElementById('pend-imp-modal');
+  if(!box){ box=document.createElement('div'); box.id='pend-imp-modal'; document.body.appendChild(box); }
+
+  if(info.error){
+    box.innerHTML='<div class="pend-modal-bg" onclick="rdPendImpClose()"></div><div class="pend-modal">'
+      + '<div class="pend-modal-hd err"><i data-lucide="file-x" class="ri"></i><div><h4>No reconocí las columnas</h4>'
+      + '<p>'+rdEsc2(info.archivo)+' · hoja “'+rdEsc2(info.hoja||'')+'”</p></div></div>'
+      + '<div class="pend-modal-bd">'
+      + '<p class="pend-modal-p">Necesito al menos una columna <b>Título</b> u <b>Observación</b>. Lo que encontré en la primera fila fue:</p>'
+      + '<div class="pend-chips">'+(info.encabezados.length?info.encabezados.map(h=>'<span>'+rdEsc2(h)+'</span>').join(''):'<span>(vacía)</span>')+'</div>'
+      + '<p class="pend-modal-p">Renombra el encabezado o usa la plantilla.</p>'
+      + '</div>'
+      + '<div class="pend-modal-ft"><button class="pend-act" onclick="rdPendImpClose()">Cerrar</button>'
+      + '<button class="pend-act primary" onclick="rdPendPlantilla()"><i data-lucide="download" class="ri"></i>Descargar plantilla</button></div>'
+      + '</div>';
+    box.classList.add('on'); if(window.lucide) lucide.createIcons();
+    return;
+  }
+
+  const n=info.filas.length;
+  const mapRows=Object.keys(PEND_CAMPO_LBL).map(c=>{
+    const j=info.map[c];
+    const col=(j===undefined)?null:String((info.headers[j]!=null?info.headers[j]:'')).trim();
+    return '<tr class="'+(j===undefined?'off':'')+'"><td>'+PEND_CAMPO_LBL[c]+'</td>'
+      + '<td>'+(j===undefined?'<i>no vino en el archivo</i>':rdEsc2(col||('columna '+(j+1))))+'</td></tr>';
+  }).join('');
+
+  const prev=info.filas.slice(0,8).map(r=>'<tr>'
+    + '<td><span class="pend-tag t-'+r.tipo+'">'+rdPendTipoLabel(r.tipo)+'</span></td>'
+    + '<td class="ttl">'+rdEsc2(r.titulo)+'</td>'
+    + '<td>'+rdEsc2(r.categoria||'—')+'</td>'
+    + '<td>'+rdEsc2(r.responsable||'—')+'</td>'
+    + '<td>'+(r.fecha_objetivo?rdPendFechaCorta(r.fecha_objetivo):'—')+'</td>'
+    + '<td><span class="pend-imp '+r.impacto+'">'+r.impacto+'</span></td>'
+    + '<td>'+({abierta:'Abierta',en_proceso:'En proceso',cerrada:'Cerrada'}[r.estado])+'</td></tr>').join('');
+
+  box.innerHTML='<div class="pend-modal-bg" onclick="rdPendImpClose()"></div><div class="pend-modal wide">'
+    + '<div class="pend-modal-hd"><i data-lucide="file-spreadsheet" class="ri"></i><div>'
+    + '<h4>Revisa antes de importar</h4><p>'+rdEsc2(info.archivo)+' · hoja “'+rdEsc2(info.hoja)+'” · encabezado en la fila '+info.filaEnc+'</p></div></div>'
+    + '<div class="pend-modal-bd">'
+      + '<div class="pend-imp-kpis">'
+        + '<div class="k ok"><b>'+n+'</b><span>listas para importar</span></div>'
+        + '<div class="k'+(info.dups?' warn':'')+'"><b>'+info.dups+'</b><span>omitidas por repetidas</span></div>'
+        + '<div class="k'+(info.vacias?' warn':'')+'"><b>'+info.vacias+'</b><span>descartadas sin título</span></div>'
+      + '</div>'
+      + '<div class="pend-imp-cols"><h5>Cómo leí tus columnas</h5>'
+      + '<table class="pend-imp-map"><tbody>'+mapRows+'</tbody></table></div>'
+      + (n?('<div class="pend-imp-cols"><h5>Primeras '+Math.min(8,n)+' de '+n+'</h5>'
+          + '<div class="pend-imp-scroll"><table class="pend-imp-prev"><thead><tr><th>Tipo</th><th>Título</th><th>Categoría</th><th>Responsable</th><th>Objetivo</th><th>Impacto</th><th>Estado</th></tr></thead>'
+          + '<tbody>'+prev+'</tbody></table></div></div>'):'<p class="pend-modal-p">No quedó ninguna fila nueva por importar.</p>')
+    + '</div>'
+    + '<div class="pend-modal-ft"><button class="pend-act" onclick="rdPendImpClose()">Cancelar</button>'
+    + (n?('<button class="pend-act primary" id="pend-imp-go" onclick="rdPendImpConfirm()"><i data-lucide="upload" class="ri"></i>Importar '+n+'</button>'):'')
+    + '</div></div>';
+  box.classList.add('on');
+  if(window.lucide) lucide.createIcons();
+}
+function rdPendImpClose(){
+  const box=document.getElementById('pend-imp-modal');
+  if(box){ box.classList.remove('on'); box.innerHTML=''; }
+  rdPendImpData=null;
+}
+async function rdPendImpConfirm(){
+  const filas=rdPendImpData||[];
+  if(!filas.length){ rdPendImpClose(); return; }
+  const btn=document.getElementById('pend-imp-go');
+  if(btn){ btn.disabled=true; btn.textContent='Importando…'; }
+  let ok=0, fallo=0;
+  for(let i=0;i<filas.length;i+=200){
+    const lote=filas.slice(i,i+200);
+    try{
+      await sbFetch('/rest/v1/pendientes',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(lote)});
+      ok+=lote.length;
+    }catch(e){ console.warn('pendientes import lote', e); fallo+=lote.length; }
+  }
+  rdPendImpClose();
+  rdPendImpOn=false;
+  showToast(fallo ? ('Importados '+ok+' · fallaron '+fallo) : ('Importados '+ok+' pendientes ✓'), 4000);
+  await rdPendLoad();
+}
+
+// Plantilla: mismo encabezado que el importador reconoce sin ambiguedad.
+function rdPendPlantilla(){
+  if(!window.XLSX){ showToast('SheetJS no cargó. Recarga la página.',4000); return; }
+  const datos=[
+    ['Título','Descripción','Tipo','Categoría','Responsable','Fecha objetivo','Impacto','Estado'],
+    ['Falta sello en pase de tubería sala de máquinas','Pase sin sellar hacia cámara 3','Observación','Obras civiles','Contratista civil','30/09/2026','Alto','Abierta'],
+    ['Aislamiento de línea de succión incompleto','Tramo de 4 m sin recubrimiento','Punch list','Aislamiento','Metalfresh','05/10/2026','Medio','En proceso'],
+    ['No llegó válvula de expansión de cámara 2','Restringe la puesta en marcha','Restricción','Materiales','Logística','','Alto','Abierta']
+  ];
+  const ws=window.XLSX.utils.aoa_to_sheet(datos);
+  ws['!cols']=[{wch:46},{wch:40},{wch:14},{wch:18},{wch:20},{wch:14},{wch:10},{wch:12}];
+  const wb=window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(wb,ws,'Observaciones');
+  window.XLSX.writeFile(wb,'Plantilla_Levantamiento_Observaciones.xlsx');
+}
+
 let _pendStyles=false;
 function rdPendEnsureStyles(){
   if(_pendStyles) return; _pendStyles=true;
   const css=`
-  .rd-pend-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;}
-  .rd-pend-hd h3{margin:0;font-size:17px;font-weight:800;color:var(--navy-800);} .rd-pend-hd p{margin:3px 0 0;font-size:12.5px;color:var(--text-3);}
-  .rd-pend-count{background:#e0f2fe;color:#0369a1;font-size:12px;font-weight:800;padding:5px 11px;border-radius:999px;white-space:nowrap;}
-  .rd-pend-form{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:14px;}
-  .rd-pend-form .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
-  .pend-inp{border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;font-size:13px;background:var(--surface-1);color:var(--text-1);} .pend-inp.grow{flex:1;min-width:160px;} textarea.pend-inp{width:100%;resize:vertical;}
-  .rd-pend-filtros{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
-  .rd-pend-filtros .seg{display:inline-flex;gap:6px;flex-wrap:wrap;}
-  .pend-fb{border:1px solid var(--border-strong);border-radius:8px;padding:6px 12px;font-size:12.5px;font-weight:700;color:var(--text-2);background:var(--surface-1);cursor:pointer;}
-  .pend-fb.on{background:var(--navy-800,#0f2942);color:#fff;border-color:var(--navy-800,#0f2942);}
-  .rd-pend-empty{font-size:13px;color:var(--text-3);text-align:center;padding:26px;border:1px dashed var(--border-strong);border-radius:10px;}
-  .rd-pend-card{border:1px solid var(--border);border-radius:11px;padding:12px 14px;margin-bottom:10px;background:var(--surface-1);}
-  .rd-pend-card.cer{opacity:.6;}
-  .rd-pend-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;} .rd-pend-top strong{font-size:14px;color:var(--navy-800);flex:1;min-width:120px;}
-  .pend-tag{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:6px;letter-spacing:.02em;}
-  .pend-tag.t-restriccion{background:#fef3c7;color:#b45309;} .pend-tag.t-punch{background:#e0e7ff;color:#4338ca;} .pend-tag.t-observacion{background:#dcfce7;color:#15803d;}
-  .pend-tag.imp.alto{background:#fee2e2;color:#b91c1c;} .pend-tag.imp.medio{background:#fef9c3;color:#a16207;} .pend-tag.imp.bajo{background:#f1f5f9;color:#475569;}
-  .pend-est{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;} .pend-est.ab{background:#e0f2fe;color:#0369a1;} .pend-est.proc{background:#fef3c7;color:#b45309;} .pend-est.cer{background:#dcfce7;color:#15803d;}
-  .rd-pend-desc{margin:8px 0 0;font-size:12.5px;color:var(--text-2);}
-  .rd-pend-meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11.5px;color:var(--text-3);}
-  .rd-pend-acc{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}`;
+  /* ── Cabecera ── */
+  .pend-hero{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    padding:20px 24px;border-radius:var(--r-md);background:var(--grad-brand);color:#fff;
+    box-shadow:var(--sh-3);position:relative;overflow:hidden;}
+  .pend-hero::after{content:'';position:absolute;right:-60px;top:-80px;width:260px;height:260px;border-radius:50%;
+    background:radial-gradient(circle,rgba(34,211,238,.30),transparent 70%);pointer-events:none;}
+  .pend-eyebrow{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.72;}
+  .pend-hero h2{margin:5px 0 9px;font-size:22px;font-weight:800;line-height:1.12;letter-spacing:-.015em;}
+  .pend-hero-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;opacity:.90;}
+  .pend-hero-meta span{display:inline-flex;align-items:center;gap:6px;}
+  .pend-hero-meta .ri{width:13px;height:13px;}
+  .pend-hero-meta .warn{color:#fecaca;font-weight:700;opacity:1;}
+  .pend-ringwrap{position:relative;width:96px;height:96px;flex-shrink:0;z-index:1;}
+  .pend-ring{width:96px;height:96px;transform:rotate(-90deg);}
+  .pend-ring .tr{fill:none;stroke:rgba(255,255,255,.16);stroke-width:4;}
+  .pend-ring .fg{fill:none;stroke:#22d3ee;stroke-width:4;stroke-linecap:round;
+    filter:drop-shadow(0 0 6px rgba(34,211,238,.55));transition:stroke-dashoffset 900ms var(--ease-out);}
+  .pend-ringtxt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .pend-ringtxt b{font-size:23px;font-weight:800;line-height:1;} .pend-ringtxt b i{font-size:12px;font-style:normal;opacity:.7;}
+  .pend-ringtxt span{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.65;margin-top:3px;}
+
+  /* ── Semaforo ── */
+  .pend-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:10px;margin-top:12px;}
+  .pend-kpi{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;
+    padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);
+    box-shadow:var(--sh-1);cursor:pointer;font-family:inherit;transition:all var(--d) var(--ease);}
+  .pend-kpi:hover{transform:translateY(-2px);box-shadow:var(--sh-2);}
+  .pend-kpi .ic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;margin-bottom:4px;
+    background:var(--surface-2);color:var(--text-2);}
+  .pend-kpi .ic .ri{width:14px;height:14px;}
+  .pend-kpi b{font-size:24px;font-weight:800;line-height:1;color:var(--navy-800);}
+  .pend-kpi .lb{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);margin-top:4px;}
+  .pend-kpi.zero b{color:var(--text-3);}
+  .pend-kpi.on{border-color:var(--teal-600);box-shadow:0 0 0 3px rgba(6,182,212,.14),var(--sh-2);}
+  .pend-kpi.k-abiertas .ic{background:#e0f2fe;color:#0369a1;}
+  .pend-kpi.k-proceso  .ic{background:var(--warning-bg);color:#b45309;}
+  .pend-kpi.k-vencidas .ic{background:var(--danger-bg);color:#b91c1c;}
+  .pend-kpi.k-cerradas .ic{background:var(--success-bg);color:#15803d;}
+  .pend-kpi.k-vencidas:not(.zero) b{color:var(--danger);}
+  .pend-kpi.k-vencidas:not(.zero){border-color:rgba(220,38,38,.30);background:linear-gradient(180deg,rgba(254,226,226,.55),var(--surface));}
+  .pend-kpi.k-cerradas:not(.zero) b{color:var(--success);}
+
+  /* ── Barra de cierre ── */
+  .pend-prog{margin-top:12px;padding:12px 16px;border-radius:12px;background:var(--surface);
+    border:1px solid var(--border);box-shadow:var(--sh-1);}
+  .pend-prog-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;
+    font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
+  .pend-prog-hd b{font-size:13px;letter-spacing:0;text-transform:none;color:var(--navy-800);}
+  .pend-track{height:8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);overflow:hidden;}
+  .pend-track i{display:block;height:100%;border-radius:999px;background:var(--grad-cool);
+    box-shadow:0 0 12px rgba(6,182,212,.45);transition:width 900ms var(--ease-out);}
+
+  /* ── Barra de acciones ── */
+  .pend-bar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px;}
+  .pend-bar-l,.pend-bar-r{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .pend-act{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:9px;
+    border:1px solid var(--border-strong);background:var(--surface);color:var(--text-2);
+    font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;
+    transition:all var(--d) var(--ease);}
+  .pend-act .ri{width:14px;height:14px;}
+  .pend-act:hover{border-color:var(--teal-600);color:var(--teal-700);transform:translateY(-1px);box-shadow:var(--sh-2);}
+  .pend-act.primary{background:var(--grad-cool);border-color:transparent;color:#fff;
+    box-shadow:0 6px 16px rgba(8,145,178,.28);}
+  .pend-act.primary:hover{color:#fff;box-shadow:0 10px 22px rgba(8,145,178,.38);}
+  .pend-act[disabled]{opacity:.6;cursor:default;transform:none;}
+  .pend-search{display:flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:9px;
+    background:var(--surface);border:1px solid var(--border-strong);}
+  .pend-search .ri{width:14px;height:14px;color:var(--text-3);}
+  .pend-search input{border:0;outline:0;background:transparent;font-family:inherit;font-size:12.5px;
+    color:var(--text);width:150px;}
+
+  /* ── Alta manual ── */
+  .pend-form{margin-top:12px;padding:14px;border-radius:12px;background:var(--surface);
+    border:1px solid var(--border-strong);box-shadow:var(--sh-2);animation:pendIn var(--d) var(--ease-out) backwards;}
+  .pend-form .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center;}
+  .pend-inp{border:1px solid var(--border-strong);border-radius:9px;padding:8px 11px;font-family:inherit;
+    font-size:13px;background:var(--surface);color:var(--text);outline:none;transition:all var(--d) var(--ease);}
+  .pend-inp:focus{border-color:var(--teal-500);box-shadow:0 0 0 3px rgba(6,182,212,.14);}
+  .pend-inp.grow{flex:1;min-width:180px;} textarea.pend-inp{width:100%;resize:vertical;}
+
+  /* ── Dropzone del importador ── */
+  .pend-drop{margin-top:12px;}
+  .import-drop .fmt.link{background:rgba(6,182,212,.12);color:var(--teal-700);cursor:pointer;text-decoration:underline;}
+
+  /* ── Filtros ── */
+  .pend-filtros{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:16px 0 10px;}
+  .pend-filtros .seg{display:inline-flex;gap:6px;flex-wrap:wrap;}
+  .pend-fb{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border-strong);border-radius:9px;
+    padding:6px 12px;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--text-2);
+    background:var(--surface);cursor:pointer;transition:all var(--d) var(--ease);}
+  .pend-fb .ri{width:13px;height:13px;}
+  .pend-fb i:not(.ri){font-style:normal;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:999px;
+    background:var(--surface-2);color:var(--text-3);}
+  .pend-fb:hover{border-color:var(--teal-600);color:var(--teal-700);}
+  .pend-fb.on{background:var(--navy-800);color:#fff;border-color:var(--navy-800);}
+  .pend-fb.on i:not(.ri){background:rgba(255,255,255,.18);color:#fff;}
+
+  /* ── Tarjetas ── */
+  .pend-list{display:flex;flex-direction:column;gap:8px;}
+  .pend-card{position:relative;padding:13px 15px 13px 18px;border-radius:11px;background:var(--surface);
+    border:1px solid var(--border);box-shadow:var(--sh-1);overflow:hidden;
+    animation:pendIn var(--d-slow) var(--ease-out) backwards;transition:all var(--d) var(--ease);}
+  .pend-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--text-3);}
+  .pend-card.imp-alto::before{background:linear-gradient(180deg,var(--danger-2),var(--danger));}
+  .pend-card.imp-medio::before{background:linear-gradient(180deg,var(--warning-2),var(--warning));}
+  .pend-card.imp-bajo::before{background:linear-gradient(180deg,#94a3b8,#64748b);}
+  .pend-card:hover{transform:translateX(2px);box-shadow:var(--sh-2);border-color:var(--border-strong);}
+  .pend-card.cer{opacity:.62;}
+  .pend-card.cer .pend-card-hd strong{text-decoration:line-through;text-decoration-color:var(--text-3);}
+  .pend-card.vencida{background:linear-gradient(90deg,rgba(254,226,226,.5),var(--surface) 42%);}
+  .pend-card-hd{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+  .pend-card-hd strong{flex:1;min-width:140px;font-size:13.5px;font-weight:700;color:var(--navy-800);letter-spacing:-.005em;}
+  .pend-tag{font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;letter-spacing:.03em;white-space:nowrap;}
+  .pend-tag.t-restriccion{background:var(--warning-bg);color:#b45309;}
+  .pend-tag.t-punch{background:#e0e7ff;color:#4338ca;}
+  .pend-tag.t-observacion{background:#cffafe;color:#0e7490;}
+  .pend-est{font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+  .pend-est.ab{background:#e0f2fe;color:#0369a1;} .pend-est.proc{background:var(--warning-bg);color:#b45309;}
+  .pend-est.cer{background:var(--success-bg);color:#15803d;}
+  .pend-desc{margin:7px 0 0;font-size:12.5px;line-height:1.5;color:var(--text-2);}
+  .pend-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:9px;font-size:11.5px;color:var(--text-3);}
+  .pend-meta > span{display:inline-flex;align-items:center;gap:5px;}
+  .pend-meta .ri{width:12px;height:12px;}
+  .pend-imp{font-size:10px;font-weight:800;padding:2px 8px;border-radius:6px;text-transform:capitalize;}
+  .pend-imp.alto{background:var(--danger-bg);color:#b91c1c;}
+  .pend-imp.medio{background:#fef9c3;color:#a16207;}
+  .pend-imp.bajo{background:#f1f5f9;color:#475569;}
+  .pend-plazo{font-weight:600;}
+  .pend-plazo.pronto{color:var(--warning);font-weight:700;}
+  .pend-plazo.venc{color:var(--danger);font-weight:800;}
+  .pend-src{opacity:.75;}
+  .pend-acc{margin-left:auto;display:inline-flex;gap:6px;}
+  .pend-mini{display:inline-flex;align-items:center;gap:5px;height:27px;padding:0 11px;border-radius:8px;
+    border:1px solid var(--border-strong);background:var(--surface);color:var(--text-2);
+    font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;transition:all var(--d-fast) var(--ease);}
+  .pend-mini .ri{width:12px;height:12px;}
+  .pend-mini:hover{border-color:var(--navy-600);color:var(--navy-800);}
+  .pend-mini.go{background:var(--success-bg);border-color:rgba(22,163,74,.28);color:#15803d;}
+  .pend-mini.go:hover{background:var(--success);border-color:var(--success);color:#fff;}
+
+  /* ── Vacios ── */
+  .pend-blank{display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;
+    padding:40px 22px;border:1px dashed var(--border-strong);border-radius:14px;background:var(--surface);}
+  .pend-blank.sm{padding:26px 18px;}
+  .pend-blank .ri{width:30px;height:30px;color:var(--teal-600);opacity:.65;margin-bottom:2px;}
+  .pend-blank b{font-size:14.5px;font-weight:800;color:var(--navy-800);}
+  .pend-blank span{font-size:12.5px;color:var(--text-3);max-width:380px;}
+  .pend-blank-a{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px;}
+
+  @keyframes pendIn{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:none;}}
+
+  /* ── Modal del importador ── */
+  #pend-imp-modal{display:none;} #pend-imp-modal.on{display:block;}
+  .pend-modal-bg{position:fixed;inset:0;z-index:900;background:rgba(11,18,38,.55);
+    backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:pendIn var(--d) var(--ease-out) backwards;}
+  .pend-modal{position:fixed;z-index:901;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(620px,94vw);max-height:88vh;display:flex;flex-direction:column;
+    background:var(--surface);border-radius:16px;box-shadow:var(--sh-4);overflow:hidden;
+    animation:pendModalIn var(--d-slow) var(--ease-out) backwards;}
+  @keyframes pendModalIn{from{opacity:0;transform:translate(-50%,-46%) scale(.98);}
+    to{opacity:1;transform:translate(-50%,-50%) scale(1);}}
+  .pend-modal.wide{width:min(880px,95vw);}
+  .pend-modal-hd{display:flex;align-items:center;gap:13px;padding:18px 22px;background:var(--grad-brand);color:#fff;}
+  .pend-modal-hd.err{background:linear-gradient(135deg,#7f1d1d,#b91c1c);}
+  .pend-modal-hd .ri{width:22px;height:22px;flex-shrink:0;}
+  .pend-modal-hd h4{margin:0;font-size:16px;font-weight:800;}
+  .pend-modal-hd p{margin:2px 0 0;font-size:11.5px;opacity:.80;}
+  .pend-modal-bd{padding:18px 22px;overflow:auto;}
+  .pend-modal-p{font-size:12.5px;color:var(--text-2);margin:0 0 10px;}
+  .pend-modal-ft{display:flex;justify-content:flex-end;gap:8px;padding:14px 22px;
+    border-top:1px solid var(--border);background:var(--surface-2);}
+  .pend-imp-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;}
+  .pend-imp-kpis .k{padding:12px 14px;border-radius:11px;background:var(--surface-2);border:1px solid var(--border);}
+  .pend-imp-kpis .k b{display:block;font-size:23px;font-weight:800;color:var(--navy-800);line-height:1;}
+  .pend-imp-kpis .k span{display:block;margin-top:4px;font-size:10.5px;font-weight:700;
+    letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);}
+  .pend-imp-kpis .k.ok{background:linear-gradient(180deg,rgba(6,182,212,.10),var(--surface));border-color:rgba(6,182,212,.28);}
+  .pend-imp-kpis .k.ok b{color:var(--teal-700);}
+  .pend-imp-kpis .k.warn b{color:var(--warning);}
+  .pend-imp-cols{margin-top:14px;}
+  .pend-imp-cols h5{margin:0 0 8px;font-size:10.5px;font-weight:800;letter-spacing:.07em;
+    text-transform:uppercase;color:var(--text-3);}
+  .pend-imp-map{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .pend-imp-map td{padding:6px 10px;border-bottom:1px solid var(--border);color:var(--text);}
+  .pend-imp-map td:first-child{width:150px;font-weight:700;color:var(--text-2);}
+  .pend-imp-map tr.off td{color:var(--text-3);} .pend-imp-map tr.off td i{font-style:italic;}
+  .pend-imp-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
+  .pend-imp-prev{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;}
+  .pend-imp-prev th{text-align:left;padding:8px 10px;background:var(--surface-2);color:var(--text-3);
+    font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--border);}
+  .pend-imp-prev td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);}
+  .pend-imp-prev td.ttl{white-space:normal;min-width:220px;max-width:340px;font-weight:600;}
+  .pend-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+  .pend-chips span{font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:7px;
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);}
+
+  @media(max-width:640px){
+    .pend-hero{padding:16px;} .pend-hero h2{font-size:18px;}
+    .pend-ringwrap,.pend-ring{width:76px;height:76px;} .pend-ringtxt b{font-size:19px;}
+    .pend-search input{width:110px;}
+    .pend-acc{margin-left:0;width:100%;}
+  }
+  @media print{ .pend-bar,.pend-filtros,.pend-form,.pend-drop,.pend-acc{display:none !important;} }
+  `;
   const st=document.createElement('style'); st.id='rd-pend-styles'; st.textContent=css; document.head.appendChild(st);
 }
 
@@ -11590,7 +12241,9 @@ async function exportarPEMPdf(){
     _pdfNombre('PuestaEnMarcha'));
 }
 async function exportarObsPdf(){
-  await _pdfDesdeNodo(document.getElementById('rd-tipo-obs'),
+  // El nodo de impresion excluye barra de acciones, formulario y dropzone.
+  const nodo = document.getElementById('pend-print') || document.getElementById('rd-tipo-obs');
+  await _pdfDesdeNodo(nodo,
     'Levantamiento de Observaciones', 'Pendientes de obra · seguimiento a cierre',
     _pdfNombre('Observaciones'));
 }
@@ -14812,6 +15465,42 @@ let _dashSources = null;
     return 'Otro';
   }
 
+  // Las licitaciones viven en la base de Gerencia; acá solo se consultan.
+  // Se enlazan por lic_partidas.origen_presupuesto_id → presupuestos.id de esta base.
+  const _LIC_ESTADO_MAP = {
+    'borrador':'pendiente', 'invitaciones':'en_licitacion', 'publicada':'en_licitacion',
+    'ofertas':'en_licitacion', 'evaluacion':'en_licitacion', 'evaluación':'en_licitacion',
+    'adjudicacion':'adjudicado', 'adjudicación':'adjudicado', 'adjudicada':'adjudicado',
+    'cerrada':'contratado', 'contratada':'contratado',
+    'cancelada':'cancelado', 'desierta':'cancelado'
+  };
+  async function _estadosDesdeGerencia(presupuestoIds){
+    const out = {};
+    const ids = (presupuestoIds||[]).filter(v => v != null);
+    if(!ids.length) return out;
+    const G_URL = 'https://vsploxglutkbeokumunp.supabase.co';
+    const G_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+    const H = { apikey: G_KEY, Authorization: 'Bearer ' + G_KEY };
+    try{
+      const parts = await fetch(G_URL + '/rest/v1/lic_partidas?select=origen_presupuesto_id,licitacion_id&origen_presupuesto_id=in.(' + ids.join(',') + ')', { headers:H })
+        .then(r => r.ok ? r.json() : []);
+      if(!parts.length) return out;
+      const licIds = Array.from(new Set(parts.map(p => p.licitacion_id).filter(Boolean)));
+      if(!licIds.length) return out;
+      const lics = await fetch(G_URL + '/rest/v1/lic_licitaciones?select=id,codigo,nombre,estado&id=in.(' + licIds.map(i => '"'+i+'"').join(',') + ')', { headers:H })
+        .then(r => r.ok ? r.json() : []);
+      const byId = {}; lics.forEach(l => { byId[l.id] = l; });
+      parts.forEach(p => {
+        const L = byId[p.licitacion_id]; if(!L) return;
+        out[p.origen_presupuesto_id] = {
+          codigo: L.codigo, nombre: L.nombre, estadoRaw: L.estado,
+          estado: _LIC_ESTADO_MAP[String(L.estado||'').toLowerCase()] || 'en_licitacion'
+        };
+      });
+    }catch(e){ console.warn('[lic] no se pudo leer el estado desde Gerencia:', e); }
+    return out;
+  }
+
   window.loadLicitaciones = async function(){
     const el = document.getElementById('lic-content');
     const summaryEl = document.getElementById('lic-summary');
@@ -14832,10 +15521,14 @@ let _dashSources = null;
       if(itemsLinked.length > 0){
         const itemsCSV = itemsLinked.map(i => `"${i}"`).join(',');
         try{
-          const pres = await sbFetch(`/rest/v1/presupuestos?nombre_proyecto=eq.${encodeURIComponent(currentProyecto.nombre)}&item=in.(${encodeURIComponent(itemsCSV)})&select=item,descripcion,costo_total,venta_total,componentes`);
+          const pres = await sbFetch(`/rest/v1/presupuestos?nombre_proyecto=eq.${encodeURIComponent(currentProyecto.nombre)}&item=in.(${encodeURIComponent(itemsCSV)})&select=id,item,descripcion,costo_total,venta_total,componentes`);
           (pres||[]).forEach(p => { partidasMap[p.item] = p; });
         }catch(e){ console.warn('[lic] error cargando partidas:', e); }
       }
+
+      // Estado REAL de la licitación: vive en Gerencia (lic_*), no acá. El supervisor lo LEE,
+      // nunca lo copia — si se sincronizara, los dos módulos podrían decir cosas distintas.
+      const estadoGerencia = await _estadosDesdeGerencia(Object.values(partidasMap).map(p => p.id));
 
       _licRows = (rows||[]).map(r => {
         const partida = r.partida_item ? partidasMap[r.partida_item] : null;
@@ -14844,13 +15537,22 @@ let _dashSources = null;
         if(partida && Array.isArray(partida.componentes)){
           mo = partida.componentes.find(c => c.tipo === 'mano_de_obra');
         }
+        // Las partidas que vienen de la Orden de Proyectos de NISIRA no traen componentes:
+        // el servicio ES la partida, así que su costo es el de la propia fila.
+        if(!mo && partida && (partida.costo_total != null || partida.venta_total != null)){
+          mo = { tipo:'nisira', descripcion: partida.descripcion,
+                 costo_total: partida.costo_total, venta_total: partida.venta_total };
+        }
+        const ger = partida ? estadoGerencia[partida.id] : null;
         return {
           ...r,
+          estado_licitacion: (ger && ger.estado) || r.estado_licitacion,
           _especialidad: _extractEspecialidad(r.nombre_tarea),
           _diasParaInicio: _daysUntil(r.fecha_inicio_base),
           _diasParaFin: _daysUntil(r.fecha_fin_base),
           _partida: partida,
-          _presupMO: mo  // { tipo, descripcion, costo_total, venta_total, ... }
+          _lic: ger,      // { codigo, nombre, estado } de Gerencia, si ya está licitada
+          _presupMO: mo   // { tipo, descripcion, costo_total, venta_total, ... }
         };
       });
       renderLicitaciones();
@@ -14920,10 +15622,19 @@ let _dashSources = null;
             </div>`:''}
           </td>
           <td style="padding:10px;vertical-align:top">
-            <select onchange="updateLicEstado('${r.id}', this.value)"
-              style="padding:5px 8px;font-size:11px;border:1px solid var(--border-strong);border-radius:6px;background:var(--surface);color:${ESTADO_COLORS[r.estado_licitacion||'pendiente']};font-weight:700;cursor:pointer;min-width:120px">
-              ${ESTADOS.map(e => `<option value="${e}" ${e===(r.estado_licitacion||'pendiente')?'selected':''}>${ESTADO_LABELS[e]}</option>`).join('')}
-            </select>
+            ${r._lic ? `
+              <div style="display:inline-flex;flex-direction:column;gap:3px;min-width:120px">
+                <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:${ESTADO_COLORS[r.estado_licitacion||'pendiente']}">
+                  <span style="width:6px;height:6px;border-radius:50%;background:${ESTADO_COLORS[r.estado_licitacion||'pendiente']}"></span>${ESTADO_LABELS[r.estado_licitacion||'pendiente']}
+                </span>
+                <span style="font-size:9.5px;color:var(--text-3);font-family:ui-monospace,Menlo,monospace" title="${_escapeHtml(r._lic.nombre||'')}">${_escapeHtml(r._lic.codigo||'')}</span>
+                <span style="font-size:9px;color:var(--text-3)">lo define Gerencia</span>
+              </div>`
+            : `
+              <select onchange="updateLicEstado('${r.id}', this.value)"
+                style="padding:5px 8px;font-size:11px;border:1px solid var(--border-strong);border-radius:6px;background:var(--surface);color:${ESTADO_COLORS[r.estado_licitacion||'pendiente']};font-weight:700;cursor:pointer;min-width:120px">
+                ${ESTADOS.map(e => `<option value="${e}" ${e===(r.estado_licitacion||'pendiente')?'selected':''}>${ESTADO_LABELS[e]}</option>`).join('')}
+              </select>`}
           </td>
           <td style="padding:10px;vertical-align:top;text-align:right">
             ${presupMOVenta ? `
