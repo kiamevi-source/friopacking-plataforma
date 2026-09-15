@@ -91,10 +91,17 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   lectura, a propósito: una copia sincronizada podría contradecir a Gerencia.
 - **Levantamiento de observaciones admite Excel.** Restricciones, punch list y
   observaciones viven en `pendientes` de la instancia Supervisor. Entran a mano
-  o importadas desde un Excel (`origen = 'excel'`), con el encabezado en
-  cualquier fila y orden. El importador descarta títulos repetidos y normaliza
-  los valores: tipo `restriccion` / `punch` / `observacion`, impacto
-  `alto` / `medio` / `bajo`, estado `abierta` / `en_proceso` / `cerrada`.
+  o importadas desde un Excel (`origen = 'excel'`). No hay plantilla obligatoria:
+  cada obra usa su formato. El importador elige la hoja y la fila de encabezado
+  que mejor reconoce y asigna cada columna por palabras completas, tolerando
+  una letra de errata; si dos columnas compiten, una vacía nunca gana. Las
+  columnas que no calzan se guardan en la descripción como «Encabezado: valor».
+  Sin columna de estado, el estado sale del % de avance (100 = cerrada). Sin
+  columna de tipo, «punch list» en el nombre o el título del archivo lo marca
+  como punch. Solo se omiten las filas que ya están en la obra (mismo título y
+  categoría) o que son idénticas a otra del archivo. Valores guardados: tipo
+  `restriccion` / `punch` / `observacion`, impacto `alto` / `medio` / `bajo`,
+  estado `abierta` / `en_proceso` / `cerrada`.
 
 ## 4. Cómo se mantiene
 

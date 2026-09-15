@@ -11172,38 +11172,171 @@ async function rdPendEstado(id, estado){
 
 // ═══════════════════════════════════════════════
 // IMPORTADOR DE EXCEL
-// El encabezado NO tiene que estar en la fila 1 ni en un orden fijo: se busca
-// la fila que mas alias reconoce y desde ahi se mapea columna -> campo.
+// Cada obra lleva su punch list en un formato distinto, así que no se exige
+// plantilla. Se elige la hoja y la fila de encabezado que mejor se reconocen, y
+// cada columna va al campo con el que mejor calza: por palabras completas (con
+// una letra de errata tolerada, p. ej. "OBERVACIÓN") y sin que una columna vacía
+// le gane a una con datos ("ESTADO INICIAL" vacía no le quita el puesto a
+// "STATUS"). Lo que no calza no se pierde: va a la descripción.
 // ═══════════════════════════════════════════════
+// Orden = preferencia: el primer alias de cada lista pesa más que el último.
 const PEND_ALIAS = {
-  titulo:        ['titulo','observacion','pendiente','item','asunto','punto','hallazgo','descripcion corta','detalle corto','observaciones levantadas'],
-  descripcion:   ['descripcion','detalle','comentario','comentarios','observaciones','nota','notas','detalle de la observacion'],
-  tipo:          ['tipo','clase','tipo de pendiente','tipo de observacion','tipo de registro'],
-  categoria:     ['categoria','especialidad','area','disciplina','sistema','rubro','partida','frente'],
-  responsable:   ['responsable','encargado','asignado','asignado a','contratista','contrata','empresa','a cargo'],
-  fecha_objetivo:['fecha objetivo','fecha compromiso','fecha limite','fecha de cierre','fecha comprometida','vence','vencimiento','plazo','fecha de levantamiento'],
-  impacto:       ['impacto','prioridad','criticidad','severidad','nivel'],
-  estado:        ['estado','status','situacion','condicion']
+  titulo:        ['titulo','descripcion de la observacion','descripcion del pendiente','observacion','hallazgo','nombre de tarea','actividad','pendiente','asunto','punto','descripcion corta','detalle corto'],
+  descripcion:   ['observaciones comentarios','comentarios','comentario','detalle','descripcion del problema','descripcion','observaciones','observacion','nota','notas'],
+  tipo:          ['tipo','tipo de pendiente','tipo de observacion','tipo observacion','tipo de registro'],
+  categoria:     ['area','ambiente','sector','especialidad','disciplina','categoria','sistema','frente','rubro','partida'],
+  responsable:   ['responsable','responsable 01','encargado','asignado a','asignado','ejecuta','a cargo','contratista','contrata','empresa'],
+  fecha_objetivo:['fecha objetivo','fecha de cierre','fecha limite','fecha compromiso','fecha comprometida','fecha proyectada de levantamiento','fecha de levantamiento','fecha termino','fecha de termino','f termino','fecha de entrega','vencimiento','vence','plazo'],
+  impacto:       ['impacto','criticidad','prioridad','severidad','nivel'],
+  estado:        ['status','estado','estado actual','situacion','condicion']
+};
+// "Tipo de tarea" o "Tipo de problema" no son nuestro tipo (restricción / punch / observación).
+const PEND_SOLO_EXACTO = { tipo:true };
+// Palabras que descartan un campo aunque el resto calce: "Fecha de inicio" no es fecha objetivo.
+const PEND_EXCLUYE = { fecha_objetivo:['inicio','registro','anotado','emision','creacion'], titulo:['codigo'], descripcion:['codigo'] };
+// Columnas que no aportan: correlativos y códigos.
+const PEND_IGNORAR = ['item','items','n','nro','no','num','numero','id','correlativo','codigo de proyecto','codigo proyecto','cod proyecto'];
+// Para estado, impacto y fecha no basta el nombre: la columna tiene que traer valores de ese tipo.
+// Así una columna "Estado" que dice «Tarea» o «N/A» no le gana a "Estado2" con «Terminado».
+const PEND_VALORES = {
+  estado:        v=>/cerrad|conclu|consluid|solucion|finaliz|terminad|levantad|resuelt|subsanad|conforme|atendid|ejecutad|entregad|no aplica|no procede|anulad|pendient|abiert|iniciar|iniciad|proceso|curso|ejecu|avance|parcial|tramite|coordinac|programad|revis|^ok\b|100/.test(rdPendNorm(v)),
+  impacto:       v=>/alt|medi|baj|crit|urgen|mayor|grave|leve|menor|moder|^[123]$|^[abc]$/.test(rdPendNorm(v)),
+  fecha_objetivo:v=>!!rdPendVFecha(v)
 };
 const PEND_CAMPO_LBL = { titulo:'Título', descripcion:'Descripción', tipo:'Tipo', categoria:'Categoría',
   responsable:'Responsable', fecha_objetivo:'Fecha objetivo', impacto:'Impacto', estado:'Estado' };
 
 function rdPendNorm(s){
   return String(s==null?'':s).toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')   // fuera tildes
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')   // fuera tildes
     .replace(/\(.*?\)/g,' ').replace(/[^a-z0-9\s]/g,' ')
     .replace(/\s+/g,' ').trim();
 }
-function rdPendCampoDe(header){
-  const h=rdPendNorm(header); if(!h) return null;
-  for(const campo in PEND_ALIAS){
-    const al=PEND_ALIAS[campo];
-    if(al.indexOf(h)!==-1) return campo;                       // match exacto primero
+// Una celda con error de fórmula (#VALUE!, #N/A…) cuenta como vacía.
+function rdPendCelda(v){
+  if(v==null) return '';
+  if(typeof v==='string'){
+    const s=v.trim();
+    return /^#(VALUE|REF|N\/A|DIV\/0|NAME|NUM|NULL)/i.test(s)?'':s;
   }
-  for(const campo in PEND_ALIAS){
-    if(PEND_ALIAS[campo].some(a=>h.indexOf(a)!==-1)) return campo;   // luego por contencion
+  return v;
+}
+function rdPendTexto(v){
+  v=rdPendCelda(v); if(v==='') return '';
+  if(v instanceof Date){ const iso=rdPendVFecha(v); return iso?iso.split('-').reverse().join('/'):''; }
+  return String(v).replace(/\s+/g,' ').trim();
+}
+// "% Avance" llega como 0.95, 95 o "95%".
+function rdPendPct(v){
+  v=rdPendCelda(v); if(v==='' || v instanceof Date) return null;
+  let n=typeof v==='number'?v:parseFloat(String(v).replace('%','').replace(',','.'));
+  if(!isFinite(n)) return null;
+  if(n<=1.0001 && String(v).indexOf('%')===-1) n=n*100;
+  return Math.round(n);
+}
+// Lee la hoja como matriz. Las celdas combinadas en vertical (un área o una
+// descripción que abarca dos filas) se repiten hacia abajo; las horizontales no,
+// para no duplicar el mismo texto en varias columnas.
+function rdPendLeerHoja(ws){
+  if(!ws || !ws['!ref']) return null;
+  for(const k in ws){ if(k[0]!=='!' && ws[k] && ws[k].t==='e') delete ws[k]; }
+  const rango=window.XLSX.utils.decode_range(ws['!ref']);
+  const filas=window.XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true,cellDates:true,blankrows:true});
+  (ws['!merges']||[]).forEach(m=>{
+    if(m.e.r<=m.s.r) return;
+    const rr=m.s.r-rango.s.r, cc=m.s.c-rango.s.c;
+    if(rr<0 || cc<0 || !filas[rr]) return;
+    const v=filas[rr][cc]; if(v==='' || v==null) return;
+    for(let x=rr+1;x<=m.e.r-rango.s.r;x++){
+      if(!filas[x]) filas[x]=[];
+      if(filas[x][cc]==='' || filas[x][cc]==null) filas[x][cc]=v;
+    }
+  });
+  return { filas, r0:rango.s.r, c0:rango.s.c };
+}
+// Dos palabras son la misma si coinciden o, siendo largas, difieren en una letra.
+function rdPendTokIgual(a,b){
+  if(a===b) return true;
+  if(a.length<6 || b.length<6 || Math.abs(a.length-b.length)>1) return false;
+  let i=0, j=0, dif=0;
+  while(i<a.length && j<b.length){
+    if(a[i]===b[j]){ i++; j++; continue; }
+    if(++dif>1) return false;
+    if(a.length>b.length) i++; else if(b.length>a.length) j++; else { i++; j++; }
   }
-  return null;
+  return dif+(a.length-i)+(b.length-j)<=1;
+}
+// Puntaje de un encabezado contra un alias: exacto > con errata > al inicio > en medio.
+function rdPendPuntaje(tok, alias, pos, soloExacto){
+  const at=alias.split(' '), pref=40-pos;
+  if(tok.length===at.length && at.every((w,k)=>w===tok[k])) return 1000+pref;
+  if(soloExacto) return 0;
+  if(tok.length===at.length && at.every((w,k)=>rdPendTokIgual(w,tok[k]))) return 900+pref;
+  for(let s=0;s+at.length<=tok.length;s++){
+    if(at.every((w,k)=>rdPendTokIgual(w,tok[s+k]))) return (s===0?600:300)+at.length*10+pref;
+  }
+  return 0;
+}
+// Asigna columnas a campos: primero los pares de mayor puntaje; cada campo y cada
+// columna se usan una sola vez, y una columna sin datos no se lleva ningún campo.
+function rdPendAsignar(hdr, fill, muestras, datos){
+  const cand=[];
+  hdr.forEach((cell,j)=>{
+    if(typeof cell!=='string') return;
+    const h=rdPendNorm(cell);
+    if(!h || PEND_IGNORAR.indexOf(h)!==-1 || !(fill[j]>0)) return;
+    const tok=h.split(' ');
+    for(const campo in PEND_ALIAS){
+      if((PEND_EXCLUYE[campo]||[]).some(x=>tok.indexOf(x)!==-1)) continue;
+      let s=0;
+      PEND_ALIAS[campo].forEach((a,pos)=>{ s=Math.max(s, rdPendPuntaje(tok,a,pos,!!PEND_SOLO_EXACTO[campo])); });
+      if(!s) continue;
+      const prueba=PEND_VALORES[campo], m=(muestras&&muestras[j])||[];
+      if(prueba && m.length){
+        const ok=m.filter(prueba).length/m.length;
+        if(ok<0.2) continue;          // casi nada se entiende: la columna no es de este campo
+        if(ok<0.5) s-=700;            // dudosa: solo gana si no hay otra mejor
+        // Una columna que viene llena en pocas filas cede ante otra más completa
+        // ("Situación" en 75 de 229 filas no le gana a "Estado2" en todas).
+        if(datos>0) s-=Math.round((1-Math.min(1,fill[j]/datos))*400);
+      }
+      cand.push({campo, j, s, f:fill[j]});
+    }
+  });
+  cand.sort((a,b)=>(b.s-a.s)||(b.f-a.f));
+  const map={}, usada={};
+  cand.forEach(c=>{ if(map[c.campo]===undefined && !usada[c.j]){ map[c.campo]=c.j; usada[c.j]=1; } });
+  return map;
+}
+// La fila de encabezado es, de las primeras 40, la que mejor se reconoce.
+function rdPendBuscarEncabezado(filas){
+  let mejor=null;
+  for(let i=0;i<Math.min(40,filas.length);i++){
+    const hdr=filas[i]||[];
+    if(hdr.filter(x=>typeof x==='string' && x.trim()).length<2) continue;
+    const fill=[], muestras=[]; let datos=0;
+    for(let k=i+1;k<Math.min(filas.length,i+500);k++){
+      let n=0;
+      (filas[k]||[]).forEach((v,j)=>{
+        const c=rdPendCelda(v); if(c==='') return;
+        fill[j]=(fill[j]||0)+1; n++;
+        if(!muestras[j]) muestras[j]=[];
+        if(muestras[j].length<80) muestras[j].push(c);
+      });
+      if(n>=2) datos++;
+    }
+    const map=rdPendAsignar(hdr,fill,muestras,datos);
+    if(map.titulo===undefined && map.descripcion===undefined) continue;
+    const usadas=Object.values(map);
+    let avance;
+    hdr.forEach((c,j)=>{
+      if(avance===undefined && typeof c==='string' && usadas.indexOf(j)===-1 && fill[j]>0
+         && rdPendNorm(c).split(' ').indexOf('avance')!==-1) avance=j;
+    });
+    const puntos=Object.keys(map).length+(map.titulo!==undefined?2:0)+(avance!==undefined?0.5:0);
+    if(!mejor || puntos>mejor.puntos) mejor={idx:i, map, avance, fill, puntos, datos};
+  }
+  return mejor;
 }
 function rdPendVTipo(v){
   const s=rdPendNorm(v);
@@ -11219,11 +11352,13 @@ function rdPendVImpacto(v){
   if(/baj|menor|leve|^3$|^c$/.test(s))             return 'bajo';
   return 'medio';
 }
+// Estados tal como se escriben en obra, con sus erratas ("CONSLUIDO").
 function rdPendVEstado(v){
   const s=rdPendNorm(v);
   if(!s) return 'abierta';
-  if(/cerrad|levantad|resuelt|subsanad|conforme|ok|100/.test(s)) return 'cerrada';
-  if(/proceso|curso|ejecu|avance|parcial|tramite/.test(s))       return 'en_proceso';
+  if(/cerrad|conclu|consluid|solucion|finaliz|terminad|levantad|resuelt|subsanad|conforme|atendid|ejecutad|entregad|no aplica|no procede|anulad|^ok\b|100/.test(s)) return 'cerrada';
+  if(/pendient|abiert|por iniciar|sin iniciar|no iniciad/.test(s)) return 'abierta';
+  if(/proceso|curso|ejecu|avance|parcial|tramite|coordinac|programad|revis/.test(s)) return 'en_proceso';
   return 'abierta';
 }
 // Excel entrega fechas como Date, como serial numerico o como texto. Las tres.
@@ -11277,66 +11412,101 @@ async function rdPendImpParse(file){
     wb=window.XLSX.read(buf,{type:'array',cellDates:true});
   }catch(e){ console.warn('xlsx read', e); showToast('No se pudo leer el archivo',4000); return; }
 
-  // Hoja: la que mas filas trae (los cuadros suelen venir con hojas sueltas al lado).
-  let mejorHoja=null, mejorFilas=[];
-  wb.SheetNames.forEach(n=>{
-    const rows=window.XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:'',raw:false,dateNF:'yyyy-mm-dd'});
-    if(rows.length>mejorFilas.length){ mejorFilas=rows; mejorHoja=n; }
+  // Hoja: la visible cuyo encabezado mejor se reconoce; a igual puntaje, la que trae más filas.
+  const meta=(wb.Workbook && wb.Workbook.Sheets) || [];
+  let mejor=null, primera=null;
+  wb.SheetNames.forEach((nombre,si)=>{
+    if(meta[si] && meta[si].Hidden) return;
+    const hoja=rdPendLeerHoja(wb.Sheets[nombre]); if(!hoja) return;
+    if(!primera) primera={nombre, filas:hoja.filas};
+    const enc=rdPendBuscarEncabezado(hoja.filas); if(!enc) return;
+    if(!mejor || enc.puntos>mejor.puntos || (enc.puntos===mejor.puntos && enc.datos>mejor.datos))
+      mejor=Object.assign({nombre}, hoja, enc);
   });
-  if(!mejorFilas.length){ showToast('El archivo está vacío',4000); return; }
-
-  // Fila de encabezado: la de las primeras 25 que reconoce mas alias.
-  let hIdx=-1, hMap=null, hScore=0;
-  for(let i=0;i<Math.min(25,mejorFilas.length);i++){
-    const map={}; let score=0;
-    mejorFilas[i].forEach((cell,j)=>{
-      const campo=rdPendCampoDe(cell);
-      if(campo && map[campo]===undefined){ map[campo]=j; score++; }
-    });
-    if(score>hScore){ hScore=score; hIdx=i; hMap=map; }
-  }
-  if(hIdx===-1 || !hMap || (hMap.titulo===undefined && hMap.descripcion===undefined)){
-    rdPendImpModal({ error:true, archivo:file.name, hoja:mejorHoja,
-      encabezados:(mejorFilas[0]||[]).filter(x=>String(x).trim()).slice(0,12) });
+  if(!mejor){
+    const fila=primera ? (primera.filas.find(r=>(r||[]).some(v=>rdPendTexto(v)))||[]) : [];
+    rdPendImpModal({ error:true, archivo:file.name, hoja:primera?primera.nombre:'',
+      encabezados:fila.map(rdPendTexto).filter(Boolean).slice(0,12) });
     return;
   }
 
-  // Fechas: releer la hoja con celdas Date para no perder el tipo.
-  const crudas=window.XLSX.utils.sheet_to_json(wb.Sheets[mejorHoja],{header:1,defval:'',raw:true,cellDates:true});
-  const cod=rdPendCod();
-  const yaHay=new Set(rdPendList.map(p=>rdPendNorm(p.titulo)));
-  const filas=[], dups=[], vacias=[];
+  const filas=mejor.filas, map=mejor.map, avance=mejor.avance, fill=mejor.fill, hIdx=mejor.idx;
+  const hdr=filas[hIdx]||[];
+  const colLbl=j=>rdPendTexto(hdr[j]) || ('Columna '+window.XLSX.utils.encode_col(j+mejor.c0));
+  const usadas=new Set(Object.values(map)); if(avance!==undefined) usadas.add(avance);
+  const extras=[];
+  for(let j=0;j<fill.length;j++){
+    if(usadas.has(j) || !(fill[j]>0)) continue;
+    const h=rdPendNorm(typeof hdr[j]==='string'?hdr[j]:'');
+    if(h && PEND_IGNORAR.indexOf(h)!==-1) continue;
+    extras.push(j);
+  }
+  // Tipo: si no viene por fila, se deduce del nombre del archivo, la hoja o el título del cuadro.
+  const contexto=rdPendNorm([file.name, mejor.nombre].concat(filas.slice(0,hIdx).map(r=>(r||[]).map(rdPendTexto).join(' '))).join(' '));
+  const tipoArchivo=/punch/.test(contexto)?'punch':(/restric/.test(contexto)?'restriccion':null);
 
-  for(let i=hIdx+1;i<crudas.length;i++){
-    const r=crudas[i]||[];
-    const get=c=>(hMap[c]===undefined?'':r[hMap[c]]);
-    const titulo=String(get('titulo')||'').trim();
-    const desc  =String(get('descripcion')||'').trim();
-    if(!titulo && !desc) continue;                    // fila en blanco: ni se cuenta
-    const t = titulo || desc.slice(0,120);
-    if(!t){ vacias.push(i+1); continue; }
-    const key=rdPendNorm(t);
+  const cod=rdPendCod();
+  const clave=(t,c)=>rdPendNorm(t)+'|'+rdPendNorm(c);
+  const yaHay=new Set(rdPendList.map(p=>clave(p.titulo,p.categoria)));
+  const vistas=new Set();
+  const salida=[]; let enObra=0, repetidas=0, vacias=0;
+
+  for(let i=hIdx+1;i<filas.length;i++){
+    const r=filas[i]||[];
+    const val=j=>(j===undefined?'':rdPendCelda(r[j]));
+    const txt=j=>(j===undefined?'':rdPendTexto(r[j]));
+    const titulo=txt(map.titulo), desc=txt(map.descripcion);
+    if(!titulo && !desc){ if(r.some(v=>rdPendTexto(v))) vacias++; continue; }
+    const t=(titulo||desc).slice(0,300);
+    const nota=[];
+
+    // Estado: la columna manda; si no hay, el % de avance (100 = cerrada, más de 0 = en proceso).
+    const rawEst=val(map.estado), pct=avance===undefined?null:rdPendPct(r[avance]);
+    let estado='abierta';
+    if(rawEst!==''){
+      estado=rdPendVEstado(rawEst);
+      if(/no aplica|no procede|anulad|cotizac|coordinac|programad|revis/.test(rdPendNorm(rawEst))) nota.push('Estado en el Excel: '+txt(map.estado));
+    } else if(pct!=null){
+      estado = pct>=100 ? 'cerrada' : (pct>0 ? 'en_proceso' : 'abierta');
+    }
+    if(pct!=null) nota.push(colLbl(avance)+': '+pct+' %');
+
+    // Lo que se simplifica al normalizar queda escrito tal como vino.
+    const rawImp=val(map.impacto);
+    if(rawImp!=='' && !/^(alt[oa]|medi[oa]|baj[oa])$/.test(rdPendNorm(rawImp))) nota.push(colLbl(map.impacto)+': '+txt(map.impacto));
+    const rawFecha=val(map.fecha_objetivo), fecha=rawFecha===''?null:rdPendVFecha(rawFecha);
+    if(rawFecha!=='' && !fecha) nota.push(colLbl(map.fecha_objetivo)+': '+txt(map.fecha_objetivo));
+    extras.forEach(j=>{ const v=txt(j); if(v && v!==titulo && v!==desc) nota.push(colLbl(j)+': '+v); });
+
+    const rawTipo=val(map.tipo);
     const row={
       cod_proyecto:cod, nombre_proyecto:(currentProyecto&&currentProyecto.nombre)||null,
-      tipo:rdPendVTipo(get('tipo')),
-      titulo:t.slice(0,300),
-      descripcion:(titulo&&desc)?desc:null,
-      categoria:String(get('categoria')||'').trim()||null,
-      responsable:String(get('responsable')||'').trim()||null,
-      fecha_objetivo:rdPendVFecha(get('fecha_objetivo')),
-      impacto:rdPendVImpacto(get('impacto')),
-      estado:rdPendVEstado(get('estado')),
+      tipo: rawTipo!=='' ? rdPendVTipo(rawTipo) : (tipoArchivo||'observacion'),
+      titulo:t,
+      descripcion:[ (titulo&&desc)?desc:'' ].concat(nota).filter(Boolean).join(' · ').slice(0,4000)||null,
+      categoria:txt(map.categoria)||null,
+      responsable:txt(map.responsable)||null,
+      fecha_objetivo:fecha,
+      impacto:rdPendVImpacto(rawImp),
+      estado,
       origen:'excel',
       supervisor:(currentProyecto&&currentProyecto.supervisor)||(currentUser&&currentUser.nombre)||null
     };
-    if(yaHay.has(key)){ dups.push(row); continue; }
-    yaHay.add(key);
-    filas.push(row);
+    // Repetida = ya está en la obra (mismo título y categoría) o es idéntica a otra fila del archivo.
+    // Dos observaciones con el mismo texto en áreas distintas son dos observaciones.
+    if(yaHay.has(clave(row.titulo,row.categoria))){ enObra++; continue; }
+    const firma=JSON.stringify([row.titulo,row.categoria,row.responsable,row.fecha_objetivo,row.estado,row.descripcion]);
+    if(vistas.has(firma)){ repetidas++; continue; }
+    vistas.add(firma);
+    salida.push(row);
   }
 
-  rdPendImpData=filas;
-  rdPendImpModal({ archivo:file.name, hoja:mejorHoja, filaEnc:hIdx+1, map:hMap,
-    headers:crudas[hIdx]||mejorFilas[hIdx]||[], filas, dups:dups.length, vacias:vacias.length });
+  rdPendImpData=salida;
+  const cols={}; Object.keys(map).forEach(c=>{ cols[c]=colLbl(map[c]); });
+  rdPendImpModal({ archivo:file.name, hoja:mejor.nombre, filaEnc:hIdx+mejor.r0+1, cols,
+    extras:extras.map(colLbl), tipoArchivo,
+    avanceLbl:(avance!==undefined && map.estado===undefined)?colLbl(avance):null,
+    filas:salida, dups:enObra+repetidas, vacias });
 }
 
 function rdPendImpModal(info){
@@ -11362,11 +11532,15 @@ function rdPendImpModal(info){
 
   const n=info.filas.length;
   const mapRows=Object.keys(PEND_CAMPO_LBL).map(c=>{
-    const j=info.map[c];
-    const col=(j===undefined)?null:String((info.headers[j]!=null?info.headers[j]:'')).trim();
-    return '<tr class="'+(j===undefined?'off':'')+'"><td>'+PEND_CAMPO_LBL[c]+'</td>'
-      + '<td>'+(j===undefined?'<i>no vino en el archivo</i>':rdEsc2(col||('columna '+(j+1))))+'</td></tr>';
-  }).join('');
+    const col=info.cols[c];
+    let cel, off=false;
+    if(col) cel=rdEsc2(col);
+    else if(c==='tipo' && info.tipoArchivo) cel='<i>no vino · por el título del archivo: '+rdPendTipoLabel(info.tipoArchivo)+'</i>';
+    else if(c==='estado' && info.avanceLbl) cel=rdEsc2(info.avanceLbl)+' <i>(100 % = cerrada · más de 0 = en proceso)</i>';
+    else { cel='<i>no vino en el archivo</i>'; off=true; }
+    return '<tr class="'+(off?'off':'')+'"><td>'+PEND_CAMPO_LBL[c]+'</td><td>'+cel+'</td></tr>';
+  }).join('')
+  + (info.extras.length?('<tr><td>A la descripción</td><td>'+rdEsc2(info.extras.join(' · '))+'</td></tr>'):'');
 
   const prev=info.filas.slice(0,8).map(r=>'<tr>'
     + '<td><span class="pend-tag t-'+r.tipo+'">'+rdPendTipoLabel(r.tipo)+'</span></td>'
@@ -11383,7 +11557,7 @@ function rdPendImpModal(info){
     + '<div class="pend-modal-bd">'
       + '<div class="pend-imp-kpis">'
         + '<div class="k ok"><b>'+n+'</b><span>listas para importar</span></div>'
-        + '<div class="k'+(info.dups?' warn':'')+'"><b>'+info.dups+'</b><span>omitidas por repetidas</span></div>'
+        + '<div class="k'+(info.dups?' warn':'')+'"><b>'+info.dups+'</b><span>ya en la obra o repetidas</span></div>'
         + '<div class="k'+(info.vacias?' warn':'')+'"><b>'+info.vacias+'</b><span>descartadas sin título</span></div>'
       + '</div>'
       + '<div class="pend-imp-cols"><h5>Cómo leí tus columnas</h5>'
