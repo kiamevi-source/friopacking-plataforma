@@ -392,8 +392,10 @@ async function boot(){
     STATE.invCount={}; (res[3].data||[]).forEach(function(i){ STATE.invCount[i.licitacion_id]=(STATE.invCount[i.licitacion_id]||0)+1; });
     STATE.licitadas={}; (res[4].data||[]).forEach(function(r){ if(r.origen_presupuesto_id!=null) STATE.licitadas[r.origen_presupuesto_id]=true; });
     STATE.partidasLic={}; STATE.manoObra={};
-    (res[5].data||[]).forEach(function(r){ var k=normname(r.nombre_proyecto); (STATE.partidasLic[k]=STATE.partidasLic[k]||[]).push({presupuesto_id:r.presupuesto_id,proyecto:r.nombre_proyecto,item:r.item,descripcion:r.descripcion,unidad:r.unidad,cantidad:Number(r.cantidad||1),costo:Number(r.mano_obra_costo||0),venta:Number(r.mano_obra_venta||0)}); });
-    Object.keys(STATE.partidasLic).forEach(function(k){ var a=STATE.partidasLic[k]; a.sort(function(x,y){ return (parseInt(x.item,10)||0)-(parseInt(y.item,10)||0); }); STATE.manoObra[k]={proyecto:a[0].proyecto,costo:a.reduce(function(s,x){return s+x.costo;},0),venta:a.reduce(function(s,x){return s+x.venta;},0),partidas:a.length}; });
+    (res[5].data||[]).forEach(function(r){ var k=normname(r.nombre_proyecto); (STATE.partidasLic[k]=STATE.partidasLic[k]||[]).push({presupuesto_id:r.presupuesto_id,proyecto:r.nombre_proyecto,item:r.item,descripcion:r.descripcion,unidad:r.unidad,cantidad:Number(r.cantidad||1),costo:Number(r.mano_obra_costo||0),venta:Number(r.mano_obra_venta||0),rubro:r.rubro||'Sin rubro',partida_cod:r.partida_cod||r.item,partida:r.partida||r.descripcion}); });
+    // Orden por código de partida como texto: los EDT de NISIRA ("0003.001.002.014") no
+    // se pueden ordenar con parseInt — todos darían el mismo número y quedaría al azar.
+    Object.keys(STATE.partidasLic).forEach(function(k){ var a=STATE.partidasLic[k]; a.sort(function(x,y){ return String(x.item).localeCompare(String(y.item),'es',{numeric:true}); }); STATE.manoObra[k]={proyecto:a[0].proyecto,costo:a.reduce(function(s,x){return s+x.costo;},0),venta:a.reduce(function(s,x){return s+x.venta;},0),partidas:a.length}; });
     renderList();
   }catch(e){ console.error(e); $('#app').innerHTML = errBox(String(e.message||e)); }
 }
@@ -645,26 +647,105 @@ async function openCreate(prefill){
           (mo?'<div style="font-size:10.5px;color:#0d9488;margin-top:7px;font-weight:600;line-height:1.4">El presupuesto se precargó con la mano de obra (lo que se terceriza). Ajústalo si hace falta.</div>':'')+
         '</div>';
       }
+      /* Selector de partidas AGRUPADO POR RUBRO.
+         Con la Orden de Proyectos de NISIRA una obra puede traer 120+ servicios, y en lista
+         plana no hay forma de trabajarlos. La casilla del encabezado marca el rubro entero,
+         que es como se arma una licitación en la práctica: "todo Instalación Mecánica". */
       function renderPartidasPicker(name){
         var host=$('#nc-partidas'); if(!host) return;
         var arr = name ? (STATE.partidasLic[normname(name)]||[]) : [];
         if(!arr.length){ host.innerHTML='<div style="font-size:12px;color:#b45309;font-weight:600;padding:2px">Este proyecto no tiene partidas con mano de obra en el presupuesto (módulo Supervisor).</div>'; var pr0=$('#nc-pres'); if(pr0) pr0.value=''; return; }
+        var MON=($('#nc-moneda')&&$('#nc-moneda').value)||'PEN';
+        /* Dos niveles: RUBRO › PARTIDA. Los 122 servicios que trae una obra son ítems
+           repetidos por ambiente ("Instalación luminarias" sale 6 veces, una por sala);
+           lo que se licita es la partida. El detalle queda plegado por si hay que excluir uno. */
+        var byR={}, rubros=[];
+        arr.forEach(function(pt){
+          var r=pt.rubro||'Sin rubro'; if(!byR[r]){byR[r]={parts:{},orden:[]};rubros.push(r);}
+          var pc=pt.partida_cod||pt.item, g=byR[r];
+          if(!g.parts[pc]){ g.parts[pc]={nom:pt.partida||pt.descripcion, items:[]}; g.orden.push(pc); }
+          g.parts[pc].items.push(pt);
+        });
+        var pend=function(list){ return list.filter(function(p){ return !STATE.licitadas[p.presupuesto_id]; }); };
+        var suma=function(list){ return list.reduce(function(s,p){ return s+p.costo; },0); };
         host.innerHTML='<div style="border:1px solid var(--bd);border-radius:12px;overflow:hidden">'+
-          arr.map(function(pt){ var yl=STATE.licitadas[pt.presupuesto_id];
-            return '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f1f3f7;cursor:pointer;font-size:12.5px">'+
-              '<input type="checkbox" class="nc-pt" data-pid="'+pt.presupuesto_id+'" data-costo="'+pt.costo+'" data-cant="'+pt.cantidad+'" data-item="'+esc(pt.item)+'" data-desc="'+esc(pt.descripcion)+'" data-und="'+esc(pt.unidad||'')+'"'+(yl?'':' checked')+' style="width:16px;height:16px;accent-color:#0ea5a4;flex-shrink:0">'+
-              '<span style="flex:1;min-width:0"><b>'+esc(pt.item)+'</b> · '+esc(pt.descripcion)+(yl?' <span style="font-size:9.5px;font-weight:800;background:#e2e8f0;color:#64748b;padding:1px 6px;border-radius:5px;text-transform:uppercase;letter-spacing:.03em">ya licitada</span>':'')+'</span>'+
-              '<span style="font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap">'+money(pt.costo,'PEN')+'</span>'+
-            '</label>';
+          rubros.map(function(r,gi){
+            var g=byR[r];
+            var todos=g.orden.reduce(function(a,pc){ return a.concat(g.parts[pc].items); },[]);
+            var pr=pend(todos);
+            return '<div class="nc-grp" data-g="'+gi+'">'+
+              '<div style="display:flex;align-items:center;gap:9px;padding:8px 12px;background:#eef2f8;border-bottom:1px solid #e2e8f0">'+
+                '<input type="checkbox" class="nc-grp-chk" data-g="'+gi+'" title="Seleccionar todo el rubro" style="width:15px;height:15px;accent-color:#0ea5a4;flex-shrink:0">'+
+                '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:800;color:#0f1e35">'+esc(r)+'</span>'+
+                '<span style="font-size:11px;color:#64748b;font-variant-numeric:tabular-nums;white-space:nowrap">'+g.orden.length+' partidas · '+money(suma(pr),MON)+'</span>'+
+              '</div>'+
+              g.orden.map(function(pc,pi){
+                var P=g.parts[pc], pp=pend(P.items), yl=(pp.length===0);
+                var pid=gi+'-'+pi;
+                return '<div class="nc-part" data-p="'+pid+'">'+
+                  '<div style="display:flex;align-items:center;gap:9px;padding:8px 12px 8px 26px;border-bottom:1px solid #f1f3f7;font-size:12.5px'+(yl?';opacity:.55':'')+'">'+
+                    '<input type="checkbox" class="nc-part-chk" data-p="'+pid+'"'+(yl?' disabled':'')+' style="width:15px;height:15px;accent-color:#0ea5a4;flex-shrink:0">'+
+                    '<span style="flex:1;min-width:0;font-weight:600">'+esc(P.nom)+
+                      '<span style="display:block;font-size:10px;color:#94a3b8;font-family:ui-monospace,Menlo,monospace">'+esc(pc)+' · '+P.items.length+' ítem'+(P.items.length===1?'':'s')+'</span></span>'+
+                    (yl?'<span style="font-size:9.5px;font-weight:800;background:#e2e8f0;color:#64748b;padding:1px 6px;border-radius:5px;text-transform:uppercase;white-space:nowrap">ya licitada</span>':'')+
+                    '<span style="font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap">'+money(suma(pp),MON)+'</span>'+
+                    '<a href="#" class="nc-part-tog" data-p="'+pid+'" style="color:#0ea5a4;text-decoration:none;font-size:11px;font-weight:700;white-space:nowrap">ver ítems</a>'+
+                  '</div>'+
+                  '<div class="nc-part-items" data-p="'+pid+'" hidden>'+
+                    P.items.map(function(pt){ var y2=STATE.licitadas[pt.presupuesto_id];
+                      return '<label style="display:flex;align-items:center;gap:10px;padding:6px 12px 6px 52px;border-bottom:1px solid #f6f8fb;cursor:pointer;font-size:12px;background:#fbfcfe'+(y2?';opacity:.5':'')+'">'+
+                        '<input type="checkbox" class="nc-pt" data-g="'+gi+'" data-p="'+pid+'" data-pid="'+pt.presupuesto_id+'" data-costo="'+pt.costo+'" data-cant="'+pt.cantidad+'" data-item="'+esc(pt.item)+'" data-desc="'+esc(pt.descripcion)+'" data-und="'+esc(pt.unidad||'')+'"'+(y2?' disabled':'')+' style="width:14px;height:14px;accent-color:#0ea5a4;flex-shrink:0">'+
+                        '<span style="flex:1;min-width:0">'+esc(pt.descripcion)+
+                          '<span style="display:block;font-size:9.5px;color:#a8b2c4;font-family:ui-monospace,Menlo,monospace">'+esc(pt.item)+(pt.unidad?(' · '+esc(pt.cantidad)+' '+esc(pt.unidad)):'')+'</span></span>'+
+                        '<span style="font-variant-numeric:tabular-nums;white-space:nowrap;color:#64748b">'+money(pt.costo,MON)+'</span>'+
+                      '</label>';
+                    }).join('')+
+                  '</div></div>';
+              }).join('')+'</div>';
           }).join('')+
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;background:#f8fafc;font-size:12px;flex-wrap:wrap">'+
-            '<span style="font-weight:700"><a href="#" id="nc-pt-all" style="color:#0ea5a4;text-decoration:none">Todas</a> · <a href="#" id="nc-pt-pend" style="color:#0ea5a4;text-decoration:none">Solo pendientes</a> · <a href="#" id="nc-pt-none" style="color:#94a3b8;text-decoration:none">Ninguna</a></span>'+
+            '<span style="font-weight:700"><a href="#" id="nc-pt-all" style="color:#0ea5a4;text-decoration:none">Todas</a> · <a href="#" id="nc-pt-none" style="color:#94a3b8;text-decoration:none">Ninguna</a></span>'+
             '<span style="font-weight:800">Presupuesto: <span id="nc-pt-total"></span></span>'+
           '</div></div>';
-        function recompute(){ var tot=0,n=0; document.querySelectorAll('.nc-pt').forEach(function(cb){ if(cb.checked){ tot+=Number(cb.getAttribute('data-costo')||0); n++; } }); var t=$('#nc-pt-total'); if(t) t.textContent=money(tot,'PEN')+' · '+n+' part.'; var pr=$('#nc-pres'); if(pr) pr.value=Math.round(tot); }
+        function tri(box, sel){
+          var kids=document.querySelectorAll(sel+':not(:disabled)');
+          var on=0; kids.forEach(function(k){ if(k.checked) on++; });
+          box.checked = kids.length>0 && on===kids.length;
+          box.indeterminate = on>0 && on<kids.length;
+        }
+        function syncGroups(){
+          document.querySelectorAll('.nc-part-chk').forEach(function(p){
+            tri(p, '.nc-pt[data-p="'+p.getAttribute('data-p')+'"]');
+          });
+          document.querySelectorAll('.nc-grp-chk').forEach(function(g){
+            tri(g, '.nc-pt[data-g="'+g.getAttribute('data-g')+'"]');
+          });
+        }
+        function recompute(){
+          var tot=0,n=0,parts={};
+          document.querySelectorAll('.nc-pt:checked').forEach(function(cb){
+            tot+=Number(cb.getAttribute('data-costo')||0); n++; parts[cb.getAttribute('data-p')]=1;
+          });
+          var np=Object.keys(parts).length;
+          var t=$('#nc-pt-total');
+          if(t) t.textContent=money(tot,MON)+' · '+np+' partida'+(np===1?'':'s')+' ('+n+' ítems)';
+          var pr=$('#nc-pres'); if(pr) pr.value=Math.round(tot);
+          syncGroups();
+        }
         document.querySelectorAll('.nc-pt').forEach(function(cb){ cb.onchange=recompute; });
-        var a1=$('#nc-pt-all'); if(a1) a1.onclick=function(e){ e.preventDefault(); document.querySelectorAll('.nc-pt').forEach(function(cb){ cb.checked=true; }); recompute(); };
-        var a2=$('#nc-pt-pend'); if(a2) a2.onclick=function(e){ e.preventDefault(); document.querySelectorAll('.nc-pt').forEach(function(cb){ cb.checked=!STATE.licitadas[cb.getAttribute('data-pid')]; }); recompute(); };
+        document.querySelectorAll('.nc-part-chk').forEach(function(p){
+          p.onchange=function(){ document.querySelectorAll('.nc-pt[data-p="'+p.getAttribute('data-p')+'"]:not(:disabled)').forEach(function(k){ k.checked=p.checked; }); recompute(); };
+        });
+        document.querySelectorAll('.nc-grp-chk').forEach(function(g){
+          g.onchange=function(){ document.querySelectorAll('.nc-pt[data-g="'+g.getAttribute('data-g')+'"]:not(:disabled)').forEach(function(k){ k.checked=g.checked; }); recompute(); };
+        });
+        document.querySelectorAll('.nc-part-tog').forEach(function(a){
+          a.onclick=function(e){ e.preventDefault();
+            var box=document.querySelector('.nc-part-items[data-p="'+a.getAttribute('data-p')+'"]');
+            if(!box) return; box.hidden=!box.hidden; a.textContent = box.hidden ? 'ver ítems' : 'ocultar';
+          };
+        });
+        var a1=$('#nc-pt-all'); if(a1) a1.onclick=function(e){ e.preventDefault(); document.querySelectorAll('.nc-pt:not(:disabled)').forEach(function(cb){ cb.checked=true; }); recompute(); };
         var a3=$('#nc-pt-none'); if(a3) a3.onclick=function(e){ e.preventDefault(); document.querySelectorAll('.nc-pt').forEach(function(cb){ cb.checked=false; }); recompute(); };
         recompute();
       }
@@ -688,6 +769,8 @@ async function openCreate(prefill){
         renderPartidasPicker(name);
       }
       sel.onchange=fill;
+      // Los montos del selector se muestran en la moneda elegida; NISIRA viene en dólares.
+      var mo=$('#nc-moneda'); if(mo) mo.addEventListener('change', function(){ renderPartidasPicker(sel.value); });
       if(prefill){
         var exists=Array.prototype.some.call(sel.options,function(o){ return o.value===prefill; });
         if(!exists){ var op=document.createElement('option'); op.value=prefill; op.textContent=prefill; sel.appendChild(op); }
