@@ -20509,14 +20509,29 @@ console.log('%c✦ Executive Control Center v1.0 — Premium Project Detail',
     {k:'fecha_ini_contractual', l:'Inicio contractual', t:'date',  g:'fec'},
     {k:'fecha_fin_contractual', l:'Fin contractual',    t:'date',  g:'fec'},
     {k:'fecha_ini_real',        l:'Inicio real',        t:'date',  g:'fec'},
-    {k:'fecha_fin_real',        l:'Fin real',           t:'date',  g:'fec'}
+    {k:'fecha_fin_real',        l:'Fin real',           t:'date',  g:'fec'},
+    // Datos de la Orden de Proyectos de NISIRA: se cargan al dar de alta la obra y quedan editables
+    {k:'cliente_razon_social',  l:'Razón social del cliente', t:'text', g:'nis', full:true},
+    {k:'cliente_ruc',           l:'RUC del cliente',    t:'text',  g:'nis'},
+    {k:'vendedor',              l:'Vendedor',           t:'text',  g:'nis'},
+    {k:'cotizacion',            l:'Cotización',         t:'text',  g:'nis'},
+    {k:'cotizacion_fecha',      l:'Fecha de cotización', t:'date', g:'nis'},
+    {k:'fecha_orden',           l:'Fecha de la orden',  t:'date',  g:'nis'},
+    {k:'refrigerante',          l:'Refrigerante',       t:'text',  g:'nis'},
+    {k:'sucursal',              l:'Sucursal',           t:'text',  g:'nis'},
+    {k:'moneda',                l:'Moneda',             t:'text',  g:'nis'},
+    {k:'ppto_costo',            l:'Presupuesto de costo (US$)', t:'number', g:'nis'},
+    {k:'ppto_margen',           l:'Margen (US$)',       t:'number', g:'nis'},
+    {k:'costo_std_planificado', l:'Costo estándar planificado (US$)', t:'number', g:'nis'},
+    {k:'cliente_direccion',     l:'Dirección del cliente', t:'text', g:'nis', full:true}
   ];
   var GROUPS=[
     {g:'id',     t:'Identificación'},
     {g:'assign', t:'Asignación de equipo', cls:'assign'},
     {g:'loc',    t:'Ubicación'},
     {g:'com',    t:'Comercial'},
-    {g:'fec',    t:'Fechas'}
+    {g:'fec',    t:'Fechas'},
+    {g:'nis',    t:'Datos de NISIRA'}
   ];
 
   function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
