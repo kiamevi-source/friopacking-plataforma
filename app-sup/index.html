@@ -11362,24 +11362,34 @@ function rdPendVEstado(v){
   return 'abierta';
 }
 // Excel entrega fechas como Date, como serial numerico o como texto. Las tres.
+// Solo se aceptan fechas que existen: un "16/16/2026" tipeado a mano hacía que
+// Supabase rechazara el lote entero. Si día y mes vienen al revés (mm/dd), se voltean.
 function rdPendVFecha(v){
   if(v==null || v==='') return null;
-  if(v instanceof Date && !isNaN(v.getTime())){
-    return new Date(v.getTime()-v.getTimezoneOffset()*60000).toISOString().slice(0,10);
+  const iso=(y,m,d)=>{
+    y=+y; m=+m; d=+d;
+    if(y<100) y+=2000;
+    if(m>12 && d<=12){ const x=m; m=d; d=x; }
+    if(!(y>=1990 && y<=2100 && m>=1 && m<=12 && d>=1)) return null;
+    const dt=new Date(Date.UTC(y,m-1,d));
+    if(dt.getUTCMonth()!==m-1 || dt.getUTCDate()!==d) return null;   // 31/06 no existe
+    return dt.toISOString().slice(0,10);
+  };
+  if(v instanceof Date){
+    if(isNaN(v.getTime())) return null;
+    const l=new Date(v.getTime()-v.getTimezoneOffset()*60000);
+    return iso(l.getUTCFullYear(), l.getUTCMonth()+1, l.getUTCDate());
   }
   if(typeof v==='number' && isFinite(v)){
     if(v<1 || v>60000) return null;
-    const d=new Date(Date.UTC(1899,11,30)+v*86400000);
-    return isNaN(d.getTime())?null:d.toISOString().slice(0,10);
+    const d=new Date(Date.UTC(1899,11,30)+Math.round(v)*86400000);
+    return iso(d.getUTCFullYear(), d.getUTCMonth()+1, d.getUTCDate());
   }
   const s=String(v).trim();
   let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if(m) return m[1]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2);
+  if(m) return iso(m[1], m[2], m[3]);
   m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
-  if(m){
-    let y=m[3].length===2?('20'+m[3]):m[3];
-    return y+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);   // dd/mm/aaaa (formato PE)
-  }
+  if(m) return iso(m[3], m[2], m[1]);                              // dd/mm/aaaa (formato PE)
   return null;
 }
 
@@ -11582,17 +11592,30 @@ async function rdPendImpConfirm(){
   if(!filas.length){ rdPendImpClose(); return; }
   const btn=document.getElementById('pend-imp-go');
   if(btn){ btn.disabled=true; btn.textContent='Importando…'; }
-  let ok=0, fallo=0;
+  const post=body=>sbFetch('/rest/v1/pendientes',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(body)});
+  let ok=0; const fallas=[];
   for(let i=0;i<filas.length;i+=200){
     const lote=filas.slice(i,i+200);
-    try{
-      await sbFetch('/rest/v1/pendientes',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(lote)});
-      ok+=lote.length;
-    }catch(e){ console.warn('pendientes import lote', e); fallo+=lote.length; }
+    try{ await post(lote); ok+=lote.length; }
+    catch(e){
+      // Un solo valor malo rechaza el lote completo: se reintenta fila por fila
+      // para que las buenas entren igual y quede claro cuáles no.
+      console.warn('pendientes import lote', e);
+      for(const f of lote){
+        try{ await post(f); ok++; }
+        catch(e2){ fallas.push({titulo:f.titulo, error:String((e2&&e2.message)||e2)}); }
+      }
+    }
   }
   rdPendImpClose();
   rdPendImpOn=false;
-  showToast(fallo ? ('Importados '+ok+' · fallaron '+fallo) : ('Importados '+ok+' pendientes ✓'), 4000);
+  if(fallas.length){
+    console.warn('pendientes que no se importaron', fallas);
+    let motivo=fallas[0].error; try{ motivo=JSON.parse(motivo).message||motivo; }catch(_){}
+    showToast('Importados '+ok+' · no entraron '+fallas.length+': '+String(motivo).slice(0,90), 8000);
+  } else {
+    showToast('Importados '+ok+' pendientes ✓', 4000);
+  }
   await rdPendLoad();
 }
 
