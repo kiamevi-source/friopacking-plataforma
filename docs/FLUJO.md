@@ -85,6 +85,29 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   rubro y partida, para mandar un rubro entero a licitar. En obras cargadas
   desde NISIRA el código de partida es la EDT (`0003.001.002.014`) y el monto
   viene en dólares.
+- **Se invita a cuentas reales del portal.** El cockpit lista las empresas de
+  `contratas_cuentas` (instancia Contratas) con la función
+  `contratistas_para_licitar()` (security definer: la tabla no es legible sin
+  sesión) y cruza por nombre y alias con `portafolio_servicios` para mostrar
+  especialidad y obras previas. Ya no se inventan correos
+  `@contratista.friopacking.com`: una invitación a un correo sin cuenta sale
+  marcada «Sin cuenta» porque nadie la verá.
+- **Archivos de licitación en el bucket privado `lic-expediente` (PMO).**
+  Expediente (`lic_documentos.path`), planos por revisión
+  (`lic_plano_versiones.path`) y adjuntos de la oferta (`lic_ofertas.adjuntos`,
+  jsonb). Rutas `<licitacion_id>/expediente|planos|ofertas/…`. Se abren con link
+  firmado de una hora; el enlace público no funciona. El bucket viejo
+  `lic-docs` (público) solo guarda el PDF de requisitos SSOMA.
+- **El contratista se entera dentro del portal, sin correos.** Solo ve
+  licitaciones desde «Publicada». `lic_invitados.visto_at` marca su última
+  visita; lo que Gerencia registra después en `lic_eventos` (documento, plano,
+  revisión, adenda, respuesta, cambio de estado, adjudicación) aparece como
+  novedad y como contador en el menú. El cockpit muestra «Vista · fecha» por
+  invitado. Consultas y ofertas se aceptan solo con la licitación abierta y
+  hasta el final del día de `fecha_limite`; la oferta se puede corregir hasta
+  ese momento.
+- **La adjudicación guarda `email` y `licitacion_codigo`.** Sin eso el ganador
+  no veía su contrato en «Mis contratos».
 - **El supervisor ve el estado de la licitación, no lo copia.** La pestaña de
   costos de la app de campo consulta `lic_partidas` y `lic_licitaciones` de PMO,
   enlazadas por `lic_partidas.origen_presupuesto_id` = `presupuestos.id`. Es solo

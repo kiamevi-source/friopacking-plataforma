@@ -213,7 +213,7 @@ const MAPA = {
       {id:'tareas_gantt', t:'tareas_gantt'},
       {id:'valorizacion', t:'valorizacion_lineas · cobros'},
       {id:'portafolio', t:'portafolio_servicios'},
-      {id:'lic', t:'lic_* · 12 tablas', key:true},
+      {id:'lic', t:'lic_* · archivos en lic-expediente', key:true},
       {id:'adicionales', t:'adicionales · requerimientos', key:true},
       {id:'eval360', t:'eval360_* · evaluaciones'},
       {id:'supervisores', t:'supervisores_equipo'},
@@ -258,10 +258,11 @@ const MAPA = {
 
     /* lecturas cruzadas entre instancias */
     {from:'a-sup:dash', to:'d-pmo:proyectos', tipo:'lee', label:'obras y valorización'},
-    {from:'a-ct:licitaciones', to:'d-pmo:lic', tipo:'lee', label:'licitaciones y obras'},
+    {from:'a-ct:licitaciones', to:'d-pmo:lic', tipo:'lee', label:'expediente, novedades y oferta con adjuntos'},
     {from:'a-ger:equipos', to:'d-sup:equipos_pmo', tipo:'lee', label:'escribe equipos importados'},
     {from:'a-ger:proyectos', to:'d-sup:checklist', tipo:'lee', label:'lee la preparación'},
     {from:'a-ger:licitaciones', to:'d-sup:presupuestos', tipo:'lee', label:'partidas licitables por rubro'},
+    {from:'a-ger:licitaciones', to:'d-ct:cuentas', tipo:'lee', label:'invita a cuentas reales del portal'},
     {from:'a-sup:costos', to:'d-pmo:lic', tipo:'lee', label:'estado de cada licitación'},
     {from:'a-sup:riesgos', to:'d-pmo:adicionales', tipo:'lee', label:'crea adicionales y pedidos'},
     {from:'a-ger:observaciones', to:'d-sup:riesgos', tipo:'lee', label:'observaciones de todas las obras'},

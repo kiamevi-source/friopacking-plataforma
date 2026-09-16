@@ -364,6 +364,36 @@ async function logEvento(licId, accion, detalle){
   try{ await sb.from('lic_eventos').insert({ licitacion_id:licId, usuario:USER, accion:accion, detalle:detalle }); }catch(e){ console.warn('evento',e); }
 }
 
+// ══════════════ Archivos (bucket privado lic-expediente · se abren con link firmado) ══════════════
+var LIC_BUCKET='lic-expediente';
+function safeName(n){ return String(n||'archivo').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9._-]+/g,'_').slice(-120); }
+function fmtBytes(b){ b=Number(b||0); if(!b) return ''; if(b<1048576) return Math.max(1,Math.round(b/1024))+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+function fFile(id,label,full,multiple){ return '<div class="fg'+(full?' full':'')+'"><label>'+label+'</label><input id="'+id+'" type="file"'+(multiple?' multiple':'')+' style="padding:8px"></div>'; }
+async function uploadLicFile(licId, sub, file){
+  var path=licId+'/'+sub+'/'+Date.now()+'-'+safeName(file.name);
+  var up=await sb.storage.from(LIC_BUCKET).upload(path, file, { contentType:file.type||undefined, upsert:false });
+  if(up.error) throw up.error;
+  return path;
+}
+function fileBtn(path,label){ return '<button class="btn btn-sm" data-file="'+esc(path)+'" style="padding:4px 9px"><i data-lucide="download" style="width:13px;height:13px"></i>'+esc(label||'Descargar')+'</button>'; }
+document.addEventListener('click', async function(ev){
+  var b=ev.target.closest && ev.target.closest('[data-file]'); if(!b) return;
+  ev.preventDefault();
+  var w=window.open('about:blank','_blank'); // se abre antes del await para que el navegador no lo bloquee
+  var r=await sb.storage.from(LIC_BUCKET).createSignedUrl(b.getAttribute('data-file'), 3600);
+  if(r.error||!r.data){ if(w) w.close(); toast('No se pudo abrir el archivo',true); return; }
+  if(w) w.location.href=r.data.signedUrl; else window.location.href=r.data.signedUrl;
+});
+
+// Cuentas reales del portal de contratistas (instancia Contratas, vía RPC)
+async function ensureCuentas(){
+  if(STATE.cuentas) return STATE.cuentas;
+  try{ var r=ctsb? await ctsb.rpc('contratistas_para_licitar') : {data:[]}; if(r.error) throw r.error; STATE.cuentas=r.data||[]; }
+  catch(e){ console.warn('cuentas', e); STATE.cuentas=[]; }
+  return STATE.cuentas;
+}
+function cuentaDe(email){ email=normname(email); return (STATE.cuentas||[]).find(function(c){ return normname(c.email)===email; })||null; }
+
 // validación → estado (ok/pend/fail)
 var VALID_KEYS = [
   ['economica','Oferta económica'],['tecnica','Oferta técnica'],['formato','Formato obligatorio'],
@@ -829,7 +859,8 @@ async function openDetail(id){
     var ofIds = cur.ofertas.map(function(o){ return o.id; });
     var b2 = await Promise.all([
       ofIds.length ? sb.from('lic_oferta_items').select('*').in('oferta_id',ofIds) : Promise.resolve({data:[]}),
-      (cur.adj && cur.adj.contrato_codigo && ctsb) ? ctsb.rpc('contrato_ejecucion', { p_contrato: cur.adj.contrato_codigo }) : Promise.resolve({data:[]})
+      (cur.adj && cur.adj.contrato_codigo && ctsb) ? ctsb.rpc('contrato_ejecucion', { p_contrato: cur.adj.contrato_codigo }) : Promise.resolve({data:[]}),
+      ensureCuentas()
     ]);
     cur.ofItems = b2[0].data||[];
     cur.facturas = (b2[1].data||[]).slice().sort(function(a,c){ return new Date(c.fecha)-new Date(a.fecha); });
@@ -993,6 +1024,9 @@ async function advanceState(to){
   var L=STATE.cur.lic;
   if(to==='Adjudicación' && !STATE.cur.ofertas.length){ toast('No hay ofertas para adjudicar', true); return; }
   if((to==='Contratada'||to==='Cerrada') && to==='Contratada' && !STATE.cur.adj){ toast('Registra la adjudicación primero (tab Adjudicación)', true); return; }
+  // Lo que ve el contratista: sin partidas no puede cotizar, sin invitados nadie la ve
+  if((to==='Publicada'||to==='Invitaciones'||to==='Ofertas') && !STATE.cur.partidas.length){ toast('Agrega las partidas antes de publicar: sin ellas el contratista no puede cotizar', true); STATE.tab='partidas'; renderDetail(); return; }
+  if((to==='Invitaciones'||to==='Ofertas') && !STATE.cur.invitados.length){ toast('Invita al menos a un contratista (tab Invitados)', true); STATE.tab='invitados'; renderDetail(); return; }
   try{
     await sb.from('lic_licitaciones').update({estado:to}).eq('id',L.id);
     await logEvento(L.id, 'Cambio de estado', L.estado+' → '+to);
@@ -1019,8 +1053,8 @@ function tabExpediente(){
         '<div style="display:flex;align-items:center;justify-content:space-between">'+
           '<div style="font-size:13px;font-weight:800;color:#0f1e35;display:flex;align-items:center;gap:8px"><i data-lucide="folder" style="width:15px;height:15px;color:#f59e0b"></i>'+esc(f)+' <span class="cnt" style="font-size:10.5px;font-weight:800;background:#f1f5f9;color:#64748b;padding:1px 7px;border-radius:20px">'+docs.length+'</span></div>'+
         '</div>'+
-        (docs.length?'<div class="tbl-wrap" style="margin-top:10px"><table class="tbl"><thead><tr><th>Documento</th><th>Código</th><th>Disciplina</th><th>Rev.</th><th>Estado</th><th>Cargado</th><th></th></tr></thead><tbody>'+
-          docs.map(function(d){ return '<tr><td style="font-weight:700">'+esc(d.nombre)+'</td><td style="font-family:monospace;font-size:11.5px">'+esc(d.codigo||'—')+'</td><td>'+esc(d.disciplina||'—')+'</td><td>'+esc(d.revision||'—')+'</td><td><span class="est est-contratada" style="font-size:10px">'+esc(d.estado||'Vigente')+'</span></td><td style="font-size:11.5px;color:#64748b">'+esc(d.cargado_por||'—')+' · '+fmtDate(d.created_at)+'</td><td><button class="btn btn-sm btn-danger" data-deldoc="'+d.id+'" style="padding:4px 7px"><i data-lucide="trash-2" style="width:13px;height:13px"></i></button></td></tr>'; }).join('')+
+        (docs.length?'<div class="tbl-wrap" style="margin-top:10px"><table class="tbl"><thead><tr><th>Documento</th><th>Código</th><th>Disciplina</th><th>Rev.</th><th>Estado</th><th>Cargado</th><th>Archivo</th><th></th></tr></thead><tbody>'+
+          docs.map(function(d){ return '<tr><td style="font-weight:700">'+esc(d.nombre)+'</td><td style="font-family:monospace;font-size:11.5px">'+esc(d.codigo||'—')+'</td><td>'+esc(d.disciplina||'—')+'</td><td>'+esc(d.revision||'—')+'</td><td><span class="est est-contratada" style="font-size:10px">'+esc(d.estado||'Vigente')+'</span></td><td style="font-size:11.5px;color:#64748b">'+esc(d.cargado_por||'—')+' · '+fmtDate(d.created_at)+'</td><td style="white-space:nowrap">'+(d.path?fileBtn(d.path,'Descargar')+(d.archivo_bytes?' <span style="font-size:11px;color:#94a3b8">'+fmtBytes(d.archivo_bytes)+'</span>':''):(d.url?'<a class="btn btn-sm" href="'+esc(d.url)+'" target="_blank" rel="noopener" style="padding:4px 9px"><i data-lucide="external-link" style="width:13px;height:13px"></i>Link</a>':'<span style="font-size:11.5px;color:#cbd5e1">—</span>'))+'</td><td><button class="btn btn-sm btn-danger" data-deldoc="'+d.id+'" style="padding:4px 7px"><i data-lucide="trash-2" style="width:13px;height:13px"></i></button></td></tr>'; }).join('')+
           '</tbody></table></div>':'<div style="font-size:12px;color:#cbd5e1;font-weight:600;padding:8px 0 2px">Sin documentos en esta carpeta</div>')+
       '</div>';
     }).join('');
@@ -1030,21 +1064,32 @@ window.bind_expediente=function(){
   document.querySelectorAll('[data-deldoc]').forEach(function(b){ b.onclick=function(){ delRow('lic_documentos',b.getAttribute('data-deldoc'),'Documento eliminado'); }; });
 };
 function openAddDoc(){
-  openModal({ title:'Agregar documento', sub:'Registra un documento del expediente (metadata + link opcional).',
+  openModal({ title:'Agregar documento', sub:'Sube el archivo (o pega un link). Los contratistas invitados lo descargan desde su portal.',
     body:'<div class="fgrid">'+
+      fFile('ad-file','Archivo (PDF, DWG, Excel…)',true)+
       fSelect('ad-carpeta','Carpeta',FOLDERS)+
       fInput('ad-nombre','Nombre <span class="req">*</span>','','text')+
       fInput('ad-codigo','Código','','text')+
       fInput('ad-disc','Disciplina','','text')+
       fInput('ad-rev','Revisión','Rev.01','text')+
       fSelect('ad-estado','Estado',['Vigente','Superado','En revisión'],'Vigente')+
-      fInput('ad-url','Link (URL SharePoint/Drive)','','text',true)+
+      fInput('ad-url','o link (SharePoint/Drive) si el archivo no se sube','','text',true)+
     '</div>',
     okText:'Agregar', ok: async function(){
-      var nombre=$('#ad-nombre').value.trim(); if(!nombre){ toast('Nombre obligatorio',true); return false; }
-      await sb.from('lic_documentos').insert({ licitacion_id:STATE.cur.lic.id, carpeta:$('#ad-carpeta').value, nombre:nombre, codigo:$('#ad-codigo').value.trim()||null, disciplina:$('#ad-disc').value.trim()||null, revision:$('#ad-rev').value.trim()||null, estado:$('#ad-estado').value, url:$('#ad-url').value.trim()||null, cargado_por:USER });
-      await logEvento(STATE.cur.lic.id,'Documento cargado',nombre);
-      closeModal(); toast('Documento agregado'); openDetail(STATE.cur.lic.id);
+      var file=$('#ad-file').files[0]||null;
+      var nombre=$('#ad-nombre').value.trim()||(file?file.name.replace(/\.[^.]+$/,''):'');
+      if(!nombre){ toast('Nombre obligatorio',true); return false; }
+      var L=STATE.cur.lic;
+      try{
+        var path=null;
+        if(file){ toast('Subiendo '+file.name+'…'); path=await uploadLicFile(L.id,'expediente',file); }
+        var r=await sb.from('lic_documentos').insert({ licitacion_id:L.id, carpeta:$('#ad-carpeta').value, nombre:nombre, codigo:$('#ad-codigo').value.trim()||null, disciplina:$('#ad-disc').value.trim()||null, revision:$('#ad-rev').value.trim()||null, estado:$('#ad-estado').value, url:$('#ad-url').value.trim()||null, path:path, archivo_nombre:file?file.name:null, archivo_bytes:file?file.size:null, cargado_por:USER });
+        if(r.error) throw r.error;
+        await logEvento(L.id,'Documento cargado',$('#ad-carpeta').value+': '+nombre);
+        closeModal(); toast('Documento agregado'); openDetail(L.id);
+      }catch(e){ toast('No se pudo guardar: '+(e.message||e),true); return false; }
+    }, after:function(){
+      $('#ad-file').onchange=function(){ var f=this.files[0]; if(f && !$('#ad-nombre').value.trim()) $('#ad-nombre').value=f.name.replace(/\.[^.]+$/,''); };
     }});
 }
 
@@ -1064,11 +1109,11 @@ function tabPlanos(){
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">'+
           '<div><div style="font-size:14px;font-weight:800;color:#0f1e35">'+esc(p.codigo)+' · '+esc(p.nombre)+'</div>'+
           '<div style="font-size:12px;color:#64748b;font-weight:600;margin-top:3px"><i data-lucide="layers" style="width:13px;height:13px;vertical-align:-2px"></i> '+esc(p.disciplina||'—')+' · Vigente: <b>'+esc(p.rev_vigente||'—')+'</b> · '+esc(p.estado||'')+'</div></div>'+
-          '<button class="btn btn-sm" data-newrev="'+p.id+'"><i data-lucide="git-branch-plus"></i>Nueva revisión</button>'+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap">'+(last&&last.path?fileBtn(last.path,'Vigente '+(last.revision||'')):'')+'<button class="btn btn-sm" data-newrev="'+p.id+'"><i data-lucide="git-branch-plus"></i>Nueva revisión</button></div>'+
         '</div>'+
         (alert?'<div style="margin-top:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:9px 12px;font-size:12.5px;color:#92400e;font-weight:600"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:-2px"></i> Nueva revisión <b>'+esc(last.revision)+'</b> disponible — afecta económicamente. Los contratistas deben re-cotizar.</div>':'')+
         '<div class="tl" style="margin-top:12px">'+vers.slice().reverse().map(function(v){
-          return '<div class="tl-item"><div class="tl-a">'+esc(v.revision)+(v.afecta_economico?' <span style="font-size:10px;font-weight:800;background:#fef3c7;color:#b45309;padding:1px 7px;border-radius:6px;margin-left:4px">AFECTA $</span>':'')+'</div><div class="tl-d">'+esc(v.nota||'')+'</div><div class="tl-m">'+esc(v.publicado_por||'')+' · '+fmtDate(v.created_at)+'</div></div>';
+          return '<div class="tl-item"><div class="tl-a">'+esc(v.revision)+(v.afecta_economico?' <span style="font-size:10px;font-weight:800;background:#fef3c7;color:#b45309;padding:1px 7px;border-radius:6px;margin-left:4px">AFECTA $</span>':'')+'</div><div class="tl-d">'+esc(v.nota||'')+'</div><div class="tl-m">'+esc(v.publicado_por||'')+' · '+fmtDate(v.created_at)+(v.path?' · '+fileBtn(v.path,'Descargar')+' <span style="color:#94a3b8">'+fmtBytes(v.archivo_bytes)+'</span>':' · <span style="color:#cbd5e1">sin archivo</span>')+'</div></div>';
         }).join('')+'</div>'+
       '</div>';
     }).join('') : '<div class="empty"><i data-lucide="ruler"></i>Sin planos cargados</div>');
@@ -1079,23 +1124,36 @@ window.bind_planos=function(){
 };
 function openAddPlano(){
   openModal({ title:'Nuevo plano', sub:'Registra un plano y su primera revisión.',
-    body:'<div class="fgrid">'+fInput('pl-cod','Código','PL-','text')+fInput('pl-nombre','Nombre <span class="req">*</span>','','text')+fInput('pl-disc','Disciplina','','text')+fInput('pl-rev','Revisión inicial','Rev.01','text')+fSelect('pl-estado','Estado',['Para licitación','Preliminar','Aprobado'],'Para licitación')+'</div>',
+    body:'<div class="fgrid">'+fFile('pl-file','Archivo del plano (PDF/DWG)',true)+fInput('pl-cod','Código','PL-','text')+fInput('pl-nombre','Nombre <span class="req">*</span>','','text')+fInput('pl-disc','Disciplina','','text')+fInput('pl-rev','Revisión inicial','Rev.01','text')+fSelect('pl-estado','Estado',['Para licitación','Preliminar','Aprobado'],'Para licitación')+'</div>',
     okText:'Crear plano', ok: async function(){
       var nombre=$('#pl-nombre').value.trim(); if(!nombre){ toast('Nombre obligatorio',true); return false; }
-      var pr=await sb.from('lic_planos').insert({ licitacion_id:STATE.cur.lic.id, codigo:$('#pl-cod').value.trim(), nombre:nombre, disciplina:$('#pl-disc').value.trim()||null, rev_vigente:$('#pl-rev').value.trim(), estado:$('#pl-estado').value }).select().single();
-      await sb.from('lic_plano_versiones').insert({ plano_id:pr.data.id, revision:$('#pl-rev').value.trim(), publicado_por:USER, nota:'Emisión inicial' });
-      await logEvento(STATE.cur.lic.id,'Plano cargado',$('#pl-cod').value+' '+nombre);
-      closeModal(); toast('Plano creado'); openDetail(STATE.cur.lic.id);
+      var L=STATE.cur.lic, file=$('#pl-file').files[0]||null;
+      try{
+        var path=null; if(file){ toast('Subiendo '+file.name+'…'); path=await uploadLicFile(L.id,'planos',file); }
+        var pr=await sb.from('lic_planos').insert({ licitacion_id:L.id, codigo:$('#pl-cod').value.trim(), nombre:nombre, disciplina:$('#pl-disc').value.trim()||null, rev_vigente:$('#pl-rev').value.trim(), estado:$('#pl-estado').value }).select().single();
+        if(pr.error) throw pr.error;
+        var vr=await sb.from('lic_plano_versiones').insert({ plano_id:pr.data.id, revision:$('#pl-rev').value.trim(), publicado_por:USER, nota:'Emisión inicial', path:path, archivo_nombre:file?file.name:null, archivo_bytes:file?file.size:null });
+        if(vr.error) throw vr.error;
+        await logEvento(L.id,'Plano cargado',$('#pl-cod').value+' '+nombre);
+        closeModal(); toast('Plano creado'); openDetail(L.id);
+      }catch(e){ toast('No se pudo guardar: '+(e.message||e),true); return false; }
+    }, after:function(){
+      $('#pl-file').onchange=function(){ var f=this.files[0]; if(f && !$('#pl-nombre').value.trim()) $('#pl-nombre').value=f.name.replace(/\.[^.]+$/,''); };
     }});
 }
 function openNewRev(planoId){
   var p=STATE.cur.planos.find(function(x){return x.id===planoId;});
   openModal({ title:'Nueva revisión · '+esc(p.codigo), sub:'Publica una revisión. Marca si afecta económicamente para exigir re-cotización.',
-    body:'<div class="fgrid">'+fInput('rv-rev','Revisión <span class="req">*</span>','Rev.','text')+fSelect('rv-afecta','¿Afecta económicamente?',['No','Sí'],'No')+fArea('rv-nota','Nota de cambios','',true)+'</div>',
+    body:'<div class="fgrid">'+fFile('rv-file','Archivo de la revisión',true)+fInput('rv-rev','Revisión <span class="req">*</span>','Rev.','text')+fSelect('rv-afecta','¿Afecta económicamente?',['No','Sí'],'No')+fArea('rv-nota','Nota de cambios','',true)+'</div>',
     okText:'Publicar revisión', ok: async function(){
       var rev=$('#rv-rev').value.trim(); if(!rev){ toast('Revisión obligatoria',true); return false; }
       var afecta=$('#rv-afecta').value==='Sí';
-      await sb.from('lic_plano_versiones').insert({ plano_id:planoId, revision:rev, publicado_por:USER, afecta_economico:afecta, nota:$('#rv-nota').value.trim()||null });
+      var file=$('#rv-file').files[0]||null;
+      try{
+        var path=null; if(file){ toast('Subiendo '+file.name+'…'); path=await uploadLicFile(STATE.cur.lic.id,'planos',file); }
+        var vr=await sb.from('lic_plano_versiones').insert({ plano_id:planoId, revision:rev, publicado_por:USER, afecta_economico:afecta, nota:$('#rv-nota').value.trim()||null, path:path, archivo_nombre:file?file.name:null, archivo_bytes:file?file.size:null });
+        if(vr.error) throw vr.error;
+      }catch(e){ toast('No se pudo guardar: '+(e.message||e),true); return false; }
       await sb.from('lic_planos').update({ rev_vigente:rev }).eq('id',planoId);
       await logEvento(STATE.cur.lic.id,'Nueva revisión de plano',p.codigo+' → '+rev+(afecta?' (afecta económico)':''));
       closeModal(); toast('Revisión '+rev+' publicada'); openDetail(STATE.cur.lic.id);
@@ -1148,12 +1206,13 @@ function tabInvitados(){
   var col={'Invitado':'est-publicada','Confirmó':'est-invitaciones','Preparando':'est-ofertas','Oferta enviada':'est-contratada','No participa':'est-desierta'};
   return '<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">'+
       '<div><div class="panel-t"><i data-lucide="users"></i>Contratistas invitados</div>'+
-      '<div class="panel-d" style="margin:0">Seleccionados desde la base de contratistas (portafolio). Estado de participación en tiempo real.</div></div>'+
+      '<div class="panel-d" style="margin:0">Se invita a empresas con cuenta en el portal de contratistas: la licitación les aparece al entrar. La columna Portal dice si ya la abrieron.</div></div>'+
       '<button class="btn btn-primary btn-sm" id="add-inv"><i data-lucide="user-plus"></i>Invitar contratista</button>'+
     '</div>'+
-    (c.invitados.length?'<div class="tbl-wrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>Contratista</th><th>Especialidad</th><th>Email</th><th>Estado</th><th></th></tr></thead><tbody>'+
+    (c.invitados.length?'<div class="tbl-wrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>Contratista</th><th>Especialidad</th><th>Email</th><th>Portal</th><th>Estado</th><th></th></tr></thead><tbody>'+
       c.invitados.map(function(v){
         return '<tr><td style="font-weight:800">'+esc(v.contratista)+'</td><td>'+esc(v.especialidad||'—')+'</td><td style="font-size:11.5px;color:#64748b">'+esc(v.email||'—')+'</td>'+
+          '<td>'+portalCell(v)+'</td>'+
           '<td><select data-invest="'+v.id+'" style="border:1px solid var(--bd);border-radius:8px;padding:5px 8px;font-family:inherit;font-size:12px;font-weight:700">'+EST_INV.map(function(e){return '<option'+(v.estado===e?' selected':'')+'>'+e+'</option>';}).join('')+'</select></td>'+
           '<td><button class="btn btn-sm btn-danger" data-delinv="'+v.id+'" style="padding:4px 6px"><i data-lucide="x" style="width:13px;height:13px"></i></button></td></tr>';
       }).join('')+'</tbody></table></div>':'<div class="empty" style="margin-top:12px"><i data-lucide="users"></i>Aún no hay contratistas invitados</div>')+
@@ -1164,25 +1223,77 @@ window.bind_invitados=function(){
   document.querySelectorAll('[data-invest]').forEach(function(s){ s.onchange=async function(){ await sb.from('lic_invitados').update({estado:s.value}).eq('id',s.getAttribute('data-invest')); toast('Estado actualizado'); }; });
   document.querySelectorAll('[data-delinv]').forEach(function(b){ b.onclick=function(){ delRow('lic_invitados',b.getAttribute('data-delinv'),'Invitación eliminada'); }; });
 };
+function portalCell(v){
+  if(v.visto_at) return '<span style="font-size:11.5px;font-weight:700;color:#0d7d70">Vista · '+fmtDate(v.visto_at)+'</span>';
+  if(!cuentaDe(v.email)) return '<span title="No hay cuenta del portal con este correo: no verá la invitación" style="font-size:11.5px;font-weight:800;color:#b45309">⚠ Sin cuenta</span>';
+  return '<span style="font-size:11.5px;font-weight:700;color:#64748b">Aún no la abre</span>';
+}
 async function openInvite(){
-  await ensureRefs();
-  var existing=STATE.cur.invitados.map(function(v){return (v.contratista||'').toLowerCase();});
-  var opts=STATE.contratistas.filter(function(x){ return existing.indexOf(x.nombre.toLowerCase())<0; });
-  openModal({ title:'Invitar contratista', sub:'Elige de la base de contratistas o ingresa uno nuevo. El email permite que le llegue al portal.',
+  await Promise.all([ensureRefs(), ensureCuentas()]);
+  var L=STATE.cur.lic;
+  var ya=STATE.cur.invitados.map(function(v){ return normname(v.email); });
+  // especialidad y obras previas desde la cartera (portafolio_servicios), cruzando por nombre o alias
+  var porNombre={}; STATE.contratistas.forEach(function(x){ porNombre[normname(x.nombre)]=x; });
+  var lista=(STATE.cuentas||[]).filter(function(c){ return ya.indexOf(normname(c.email))<0; }).map(function(c){
+    var nombres=[c.empresa].concat(Array.isArray(c.aliases)?c.aliases:[]);
+    var hit=null; nombres.some(function(n){ hit=porNombre[normname(n)]; return !!hit; });
+    var esp=(Array.isArray(c.especialidades)&&c.especialidades.length)?c.especialidades.join(', '):(hit?hit.especialidad:'');
+    return { email:c.email, empresa:c.empresa, encargado:c.encargado, esp:esp||'', obras:hit?hit.n:0, homol:c.homologacion_estado||'Pendiente', vence:c.homologacion_vence };
+  }).sort(function(a,b){ return homolOk(b)-homolOk(a) || b.obras-a.obras || a.empresa.localeCompare(b.empresa); });
+  function homolOk(x){ return (x.homol==='Homologado' && !(x.vence && daysTo(x.vence)<0))?1:0; }
+  var SEL={};
+  function homolChip(x){
+    var venc=x.vence && daysTo(x.vence)<0;
+    if(x.homol==='Homologado' && !venc) return '<span style="font-size:10.5px;font-weight:800;color:#0d7d70;background:#e6f7f3;padding:2px 8px;border-radius:20px;white-space:nowrap">Homologado</span>';
+    if(venc) return '<span style="font-size:10.5px;font-weight:800;color:#b91c1c;background:#fdecea;padding:2px 8px;border-radius:20px;white-space:nowrap">Homologación vencida</span>';
+    return '<span style="font-size:10.5px;font-weight:800;color:#92400e;background:#fef3c7;padding:2px 8px;border-radius:20px;white-space:nowrap">'+esc(x.homol)+'</span>';
+  }
+  function rows(q){
+    q=normname(q); var esp=normname(L.especialidad);
+    var f=lista.filter(function(x){ return !q || normname(x.empresa+' '+x.email+' '+x.esp+' '+(x.encargado||'')).indexOf(q)>=0; });
+    if(!f.length) return '<div style="padding:18px;text-align:center;color:#94a3b8;font-size:12.5px;font-weight:600">'+(lista.length?'Nadie coincide con la búsqueda':'No hay más cuentas de contratistas disponibles')+'</div>';
+    return f.map(function(x){
+      var match=esp && x.esp && normname(x.esp).indexOf(esp)>=0;
+      return '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--bd);cursor:pointer">'+
+        '<input type="checkbox" data-inv-email="'+esc(x.email)+'"'+(SEL[x.email]?' checked':'')+' style="width:16px;height:16px;flex-shrink:0">'+
+        '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:#0f1e35">'+esc(x.empresa)+(match?' <span style="font-size:10px;font-weight:800;color:#0d7d70">· misma especialidad</span>':'')+'</div>'+
+        '<div style="font-size:11.5px;color:#64748b;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(x.email)+(x.esp?' · '+esc(x.esp):'')+(x.obras?' · '+x.obras+' obra'+(x.obras>1?'s':'')+' con Friopacking':'')+'</div></div>'+
+        homolChip(x)+
+      '</label>';
+    }).join('');
+  }
+  openModal({ title:'Invitar contratistas', sub:'Elige empresas con cuenta en el portal. La licitación les aparece al entrar.', wide:true,
     body:'<div class="fgrid">'+
-      '<div class="fg full"><label>Desde la base de contratistas</label><select id="iv-pick"><option value="">— Seleccionar —</option>'+opts.map(function(x){return '<option value="'+esc(x.nombre)+'|'+esc(x.especialidad)+'">'+esc(x.nombre)+(x.especialidad?' · '+esc(x.especialidad):'')+'</option>';}).join('')+'</select><div class="fhint">'+opts.length+' contratistas disponibles</div></div>'+
-      fInput('iv-nombre','Contratista <span class="req">*</span>','','text')+
-      fInput('iv-esp','Especialidad','','text')+
-      fInput('iv-email','Email (para el portal)','','text',true)+
+      '<div class="fg full"><label>Buscar empresa, correo o especialidad</label><input id="iv-q" type="text" placeholder="Ej. refrigeración, Metalfresh…"></div>'+
+      '<div class="fg full"><div id="iv-list" style="border:1px solid var(--bd);border-radius:11px;max-height:340px;overflow:auto">'+rows('')+'</div>'+
+      '<div class="fhint" id="iv-count">'+lista.length+' empresas con cuenta · 0 seleccionadas</div></div>'+
+      '<div class="fg full" style="margin-top:4px"><details><summary style="cursor:pointer;font-size:12.5px;font-weight:700;color:#64748b">¿La empresa no tiene cuenta todavía?</summary>'+
+        '<div style="font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:9px;padding:9px 11px;margin:8px 0">Puedes registrarla, pero <b>no verá la invitación hasta que Administración le cree la cuenta del portal</b> con este mismo correo.</div>'+
+        '<div class="fgrid">'+fInput('iv-nombre','Empresa','','text')+fInput('iv-email','Correo real de la empresa','','email')+'</div>'+
+      '</details></div>'+
     '</div>',
     okText:'Invitar', ok: async function(){
-      var nombre=$('#iv-nombre').value.trim(); if(!nombre){ toast('Contratista obligatorio',true); return false; }
-      var email=$('#iv-email').value.trim() || (nombre.toLowerCase().replace(/[^a-z0-9]/g,'')+'@contratista.friopacking.com');
-      await sb.from('lic_invitados').insert({ licitacion_id:STATE.cur.lic.id, contratista:nombre, especialidad:$('#iv-esp').value.trim()||null, email:email, estado:'Invitado' });
-      await logEvento(STATE.cur.lic.id,'Invitación',nombre+' invitado');
-      closeModal(); toast(nombre+' invitado'); openDetail(STATE.cur.lic.id);
+      var nuevos=lista.filter(function(x){ return SEL[x.email]; }).map(function(x){
+        return { licitacion_id:L.id, contratista:x.empresa, especialidad:x.esp||L.especialidad||null, email:x.email, estado:'Invitado' };
+      });
+      var mn=$('#iv-nombre').value.trim(), me=$('#iv-email').value.trim().toLowerCase();
+      if(mn||me){
+        if(!mn || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(me)){ toast('Para una empresa sin cuenta pon el nombre y un correo válido',true); return false; }
+        if(ya.indexOf(me)>=0){ toast(mn+' ya está invitada',true); return false; }
+        nuevos.push({ licitacion_id:L.id, contratista:mn, especialidad:L.especialidad||null, email:me, estado:'Invitado' });
+      }
+      if(!nuevos.length){ toast('Selecciona al menos una empresa',true); return false; }
+      try{
+        var r=await sb.from('lic_invitados').insert(nuevos); if(r.error) throw r.error;
+        await Promise.all(nuevos.map(function(n){ return logEvento(L.id,'Invitación',n.contratista+' invitado'); }));
+        closeModal(); toast(nuevos.length===1?nuevos[0].contratista+' invitado':nuevos.length+' contratistas invitados'); openDetail(L.id);
+      }catch(e){ toast('No se pudo invitar: '+(e.message||e),true); return false; }
     }, after:function(){
-      $('#iv-pick').onchange=function(){ var v=this.value; if(!v) return; var parts=v.split('|'); $('#iv-nombre').value=parts[0]; $('#iv-esp').value=parts[1]||''; $('#iv-email').value=parts[0].toLowerCase().replace(/[^a-z0-9]/g,'')+'@contratista.friopacking.com'; };
+      var list=$('#iv-list');
+      function count(){ var n=Object.keys(SEL).filter(function(k){return SEL[k];}).length; $('#iv-count').textContent=lista.length+' empresas con cuenta · '+n+' seleccionada'+(n===1?'':'s'); }
+      list.addEventListener('change', function(e){ var cb=e.target.closest('[data-inv-email]'); if(!cb) return; SEL[cb.getAttribute('data-inv-email')]=cb.checked; count(); });
+      $('#iv-q').addEventListener('input', function(){ list.innerHTML=rows(this.value); });
+      $('#iv-q').focus();
     }});
 }
 
@@ -1283,6 +1394,9 @@ function tabOfertas(){
         '<div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)">'+
           VALID_KEYS.map(function(k){ var st=(o.validacion||{})[k[0]]; var cl=st==='ok'?'v-ok':(st==='falta'?'v-fail':'v-pend'); return '<span class="vdot"><span class="d '+cl+'"></span>'+esc(k[1])+'</span>'; }).join('')+
         '</div>'+
+        ((o.adjuntos&&o.adjuntos.length)?'<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-right:4px">Adjuntos</span>'+
+          o.adjuntos.map(function(a){ return fileBtn(a.path,(a.tipo?a.tipo+' · ':'')+(a.nombre||'archivo')); }).join('')+'</div>'
+          :'<div style="margin-top:10px;font-size:11.5px;color:#cbd5e1;font-weight:600">Sin adjuntos</div>')+
         '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm" data-validate="'+o.id+'"><i data-lucide="clipboard-check"></i>Editar validación</button><button class="btn btn-sm btn-danger" data-delof="'+o.id+'" style="padding:6px 8px"><i data-lucide="trash-2" style="width:13px;height:13px"></i></button></div>'+
       '</div>';
     }).join('') : '<div class="empty"><i data-lucide="file-text"></i>Aún no se han recibido ofertas</div>');
@@ -1512,7 +1626,8 @@ function openAdjudicar(oid){
     okText:'Confirmar adjudicación', ok: async function(){
       var just=$('#aj-just').value.trim(); if(!just){ toast('Justificación obligatoria',true); return false; }
       try{
-        await sb.from('lic_adjudicaciones').insert({ licitacion_id:L.id, oferta_id:oid, contratista:o.contratista, monto_adjudicado:Number($('#aj-monto').value||0), contrato_codigo:$('#aj-contrato').value.trim()||null, responsable:$('#aj-resp').value.trim(), aprobador:$('#aj-aprob').value.trim(), justificacion:just });
+        var aj=await sb.from('lic_adjudicaciones').insert({ licitacion_id:L.id, licitacion_codigo:L.codigo, email:o.email||null, oferta_id:oid, contratista:o.contratista, monto_adjudicado:Number($('#aj-monto').value||0), contrato_codigo:$('#aj-contrato').value.trim()||null, responsable:$('#aj-resp').value.trim(), aprobador:$('#aj-aprob').value.trim(), justificacion:just });
+        if(aj.error) throw aj.error;
         await sb.from('lic_ofertas').update({estado:'Adjudicada'}).eq('id',oid);
         await sb.from('lic_licitaciones').update({estado:'Adjudicación'}).eq('id',L.id);
         await logEvento(L.id,'Adjudicación','Adjudicado a '+o.contratista+' — '+money($('#aj-monto').value,L.moneda));
