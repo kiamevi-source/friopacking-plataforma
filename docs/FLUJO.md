@@ -127,6 +127,20 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   porcentaje, así que sirve en cualquier pantalla. GOTCHA: la subida NO puede
   llevar la cabecera `x-upsert`; el bucket solo tiene política de INSERT para
   `anon`, y el upsert exige UPDATE y SELECT. Cada plano sube con nombre único.
+- **De la obra al negocio.** Cuando el supervisor marca una observación «fuera
+  de alcance», la app-sup crea un **adicional** en PMO (`adicionales`) para que
+  Comercial lo cotice; si la marca es «requiere cotización», crea un
+  **requerimiento** (`requerimientos_compra`) para Compras o Licitaciones. La
+  observación guarda el id (`adicional_id`, `requerimiento_id`) y al desmarcar
+  se borra el pedido. Es la única escritura de Supervisor hacia PMO, y solo
+  crea pedidos: nunca toca la información base del proyecto.
+- **Consolidado en Gerencia.** `app-live/modulos/observaciones.html` junta todas
+  las obras: pendientes, urgentes, avance y costo estimado (lee `pendientes` de
+  Supervisor), más los adicionales y requerimientos de PMO, cuyo estado se
+  cambia desde ahí. También agrupa por responsable (insumo para la evaluación de
+  contratistas) y muestra lo que se repite en dos o más obras. Al cerrarse una
+  obra, desde ahí se pasan sus observaciones abiertas a **postventa**
+  (`pendientes.postventa`), sin perderlas.
 - **Lo que sale hacia el cliente.** Desde la misma pantalla se genera el acta de
   levantamiento en PDF, con la firma del cliente tomada en el celular, el
   informe de avance en PDF y el Excel con las columnas del cliente (hojas

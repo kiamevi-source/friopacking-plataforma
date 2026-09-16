@@ -1,0 +1,217 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Observaciones de obra · Gerencia</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+:root{--ground:#f5f7fb;--surface:#fff;--surface-2:#f7f9fd;--ink:#0b1226;--ink-2:#475569;--muted:#94a3b8;
+  --line:rgba(15,23,42,.08);--line-2:rgba(15,23,42,.15);--navy:#14224d;--teal:#0891b2;--teal-soft:#e2f3f8;
+  --late:#c0392b;--late-soft:#fbecea;--warn:#b45309;--warn-soft:#fdf3e3;--ok:#15803d;--ok-soft:#e6f4ec;--val:#5646be;--val-soft:#edebfb;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:13.5px/1.5 'Inter',system-ui,sans-serif;padding:18px}
+h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.015em}
+.sub{margin:2px 0 0;font-size:12.5px;color:var(--ink-2)}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.btn{height:34px;padding:0 13px;border-radius:9px;border:1px solid var(--line-2);background:var(--surface);
+  font:600 12.5px 'Inter',sans-serif;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--navy)}
+.btn.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi b{display:block;font-size:23px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.kpi span{display:block;margin-top:5px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.kpi.late b{color:var(--late)} .kpi.ok b{color:var(--ok)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:16px;overflow:hidden}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid var(--line)}
+.card-h h2{margin:0;font-size:14px;font-weight:800}
+.card-h p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:8px 14px;background:var(--surface-2);color:var(--muted);font-size:10.5px;
+  font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:hover td{background:var(--surface-2)}
+.obra{font-weight:700;color:var(--navy)}
+.cod{display:block;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.pill.late{background:var(--late-soft);color:var(--late)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.val{background:var(--val-soft);color:var(--val)}
+.pill.gris{background:var(--surface-2);color:var(--ink-2)}
+.bar{height:6px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;min-width:90px}
+.bar i{display:block;height:100%;background:var(--teal)}
+select.est{height:30px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);
+  font:600 12px 'Inter',sans-serif;color:var(--ink);padding:0 8px}
+.vacio{padding:26px 16px;text-align:center;color:var(--muted);font-size:12.5px}
+.dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+.hint{font-size:11.5px;color:var(--muted)}
+.tit{display:block;max-width:520px}
+</style>
+<div class="top">
+  <div><h1>Observaciones de obra</h1><p class="sub">Todas las obras juntas: lo que falta levantar, lo que se volvió adicional y lo que espera cotización. Los datos los escribe el supervisor desde su app.</p></div>
+  <div><button class="btn" onclick="cargar()"><span id="ref">Actualizar</span></button></div>
+</div>
+<div class="kpis" id="kpis"></div>
+<div class="card"><div class="card-h"><div><h2>Por obra</h2><p id="obras-sub"></p></div>
+  <label class="hint"><input type="checkbox" id="solo-activas" checked onchange="pintar()"> Solo obras con pendientes</label></div>
+  <div class="tw"><table id="t-obras"></table></div></div>
+<div class="dos">
+  <div class="card"><div class="card-h"><div><h2>Adicionales por cotizar</h2><p>Observaciones marcadas fuera de alcance por el supervisor</p></div></div>
+    <div class="tw"><table id="t-adic"></table></div></div>
+  <div class="card"><div class="card-h"><div><h2>Requieren compra o cotización</h2><p>Van a Compras o a Licitaciones</p></div></div>
+    <div class="tw"><table id="t-req"></table></div></div>
+</div>
+<div class="dos">
+  <div class="card"><div class="card-h"><div><h2>Por responsable</h2><p>Para la evaluación de contratistas: cuántas dejó cada uno y cuántas son por su instalación</p></div></div>
+    <div class="tw"><table id="t-resp"></table></div></div>
+  <div class="card"><div class="card-h"><div><h2>Lecciones aprendidas</h2><p>Lo mismo observado en dos o más obras: corregirlo desde el diseño</p></div></div>
+    <div class="tw"><table id="t-lecc"></table></div></div>
+</div>
+<script>
+const SUP_URL='https://iiceeajjmugtuzcfqggs.supabase.co', SUP_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpY2VlYWpqbXVndHV6Y2ZxZ2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODg5OTUsImV4cCI6MjA5NDc2NDk5NX0.xeOFlxEGoPsqO5mBLz2_o6UqMCiUw5t8Aghg0ieRqs4';
+const PMO_URL='https://vsploxglutkbeokumunp.supabase.co', PMO_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+const H=k=>({apikey:k,Authorization:'Bearer '+k,'Content-Type':'application/json'});
+const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hoy=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const dias=f=>f?Math.round((new Date(String(f).slice(0,10)+'T00:00:00')-new Date(hoy()+'T00:00:00'))/864e5):null;
+const abierto=p=>p.estado==='abierta'||p.estado==='en_proceso';
+const urgente=p=>abierto(p)&&(p.urgente==null?((dias(p.fecha_objetivo)!=null)&&(dias(p.fecha_objetivo)<-30||(p.impacto==='alto'&&dias(p.fecha_objetivo)<0))):!!p.urgente);
+const money=n=>n?('US$ '+Number(n).toLocaleString('es-PE',{maximumFractionDigits:0})):'—';
+const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+let PEND=[], PROY=[], ADIC=[], REQ=[];
+async function get(url,k){ const r=await fetch(url,{headers:H(k)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function cargar(){
+  document.getElementById('ref').textContent='Cargando…';
+  try{
+    [PEND,PROY,ADIC,REQ]=await Promise.all([
+      get(SUP_URL+'/rest/v1/pendientes?select=*&limit=5000',SUP_KEY),
+      get(PMO_URL+'/rest/v1/proyectos?select=cod_proyecto,nombre,estado,supervisor&limit=1000',PMO_KEY),
+      get(PMO_URL+'/rest/v1/adicionales?select=*&order=created_at.desc&limit=500',PMO_KEY),
+      get(PMO_URL+'/rest/v1/requerimientos_compra?select=*&order=created_at.desc&limit=500',PMO_KEY)
+    ]);
+  }catch(e){ console.warn(e); document.getElementById('kpis').innerHTML='<div class="kpi late"><b>!</b><span>no se pudo cargar</span></div>'; }
+  document.getElementById('ref').textContent='Actualizar';
+  pintar();
+}
+function pintar(){
+  const soloAct=document.getElementById('solo-activas').checked;
+  const abiertas=PEND.filter(abierto), urg=PEND.filter(urgente);
+  const venc=abiertas.filter(p=>dias(p.fecha_objetivo)<0);
+  const cerr=PEND.filter(p=>p.estado==='cerrada'), na=PEND.filter(p=>p.estado==='no_aplica');
+  const base=PEND.length-na.length;
+  const costo=abiertas.reduce((s,p)=>s+(Number(p.costo_estimado)||0),0);
+  document.getElementById('kpis').innerHTML=
+     kpi(new Set(abiertas.map(p=>p.cod_proyecto)).size,'obras con pendientes')
+   + kpi(abiertas.length,'por levantar')
+   + kpi(urg.length,'urgentes',urg.length?'late':'')
+   + kpi(venc.length,'con fecha vencida',venc.length?'late':'')
+   + kpi(base?Math.round(cerr.length*100/base)+' %':'—','levantado','ok')
+   + kpi(costo?money(costo):'—','costo estimado pendiente');
+  // ── por obra ──
+  const m=new Map();
+  PEND.forEach(p=>{
+    const k=p.cod_proyecto||p.nombre_proyecto||'—';
+    if(!m.has(k)) m.set(k,{cod:k, nombre:p.nombre_proyecto||k, todas:[], ab:[], urg:[], venc:[], val:[], cer:0, na:0, costo:0, pv:0});
+    const o=m.get(k); o.todas.push(p);
+    if(abierto(p)) o.ab.push(p);
+    if(urgente(p)) o.urg.push(p);
+    if(abierto(p)&&dias(p.fecha_objetivo)<0) o.venc.push(p);
+    if(p.estado==='por_validar') o.val.push(p);
+    if(p.estado==='cerrada') o.cer++;
+    if(p.estado==='no_aplica') o.na++;
+    if(p.postventa) o.pv++;
+    o.costo+=Number(p.costo_estimado)||0;
+  });
+  let obras=[...m.values()];
+  if(soloAct) obras=obras.filter(o=>o.ab.length||o.val.length);
+  obras.sort((a,b)=>b.urg.length-a.urg.length||b.ab.length-a.ab.length);
+  const proy=c=>PROY.find(p=>p.cod_proyecto===c)||{};
+  document.getElementById('obras-sub').textContent=obras.length+' obras · '+PEND.length+' observaciones registradas';
+  document.getElementById('t-obras').innerHTML=
+    '<tr><th>Obra</th><th>Estado del proyecto</th><th class="n">Por levantar</th><th class="n">Urgentes</th><th class="n">Vencidas</th><th class="n">Por validar</th><th>Avance</th><th class="n">Costo pendiente</th><th></th></tr>'
+    + (obras.length?obras.map(o=>{
+        const pr=proy(o.cod), baseO=o.todas.length-o.na, pct=baseO?Math.round(o.cer*100/baseO):0;
+        const cerrado=/cerrad/i.test(pr.estado||'');
+        return '<tr><td><span class="obra">'+esc(o.nombre)+'</span><span class="cod">'+esc(o.cod)+(pr.supervisor?' · '+esc(pr.supervisor):'')+'</span></td>'
+          + '<td><span class="pill '+(cerrado?'ok':'gris')+'">'+esc(pr.estado||'—')+'</span>'+(o.pv?' <span class="pill val">'+o.pv+' en postventa</span>':'')+'</td>'
+          + '<td class="n">'+o.ab.length+'</td>'
+          + '<td class="n">'+(o.urg.length?'<span class="pill late">'+o.urg.length+'</span>':'0')+'</td>'
+          + '<td class="n">'+o.venc.length+'</td>'
+          + '<td class="n">'+(o.val.length?'<span class="pill val">'+o.val.length+'</span>':'0')+'</td>'
+          + '<td><div class="bar"><i style="width:'+pct+'%"></i></div><span class="hint">'+o.cer+' de '+baseO+' · '+pct+' %</span></td>'
+          + '<td class="n">'+money(o.costo)+'</td>'
+          + '<td class="n">'+(cerrado&&o.ab.length?'<button class="btn" onclick="postventa(\''+esc(o.cod)+'\')">Pasar a postventa</button>':(o.ab.length===0&&o.val.length===0?'<span class="pill ok">al día</span>':''))+'</td></tr>';
+      }).join(''):'<tr><td colspan="9" class="vacio">Ninguna obra con pendientes.</td></tr>');
+  // ── adicionales y requerimientos ──
+  const estAdic=['solicitado','cotizado','aprobado','rechazado'];
+  document.getElementById('t-adic').innerHTML='<tr><th>Obra</th><th>Observación</th><th class="n">Monto</th><th>Estado</th></tr>'
+    + (ADIC.length?ADIC.map(a=>'<tr><td><span class="obra">'+esc(a.nombre_proyecto||a.cod_proyecto)+'</span><span class="cod">'+esc(a.cod_proyecto)+'</span></td>'
+        + '<td><span class="tit">'+esc(a.titulo)+'</span>'+(a.area?'<span class="cod">'+esc(a.area)+'</span>':'')+'</td>'
+        + '<td class="n">'+money(a.monto_estimado)+'</td>'
+        + '<td><select class="est" onchange="cambiarEstado(\'adicionales\','+a.id+',this.value)">'
+          + estAdic.map(e=>'<option value="'+e+'"'+(a.estado===e?' selected':'')+'>'+e[0].toUpperCase()+e.slice(1)+'</option>').join('')+'</select></td></tr>').join('')
+      : '<tr><td colspan="4" class="vacio">Ningún adicional pendiente.</td></tr>');
+  const estReq=['solicitado','cotizando','en compra','atendido','anulado'];
+  document.getElementById('t-req').innerHTML='<tr><th>Obra</th><th>Observación</th><th>Destino</th><th>Estado</th></tr>'
+    + (REQ.length?REQ.map(a=>'<tr><td><span class="obra">'+esc(a.nombre_proyecto||a.cod_proyecto)+'</span><span class="cod">'+esc(a.cod_proyecto)+'</span></td>'
+        + '<td><span class="tit">'+esc(a.titulo)+'</span>'+(a.area?'<span class="cod">'+esc(a.area)+'</span>':'')+'</td>'
+        + '<td><span class="pill gris">'+esc(a.destino||'compras')+'</span></td>'
+        + '<td><select class="est" onchange="cambiarEstado(\'requerimientos_compra\','+a.id+',this.value)">'
+          + estReq.map(e=>'<option value="'+e+'"'+(a.estado===e?' selected':'')+'>'+e[0].toUpperCase()+e.slice(1)+'</option>').join('')+'</select></td></tr>').join('')
+      : '<tr><td colspan="4" class="vacio">Nada esperando compra o cotización.</td></tr>');
+  // ── por responsable (evaluación de contratistas) ──
+  const r=new Map();
+  PEND.filter(p=>p.responsable).forEach(p=>{
+    const k=p.responsable.trim();
+    if(!r.has(k)) r.set(k,{n:0,ab:0,urg:0,contrata:0,obras:new Set()});
+    const o=r.get(k); o.n++; o.obras.add(p.cod_proyecto);
+    if(abierto(p)) o.ab++;
+    if(urgente(p)) o.urg++;
+    if(/contrata/i.test(p.causa||'')) o.contrata++;
+  });
+  const resp=[...r.entries()].sort((a,b)=>b[1].ab-a[1].ab||b[1].n-a[1].n).slice(0,12);
+  document.getElementById('t-resp').innerHTML='<tr><th>Responsable</th><th class="n">Obras</th><th class="n">Total</th><th class="n">Abiertas</th><th class="n">Urgentes</th><th class="n">Por su instalación</th></tr>'
+    + (resp.length?resp.map(([k,o])=>'<tr><td>'+esc(k)+'</td><td class="n">'+o.obras.size+'</td><td class="n">'+o.n+'</td><td class="n">'+o.ab+'</td>'
+        + '<td class="n">'+(o.urg?'<span class="pill late">'+o.urg+'</span>':'0')+'</td>'
+        + '<td class="n">'+(o.contrata?'<span class="pill warn">'+o.contrata+'</span>':'0')+'</td></tr>').join('')
+      : '<tr><td colspan="6" class="vacio">Sin responsables asignados todavía.</td></tr>');
+  // ── lecciones aprendidas ──
+  const l=new Map();
+  PEND.forEach(p=>{
+    const k=norm(p.titulo).split(' ').slice(0,6).join(' ');
+    if(k.length<12) return;
+    if(!l.has(k)) l.set(k,{t:p.titulo,obras:new Set(),n:0});
+    const o=l.get(k); o.n++; o.obras.add(p.cod_proyecto);
+  });
+  const lec=[...l.values()].filter(o=>o.obras.size>1).sort((a,b)=>b.obras.size-a.obras.size||b.n-a.n).slice(0,12);
+  document.getElementById('t-lecc').innerHTML='<tr><th>Se repite en</th><th>Observación</th><th class="n">Obras</th><th class="n">Veces</th></tr>'
+    + (lec.length?lec.map(o=>'<tr><td>'+[...o.obras].slice(0,3).map(esc).join(', ')+(o.obras.size>3?'…':'')+'</td>'
+        + '<td><span class="tit">'+esc(o.t)+'</span></td><td class="n">'+o.obras.size+'</td><td class="n">'+o.n+'</td></tr>').join('')
+      : '<tr><td colspan="4" class="vacio">Todavía no se repite nada entre obras.</td></tr>');
+}
+function kpi(v,l,cls){ return '<div class="kpi '+(cls||'')+'"><b>'+v+'</b><span>'+l+'</span></div>'; }
+async function cambiarEstado(tabla,id,estado){
+  try{
+    await fetch(PMO_URL+'/rest/v1/'+tabla+'?id=eq.'+id,{method:'PATCH',headers:Object.assign(H(PMO_KEY),{Prefer:'return=minimal'}),
+      body:JSON.stringify({estado, updated_at:new Date().toISOString()})});
+    const arr=tabla==='adicionales'?ADIC:REQ; const it=arr.find(x=>x.id===id); if(it) it.estado=estado;
+  }catch(e){ console.warn(e); alert('No se pudo guardar el estado'); }
+}
+// Al cerrar la obra, lo que queda abierto pasa a postventa sin perderse.
+async function postventa(cod){
+  const abiertas=PEND.filter(p=>p.cod_proyecto===cod&&abierto(p));
+  if(!abiertas.length) return;
+  if(!confirm('Pasar '+abiertas.length+' observaciones abiertas de '+cod+' a postventa?')) return;
+  try{
+    await fetch(SUP_URL+'/rest/v1/pendientes?cod_proyecto=eq.'+encodeURIComponent(cod)+'&estado=in.(abierta,en_proceso)',
+      {method:'PATCH',headers:Object.assign(H(SUP_KEY),{Prefer:'return=minimal'}),body:JSON.stringify({postventa:true})});
+    for(const p of abiertas){
+      await fetch(SUP_URL+'/rest/v1/pendientes_historial',{method:'POST',headers:Object.assign(H(SUP_KEY),{Prefer:'return=minimal'}),
+        body:JSON.stringify({pendiente_id:p.id, texto:'Pasa a postventa al cerrar la obra', autor:'Gerencia'})});
+      p.postventa=true;
+    }
+    pintar();
+  }catch(e){ console.warn(e); alert('No se pudo pasar a postventa'); }
+}
+cargar();
+</script>

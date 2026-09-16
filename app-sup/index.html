@@ -11176,6 +11176,7 @@ function rdPendFichaHTML(){
       + '<span class="p2-area">'+rdEsc2(p.categoria||'Sin área')+'</span>'
       + '<button class="p2-x" type="button" onclick="rdPendCerrarFicha()" aria-label="Cerrar ficha">✕</button></div>'
     + '<h3 class="p2-dt">'+rdEsc2(p.titulo)+'</h3>'
+   + (p.postventa?'<span class="p2-hint">Pasó a postventa al cerrarse la obra.</span>':'')
     + '<div class="p2-stepper">'+PEND_PASOS.map((k,i)=>'<button type="button" class="p2-step'+(idx>i?' past':'')+(idx===i?' cur':'')+'" onclick="rdPendSetEstado('+p.id+',\''+k+'\')"><i></i>'+PEND_EST[k]+'</button>').join('')+'</div>'
     + (p.estado==='por_validar'?'<div class="p2-conf"><p>El equipo lo dio por levantado. <b>Falta tu conformidad</b> para cerrarlo.</p>'
         + '<div class="p2-quick"><button class="pend-act primary" type="button" onclick="rdPendSetEstado('+p.id+',\'cerrada\')">Dar conformidad</button>'
@@ -11196,6 +11197,7 @@ function rdPendFichaHTML(){
       + '<div class="p2-f"><label for="pf-resp">Responsable</label><input class="pend-inp" id="pf-resp" list="pend-contratas" value="'+rdEsc2(p.responsable||'')+'" onchange="rdPendCampo('+p.id+',\'responsable\',this.value)"></div>'
       + '<div class="p2-f"><label for="pf-area">Área</label><input class="pend-inp" id="pf-area" value="'+rdEsc2(p.categoria||'')+'" onchange="rdPendCampo('+p.id+',\'categoria\',this.value)"></div>'
       + '<div class="p2-f"><span class="p2-lbl">Impacto</span><div class="p2-seg3">'+['alto','medio','bajo'].map(k=>'<button type="button" class="'+((p.impacto||'medio')===k?'on':'')+'" onclick="rdPendCampo('+p.id+',\'impacto\',\''+k+'\')">'+k[0].toUpperCase()+k.slice(1)+'</button>').join('')+'</div></div>'
+      + '<div class="p2-f"><label for="pf-costo">Costo estimado (US$)</label><input class="pend-inp" id="pf-costo" type="number" min="0" step="10" value="'+(p.costo_estimado!=null?p.costo_estimado:'')+'" onchange="rdPendCampoNum('+p.id+',\'costo_estimado\',this.value)"></div>'
       + '<div class="p2-f"><label for="pf-causa">Causa</label><select class="pend-inp" id="pf-causa" onchange="rdPendCampo('+p.id+',\'causa\',this.value)">'
         + PEND_CAUSAS.map(c=>'<option'+((p.causa||'Por definir')===c?' selected':'')+'>'+c+'</option>').join('')+'</select></div>'
       + '<div class="p2-f full"><label for="pf-com">Comentario</label><textarea class="pend-inp" id="pf-com" rows="3" onchange="rdPendComentario('+p.id+',this.value)">'+rdEsc2(par.com)+'</textarea></div>'
@@ -11205,9 +11207,9 @@ function rdPendFichaHTML(){
       + '<span>'+(p.plano_x!=null?'Toca «Ver» para encontrarla en el plano de la obra.':'Marca dónde está para no buscarla en obra.')+'</span></div>'
       + '<button class="pend-act" type="button" onclick="rdPlanoAbrir('+p.id+')" style="margin-left:auto">'+(p.plano_x!=null?'Ver':'Ubicar')+'</button></div>'
     + '<div class="p2-sw">'
-      + '<div class="p2-swi"><div><b>Fuera de alcance</b><span>'+(p.fuera_alcance?'Marcada para cotizar como adicional.':'No es parte del contrato: se cotiza como adicional.')+'</span></div>'
+      + '<div class="p2-swi"><div><b>Fuera de alcance</b><span>'+(p.fuera_alcance?(p.adicional_id?'En Comercial como adicional #'+p.adicional_id+'.':'Marcada para cotizar como adicional.'):'No es parte del contrato: se cotiza como adicional.')+'</span></div>'
         + '<button class="p2-tg" type="button" aria-pressed="'+(!!p.fuera_alcance)+'" onclick="rdPendTogCampo('+p.id+',\'fuera_alcance\')" aria-label="Fuera de alcance"></button></div>'
-      + '<div class="p2-swi"><div><b>Requiere cotización</b><span>'+(p.requiere_cotizacion?'Marcada: falta comprar o contratar.':'Hace falta comprar o contratar algo.')+'</span></div>'
+      + '<div class="p2-swi"><div><b>Requiere cotización</b><span>'+(p.requiere_cotizacion?(p.requerimiento_id?'En Compras como pedido #'+p.requerimiento_id+'.':'Marcada: falta comprar o contratar.'):'Hace falta comprar o contratar algo.')+'</span></div>'
         + '<button class="p2-tg" type="button" aria-pressed="'+(!!p.requiere_cotizacion)+'" onclick="rdPendTogCampo('+p.id+',\'requiere_cotizacion\')" aria-label="Requiere cotización"></button></div>'
     + '</div>'
     + (par.chips.length?'<div><div class="p2-lbl">Del Excel</div><div class="p2-chips">'+par.chips.map(c=>'<span class="p2-kv"><em>'+rdEsc2(c[0])+'</em>'+rdEsc2(c[1])+'</span>').join('')+'</div></div>':'')
@@ -11353,6 +11355,13 @@ async function rdPendCampo(id, campo, valor){
     if(rdPendOpen===id) rdPendPintarFicha();
   }
 }
+async function rdPendCampoNum(id, campo, valor){
+  const p=rdPendList.find(x=>x.id===id); if(!p) return;
+  const v=(valor===''||valor==null)?null:Number(valor);
+  if((p[campo]==null?null:Number(p[campo]))===v) return;
+  if(await rdPendGuardar([id], {[campo]:v}, 'Costo estimado: '+(v==null?'—':('US$ '+v)), {undoTexto:'Costo restaurado'}))
+    rdPendToastUndo('Costo estimado guardado');
+}
 async function rdPendComentario(id, texto){
   const p=rdPendList.find(x=>x.id===id); if(!p) return;
   const par=rdPendParse(p.descripcion);
@@ -11367,7 +11376,41 @@ async function rdPendTogCampo(id, campo){
   const txt = campo==='fuera_alcance'
     ? (val?'Marcada fuera de alcance · se cotiza como adicional':'Ya no está fuera de alcance')
     : (val?'Requiere cotización · pasa a Compras o Licitaciones':'Ya no requiere cotización');
-  if(await rdPendGuardar([id], {[campo]:val}, txt, {undoTexto:'Marca deshecha'})){ rdPendToastUndo(txt); rdPendPintarFicha(); }
+  if(await rdPendGuardar([id], {[campo]:val}, txt, {undoTexto:'Marca deshecha'})){
+    rdPendToastUndo(txt);
+    await rdPendAvisarGerencia(p, campo, val);
+    rdPendPintarFicha();
+  }
+}
+/* La marca del supervisor abre (o cierra) el pedido en Gerencia: un adicional
+   para Comercial, o un requerimiento para Compras / Licitaciones. */
+async function rdPendAvisarGerencia(p, campo, val){
+  const esAdic = campo==='fuera_alcance';
+  const tabla = esAdic ? 'adicionales' : 'requerimientos_compra';
+  const campoId = esAdic ? 'adicional_id' : 'requerimiento_id';
+  const G='https://vsploxglutkbeokumunp.supabase.co';
+  const H={apikey:PEND_PMO_KEY, Authorization:'Bearer '+PEND_PMO_KEY, 'Content-Type':'application/json'};
+  try{
+    if(val){
+      const par=rdPendParse(p.descripcion);
+      const fila={ cod_proyecto:rdPendCod(), nombre_proyecto:(currentProyecto&&currentProyecto.nombre)||null,
+        origen:'observacion', origen_pendiente_id:p.id, titulo:p.titulo, descripcion:par.com||null,
+        area:p.categoria||null, solicitado_por:rdPendQuien() };
+      if(esAdic) fila.monto_estimado=p.costo_estimado||null;
+      const r=await fetch(G+'/rest/v1/'+tabla,{method:'POST',headers:Object.assign({Prefer:'return=representation'},H),body:JSON.stringify(fila)});
+      if(!r.ok) throw new Error(await r.text());
+      const j=await r.json(); const nuevo=Array.isArray(j)?j[0]:null;
+      if(nuevo){
+        await sbFetch('/rest/v1/pendientes?id=eq.'+p.id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({[campoId]:nuevo.id})});
+        p[campoId]=nuevo.id;
+      }
+      showToast(esAdic?'Enviada a Comercial como adicional ✓':'Enviada a Compras ✓', 3500);
+    } else if(p[campoId]){
+      await fetch(G+'/rest/v1/'+tabla+'?id=eq.'+p[campoId],{method:'DELETE',headers:H});
+      await sbFetch('/rest/v1/pendientes?id=eq.'+p.id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({[campoId]:null})});
+      p[campoId]=null;
+    }
+  }catch(e){ console.warn('avisar gerencia', e); showToast('Se guardó la marca, pero no llegó a Gerencia: '+String(e.message||'').slice(0,60), 5000); }
 }
 async function rdPendTogUrg(id){
   const p=rdPendList.find(x=>x.id===id); if(!p) return;

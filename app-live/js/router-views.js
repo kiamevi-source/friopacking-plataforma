@@ -70,6 +70,12 @@
       el: document.getElementById('view-dash-contratistas'),
       init: () => {},
     },
+    // Observaciones de obra (consolidado · lee pendientes de Supervisor y
+    // adicionales/requerimientos de PMO)
+    observaciones: {
+      el: document.getElementById('view-observaciones'),
+      init: () => {},
+    },
     // Licitaciones (módulo editable · lic_* en PMO — cockpit de Operaciones/Carlos)
     licitaciones: {
       el: document.getElementById('view-licitaciones'),
