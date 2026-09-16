@@ -9894,6 +9894,10 @@ function renderEquiposPremium(){
     return {logged:cambios.length,resumen};
   }
   W.syncEquiposToSupervisor=async rows=>{
+    // Última barrera: ni la importación ni el botón "Sincronizar" (que empuja lo
+    // guardado en este navegador) pueden mandar datos corridos a supervisores.
+    const val=_eqValidarImport(rows);
+    if(!val.ok){console.warn('[sync equipos] bloqueado:',val.problemas);return {ok:false,count:0,reason:'datos corridos · '+val.problemas[0]};}
     const crudo=(rows||[]).filter(r=>r&&(r.doc||'').toString().trim()).map(_eqToPmoRow);
     /* El Excel de importaciones repite a veces el mismo documento en dos líneas
        (p. ej. 0002-0001665 de CARTAMA). Postgres rechaza el UPSERT completo si la
@@ -10185,11 +10189,16 @@ function renderEquiposPremium(){
           raw=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
         }
       } else if(fname.match(/\.csv$/i)||ftype.includes('csv')){
-        const text=await file.text();
-        const firstLine=text.split('\n')[0]||'';
+        // El CSV que exporta Excel viene en Windows-1252 (ESPAÑA salía "ESPA�A"):
+        // se intenta UTF-8 estricto y, si falla, se relee como Windows-1252.
+        const buf=await file.arrayBuffer();
+        let text;
+        try{text=new TextDecoder('utf-8',{fatal:true}).decode(buf);}
+        catch(_){text=new TextDecoder('windows-1252').decode(buf);}
+        const firstLine=text.split(/\r?\n/)[0]||'';
         const sep=firstLine.includes(';')?';':firstLine.includes('\t')?'\t':',';
         console.log('[import] (CSV) separador detectado:',JSON.stringify(sep));
-        raw=text.split('\n').map(l=>l.split(sep));
+        raw=_eqParseCsv(text,sep);
       } else if(fname.match(/\.pdf$/i)||ftype.includes('pdf')){
         // PDF: extract text via pdf.js, split into lines, then into cells by 2+ spaces or tabs
         if(typeof pdfjsLib==='undefined'){
@@ -10239,7 +10248,14 @@ function renderEquiposPremium(){
         }).join('\n');
 
         let msg;
-        if(parsed&&parsed.length){
+        const _val=parsed&&parsed.length?_eqValidarImport(parsed):null;
+        if(_val&&!_val.ok){
+          msg=`⛔ No se cargó el archivo: los datos vienen corridos o incompletos\n\n`+
+            _val.problemas.map(p=>'· '+p).join('\n')+
+            `\n\nNo se tocó nada: gerencia y supervisores siguen con la última carga buena.\n`+
+            `Solución: subí el Excel (.xlsx) en vez del CSV, o ensanchá las columnas antes de guardarlo.`;
+          parsed.__invalido=_val;
+        } else if(parsed&&parsed.length){
           // Buscar el primer registro con proyecto NO vacío (saltar anulados)
           const f=parsed.find(r=>r.proyecto&&r.proyecto.trim())||parsed[0];
           const idx=parsed.indexOf(f);
@@ -10277,6 +10293,12 @@ function renderEquiposPremium(){
       await delay(400);
       if(ov)ov.classList.remove('on');
       if(typeof showToast==='function')showToast('No se pudo parsear el archivo. Verifica formato NISIRA FP.','warn',5000);
+      return;
+    }
+    if(parsed.__invalido){
+      console.warn('[import] importación rechazada:',parsed.__invalido.problemas);
+      if(ov)ov.classList.remove('on');
+      if(typeof showToast==='function')showToast('⛔ Archivo rechazado: columnas corridas. No se sincronizó nada.','alert',7000);
       return;
     }
     setStep('parse','active');setProgress(55);
@@ -10418,6 +10440,68 @@ function renderEquiposPremium(){
   }
 }
 
+/* CSV con comillas. Antes se partía con split('\n') y split(';'), y un encabezado
+   con salto de línea dentro de la celda ("Fecha de entrega⏎Real", "DIAS POR⏎
+   ENTREGAR") quedaba roto en varias filas: el detector de encabezado elegía un
+   pedazo y TODAS las columnas se leían corridas (16-sep-2026: el proveedor se
+   guardó como proyecto, el país como tipo, y una orden fantasma con doc "Real"). */
+function _eqParseCsv(text,sep){
+  const rows=[];let row=[],cell='',q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(q){
+      if(ch==='"'){if(text[i+1]==='"'){cell+='"';i++;}else q=false;}
+      else cell+=ch;
+    }else if(ch==='"'&&cell==='')q=true;
+    else if(ch===sep){row.push(cell);cell='';}
+    else if(ch==='\n'||ch==='\r'){
+      if(ch==='\r'&&text[i+1]==='\n')i++;
+      row.push(cell);rows.push(row);row=[];cell='';
+    }else cell+=ch;
+  }
+  if(cell!==''||row.length){row.push(cell);rows.push(row);}
+  // Un salto de línea dentro de un encabezado se lee como espacio.
+  return rows.map(r=>r.map(c=>c.replace(/\s*\n\s*/g,' ')));
+}
+
+/* Revisa que la importación tenga sentido ANTES de guardarla o mandarla a
+   supervisores. Cada vez que el archivo llegó mal (columnas corridas, celdas
+   "#####" de Excel por columna angosta) la sincronización lo copiaba igual y los
+   supervisores veían basura: pasó el 8-sep y el 16-sep. Devuelve {ok, problemas}. */
+function _eqValidarImport(rows){
+  const filas=(rows||[]).filter(r=>r&&(r.doc||'').toString().trim());
+  const problemas=[];
+  if(!filas.length)return {ok:false,problemas:['El archivo no trae ningún documento.']};
+  const s=v=>(v==null?'':v).toString().trim();
+  const esFecha=v=>v instanceof Date||typeof v==='number'||
+    /^\d{1,2}[\/\-. ](\d{1,2}|[a-zá-ú]{3,})\.?[\/\-. ]\d{2,4}$/i.test(s(v))||/^\d{4}-\d{2}-\d{2}/.test(s(v));
+  const nombres={fecha:'Fecha',proveedor:'Proveedor',proyecto:'Proyecto',tipo:'Tipo producto',
+    origen:'Origen',f_entrega:'Fecha entrega',f_real:'Fecha de entrega real',status_orig:'Status en origen',
+    etd:'Fecha ETD',eta:'Fecha de ETA',status_dest:'Status final destino',modalidad:'Modalidad'};
+  const pct=(n,d)=>d?n/d:0;
+  // 1) "#####": Excel escribe eso en el CSV cuando la columna es muy angosta y se pierde el dato.
+  Object.keys(nombres).forEach(k=>{
+    const n=filas.filter(r=>/^#{3,}$/.test(s(r[k]))).length;
+    if(pct(n,filas.length)>0.05)problemas.push(`«${nombres[k]}» llegó como "#####" en ${n} filas (columna angosta en Excel al guardar el CSV).`);
+  });
+  // 2) Columnas de fecha que no traen fechas, o de status que traen fechas → columnas corridas.
+  ['fecha','f_entrega','f_real','etd','eta'].forEach(k=>{
+    const llenas=filas.filter(r=>s(r[k])&&!/^#{3,}$/.test(s(r[k])));
+    const malas=llenas.filter(r=>!esFecha(r[k])).length;
+    if(llenas.length>=10&&pct(malas,llenas.length)>0.15)problemas.push(`«${nombres[k]}» trae texto en vez de fechas en ${malas} de ${llenas.length} filas (columnas corridas).`);
+  });
+  ['status_orig','status_dest','proveedor','tipo'].forEach(k=>{
+    const llenas=filas.filter(r=>s(r[k]));
+    const malas=llenas.filter(r=>esFecha(r[k])).length;
+    if(llenas.length>=10&&pct(malas,llenas.length)>0.15)problemas.push(`«${nombres[k]}» trae fechas en ${malas} de ${llenas.length} filas (columnas corridas).`);
+  });
+  // 3) Documentos que no parecen documentos (pedazos de encabezado, totales).
+  const docsMalos=filas.filter(r=>!/\d{3,}/.test(s(r.doc))).length;
+  if(docsMalos>2&&pct(docsMalos,filas.length)>0.02)problemas.push(`${docsMalos} filas tienen un «Documento» que no es un número de orden.`);
+  return {ok:!problemas.length,problemas};
+}
+W._eqValidarImport=_eqValidarImport;
+
 function _eqParseRows(raw){
   // Find header row by SCORE — la fila con más nombres de columna conocidos gana.
   // Esto resuelve el caso donde hay una fila de título previa con la palabra "documento"
@@ -10553,6 +10637,12 @@ function _eqParseRows(raw){
     try{
       const raw=localStorage.getItem(EQ_LS_KEY);
       if(raw){const o=JSON.parse(raw);if(o&&Array.isArray(o.rows)&&o.rows.length)local=o;}
+      // Una importación mala guardada antes de existir la validación no debe
+      // volver a pintarse (ni re-sincronizarse con el botón) en este navegador.
+      if(local&&typeof W._eqValidarImport==='function'&&!W._eqValidarImport(local.rows).ok){
+        console.warn('[Equipos] se descarta la importación guardada: datos corridos');
+        localStorage.removeItem(EQ_LS_KEY);local=null;
+      }
     }catch(e){console.warn('[Equipos] localStorage ilegible:',e);}
 
     // 2) equipos_pmo (lo que subió la última importación, desde cualquier equipo)
