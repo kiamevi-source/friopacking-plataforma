@@ -11224,6 +11224,12 @@ function rdPendRender(){
   if(rdPendModo==='zonas'){
     h+='<div class="p3-zonas" id="p2-list">'+rdPendZonasHTML()+'</div>';
   } else {
+    // Dentro de una zona: camino de vuelta al resumen, siempre a la vista.
+    if(rdPendFArea && !(rdPendZona && rdZonaKey(rdPendZona.nombre)===rdZonaKey(rdPendFArea))){
+      const zr=rdPendZonasResumen(true).find(z=>rdZonaKey(z.nombre)===rdZonaKey(rdPendFArea));
+      h+='<div class="p4-crumb"><button type="button" class="pend-act" onclick="rdPendSetModo(\'zonas\')"><i data-lucide="arrow-left" class="ri"></i>Todas las zonas</button>'
+        + '<span class="p4-crumb-z"><b>'+rdEsc2(rdTextoOrdenado(rdPendFArea,true))+'</b>'+(zr?'<small>'+zr.pend+' por levantar'+(zr.urg?' · '+zr.urg+' urgente'+(zr.urg>1?'s':''):'')+'</small>':'')+'</span></div>';
+    }
     h+='<div class="p2-body p3-body"><div class="p2-list p3-list" id="p2-list">'+rdPendListaHTML()+'</div>'
       + '<aside class="p2-drawer p3-drawer'+(rdPendOpen?' show':'')+'" id="p2-drawer">'+rdPendFichaHTML()+'</aside></div>';
   }
@@ -11569,7 +11575,7 @@ function rdPendSetVista(k){ rdPendView=k; rdPendSel.clear(); rdPendRender(); }
 function rdPendSetGrupo(k){ rdPendGroup=k; rdPendPintarLista(); }
 function rdPendSoloRestricciones(){ rdPendSoloRestr=!rdPendSoloRestr; rdPendRender(); }
 function rdPendSetFiltro(cual,val){
-  if(cual==='area'){ rdPendFArea=val; if(rdPendZona && rdZonaKey(rdPendZona.nombre)!==rdZonaKey(val)) rdPendZona=null; if(!val && rdPendModo==='lista') rdPendModo='lista'; }
+  if(cual==='area'){ rdPendFArea=val; if(rdPendZona && rdZonaKey(rdPendZona.nombre)!==rdZonaKey(val)) rdPendZona=null; if(!val){ rdPendModo='zonas'; rdPendOpen=null; } }
   else if(cual==='resp') rdPendFResp=val;
   else if(cual==='imp') rdPendFImp=val; else if(cual==='est') rdPendFEst=val;
   rdPendRender();
@@ -13027,6 +13033,9 @@ function rdPendEstilos3(){
   .p3-zmore .ri{width:15px;height:15px;}
   /* Resumen por zona en filas (16-sep) */
   .p4-zres{margin:14px 2px 10px;font-size:13px;color:var(--text-2);}
+  .p4-crumb{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 0 2px;}
+  .p4-crumb-z b{display:block;font-size:17px;font-weight:700;color:var(--navy-800);}
+  .p4-crumb-z small{display:block;font-size:12.5px;color:var(--text-3);margin-top:1px;}
   .p4-zres b{color:var(--navy-800);}
   .p4-link{border:0;background:none;padding:0;font-family:inherit;font-size:13px;font-weight:600;color:var(--teal-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px;}
   .p4-zt{border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden;}

@@ -304,6 +304,118 @@ table.tbl input.num{text-align:right;font-family:'JetBrains Mono',monospace}
   .lrow-right{order:2;align-self:start}
   .lrow-prog{grid-column:1/-1;order:3}
 }
+
+/* ═════════ INICIO DE LICITACIONES (portada + indicadores + gráficos) ═════════ */
+.lh{--ink:#0b1b33;--mut:#5b6b82;--line:#e6ebf2;--card:#fff;--navyD:#0c1f3d}
+.lh-demo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff7e6;border:1px solid #f5d9a6;color:#8a5a00;border-radius:12px;padding:9px 14px;font-size:12.5px;font-weight:700;margin-bottom:14px}
+.lh-demo button{margin-left:auto;border:1px solid #e9c07a;background:#fff;color:#8a5a00;font-weight:800;font-size:12px;border-radius:9px;padding:5px 11px}
+.lh-hero{position:relative;border-radius:20px;overflow:hidden;min-height:228px;background:#eaf2fb url('fotos/licitaciones-hero.jpg') right 38% / cover no-repeat;padding:34px 36px 70px}
+.lh-hero::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#f5f7fa 0%,rgba(245,247,250,.97) 30%,rgba(245,247,250,.55) 50%,rgba(245,247,250,0) 66%)}
+.lh-hero>*{position:relative}
+.lh-title{font-family:Manrope,sans-serif;font-size:46px;font-weight:800;letter-spacing:-1.6px;line-height:1.02;color:var(--ink)}
+.lh-sub{font-size:17px;color:#40506a;font-weight:500;margin-top:8px;max-width:520px}
+.lh-date{position:absolute;top:14px;right:22px;font-size:11.5px;font-weight:600;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.35)}
+.lh-hero-r{position:absolute;right:26px;top:46px;display:flex;align-items:center;gap:26px}
+.lh-tag{font-size:16px;font-weight:700;color:#fff;line-height:1.3;text-shadow:0 1px 2px rgba(6,22,48,.55),0 2px 14px rgba(6,22,48,.55);background:rgba(10,32,66,.22);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:8px 12px;border-radius:10px}
+.lh-new{display:inline-flex;align-items:center;gap:9px;background:var(--navyD);color:#fff;border:0;border-radius:12px;padding:13px 20px;font-size:14.5px;font-weight:700;box-shadow:0 10px 24px -10px rgba(12,31,61,.6)}
+.lh-new:hover{background:#13305c}
+.lh-new i{width:18px;height:18px}
+.lh-kpis{position:relative;margin:-48px 14px 18px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.lh-kpi{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px 14px 13px;display:flex;gap:12px;box-shadow:0 12px 30px -20px rgba(15,35,70,.35);min-width:0;cursor:pointer;transition:.15s}
+.lh-kpi:hover{transform:translateY(-2px);box-shadow:0 18px 34px -20px rgba(15,35,70,.45)}
+.lh-kico{width:46px;height:46px;border-radius:13px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.lh-kico i{width:23px;height:23px}
+.lh-kv{font-family:Manrope,sans-serif;font-size:24px;font-weight:800;letter-spacing:-.6px;color:var(--ink);line-height:1.1;white-space:nowrap}
+.lh-kl{font-size:13px;color:#3d4d66;font-weight:600;margin-top:2px}
+.lh-kd{font-size:12px;color:var(--mut);margin-top:6px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.lh-up{display:inline-flex;align-items:center;gap:3px;background:#e3f6ee;color:#12805c;font-weight:800;border-radius:7px;padding:1px 7px}
+.lh-down{display:inline-flex;align-items:center;gap:3px;background:#fdecea;color:#b42318;font-weight:800;border-radius:7px;padding:1px 7px}
+.lh-grid3{display:grid;grid-template-columns:1.2fr 1.15fr 1fr;gap:14px;margin-bottom:14px}
+.lh-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+.lh-ch{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.lh-ct{font-family:Manrope,sans-serif;font-size:16px;font-weight:800;color:var(--ink)}
+.lh-sel{border:1px solid var(--line);border-radius:9px;padding:6px 9px;font-family:inherit;font-size:12px;font-weight:600;color:#33445e;background:#fff}
+.lh-donut-w{display:flex;align-items:center;gap:18px}
+.lh-donut{position:relative;width:150px;height:150px;flex-shrink:0}
+.lh-donut svg{width:150px;height:150px}
+.lh-donut-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.lh-donut-c b{font-family:Manrope,sans-serif;font-size:30px;font-weight:800;color:var(--ink);line-height:1}
+.lh-donut-c span{font-size:12.5px;color:var(--mut);margin-top:3px}
+.lh-leg{flex:1;display:flex;flex-direction:column;gap:11px;min-width:0}
+.lh-leg-r{display:grid;grid-template-columns:11px 20px minmax(0,1fr) auto;align-items:center;gap:7px;font-size:12.5px;white-space:nowrap;color:#33445e;cursor:pointer}
+.lh-leg-r .d{width:11px;height:11px;border-radius:50%}
+.lh-leg-r b{font-weight:800;color:var(--ink)}
+.lh-leg-r span:nth-child(3){overflow:hidden;text-overflow:ellipsis}
+.lh-leg-r em{font-style:normal;font-weight:700;color:var(--ink)}
+.lh-bars{position:relative;height:196px;display:grid;grid-template-columns:40px repeat(5,minmax(0,1fr));gap:8px;align-items:end;padding-bottom:32px}
+.lh-yax{position:absolute;left:0;right:0;top:0;bottom:32px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+.lh-yax div{border-top:1px dashed #e8edf4;font-size:10.5px;color:#7a889c;padding-top:0;line-height:0}
+.lh-yax div span{display:inline-block;transform:translateY(-8px);background:#fff;padding-right:4px}
+.lh-bar{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;z-index:1}
+.lh-bar i{display:block;width:74%;border-radius:4px 4px 0 0;min-height:3px}
+.lh-bar b{font-size:11.5px;font-weight:800;color:var(--ink);margin-bottom:5px;white-space:nowrap}
+.lh-bar small{position:absolute;top:100%;margin-top:6px;left:-2px;right:-2px;text-align:center;font-size:10.5px;line-height:1.15;color:#5b6b82}
+.lh-bar.pot i{background:repeating-linear-gradient(135deg,#dde3ec 0 6px,#cfd7e3 6px 12px);border:1.5px dashed #9fb0c6;border-bottom:0}
+.lh-times{display:flex;flex-direction:column;gap:14px;margin-top:4px}
+.lh-tr{display:grid;grid-template-columns:28px 120px 1fr 52px;align-items:center;gap:10px;font-size:13px;color:#33445e}
+.lh-tr .ic{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.lh-tr .ic i{width:15px;height:15px}
+.lh-tr .trk{height:9px;border-radius:9px;background:#eef2f7;overflow:hidden}
+.lh-tr .trk i{display:block;height:100%;border-radius:9px}
+.lh-tr b{text-align:right;font-weight:700;color:var(--ink);font-size:12.5px}
+.lh-quick{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.lh-q{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 14px;text-align:left;font-size:13.5px;font-weight:600;color:#1d2d46;line-height:1.3;transition:.15s;min-width:0}
+.lh-q:hover{border-color:#b9e5dc;box-shadow:0 10px 24px -18px rgba(15,35,70,.45);transform:translateY(-1px)}
+.lh-q .ic{width:46px;height:46px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.lh-q .ic i{width:22px;height:22px}
+.lh-tblc{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:14px;overflow:hidden}
+.lh-tblwrap{overflow-x:auto}
+.lh-tblh{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 10px}
+.lh-link{border:0;background:none;color:#1f6fd1;font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:5px}
+.lh-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.lh-tbl th{font-size:12px;font-weight:600;color:#5b6b82;text-align:left;padding:10px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+.lh-tbl td{padding:9px 9px;border-bottom:1px solid #f0f3f7;color:#1d2d46;white-space:nowrap;vertical-align:middle}
+.lh-tbl tbody tr.r{cursor:pointer}
+.lh-tbl tbody tr.r:hover td{background:#f8fafd}
+.lh-tbl .cod{font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:600;color:#1d2d46}
+.lh-tbl .pj{max-width:130px;overflow:hidden;text-overflow:ellipsis}
+.lh-tbl .nm{max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.lh-tbl .num{font-variant-numeric:tabular-nums}
+.lh-exp{border:0;background:none;color:#33445e;width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;transition:transform .15s}
+.lh-exp i{width:15px;height:15px}
+.lh-exp.on{transform:rotate(90deg)}
+.lh-zona{display:inline-block;font-size:12px;font-weight:700;padding:3px 11px;border-radius:8px}
+.lh-est{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 12px 4px 5px;border-radius:9px}
+.lh-est i{width:15px;height:15px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff}
+.lh-prog{display:flex;align-items:center;gap:8px}
+.lh-prog .trk{width:70px;height:10px;border-radius:10px;background:#eef2f7;overflow:hidden}
+.lh-prog .trk i{display:block;height:100%;border-radius:10px}
+.lh-prog span{font-size:12.5px;color:#33445e;width:36px}
+.lh-av{display:flex;align-items:center}
+.lh-av span{width:28px;height:28px;border-radius:50%;border:2px solid #fff;margin-left:-6px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800}
+.lh-av span:first-child{margin-left:0}
+.lh-av .more{background:#eef2f7;color:#4a5a72}
+.lh-dots{border:0;background:none;color:#1d2d46;width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center}
+.lh-dots:hover{background:#eef2f7}
+.lh-xrow td{background:#f8fafd;padding:0 12px 12px 46px;white-space:normal}
+.lh-xbox{display:flex;gap:26px;flex-wrap:wrap;font-size:12.5px;color:#33445e;padding-top:10px}
+.lh-xbox b{display:block;font-size:15px;color:var(--ink)}
+.lh-foot{display:grid;grid-template-columns:1.55fr 1fr;gap:14px}
+.lh-banner{position:relative;border-radius:16px;overflow:hidden;min-height:112px;background:#20304a;padding:22px 28px;color:#fff;display:flex;flex-direction:column;justify-content:center}
+.lh-banner::after{content:'';position:absolute;inset:0;background:url('fotos/licitaciones-banner.jpg') center 52% / cover no-repeat;transform:scaleX(-1)}
+.lh-banner::before{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(8,24,52,.94) 0%,rgba(8,24,52,.78) 40%,rgba(8,24,52,.05) 75%)}
+.lh-banner>*{position:relative;z-index:2}
+.lh-banner h3{font-family:Manrope,sans-serif;font-size:21px;font-weight:800;line-height:1.15;max-width:320px}
+.lh-banner p{font-size:13px;opacity:.85;margin-top:6px}
+.lh-help{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:16px}
+.lh-help .ic{width:54px;height:54px;border-radius:14px;background:#eef4fe;color:#1f6fd1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.lh-help .ic i{width:26px;height:26px}
+.lh-help h4{font-size:14px;font-weight:800;color:var(--ink)}
+.lh-help p{font-size:12.5px;color:var(--mut);margin-top:3px}
+.lh-help button{margin-left:auto;background:var(--navyD);color:#fff;border:0;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;white-space:nowrap}
+.lh-empty{padding:34px 20px;text-align:center;color:#7a889c;font-weight:600}
+@media(max-width:1180px){.lh-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.lh-grid3{grid-template-columns:1fr 1fr}.lh-grid3>.lh-card:last-child{grid-column:1/-1}.lh-quick{grid-template-columns:repeat(3,minmax(0,1fr))}.lh-hero-r .lh-tag{display:none}}
+@media(max-width:760px){.lh-hero{padding:24px 20px 64px;background-position:70% 40%}.lh-hero::before{background:linear-gradient(180deg,rgba(245,247,250,.96) 0%,rgba(245,247,250,.85) 60%,rgba(245,247,250,.4) 100%)}.lh-title{font-size:34px}.lh-sub{font-size:14.5px}.lh-hero-r{position:relative;right:auto;top:auto;margin-top:16px}.lh-kpi{flex-direction:column;gap:8px;padding:13px}.lh-kico{width:38px;height:38px}.lh-kico i{width:19px;height:19px}.lh-kv{font-size:21px}.lh-date{display:none}.lh-kpis{grid-template-columns:1fr 1fr;margin:-40px 0 14px}.lh-grid3{grid-template-columns:1fr}.lh-quick{grid-template-columns:1fr 1fr}.lh-foot{grid-template-columns:1fr}.lh-donut-w{flex-direction:column}.lh-tblwrap{overflow-x:auto}.lh-help{flex-wrap:wrap}.lh-help button{margin-left:0}}
 </style>
 </head>
 <body>
@@ -410,23 +522,26 @@ async function boot(){
       sb.from('lic_licitaciones').select('*').order('created_at',{ascending:false}),
       sb.from('lic_adjudicaciones').select('licitacion_id,monto_adjudicado,contratista'),
       sb.from('lic_ofertas').select('licitacion_id,estado,validacion'),
-      sb.from('lic_invitados').select('licitacion_id'),
+      sb.from('lic_invitados').select('licitacion_id,contratista'),
       sb.from('lic_partidas').select('origen_presupuesto_id').not('origen_presupuesto_id','is',null),
-      supsb ? supsb.from('v_partidas_licitables').select('*') : Promise.resolve({data:[]})
+      supsb ? supsb.from('v_partidas_licitables').select('*') : Promise.resolve({data:[]}),
+      sb.from('lic_eventos').select('licitacion_id,detalle,created_at').eq('accion','Cambio de estado').order('created_at')
     ]);
     if(res[0].error) throw res[0].error;
     STATE.lics = res[0].data||[];
     STATE.adj = {}; (res[1].data||[]).forEach(function(a){ STATE.adj[a.licitacion_id]=a; });
     STATE.ofertasCount={}; STATE.docIncompleta={};
     (res[2].data||[]).forEach(function(o){ STATE.ofertasCount[o.licitacion_id]=(STATE.ofertasCount[o.licitacion_id]||0)+1; if(valState(o.validacion)!=='ok') STATE.docIncompleta[o.licitacion_id]=true; });
-    STATE.invCount={}; (res[3].data||[]).forEach(function(i){ STATE.invCount[i.licitacion_id]=(STATE.invCount[i.licitacion_id]||0)+1; });
+    STATE.invCount={}; STATE.invNames={}; (res[3].data||[]).forEach(function(i){ STATE.invCount[i.licitacion_id]=(STATE.invCount[i.licitacion_id]||0)+1; (STATE.invNames[i.licitacion_id]=STATE.invNames[i.licitacion_id]||[]).push(i.contratista||''); });
+    STATE.cambios=res[6].data||[];
     STATE.licitadas={}; (res[4].data||[]).forEach(function(r){ if(r.origen_presupuesto_id!=null) STATE.licitadas[r.origen_presupuesto_id]=true; });
     STATE.partidasLic={}; STATE.manoObra={};
     (res[5].data||[]).forEach(function(r){ var k=normname(r.nombre_proyecto); (STATE.partidasLic[k]=STATE.partidasLic[k]||[]).push({presupuesto_id:r.presupuesto_id,proyecto:r.nombre_proyecto,item:r.item,descripcion:r.descripcion,unidad:r.unidad,cantidad:Number(r.cantidad||1),costo:Number(r.mano_obra_costo||0),venta:Number(r.mano_obra_venta||0),rubro:r.rubro||'Sin rubro',partida_cod:r.partida_cod||r.item,partida:r.partida||r.descripcion}); });
     // Orden por código de partida como texto: los EDT de NISIRA ("0003.001.002.014") no
     // se pueden ordenar con parseInt — todos darían el mismo número y quedaría al azar.
     Object.keys(STATE.partidasLic).forEach(function(k){ var a=STATE.partidasLic[k]; a.sort(function(x,y){ return String(x.item).localeCompare(String(y.item),'es',{numeric:true}); }); STATE.manoObra[k]={proyecto:a[0].proyecto,costo:a.reduce(function(s,x){return s+x.costo;},0),venta:a.reduce(function(s,x){return s+x.venta;},0),partidas:a.length}; });
-    renderList();
+    STATE.real = { lics:STATE.lics, adj:STATE.adj, ofertasCount:STATE.ofertasCount, docIncompleta:STATE.docIncompleta, invCount:STATE.invCount, invNames:STATE.invNames, cambios:STATE.cambios };
+    if(STATE.demo || /[?&]demo=1/.test(location.search)) setDemo(true); else renderHome();
   }catch(e){ console.error(e); $('#app').innerHTML = errBox(String(e.message||e)); }
 }
 function errBox(m){ return '<div class="empty"><i data-lucide="alert-triangle"></i>No se pudo cargar el módulo de Licitaciones<br><span style="font-size:12px">'+esc(m)+'</span></div>'; }
@@ -500,8 +615,8 @@ function openPendientes(){
     title:'Pendientes por licitar', sub:'Partidas con mano de obra (presupuesto del módulo Supervisor) que aún no se han licitado.',
     wide:false,
     body: items.length
-      ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Proyecto</th><th class="num">Partidas pend.</th><th class="num">Mano de obra pendiente</th><th></th></tr></thead><tbody>'+
-          items.map(function(m){ return '<tr><td style="font-weight:800">'+esc(m.proyecto)+'</td><td class="num">'+m.count+' <span style="color:#94a3b8;font-weight:600">de '+m.total+'</span></td><td class="num" style="font-weight:800">'+money(m.costo,'PEN')+'</td><td><button class="btn btn-sm btn-primary" data-crear="'+esc(m.proyecto)+'" style="white-space:nowrap"><i data-lucide="plus"></i>Licitar</button></td></tr>'; }).join('')+
+      ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Proyecto</th><th class="num">Partidas pend.</th><th class="num">Mano de obra pendiente (US$)</th><th></th></tr></thead><tbody>'+
+          items.map(function(m){ return '<tr><td style="font-weight:800">'+esc(m.proyecto)+'</td><td class="num">'+m.count+' <span style="color:#94a3b8;font-weight:600">de '+m.total+'</span></td><td class="num" style="font-weight:800">'+money(m.costo,'USD')+'</td><td><button class="btn btn-sm btn-primary" data-crear="'+esc(m.proyecto)+'" style="white-space:nowrap"><i data-lucide="plus"></i>Licitar</button></td></tr>'; }).join('')+
           '</tbody></table></div><div style="font-size:11.5px;color:#94a3b8;margin-top:10px;font-weight:600">Cada licitación puede incluir una o varias partidas. Al crear eliges cuáles licitar.</div>'
       : '<div class="empty"><i data-lucide="check-circle-2"></i>No hay partidas pendientes por licitar.</div>',
     okText:'Cerrar', ok:function(){ closeModal(); },
@@ -539,7 +654,7 @@ function renderList(){
 
   app.innerHTML =
     '<div class="lc-head3">'+
-      '<div><h1 class="lc-h1b">Licitaciones</h1><div class="lc-subb">Gestión y seguimiento de procesos de contratación</div></div>'+
+      '<div><button class="btn btn-ghost btn-sm" id="to-home" style="margin:0 0 6px -10px"><i data-lucide="arrow-left"></i>Inicio de licitaciones</button><h1 class="lc-h1b">Todas las licitaciones</h1><div class="lc-subb">Gestión y seguimiento de procesos de contratación</div></div>'+
       '<div class="lc-actions2">'+
         '<button class="btn" id="btn-refresh"><i data-lucide="refresh-cw"></i>Actualizar</button>'+
         '<button class="btn btn-primary" id="btn-new"><i data-lucide="plus"></i>Nueva licitación</button>'+
@@ -569,6 +684,9 @@ function renderList(){
 
   $('#btn-refresh').onclick=boot;
   $('#btn-new').onclick=openCreate;
+  $('#to-home').onclick=function(){ f.q=''; f.est=''; f.group=''; renderHome(); };
+  if(STATE.demo){ $('#app').insertAdjacentHTML('afterbegin', demoBar()); icons(); }
+  bindDemoBar();
   $('#f-q').oninput=function(e){ f.q=e.target.value; renderList(); var i=$('#f-q'); if(i){ i.focus(); var v=i.value.length; i.setSelectionRange(v,v);} };
   $('#f-est').onchange=function(e){ f.est=e.target.value; f.group=''; renderList(); };
   $('#f-sort').onchange=function(e){ STATE.sort=e.target.value; renderList(); };
@@ -576,6 +694,7 @@ function renderList(){
   var cp=$('#chip-pend'); if(cp) cp.onclick=openPendientes;
   document.querySelectorAll('[data-group]').forEach(function(el){ el.onclick=function(){ var g=el.getAttribute('data-group'); f.group=(f.group===g?'':g); f.est=''; renderList(); }; });
   document.querySelectorAll('[data-lic]').forEach(function(el){ el.onclick=function(){ openDetail(el.getAttribute('data-lic')); }; });
+  STATE.from='list';
 }
 
 function licRow(l){
@@ -608,6 +727,277 @@ function licRow(l){
   '</div>';
 }
 
+
+// ══════════════ VISTA: INICIO (portada, indicadores y gráficos) ══════════════
+var ZONA_COL={ 'Sur':['#dcf5ea','#137a52'], 'Norte':['#dcf1fb','#0b6c93'], 'Centro':['#fdf0d2','#8a5a00'], 'Oriente':['#e3ecfd','#1f5fbf'], 'Internacional':['#ece6fd','#5b3fc4'] };
+var AV_COL=[['#dbeafe','#1d4ed8'],['#ccfbf1','#0f766e'],['#dcfce7','#15803d'],['#ede9fe','#6d28d9'],['#fef3c7','#92400e'],['#fce7f3','#9d174d']];
+function mM(n,cur){ n=Number(n||0); var a=Math.abs(n), sy=cur==='USD'?'US$ ':'S/ '; if(a>=1e6) return sy+(n/1e6).toLocaleString('es-PE',{maximumFractionDigits:1})+' M'; if(a>=1e3) return sy+Math.round(n/1e3).toLocaleString('es-PE')+' K'; return sy+Math.round(n).toLocaleString('es-PE'); }
+function yearOf(l){ return Number(String(l.fecha_creacion||l.created_at||'').slice(0,4))||null; }
+function grupoEstado(l){
+  if(STATE.adj[l.id] || l.estado==='Contratada') return 'adj';
+  if(l.estado==='Desierta' || l.estado==='Cerrada') return 'desc';
+  if(l.estado==='Evaluación') return 'eval';
+  if(l.estado==='Adjudicación') return 'pend';
+  return 'act';
+}
+var GRUPOS=[['act','Activas','#22b8a0','activas'],['eval','En evaluación','#2f6fe0','eval'],['pend','Por adjudicar','#f4c542','pendadj'],['adj','Adjudicadas','#6fd39b','adjudicadas'],['desc','Descartadas','#98a3b3','']];
+function metricas(lics){
+  var m={ pipeline:0, eval:0, proceso:0, nProceso:0, adj:0, nAdj:0, nCerr:0 };
+  lics.forEach(function(l){
+    var g=grupoEstado(l), base=Number(l.presupuesto_base||0);
+    if(g!=='desc' || STATE.adj[l.id]) m.pipeline+=base;
+    if(g==='eval') m.eval+=base;
+    if(g==='act' || g==='pend'){ m.proceso+=base; m.nProceso++; }
+    if(g==='adj'){ m.adj+=Number((STATE.adj[l.id]||{}).monto_adjudicado||base); m.nAdj++; }
+    if(g==='adj' || g==='desc') m.nCerr++;
+  });
+  m.tasa = m.nCerr ? Math.round(m.nAdj/m.nCerr*100) : 0;
+  return m;
+}
+function delta(cur,prev,pp){
+  if(!prev) return '';
+  var d = pp ? (cur-prev) : Math.round((cur-prev)/prev*100);
+  var up = d>=0;
+  return '<span class="'+(up?'lh-up':'lh-down')+'">'+(up?'↑':'↓')+' '+(up?'+':'')+d+(pp?' p.p.':'%')+'</span>vs. año anterior';
+}
+// Días promedio en cada etapa, a partir de los «Cambio de estado» registrados
+var ETAPAS=[['Publicación',['Borrador','Preparación'],'calendar-days','#eef4fe','#2f6fe0','#5b8def'],['Consultas',['Publicada','Invitaciones'],'message-circle-question','#eef4fe','#2f6fe0','#5b8def'],['Presentación de propuestas',['Ofertas'],'file-up','#eef4fe','#2f6fe0','#5b8def'],['Evaluación',['Evaluación'],'clipboard-check','#e6f7f3','#12805c','#4cc9a4'],['Adjudicación',['Adjudicación'],'trophy','#e6f7f3','#12805c','#4cc9a4']];
+function tiemposEtapa(lics){
+  var ids={}; lics.forEach(function(l){ ids[l.id]=l; });
+  var porLic={}; (STATE.cambios||[]).forEach(function(e){ if(ids[e.licitacion_id]) (porLic[e.licitacion_id]=porLic[e.licitacion_id]||[]).push(e); });
+  var acum={}, n={};
+  Object.keys(porLic).forEach(function(id){
+    var L=ids[id], ev=porLic[id].slice().sort(function(a,b){ return new Date(a.created_at)-new Date(b.created_at); });
+    var estado='Borrador', desde=new Date(L.created_at||L.fecha_creacion);
+    ev.forEach(function(e){
+      var partes=String(e.detalle||'').split('→'); var to=(partes[1]||'').trim(); if(!to) return;
+      var t=new Date(e.created_at), dias=Math.max(0,(t-desde)/86400000);
+      ETAPAS.forEach(function(et){ if(et[1].indexOf(estado)>=0){ acum[et[0]]=(acum[et[0]]||0)+dias; n[et[0]+'|'+id]=1; } });
+      estado=to; desde=t;
+    });
+  });
+  return ETAPAS.map(function(et){
+    var cnt=Object.keys(n).filter(function(k){ return k.indexOf(et[0]+'|')===0; }).length;
+    return { et:et, dias: cnt ? acum[et[0]]/cnt : null };
+  });
+}
+function iniciales(nombre){ var p=String(nombre||'?').replace(/\b(S\.?A\.?C?\.?|E\.?I\.?R\.?L\.?|SRL|SAC)\b/gi,'').trim().split(/\s+/); return ((p[0]||'?')[0]+((p[1]||'')[0]||'')).toUpperCase(); }
+function estPill(l){
+  var g=grupoEstado(l);
+  var map={ act:['Activa','#e3f6ee','#12805c','#1aa37a','check'], eval:['En evaluación','#e5eefd','#1f5fbf','#2f6fe0','clock'], pend:['Pendiente','#fdf3d7','#8a5a00','#e0a100','hourglass'], adj:['Adjudicada','#dff5ea','#12805c','#1aa37a','award'], desc:[l.estado==='Desierta'?'Desierta':'Cerrada','#eef1f5','#5b6b82','#98a3b3','x'] };
+  if(g==='act' && ['Borrador','Preparación'].indexOf(l.estado)>=0) map.act=['En preparación','#eef1f5','#475569','#94a3b8','pencil'];
+  var x=map[g];
+  return '<span class="lh-est" style="background:'+x[1]+';color:'+x[2]+'"><i style="background:'+x[3]+'"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">'+({check:'<path d="M5 12l5 5 9-10"/>',clock:'<path d="M12 7v5l3 2"/>',hourglass:'<path d="M7 4h10M7 20h10M8 4c0 5 8 5 8 8s-8 3-8 8"/>',award:'<path d="M5 12l5 5 9-10"/>',x:'<path d="M7 7l10 10M17 7L7 17"/>',pencil:'<path d="M5 19l4-1 9-9-3-3-9 9z"/>'})[x[4]]+'</svg></i>'+esc(x[0])+'</span>';
+}
+function avanceDe(l){ if(grupoEstado(l)==='adj') return 100; var i=FLOW.indexOf(l.estado); if(i<0) i=0; return Math.round(i/(FLOW.length-1)*100); }
+
+function renderHome(){
+  STATE.view='home'; STATE.from='home';
+  var H=STATE.home=STATE.home||{ yDonut:'', yBars:'', yTimes:'' };
+  var app=$('#app'), hoy=new Date();
+  var anio=hoy.getFullYear();
+  var L=STATE.lics;
+  var mAll=metricas(L);
+  var mY=metricas(L.filter(function(l){ return yearOf(l)===anio; })), mP=metricas(L.filter(function(l){ return yearOf(l)===anio-1; }));
+  var fecha=hoy.toLocaleDateString('es-PE',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); fecha=fecha.charAt(0).toUpperCase()+fecha.slice(1);
+  var pend=pendientesLic(); var potencial=pend.reduce(function(s,x){ return s+x.costo; },0);
+  if(STATE.demo) potencial=STATE.demoPotencial||potencial;
+
+  function kpi(ic,bg,col,v,l,d,go){ return '<div class="lh-kpi" data-go="'+go+'"><div class="lh-kico" style="background:'+bg+';color:'+col+'"><i data-lucide="'+ic+'"></i></div><div style="min-width:0"><div class="lh-kv">'+v+'</div><div class="lh-kl">'+esc(l)+'</div><div class="lh-kd">'+d+'</div></div></div>'; }
+  var pctEval = mY.pipeline ? Math.round(mAll.eval/mY.pipeline*100) : 0;
+
+  // donut
+  var Ld = H.yDonut ? L.filter(function(l){ return String(yearOf(l))===H.yDonut; }) : L;
+  var cuenta={}; Ld.forEach(function(l){ var g=grupoEstado(l); cuenta[g]=(cuenta[g]||0)+1; });
+  var tot=Ld.length, ang=0, R=66, C=2*Math.PI*R;
+  var arcs = tot ? GRUPOS.map(function(g){ var n=cuenta[g[0]]||0; if(!n) return ''; var len=C*n/tot; var seg='<circle cx="84" cy="84" r="'+R+'" fill="none" stroke="'+g[2]+'" stroke-width="30" stroke-dasharray="'+(len-2)+' '+(C-len+2)+'" stroke-dashoffset="'+(-ang)+'" transform="rotate(-90 84 84)"/>'; ang+=len; return seg; }).join('') : '<circle cx="84" cy="84" r="'+R+'" fill="none" stroke="#eef2f7" stroke-width="30"/>';
+  var years=uniq(L.map(yearOf).filter(Boolean).map(String)).sort().reverse();
+  function ySel(id,val,todos){ return '<select class="lh-sel" id="'+id+'"><option value="">'+todos+'</option>'+years.map(function(y){ return '<option'+(val===y?' selected':'')+'>'+y+'</option>'; }).join('')+'</select>'; }
+
+  // barras
+  var Lb = H.yBars ? L.filter(function(l){ return String(yearOf(l))===H.yBars; }) : L;
+  var mb=metricas(Lb);
+  var barras=[['Pipeline total',mb.pipeline,'linear-gradient(180deg,#14305e,#0c1f3d)',''],['En evaluación',mb.eval,'linear-gradient(180deg,#5b93ef,#3b78e6)',''],['En proceso',mb.proceso,'linear-gradient(180deg,#9cc4fb,#7fb0f6)',''],['Adjudicadas',mb.adj,'linear-gradient(180deg,#45d0b2,#22b8a0)',''],['Potencial (US$)',potencial,'','pot']];
+  var maxB=Math.max.apply(null,barras.filter(function(b){ return b[3]!=='pot'; }).map(function(b){ return b[1]; }).concat([1]));
+  var paso=Math.pow(10,Math.floor(Math.log10(maxB)))*(maxB/Math.pow(10,Math.floor(Math.log10(maxB)))>5?2:1); var tope=Math.ceil(maxB/paso)*paso||1;
+  var ticks=[]; for(var t=tope;t>=0;t-=tope/4) ticks.push(t);
+
+  // tiempos
+  var Lt = H.yTimes ? L.filter(function(l){ return String(yearOf(l))===H.yTimes; }) : L;
+  var tiempos=tiemposEtapa(Lt); var maxT=Math.max.apply(null,tiempos.map(function(x){ return x.dias||0; }).concat([1]));
+
+  // tabla
+  var ult=L.slice().sort(function(a,b){ return String(b.codigo).localeCompare(String(a.codigo),'es',{numeric:true}); }).slice(0,6);
+  var filas = ult.length ? ult.map(function(l){
+    var z=ZONA_COL[l.zona]||['#eef1f5','#475569'];
+    var av=avanceDe(l), g=grupoEstado(l);
+    var col = g==='adj'?'#22b8a0':(av>=70?'#22b8a0':'#4f86ea');
+    var names=(STATE.invNames[l.id]||[]).filter(Boolean);
+    var avs=names.slice(0,2).map(function(n,i){ var c=AV_COL[(n.charCodeAt(0)+i)%AV_COL.length]; return '<span title="'+esc(n)+'" style="background:'+c[0]+';color:'+c[1]+'">'+esc(iniciales(n))+'</span>'; }).join('')+(names.length>2?'<span class="more">+'+(names.length-2)+'</span>':'');
+    var adj=STATE.adj[l.id];
+    return '<tr class="r" data-open="'+l.id+'">'+
+      '<td style="width:34px"><button class="lh-exp" data-exp="'+l.id+'" title="Ver resumen"><i data-lucide="chevron-right"></i></button></td>'+
+      '<td class="cod">'+esc(l.codigo)+'</td>'+
+      '<td class="nm" title="'+esc(l.nombre)+'">'+esc(l.nombre)+'</td>'+
+      '<td>'+(l.zona?'<span class="lh-zona" style="background:'+z[0]+';color:'+z[1]+'">'+esc(l.zona)+'</span>':'<span style="color:#98a3b3">—</span>')+'</td>'+
+      '<td class="pj" title="'+esc(l.proyecto||'')+'">'+esc(l.proyecto||'—')+'</td>'+
+      '<td class="num">'+money(l.presupuesto_base,l.moneda)+'</td>'+
+      '<td>'+estPill(l)+'</td>'+
+      '<td class="num">'+(l.fecha_limite?new Date(l.fecha_limite+'T12:00:00').toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'}):'—')+'</td>'+
+      '<td><div class="lh-prog"><div class="trk"><i style="width:'+av+'%;background:'+col+'"></i></div><span>'+av+'%</span></div></td>'+
+      '<td><div class="lh-av">'+(avs||'<span style="color:#98a3b3;font-weight:600">—</span>')+'</div></td>'+
+      '<td style="text-align:center"><button class="lh-dots" data-open="'+l.id+'" title="Abrir"><i data-lucide="more-horizontal"></i></button></td>'+
+    '</tr>'+
+    '<tr class="lh-xrow" data-xrow="'+l.id+'" style="display:none"><td colspan="11"><div class="lh-xbox">'+
+      '<div><b>'+(STATE.invCount[l.id]||0)+'</b>invitados</div>'+
+      '<div><b>'+(STATE.ofertasCount[l.id]||0)+'</b>ofertas recibidas</div>'+
+      '<div><b>'+esc(l.especialidad||'—')+'</b>especialidad</div>'+
+      '<div><b>'+esc(l.estado)+'</b>etapa actual</div>'+
+      (adj?'<div><b>'+money(adj.monto_adjudicado,l.moneda)+'</b>adjudicado a '+esc(adj.contratista||'')+'</div>':'')+
+    '</div></td></tr>';
+  }).join('') : '<tr><td colspan="11"><div class="lh-empty">Todavía no hay licitaciones. Crea la primera con «Nueva licitación»'+(STATE.demo?'':' o mira cómo se vería con <button class="lh-link" id="demo-on2" style="display:inline">datos de ejemplo</button>')+'.</div></td></tr>';
+
+  app.innerHTML = '<div class="lh">'+
+    (STATE.demo?demoBar():'')+
+    '<div class="lh-hero">'+
+      '<div class="lh-date">'+esc(fecha)+'</div>'+
+      '<h1 class="lh-title">Licitaciones</h1>'+
+      '<div class="lh-sub">Del análisis a la ejecución, más oportunidades para crecer.</div>'+
+      '<div class="lh-hero-r"><div class="lh-tag">Proyectos hoy,<br>alianzas mañana.</div><button class="lh-new" id="btn-new"><i data-lucide="plus"></i>Nueva licitación</button></div>'+
+    '</div>'+
+    '<div class="lh-kpis">'+
+      kpi('file-search','#e3f6ee','#12805c',mM(mY.pipeline),'Pipeline '+anio,delta(mY.pipeline,mP.pipeline),'todas')+
+      kpi('target','#e5eefd','#1f5fbf',mM(mAll.eval),'En evaluación',pctEval+'% del pipeline','eval')+
+      kpi('hourglass','#fdf0d2','#b7791f',mM(mAll.proceso),'En proceso',mAll.nProceso+' licitacion'+(mAll.nProceso===1?'':'es'),'activas')+
+      kpi('file-check-2','#e3f6ee','#12805c',mM(mY.adj),'Adjudicadas '+anio,delta(mY.adj,mP.adj),'adjudicadas')+
+      kpi('trophy','#fdf0d2','#b7791f',mY.tasa+'%','Tasa de adjudicación',mP.nCerr?delta(mY.tasa,mP.tasa,true):(mY.nCerr?mY.nAdj+' de '+mY.nCerr+' cerradas':'sin procesos cerrados'),'adjudicadas')+
+    '</div>'+
+    '<div class="lh-grid3">'+
+      '<div class="lh-card"><div class="lh-ch"><div class="lh-ct">Estado de licitaciones</div>'+ySel('y-donut',H.yDonut,'Todos los años')+'</div>'+
+        '<div class="lh-donut-w"><div class="lh-donut"><svg width="168" height="168" viewBox="0 0 168 168">'+arcs+'</svg><div class="lh-donut-c"><b>'+tot+'</b><span>Licitaciones</span></div></div>'+
+        '<div class="lh-leg">'+GRUPOS.map(function(g){ var n=cuenta[g[0]]||0; return '<div class="lh-leg-r" data-grp="'+g[3]+'"><span class="d" style="background:'+g[2]+'"></span><b>'+n+'</b><span>'+esc(g[1])+'</span><em>'+(tot?Math.round(n/tot*100):0)+'%</em></div>'; }).join('')+'</div></div>'+
+      '</div>'+
+      '<div class="lh-card"><div class="lh-ch"><div class="lh-ct">Valor por etapa</div>'+ySel('y-bars',H.yBars,'Todos los años')+'</div>'+
+        '<div class="lh-bars"><div class="lh-yax">'+ticks.map(function(t){ return '<div><span>'+mM(t).replace(' K','K').replace(' M',' M')+'</span></div>'; }).join('')+'</div><div></div>'+
+        barras.map(function(b){ var pot=b[3]==='pot'; var h=pot?(b[1]>0?45:2):Math.max(2,Math.round(b[1]/tope*100)); return '<div class="lh-bar '+b[3]+'" title="'+esc(b[0])+': '+(pot?money(b[1],'USD')+' · mano de obra del presupuesto aún sin licitar. Está en dólares (NISIRA): su altura no se compara con las barras en soles':money(b[1],'PEN'))+'"><b>'+mM(b[1],pot?'USD':'PEN')+'</b><i style="height:'+h+'%;background:'+(b[2]||'')+'"></i><small>'+esc(b[0])+'</small></div>'; }).join('')+
+        '</div>'+
+      '</div>'+
+      '<div class="lh-card"><div class="lh-ch"><div class="lh-ct">Tiempo promedio por etapa</div><select class="lh-sel" id="y-times"><option value="">Todos</option><option value="'+anio+'"'+(H.yTimes===String(anio)?' selected':'')+'>Este año</option></select></div>'+
+        '<div class="lh-times">'+tiempos.map(function(x){ var et=x.et; var w=x.dias==null?0:Math.max(6,Math.round(x.dias/maxT*100)); return '<div class="lh-tr"><span class="ic" style="background:'+et[3]+';color:'+et[4]+'"><i data-lucide="'+et[2]+'"></i></span><span>'+esc(et[0])+'</span><span class="trk"><i style="width:'+w+'%;background:'+et[5]+'"></i></span><b>'+(x.dias==null?'—':Math.round(x.dias)+' día'+(Math.round(x.dias)===1?'':'s'))+'</b></div>'; }).join('')+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="lh-quick">'+
+      [['calendar-days','#eef4fe','#1f6fd1','Calendario<br>de procesos','cal'],['users','#eef4fe','#1f6fd1','Contratistas<br>invitados','inv'],['bar-chart-3','#e6f7f3','#12805c','Comparativo<br>de propuestas','comp'],['list-checks','#eef4fe','#1f6fd1','Pendientes<br>por licitar','pend'],['trophy','#fdf0d2','#b7791f','Histórico de<br>adjudicaciones','hist'],['pie-chart','#eef4fe','#1f6fd1','Todas las<br>licitaciones','todas']]
+        .map(function(q){ return '<button class="lh-q" data-quick="'+q[4]+'"><span class="ic" style="background:'+q[1]+';color:'+q[2]+'"><i data-lucide="'+q[0]+'"></i></span><span>'+q[3]+'</span></button>'; }).join('')+
+    '</div>'+
+    '<div class="lh-tblc"><div class="lh-tblh"><div class="lh-ct" style="font-size:18px">Últimas licitaciones</div><button class="lh-link" data-quick="todas">Ver todas <i data-lucide="arrow-right" style="width:15px;height:15px"></i></button></div>'+
+      '<div class="lh-tblwrap"><table class="lh-tbl"><thead><tr><th></th><th>Código</th><th>Nombre de la licitación</th><th>Zona</th><th>Proyecto</th><th>Valor estimado</th><th>Estado</th><th>Fecha de cierre</th><th>Avance</th><th>Invitados</th><th style="text-align:center">Acciones</th></tr></thead><tbody>'+filas+'</tbody></table></div>'+
+    '</div>'+
+    '<div class="lh-foot">'+
+      '<div class="lh-banner"><h3>Nuevas oportunidades, mayor impacto.</h3><p>Del campo a la cadena de frío: cada licitación suma a la obra.</p></div>'+
+      '<div class="lh-help"><span class="ic"><i data-lucide="list-checks"></i></span><div><h4>'+(pend.length||STATE.demo?(STATE.demo?STATE.demoPendientes:pend.reduce(function(s,x){return s+x.count;},0))+' partidas por licitar':'Sin partidas pendientes')+'</h4><p>'+(pend.length||STATE.demo?'Mano de obra del presupuesto de las obras que aún no entra a ninguna licitación.':'Todo lo que se ejecuta con contratista ya está en una licitación.')+'</p></div><button data-quick="pend">Ver pendientes</button></div>'+
+    '</div>'+
+  '</div>';
+  icons();
+
+  $('#btn-new').onclick=openCreate;
+  var d2=$('#demo-on2'); if(d2) d2.onclick=function(ev){ ev.stopPropagation(); setDemo(true); };
+  bindDemoBar();
+  $('#y-donut').onchange=function(){ H.yDonut=this.value; renderHome(); };
+  $('#y-bars').onchange=function(){ H.yBars=this.value; renderHome(); };
+  $('#y-times').onchange=function(){ H.yTimes=this.value; renderHome(); };
+  function irLista(grupo){ STATE.filter.q=''; STATE.filter.est=''; STATE.filter.group=grupo||''; renderList(); }
+  document.querySelectorAll('[data-go]').forEach(function(el){ el.onclick=function(){ var g=el.getAttribute('data-go'); irLista(g==='todas'?'':g); }; });
+  document.querySelectorAll('[data-grp]').forEach(function(el){ el.onclick=function(){ irLista(el.getAttribute('data-grp')); }; });
+  document.querySelectorAll('[data-quick]').forEach(function(el){ el.onclick=function(){
+    var q=el.getAttribute('data-quick');
+    if(q==='todas') irLista('');
+    else if(q==='hist') irLista('adjudicadas');
+    else if(q==='comp') irLista('eval');
+    else if(q==='pend'){ if(STATE.demo) toast('En el modo ejemplo no hay presupuesto real que revisar.', true); else openPendientes(); }
+    else if(q==='cal') openCalendario();
+    else if(q==='inv') openInvitadosResumen();
+  }; });
+  document.querySelectorAll('[data-exp]').forEach(function(b){ b.onclick=function(ev){ ev.stopPropagation(); var id=b.getAttribute('data-exp'); var r=document.querySelector('[data-xrow="'+id+'"]'); var on=r.style.display==='none'; r.style.display=on?'':'none'; b.classList.toggle('on',on); }; });
+  document.querySelectorAll('[data-open]').forEach(function(el){ el.onclick=function(ev){ ev.stopPropagation(); openDetail(el.getAttribute('data-open')); }; });
+}
+
+function openCalendario(){
+  var prox=STATE.lics.filter(function(l){ return l.fecha_limite && ['act','eval','pend'].indexOf(grupoEstado(l))>=0; })
+    .sort(function(a,b){ return String(a.fecha_limite).localeCompare(String(b.fecha_limite)); });
+  openModal({ title:'Calendario de procesos', sub:'Cierres de licitaciones en curso, del más cercano al más lejano.',
+    body: prox.length ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Cierre</th><th>Licitación</th><th>Proyecto</th><th>Etapa</th><th class="num">Faltan</th></tr></thead><tbody>'+
+      prox.map(function(l){ var d=daysTo(l.fecha_limite); return '<tr><td style="font-weight:800;white-space:nowrap">'+fmtDate(l.fecha_limite)+'</td><td>'+esc(l.codigo)+' · '+esc(l.nombre)+'</td><td>'+esc(l.proyecto||'—')+'</td><td>'+esc(l.estado)+'</td><td class="num" style="font-weight:800;color:'+(d<0?'#b42318':(d<=7?'#b7791f':'#12805c'))+'">'+(d<0?Math.abs(d)+' d vencida':d+' d')+'</td></tr>'; }).join('')+
+      '</tbody></table></div>' : '<div class="empty"><i data-lucide="calendar-check"></i>No hay cierres pendientes.</div>',
+    okText:'Cerrar', ok:function(){ closeModal(); } });
+}
+function openInvitadosResumen(){
+  var por={};
+  Object.keys(STATE.invNames||{}).forEach(function(id){ (STATE.invNames[id]||[]).forEach(function(n){ if(!n) return; var k=n.trim(); por[k]=por[k]||{ n:k, inv:0, gan:0 }; por[k].inv++; }); });
+  Object.values(STATE.adj||{}).forEach(function(a){ var k=String(a.contratista||'').trim(); if(!k) return; por[k]=por[k]||{ n:k, inv:0, gan:0 }; por[k].gan++; });
+  var rows=Object.values(por).sort(function(a,b){ return b.inv-a.inv || b.gan-a.gan; });
+  openModal({ title:'Contratistas invitados', sub:'A cuántas licitaciones se invitó a cada empresa y cuántas ganó.',
+    body: rows.length ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Empresa</th><th class="num">Invitaciones</th><th class="num">Adjudicadas</th><th class="num">Tasa</th></tr></thead><tbody>'+
+      rows.map(function(r){ return '<tr><td style="font-weight:800">'+esc(r.n)+'</td><td class="num">'+r.inv+'</td><td class="num">'+r.gan+'</td><td class="num">'+(r.inv?Math.round(r.gan/r.inv*100)+'%':'—')+'</td></tr>'; }).join('')+
+      '</tbody></table></div>' : '<div class="empty"><i data-lucide="users"></i>Aún no se ha invitado a nadie.</div>',
+    okText:'Cerrar', ok:function(){ closeModal(); } });
+}
+
+// ══════════════ MODO EJEMPLO: datos ficticios solo en pantalla, nada se guarda ══════════════
+function demoBar(){ return '<div class="lh-demo"><i data-lucide="flask-conical" style="width:16px;height:16px"></i>Estás viendo datos de ejemplo para revisar el diseño. Nada de esto existe en la base ni se guarda.<button id="demo-off">Salir del ejemplo</button></div>'; }
+function bindDemoBar(){ var b=$('#demo-off'); if(b) b.onclick=function(){ setDemo(false); }; var o=$('#demo-on'); if(o) o.onclick=function(){ setDemo(true); }; }
+function setDemo(on){
+  STATE.demo=on;
+  if(on){ var d=demoData(); STATE.lics=d.lics; STATE.adj=d.adj; STATE.ofertasCount=d.ofertas; STATE.docIncompleta={}; STATE.invCount=d.invCount; STATE.invNames=d.invNames; STATE.cambios=d.cambios; STATE.demoPotencial=2400000; STATE.demoPendientes=47; }
+  else if(STATE.real){ var r=STATE.real; STATE.lics=r.lics; STATE.adj=r.adj; STATE.ofertasCount=r.ofertasCount; STATE.docIncompleta=r.docIncompleta; STATE.invCount=r.invCount; STATE.invNames=r.invNames; STATE.cambios=r.cambios; }
+  try{ var u=new URL(location.href); if(on) u.searchParams.set('demo','1'); else u.searchParams.delete('demo'); history.replaceState(null,'',u); }catch(e){}
+  renderHome();
+}
+function demoData(){
+  var seed=7; function rnd(){ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; }
+  var hoy=new Date(); hoy.setHours(12,0,0,0);
+  function dia(off){ var d=new Date(hoy); d.setDate(d.getDate()+off); return d; }
+  function iso(d){ return d.toISOString().slice(0,10); }
+  var EMP=['Frío Andino SAC','Montajes del Sur SAC','Climatek Perú','Paneles Norte EIRL','Estructuras Pacífico','Electro Industrial Lima','Obras Civiles Rímac','Hermetic Seal SAC','Termo Aislantes del Perú'];
+  var OBRAS=[['Expansión Ica','Sur','Agrícola del Sur'],['Planta Trujillo','Norte','Frutícola Norte'],['Centro de Distribución','Centro','Logística Lima'],['Planta México','Internacional','Berries MX'],['Planta Ica','Sur','Agrícola del Sur'],['Túneles Chao','Norte','Arándanos Chao'],['Cámaras Piura','Norte','Mango Export'],['Almacén Pucallpa','Oriente','Selva Foods']];
+  var TRAB=['Obras civiles','Cámaras de frío','Sistema eléctrico','Movimiento de tierras','Instalación sanitaria','Montaje de paneles','Hermetizado de túneles','Estructura metálica','Instalación de puertas rápidas','Red contra incendio','Montaje de evaporadores','Losa de piso térmico'];
+  var ESP={ 'Obras civiles':'Civil','Cámaras de frío':'Refrigeración','Sistema eléctrico':'Eléctrica','Movimiento de tierras':'Civil','Instalación sanitaria':'Sanitaria','Montaje de paneles':'Montaje','Hermetizado de túneles':'Montaje','Estructura metálica':'Estructuras','Instalación de puertas rápidas':'Montaje','Red contra incendio':'Sanitaria','Montaje de evaporadores':'Refrigeración','Losa de piso térmico':'Civil' };
+  // [nº, estado, obra, trabajo, monto, días desde creación, días al cierre, adjudicada?]
+  var spec=[
+    [37,'Evaluación',0,0,2500000,-24,14],[36,'Ofertas',1,1,1800000,-18,9],[35,'Adjudicación',2,2,950000,-30,4],[34,'Contratada',3,3,3200000,-45,-1,1],[33,'Invitaciones',4,4,620000,-10,12],
+    [32,'Ofertas',5,5,1450000,-16,6],[31,'Publicada',6,6,780000,-6,21],[30,'Evaluación',7,7,2100000,-28,-3],[29,'Invitaciones',0,8,540000,-9,15],[28,'Contratada',1,9,1250000,-60,-20,1],
+    [27,'Evaluación',2,10,1980000,-33,-6],[26,'Ofertas',3,11,2350000,-20,3],[25,'Adjudicación',4,0,1320000,-38,-2],[24,'Contratada',5,1,880000,-70,-35,1],[23,'Desierta',6,2,410000,-80,-40],
+    [22,'Borrador',7,3,1650000,-2,30],[21,'Contratada',0,4,1140000,-90,-55,1],[20,'Publicada',1,5,720000,-5,24],[19,'Evaluación',2,6,1580000,-35,-8],[18,'Adjudicación',3,7,900000,-41,-5],
+    [17,'Contratada',4,8,2050000,-110,-70,1],[16,'Cerrada',5,9,600000,-120,-80],[15,'Contratada',6,10,1300000,-130,-95,1],[14,'Desierta',7,11,350000,-140,-100],[13,'Contratada',0,0,1010000,-150,-120,1],
+    [12,'Preparación',1,1,1480000,-3,26],[11,'Cerrada',2,2,520000,-160,-130],[10,'Contratada',3,3,1750000,-170,-140,1],[9,'Ofertas',4,4,690000,-14,8]
+  ];
+  var lics=[], adj={}, ofertas={}, invCount={}, invNames={}, cambios=[];
+  spec.forEach(function(x){
+    var id='demo-'+x[0], ob=OBRAS[x[2]], tr=TRAB[x[3]], creado=dia(x[5]);
+    var l={ id:id, codigo:'LIC-'+hoy.getFullYear()+'-'+String(x[0]).padStart(3,'0'), nombre:tr+' – '+ob[0].replace('Expansión ','').replace('Planta ','Planta '), proyecto:ob[0], cliente:ob[2], zona:ob[1], especialidad:ESP[tr], estado:x[1], moneda:'PEN', presupuesto_base:x[4], fecha_creacion:iso(creado), created_at:creado.toISOString(), fecha_limite:iso(dia(x[6])), responsable:'Carlos Vega' };
+    lics.push(l);
+    var nInv=2+Math.floor(rnd()*4); var nombres=[]; for(var i=0;i<nInv;i++){ nombres.push(EMP[(x[0]*3+i*2)%EMP.length]); }
+    nombres=uniq(nombres); invNames[id]=['Borrador','Preparación'].indexOf(x[1])>=0?[]:nombres; invCount[id]=invNames[id].length;
+    var idx=FLOW.indexOf(x[1]);
+    if(idx>=FLOW.indexOf('Ofertas') || x[1]==='Desierta') ofertas[id]=x[1]==='Desierta'?0:Math.max(1,nombres.length-1);
+    if(x[7]){ adj[id]={ licitacion_id:id, contratista:nombres[0], monto_adjudicado:Math.round(x[4]*(0.9+rnd()*0.06)/1000)*1000 }; }
+    // cambios de estado con duraciones creíbles por etapa
+    var dur={ 'Borrador':2+rnd()*2, 'Preparación':1+rnd()*1.5, 'Publicada':3+rnd()*3, 'Invitaciones':4+rnd()*4, 'Ofertas':12+rnd()*5, 'Evaluación':15+rnd()*6, 'Adjudicación':5+rnd()*3, 'Contratada':6 };
+    var destino = x[1]==='Desierta' ? FLOW.indexOf('Evaluación') : (x[1]==='Cerrada' ? FLOW.indexOf('Evaluación') : idx);
+    var t=new Date(creado);
+    for(var k=0;k<destino;k++){ t=new Date(t.getTime()+dur[FLOW[k]]*86400000); cambios.push({ licitacion_id:id, detalle:FLOW[k]+' → '+FLOW[k+1], created_at:t.toISOString() }); }
+    if(x[1]==='Desierta' || x[1]==='Cerrada'){ t=new Date(t.getTime()+dur['Evaluación']*86400000); cambios.push({ licitacion_id:id, detalle:'Evaluación → '+x[1], created_at:t.toISOString() }); }
+  });
+  // año anterior, para que los indicadores muestren la comparación
+  for(var j=1;j<=14;j++){
+    var id='demo-p'+j, c=new Date(hoy.getFullYear()-1, (j*5)%12, 5+j), gana=j%2===0, monto=700000+((j*337)%9)*150000;
+    lics.push({ id:id, codigo:'LIC-'+(hoy.getFullYear()-1)+'-'+String(40-j).padStart(3,'0'), nombre:TRAB[j%TRAB.length]+' – '+OBRAS[j%OBRAS.length][0], proyecto:OBRAS[j%OBRAS.length][0], cliente:OBRAS[j%OBRAS.length][2], zona:OBRAS[j%OBRAS.length][1], especialidad:ESP[TRAB[j%TRAB.length]], estado:j%5===0?'Evaluación':(gana?'Contratada':'Desierta'), moneda:'PEN', presupuesto_base:monto, fecha_creacion:iso(c), created_at:c.toISOString(), fecha_limite:iso(new Date(c.getTime()+30*86400000)), responsable:'Carlos Vega' });
+    invNames[id]=[EMP[j%EMP.length],EMP[(j+4)%EMP.length]]; invCount[id]=2; ofertas[id]=2;
+    if(gana && j%5!==0) adj[id]={ licitacion_id:id, contratista:EMP[j%EMP.length], monto_adjudicado:Math.round(monto*0.93) };
+  }
+  return { lics:lics, adj:adj, ofertas:ofertas, invCount:invCount, invNames:invNames, cambios:cambios };
+}
+
 // ══════════════ CREAR LICITACIÓN ══════════════
 async function ensureRefs(){
   if(STATE.contratistas.length && STATE.proyectos.length) return;
@@ -627,6 +1017,7 @@ async function ensureRefs(){
 }
 
 async function openCreate(prefill){
+  if(STATE.demo){ toast('Estás viendo datos de ejemplo. Sal del modo ejemplo para crear una licitación real.', true); return; }
   prefill=(typeof prefill==='string')?prefill:null;
   await ensureRefs();
   // sugerir siguiente código
@@ -837,6 +1228,7 @@ async function doCreate(){
 
 // ══════════════ DETALLE ══════════════
 async function openDetail(id){
+  if(STATE.demo){ toast('Es una licitación de ejemplo: no tiene detalle. Sal del modo ejemplo para trabajar con las reales.', true); return; }
   STATE.view='detail'; STATE.tab=STATE.tab||'resumen';
   var app=$('#app'); app.innerHTML='<div style="text-align:center;padding:80px 20px"><div class="spinner"></div><div style="color:#94a3b8;font-weight:600">Cargando licitación…</div></div>';
   try{
@@ -893,7 +1285,7 @@ function renderDetail(){
     }).join('')+'</div>'+
     '<div id="tabbody"></div>';
   icons();
-  $('#back').onclick=function(){ STATE.tab='resumen'; renderList(); };
+  $('#back').onclick=function(){ STATE.tab='resumen'; if(STATE.from==='list') renderList(); else renderHome(); };
   document.querySelectorAll('[data-tab]').forEach(function(b){ b.onclick=function(){ STATE.tab=b.getAttribute('data-tab'); renderDetail(); }; });
   bindHeadActions();
   renderTab();
