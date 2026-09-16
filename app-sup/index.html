@@ -5015,6 +5015,7 @@ async function iniciarApp() {
   setProjectHealth('idle','Sin proyecto');
   await cargarProyectos();
   initPersonalGrid();
+  rdQrEntrada();
   // Fecha por defecto hoy
   const hoy = new Date().toISOString().split('T')[0];
   ['rd-fecha','per-fecha','fr-fecha','fh-semana'].forEach(id => {
@@ -10976,6 +10977,8 @@ async function rdPendLoad(){
     return;
   }
   rdPlanoCargado=false; rdPlanoObra=null;
+  if(rdZonasObra!==cod){ rdZonas=null; rdZonasObra=cod; if(rdPendZona && rdPendZona.cod!==cod){ rdPendZona=null; rdPendFArea=''; } }
+  rdZonasCargar().then(()=>{ const dl=document.getElementById('pend-zonas-dl'); if(dl) dl.innerHTML=rdZonasNombres().map(z=>'<option value="'+rdEsc2(z)+'">').join(''); });
   try{ rdPendList=await sbFetch('/rest/v1/pendientes?cod_proyecto=eq.'+encodeURIComponent(cod)+'&order=created_at.desc')||[]; }
   catch(e){ rdPendList=[]; console.warn('pendientes load', e); }
   if(rdPendOpen && !rdPendList.some(p=>p.id===rdPendOpen)) rdPendOpen=null;
@@ -11037,6 +11040,8 @@ function rdPendRender(){
     + '</div>'
   + '</div>';
 
+  h+=rdZonaBannerHTML();
+
   h+='<nav class="p2-views">'+PEND_VISTAS.map(v=>{
       const n=rdPendList.filter(v.f).length;
       return '<button type="button" class="p2-view '+(rdPendView===v.k?'on ':'')+(v.hot&&n?'hot':'')+'" onclick="rdPendSetVista(\''+v.k+'\')">'+v.l+'<i>'+n+'</i></button>';
@@ -11052,7 +11057,7 @@ function rdPendRender(){
         + '<input id="pend-titulo" class="pend-inp grow" placeholder="Título del pendiente" onkeydown="if(event.key===\'Enter\')rdPendAdd()">'
       + '</div>'
       + '<div class="row">'
-        + '<input id="pend-cat" class="pend-inp" placeholder="Área (ej: SADEMA)">'
+        + '<input id="pend-cat" class="pend-inp" list="pend-zonas-dl" placeholder="Área o zona (ej: SADEMA)" value="'+rdEsc2(rdPendZona?rdPendZona.nombre:'')+'">'
         + '<input id="pend-resp" class="pend-inp" placeholder="Responsable">'
         + '<input id="pend-fecha" type="date" class="pend-inp" title="Fecha objetivo">'
         + '<button class="pend-act primary" onclick="rdPendAdd()"><i data-lucide="check" class="ri"></i>Agregar</button>'
@@ -11074,6 +11079,7 @@ function rdPendRender(){
     + '</label>';
   }
 
+  h+='<datalist id="pend-zonas-dl">'+rdZonasNombres().map(z=>'<option value="'+rdEsc2(z)+'">').join('')+'</datalist>';
   h+='<div class="p2-body"><div class="p2-list" id="p2-list">'+rdPendListaHTML()+'</div>'
     + '<aside class="p2-drawer'+(rdPendOpen?' show':'')+'" id="p2-drawer">'+rdPendFichaHTML()+'</aside></div>';
   h+='</div>';
@@ -11106,6 +11112,7 @@ function rdPendToolsHTML(){
     + '<span class="p2-sep"></span>'
     + '<button class="pend-act primary" type="button" onclick="rdPendToggleForm()"><i data-lucide="'+(rdPendFormOn?'x':'plus')+'" class="ri"></i>'+(rdPendFormOn?'Cerrar':'Nuevo')+'</button>'
     + '<button class="pend-act" type="button" onclick="rdRecAbrir()"><i data-lucide="footprints" class="ri"></i>Recorrido</button>'
+    + '<button class="pend-act" type="button" onclick="rdZonasAbrir()"><i data-lucide="qr-code" class="ri"></i>Zonas y QR</button>'
     + '<button class="pend-act" type="button" onclick="rdPlanoAbrir(null)"><i data-lucide="map" class="ri"></i>Plano</button>'
     + '<button class="pend-act" type="button" onclick="rdPendImpToggle()"><i data-lucide="file-spreadsheet" class="ri"></i>Importar Excel</button>'
     + '<button class="pend-act" type="button" onclick="rdPendActaAbrir()"><i data-lucide="file-signature" class="ri"></i>Acta</button>'
@@ -11200,7 +11207,7 @@ function rdPendFichaHTML(){
         + '<button class="p2-chip" type="button" onclick="rdPendPopFecha(this,'+p.id+',\''+rdPendMasDias(PEND_PLAZO[p.impacto||'medio'])+'\')">Plazo por impacto: +'+PEND_PLAZO[p.impacto||'medio']+' d</button></div>'
         + '<span class="p2-hint'+(rdPendAbierto(p)&&d<0?' late':'')+'">'+hint+'</span></div>'
       + '<div class="p2-f"><label for="pf-resp">Responsable</label><input class="pend-inp" id="pf-resp" list="pend-contratas" value="'+rdEsc2(p.responsable||'')+'" onchange="rdPendCampo('+p.id+',\'responsable\',this.value)"></div>'
-      + '<div class="p2-f"><label for="pf-area">Área</label><input class="pend-inp" id="pf-area" value="'+rdEsc2(p.categoria||'')+'" onchange="rdPendCampo('+p.id+',\'categoria\',this.value)"></div>'
+      + '<div class="p2-f"><label for="pf-area">Área</label><input class="pend-inp" id="pf-area" list="pend-zonas-dl" value="'+rdEsc2(p.categoria||'')+'" onchange="rdPendCampo('+p.id+',\'categoria\',this.value)"></div>'
       + '<div class="p2-f"><span class="p2-lbl">Impacto</span><div class="p2-seg3">'+['alto','medio','bajo'].map(k=>'<button type="button" class="'+((p.impacto||'medio')===k?'on':'')+'" onclick="rdPendCampo('+p.id+',\'impacto\',\''+k+'\')">'+k[0].toUpperCase()+k.slice(1)+'</button>').join('')+'</div></div>'
       + '<div class="p2-f"><label for="pf-costo">Costo estimado (US$)</label><input class="pend-inp" id="pf-costo" type="number" min="0" step="10" value="'+(p.costo_estimado!=null?p.costo_estimado:'')+'" onchange="rdPendCampoNum('+p.id+',\'costo_estimado\',this.value)"></div>'
       + '<div class="p2-f"><label for="pf-causa">Causa</label><select class="pend-inp" id="pf-causa" onchange="rdPendCampo('+p.id+',\'causa\',this.value)">'
@@ -11233,7 +11240,8 @@ function rdPendSetVista(k){ rdPendView=k; rdPendRender(); }
 function rdPendSetGrupo(k){ rdPendGroup=k; rdPendPintarLista(); }
 function rdPendSoloRestricciones(){ rdPendSoloRestr=!rdPendSoloRestr; rdPendPintarTools(); rdPendPintarLista(); }
 function rdPendSetFiltro(cual,val){
-  if(cual==='area') rdPendFArea=val; else if(cual==='resp') rdPendFResp=val;
+  if(cual==='area'){ rdPendFArea=val; if(rdPendZona && rdPendZona.nombre!==val){ rdPendZona=null; rdPendFArea=val; rdPendRender(); return; } }
+  else if(cual==='resp') rdPendFResp=val;
   else if(cual==='imp') rdPendFImp=val; else if(cual==='est') rdPendFEst=val;
   rdPendPintarLista();
 }
@@ -11726,7 +11734,10 @@ let rdRecOn=false, rdRecCuenta=0, rdRecArea='', rdRecImpacto='medio', rdRecRestr
 function rdPendAreasUsadas(){
   const m=new Map();
   rdPendList.forEach(p=>{ if(p.categoria) m.set(p.categoria,(m.get(p.categoria)||0)+1); });
-  return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8).map(x=>x[0]);
+  const usadas=[...m.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  // Las zonas con QR van primero: son las que se usan en campo.
+  const zonas=(rdZonas||[]).map(z=>z.nombre);
+  return [...new Set([...zonas, ...usadas])].slice(0,10);
 }
 function rdRecAbrir(){
   if(!rdPendCod()){ showToast('Selecciona una obra'); return; }
@@ -11757,7 +11768,7 @@ function rdRecPintar(){
       + (dictado?'<span class="p2-hint" id="rec-estado">Toca el micrófono y habla; el texto se puede corregir antes de guardar.</span>':'<span class="p2-hint">Este navegador no tiene dictado: escribe la observación.</span>')
       + '<label class="p2-lbl" style="margin-top:14px">Área</label>'
       + '<div class="rec-chips" id="rec-areas">'+areas.map(a=>'<button type="button" class="p2-chip'+(rdRecArea===a?' on':'')+'" onclick="rdRecSetArea(this,\''+rdEsc2(a).replace(/'/g,"\\'")+'\')">'+rdEsc2(a)+'</button>').join('')
-        + '<input class="pend-inp rec-area-otra" id="rec-area" placeholder="Otra área" value="'+rdEsc2(rdRecArea)+'" oninput="rdRecArea=this.value">' + '</div>'
+        + '<input class="pend-inp rec-area-otra" id="rec-area" list="pend-zonas-dl" placeholder="Otra área" value="'+rdEsc2(rdRecArea)+'" oninput="rdRecArea=this.value">' + '</div>'
       + '<div class="rec-row">'
         + '<div><label class="p2-lbl">¿Bloquea el avance?</label><label class="p2-check" style="height:36px"><input type="checkbox" id="rec-restriccion"'+(rdRecRestr?' checked':'')+' onchange="rdRecRestr=this.checked"> Genera restricción</label></div>'
         + '<div><label class="p2-lbl">Impacto</label><div class="p2-seg3">'+['alto','medio','bajo'].map(k=>'<button type="button" class="'+(rdRecImpacto===k?'on':'')+'" onclick="rdRecSetImpacto(\''+k+'\')">'+k[0].toUpperCase()+k.slice(1)+'</button>').join('')+'</div></div>'
@@ -11973,6 +11984,254 @@ function rdPlanoIrA(id){
   const el=document.querySelector('.p2-row[data-id="'+id+'"]'); if(el) el.scrollIntoView({block:'center'});
 }
 
+/* ══════════════════════════════════════════════
+   ZONAS Y QR
+   Sin plano: la obra se divide en zonas con nombre (Sala de máquinas, Túnel 3…).
+   Cada zona tiene un QR que se imprime y se pega en campo. Al escanearlo se abre
+   esta app en la obra y la zona: se ven sus observaciones y se registra ahí mismo.
+   El QR lleva solo el id de `obra_zonas`, así que renombrar la zona no obliga a
+   reimprimir. La zona se enlaza con las observaciones por `pendientes.categoria`.
+   ══════════════════════════════════════════════ */
+let rdZonas=null, rdZonasObra=null, rdPendZona=null, _qrLib=null;
+async function rdZonasCargar(forzar){
+  const cod=rdPendCod(); if(!cod) return [];
+  if(rdZonas && !forzar && rdZonasObra===cod) return rdZonas;
+  try{ rdZonas=await sbFetch('/rest/v1/obra_zonas?cod_proyecto=eq.'+encodeURIComponent(cod)+'&order=nombre')||[]; }
+  catch(e){ console.warn('zonas', e); rdZonas=[]; }
+  rdZonasObra=cod;
+  return rdZonas;
+}
+function rdZonasNombres(){
+  const s=new Set((rdZonas||[]).map(z=>z.nombre));
+  rdPendList.forEach(p=>{ if(p.categoria) s.add(p.categoria); });
+  return [...s].sort((a,b)=>a.localeCompare(b,'es'));
+}
+function rdZonaUrl(id){ return new URL('./', location.href).href.split('?')[0]+'?zona='+id; }
+function rdZonaCuenta(nombre){
+  const de=rdPendList.filter(p=>p.categoria===nombre);
+  return { abiertas:de.filter(p=>!rdPendFuera(p)).length, urgentes:de.filter(rdPendUrgente).length, total:de.length };
+}
+function rdQrLib(){
+  if(window.QRCode) return Promise.resolve();
+  if(_qrLib) return _qrLib;
+  _qrLib=new Promise((ok,ko)=>{
+    const sc=document.createElement('script');
+    sc.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    sc.onload=ok; sc.onerror=()=>{ _qrLib=null; ko(new Error('No se pudo cargar el generador de QR')); };
+    document.head.appendChild(sc);
+  });
+  return _qrLib;
+}
+// PNG del QR en alta resolución (sirve para pantalla y para imprimir).
+async function rdQrPng(texto, px){
+  await rdQrLib();
+  const tmp=document.createElement('div');
+  tmp.style.cssText='position:fixed;left:-9999px;top:0';
+  document.body.appendChild(tmp);
+  try{
+    new QRCode(tmp,{text:texto, width:px||600, height:px||600, colorDark:'#0b1226', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M});
+    const c=tmp.querySelector('canvas');
+    return c ? c.toDataURL('image/png') : (tmp.querySelector('img')||{}).src;
+  } finally { tmp.remove(); }
+}
+
+function rdZonasAbrir(){
+  if(!rdPendCod()){ showToast('Selecciona una obra'); return; }
+  let box=document.getElementById('pend-zonas');
+  if(!box){ box=document.createElement('div'); box.id='pend-zonas'; document.body.appendChild(box); }
+  box.className='on';
+  box.innerHTML='<div class="rec-bg" onclick="rdZonasCerrar()"></div><div class="rec-card zonas-card">'
+    + '<div class="rec-h"><div><span class="rec-eyebrow">Zonas y QR · '+rdEsc2((currentProyecto&&currentProyecto.nombre)||'')+'</span>'
+      + '<b>Un QR por zona para pegar en obra</b></div>'
+      + '<button class="p2-x" type="button" onclick="rdZonasCerrar()" aria-label="Cerrar">✕</button></div>'
+    + '<div class="rec-body" id="zonas-body"><span class="p2-hint">Cargando zonas…</span></div>'
+    + '<div class="rec-f" id="zonas-f"></div></div>';
+  rdZonasCargar(true).then(rdZonasPintar);
+}
+function rdZonasCerrar(){ const b=document.getElementById('pend-zonas'); if(b){ b.className=''; b.innerHTML=''; } }
+function rdZonasPintar(){
+  const body=document.getElementById('zonas-body'), pie=document.getElementById('zonas-f'); if(!body) return;
+  const zonas=rdZonas||[];
+  const registradas=new Set(zonas.map(z=>z.nombre));
+  const sugeridas=[...new Set(rdPendList.map(p=>p.categoria).filter(Boolean))].filter(a=>!registradas.has(a)).sort((a,b)=>a.localeCompare(b,'es'));
+  const q=v=>rdEsc2(v).replace(/'/g,"\\'");
+  let h='<p class="p2-hint" style="margin:0 0 12px">Crea las zonas de la obra, imprime sus QR y pégalos en cada zona. '
+    + 'Quien lo escanee con el celular entra directo a las observaciones de esa zona y puede registrar nuevas ahí mismo.</p>'
+    + '<div class="zonas-add"><input class="pend-inp" id="zona-nueva" placeholder="Nueva zona (ej: Sala de máquinas)" maxlength="80" onkeydown="if(event.key===\'Enter\')rdZonaCrear()">'
+    + '<button class="pend-act primary" type="button" onclick="rdZonaCrear()"><i data-lucide="plus" class="ri"></i>Agregar</button></div>';
+  if(sugeridas.length){
+    h+='<div class="zonas-sug"><span>Áreas que ya usan tus observaciones:</span>'
+      + sugeridas.slice(0,12).map(a=>'<button type="button" class="p2-chip" onclick="rdZonaCrear(\''+q(a)+'\')">+ '+rdEsc2(a)+'</button>').join('')
+      + (sugeridas.length>1?'<button type="button" class="p2-chip on" onclick="rdZonaCrearTodas()">Agregar las '+sugeridas.length+'</button>':'')
+      + '</div>';
+  }
+  if(!zonas.length){
+    h+='<div class="plano-vacio" style="margin-top:12px"><i data-lucide="qr-code" class="ri"></i><b>Esta obra todavía no tiene zonas</b>'
+      + '<span>Escribe la primera arriba o toma las áreas que ya usan tus observaciones.</span></div>';
+  } else {
+    h+='<ul class="zonas-list">'+zonas.map(z=>{
+      const c=rdZonaCuenta(z.nombre);
+      return '<li><div class="zonas-n"><b>'+rdEsc2(z.nombre)+'</b><small>'
+          + (c.abiertas? c.abiertas+' por levantar'+(c.urgentes?' · <em>'+c.urgentes+' urgente'+(c.urgentes>1?'s':'')+'</em>':'') : (c.total?'Todo levantado':'Sin observaciones'))
+        + '</small></div>'
+        + '<button class="pend-act ghost" type="button" onclick="rdZonaRenombrar('+z.id+')" title="Renombrar"><i data-lucide="pencil" class="ri"></i></button>'
+        + '<button class="pend-act ghost" type="button" onclick="rdZonaBorrar('+z.id+')" title="Quitar"><i data-lucide="trash-2" class="ri"></i></button>'
+        + '<button class="pend-act" type="button" onclick="rdZonaVerQr('+z.id+')"><i data-lucide="qr-code" class="ri"></i>QR</button></li>';
+    }).join('')+'</ul>';
+  }
+  body.innerHTML=h;
+  if(pie) pie.innerHTML='<button class="pend-act" type="button" onclick="rdZonasCerrar()">Cerrar</button>'
+    + '<button class="pend-act primary" type="button" onclick="rdZonasImprimir()"'+(zonas.length?'':' disabled')+'><i data-lucide="printer" class="ri"></i>Imprimir los QR'+(zonas.length?' ('+zonas.length+')':'')+'</button>';
+  if(window.lucide) lucide.createIcons();
+}
+async function rdZonaCrear(nombre){
+  const inp=document.getElementById('zona-nueva');
+  const n=String(nombre!=null?nombre:(inp?inp.value:'')).replace(/\s+/g,' ').trim();
+  if(!n){ if(inp) inp.focus(); return; }
+  if((rdZonas||[]).some(z=>z.nombre.toLowerCase()===n.toLowerCase())){ showToast('Esa zona ya existe'); return; }
+  try{
+    await sbFetch('/rest/v1/obra_zonas',{method:'POST',headers:{'Prefer':'return=minimal'},
+      body:JSON.stringify({cod_proyecto:rdPendCod(), nombre_proyecto:(currentProyecto&&currentProyecto.nombre)||null, nombre:n, creado_por:rdPendQuien()})});
+    await rdZonasCargar(true); rdZonasPintar();
+    const i2=document.getElementById('zona-nueva'); if(i2 && nombre==null) i2.focus();
+    showToast('Zona agregada ✓');
+  }catch(e){ console.warn('zona', e); showToast('No se pudo agregar la zona: '+String(e.message||'').slice(0,80),4000); }
+}
+async function rdZonaCrearTodas(){
+  const registradas=new Set((rdZonas||[]).map(z=>z.nombre));
+  const filas=[...new Set(rdPendList.map(p=>p.categoria).filter(Boolean))].filter(a=>!registradas.has(a))
+    .map(a=>({cod_proyecto:rdPendCod(), nombre_proyecto:(currentProyecto&&currentProyecto.nombre)||null, nombre:a, creado_por:rdPendQuien()}));
+  if(!filas.length) return;
+  try{
+    await sbFetch('/rest/v1/obra_zonas',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(filas)});
+    await rdZonasCargar(true); rdZonasPintar();
+    showToast(filas.length+' zonas agregadas ✓');
+  }catch(e){ console.warn('zonas', e); showToast('No se pudieron agregar: '+String(e.message||'').slice(0,80),4000); }
+}
+async function rdZonaRenombrar(id){
+  const z=(rdZonas||[]).find(x=>x.id===id); if(!z) return;
+  const nuevo=(prompt('Nuevo nombre de la zona.\nSus observaciones pasan al nombre nuevo y el QR impreso sigue sirviendo.', z.nombre)||'').replace(/\s+/g,' ').trim();
+  if(!nuevo || nuevo===z.nombre) return;
+  if((rdZonas||[]).some(x=>x.id!==id && x.nombre.toLowerCase()===nuevo.toLowerCase())){ showToast('Ya hay una zona con ese nombre'); return; }
+  try{
+    await sbFetch('/rest/v1/obra_zonas?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({nombre:nuevo})});
+    const afectadas=rdPendList.filter(p=>p.categoria===z.nombre).map(p=>p.id);
+    if(afectadas.length) await rdPendGuardar(afectadas,{categoria:nuevo},'Zona renombrada: '+z.nombre+' → '+nuevo,{undoTexto:'Nombre anterior restaurado'});
+    if(rdPendZona && rdPendZona.id===id){ rdPendZona.nombre=nuevo; rdPendFArea=nuevo; }
+    await rdZonasCargar(true); rdZonasPintar(); rdPendRender();
+    showToast('Zona renombrada ✓');
+  }catch(e){ console.warn('renombrar zona', e); showToast('No se pudo renombrar: '+String(e.message||'').slice(0,80),4000); }
+}
+async function rdZonaBorrar(id){
+  const z=(rdZonas||[]).find(x=>x.id===id); if(!z) return;
+  if(!confirm('¿Quitar la zona «'+z.nombre+'»?\n\nSus observaciones se quedan como están, pero el QR que esté pegado en obra deja de funcionar.')) return;
+  try{
+    await sbFetch('/rest/v1/obra_zonas?id=eq.'+id,{method:'DELETE',headers:{'Prefer':'return=minimal'}});
+    if(rdPendZona && rdPendZona.id===id) rdPendZona=null;
+    await rdZonasCargar(true); rdZonasPintar();
+    showToast('Zona quitada');
+  }catch(e){ console.warn('borrar zona', e); showToast('No se pudo quitar: '+String(e.message||'').slice(0,80),4000); }
+}
+async function rdZonaVerQr(id){
+  const z=(rdZonas||[]).find(x=>x.id===id); if(!z) return;
+  const body=document.getElementById('zonas-body'), pie=document.getElementById('zonas-f'); if(!body) return;
+  body.innerHTML='<span class="p2-hint">Generando el QR…</span>';
+  let png='';
+  try{ png=await rdQrPng(rdZonaUrl(id), 600); }
+  catch(e){ body.innerHTML='<span class="p2-hint">'+rdEsc2(e.message)+'. Revisa la conexión e inténtalo de nuevo.</span>'; return; }
+  body.innerHTML='<div class="zonas-qr">'
+    + '<img src="'+png+'" alt="QR de la zona '+rdEsc2(z.nombre)+'">'
+    + '<small>'+rdEsc2((currentProyecto&&currentProyecto.nombre)||'')+'</small>'
+    + '<b>'+rdEsc2(z.nombre)+'</b>'
+    + '<span class="p2-hint">Escanéalo con la cámara del celular para probarlo. Abre la app del supervisor en esta zona.</span>'
+    + '<code>'+rdEsc2(rdZonaUrl(id))+'</code></div>';
+  if(pie) pie.innerHTML='<button class="pend-act" type="button" onclick="rdZonasPintar()">Volver</button>'
+    + '<a class="pend-act" download="QR-'+rdEsc2(z.nombre.replace(/[^\wÁÉÍÓÚÑáéíóúñ-]+/g,'_'))+'.png" href="'+png+'"><i data-lucide="download" class="ri"></i>Imagen</a>'
+    + '<button class="pend-act primary" type="button" onclick="rdZonasImprimir(['+id+'])"><i data-lucide="printer" class="ri"></i>Imprimir</button>';
+  if(window.lucide) lucide.createIcons();
+}
+function _imgData(src){
+  return new Promise(ok=>{
+    const im=new Image();
+    im.onload=()=>{ try{ const c=document.createElement('canvas'); c.width=im.naturalWidth; c.height=im.naturalHeight;
+      c.getContext('2d').drawImage(im,0,0); ok({data:c.toDataURL('image/png'), w:im.naturalWidth, h:im.naturalHeight}); }catch(e){ ok(null); } };
+    im.onerror=()=>ok(null);
+    im.src=src;
+  });
+}
+// Hoja A4 con 6 etiquetas (2 x 3), listas para recortar y pegar.
+async function rdZonasImprimir(ids){
+  const zonas=(rdZonas||[]).filter(z=>!ids || ids.includes(z.id));
+  if(!zonas.length) return;
+  if(!window.jspdf){ showToast('Motor PDF no disponible'); return; }
+  showToast('Armando la hoja de QR…');
+  try{
+    const logo=await _imgData('assets/logo-color.png');
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+    const obra=(currentProyecto&&currentProyecto.nombre)||'', cod=rdPendCod();
+    const M=10, W=(210-2*M)/2, H=(297-2*M)/3;
+    for(let i=0;i<zonas.length;i++){
+      if(i && i%6===0) pdf.addPage();
+      const col=i%2;
+      const x=M+col*W, y=M+Math.floor((i%6)/2)*H;
+      pdf.setDrawColor(190); pdf.setLineDashPattern([1.5,1.5],0); pdf.rect(x,y,W,H);
+      pdf.setLineDashPattern([],0);
+      const cx=x+W/2;
+      if(logo){ const lh=6, lw=lh*logo.w/logo.h; pdf.addImage(logo.data,'PNG',cx-lw/2,y+6,lw,lh); }
+      const png=await rdQrPng(rdZonaUrl(zonas[i].id), 700);
+      const qs=52; pdf.addImage(png,'PNG',cx-qs/2,y+15,qs,qs);
+      pdf.setTextColor(11,18,38); pdf.setFont('helvetica','bold');
+      let fs=15; pdf.setFontSize(fs);
+      const nom=zonas[i].nombre;
+      while(fs>9 && pdf.getTextWidth(nom)>W-10){ fs--; pdf.setFontSize(fs); }
+      pdf.text(pdf.splitTextToSize(nom, W-10).slice(0,2), cx, y+74, {align:'center'});
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(8.5); pdf.setTextColor(90,98,115);
+      pdf.text(pdf.splitTextToSize(obra+(cod?' · '+cod:''), W-12).slice(0,1), cx, y+82, {align:'center'});
+      pdf.setFontSize(7.5);
+      pdf.text('Escanea para ver y registrar las observaciones de esta zona', cx, y+88, {align:'center'});
+    }
+    pdf.save('QR-zonas-'+String(obra||cod).replace(/[^\wÁÉÍÓÚÑáéíóúñ-]+/g,'_')+'.pdf');
+    showToast('Hoja de QR lista ✓ · imprímela al 100 %', 4000);
+  }catch(e){ console.warn('imprimir QR', e); showToast('No se pudo armar la hoja: '+String(e.message||'').slice(0,80),5000); }
+}
+
+/* Entrada por QR: ?zona=ID abre la obra, la pestaña y la zona. */
+async function rdQrEntrada(){
+  let id=null;
+  try{ id=new URLSearchParams(location.search).get('zona'); }catch(e){}
+  if(!id || !/^\d+$/.test(id)) return;
+  try{ const u=new URL(location.href); u.searchParams.delete('zona'); history.replaceState(null,'',u.pathname+u.search+u.hash); }catch(e){}
+  let z=null;
+  try{ const r=await sbFetch('/rest/v1/obra_zonas?id=eq.'+id+'&limit=1'); z=r&&r[0]; }catch(e){ console.warn('qr zona', e); }
+  if(!z){ showToast('Este QR ya no corresponde a ninguna zona. Genera uno nuevo en Levantamiento de Observaciones → Zonas y QR.', 6000); return; }
+  const sel=document.getElementById('sel-proyecto');
+  const opt=sel && [...sel.options].find(o=>o.dataset && o.dataset.cod===z.cod_proyecto);
+  if(!opt){ showToast('Este QR es de '+(z.nombre_proyecto||z.cod_proyecto)+'. Tu cuenta no tiene acceso a esa obra.', 6000); return; }
+  sel.value=opt.value;
+  rdPendZona={id:z.id, nombre:z.nombre, cod:z.cod_proyecto};
+  rdPendFArea=z.nombre; rdPendView='todas'; rdPendFEst=''; rdPendFResp=''; rdPendFImp=''; rdPendSoloRestr=false; rdPendQ='';
+  showTab('diario');
+  rdSetTipo('obs');
+  try{ await cargarProyecto(); }catch(e){ console.warn('qr proyecto', e); }
+  rdIcons();
+  setTimeout(()=>{ const m=document.querySelector('.zona-banner')||document.getElementById('rd-pend-mount'); if(m) m.scrollIntoView({block:'center'}); }, 300);
+}
+function rdZonaBannerHTML(){
+  if(!rdPendZona || rdPendZona.cod!==rdPendCod()) return '';
+  const c=rdZonaCuenta(rdPendZona.nombre);
+  return '<div class="zona-banner"><i data-lucide="map-pin" class="ri"></i>'
+    + '<div><small>Zona</small><b>'+rdEsc2(rdPendZona.nombre)+'</b>'
+    + '<span>'+(c.abiertas? c.abiertas+' por levantar'+(c.urgentes?' · '+c.urgentes+' urgente'+(c.urgentes>1?'s':''):'') : (c.total?'Todo levantado en esta zona':'Sin observaciones en esta zona'))+'</span></div>'
+    + '<button class="pend-act primary" type="button" onclick="rdZonaRegistrar()"><i data-lucide="plus" class="ri"></i>Registrar aquí</button>'
+    + '<button class="pend-act ghost" type="button" onclick="rdZonaSalir()">Ver toda la obra</button></div>';
+}
+function rdZonaRegistrar(){
+  if(!rdPendZona) return;
+  rdRecAbrir(); rdRecArea=rdPendZona.nombre; rdRecPintar();
+}
+function rdZonaSalir(){ rdPendZona=null; rdPendFArea=''; rdPendView='hoy'; rdPendRender(); }
+
 /* Estilos de la pantalla nueva: color solo como senal, el resto en blanco. */
 let _pendStyles2=false;
 function rdPendEstilos2(){
@@ -12160,6 +12419,31 @@ function rdPendEstilos2(){
   .plano-vacio b{font-size:14.5px;color:var(--navy-800);}
   .plano-vacio span{font-size:12.5px;color:var(--text-3);max-width:420px;}
   .plano-vacio label{margin-top:6px;}
+
+  /* Zonas y QR */
+  #pend-zonas{display:none;} #pend-zonas.on{display:block;}
+  .zonas-card{width:min(560px,96vw);}
+  .zonas-add{display:flex;gap:8px;} .zonas-add .pend-inp{flex:1;min-width:0;}
+  .zonas-sug{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--text-3);}
+  .zonas-sug span{width:100%;}
+  .zonas-list{list-style:none;margin:14px 0 0;padding:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .zonas-list li{display:flex;align-items:center;gap:6px;padding:10px 12px;border-top:1px solid var(--border);}
+  .zonas-list li:first-child{border-top:0;}
+  .zonas-n{flex:1;min-width:0;}
+  .zonas-n b{display:block;font-size:13.5px;color:var(--navy-800);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .zonas-n small{font-size:12px;color:var(--text-3);} .zonas-n em{font-style:normal;color:var(--danger);font-weight:700;}
+  .zonas-qr{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;}
+  .zonas-qr img{width:min(260px,70vw);height:auto;border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff;}
+  .zonas-qr small{margin-top:8px;font-size:12px;color:var(--text-3);}
+  .zonas-qr b{font-size:18px;color:var(--navy-800);}
+  .zonas-qr code{margin-top:6px;font-size:11px;color:var(--text-3);word-break:break-all;}
+  .zona-banner{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-top:12px;padding:12px 14px;
+    border:1px solid var(--border-strong);border-left:3px solid var(--teal-600);border-radius:12px;background:var(--surface);}
+  .zona-banner>.ri{width:20px;height:20px;color:var(--teal-600);}
+  .zona-banner>div{flex:1;min-width:160px;}
+  .zona-banner small{display:block;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
+  .zona-banner b{display:block;font-size:15px;color:var(--navy-800);}
+  .zona-banner span{font-size:12px;color:var(--text-2);}
 
   @media(max-width:900px){
     .p2-body{grid-template-columns:1fr;}

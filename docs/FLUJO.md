@@ -5,7 +5,7 @@ fuente de verdad: los datos del mapa viven en el bloque `const MAPA` que está a
 inicio del `<script>`. Si cambia el flujo, se edita ahí, en el **mismo commit**
 que el código. Este documento es la letra chica que no cabe en el dibujo.
 
-Última revisión: **15 de septiembre de 2026**
+Última revisión: **16 de septiembre de 2026**
 
 ---
 
@@ -122,6 +122,16 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   se guarda con `origen = 'recorrido'` y fecha objetivo según el impacto
   (alto 2 días, medio 7, bajo 15). Al abrir la obra, un aviso resume urgentes,
   lo que vence hoy y lo que espera conformidad.
+- **QR por zona, sin plano.** Cada obra se divide en zonas con nombre (tabla
+  `obra_zonas` de Supervisor, única por obra y nombre). Desde «Zonas y QR» se
+  crean, se renombran y se imprime una hoja A4 con seis etiquetas por página.
+  El QR lleva solo el id: `app-sup/?zona=ID`. Al escanearlo, la app pide sesión
+  si hace falta, abre la obra (solo si la cuenta tiene acceso), va a
+  Levantamiento de observaciones y filtra por la zona, con un botón para
+  registrar ahí mismo. La zona se enlaza con las observaciones por
+  `pendientes.categoria`; renombrarla cambia también ese campo y el QR impreso
+  sigue sirviendo. Borrar la zona deja el QR sin destino. El plano sigue
+  disponible, pero ya no es necesario para ubicar.
 - **El responsable se puede elegir del banco de contratistas.** La app de campo
   lee `portafolio_servicios` de PMO solo para sugerir nombres; el banco sigue
   siendo de Gerencia.
