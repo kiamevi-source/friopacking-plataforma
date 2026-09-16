@@ -99,7 +99,7 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   distinguir mayúsculas, tildes ni espacios, y se unifican en lote con
   «Cambiar zona». El ciclo es Abierta → En proceso → Por validar →
   Cerrada, más «No aplica»;
-  el paso a Cerrada lo da el supervisor como conformidad y queda firmado en
+  el cierre lo da el supervisor (desde cualquier estado) y queda firmado en
   `validado_por`. «No aplica» sale del % levantado. Una observación se marca
   urgente sola a los 30 días vencida, o con impacto alto ya vencida, y el
   supervisor puede forzarla. Reprogramar exige motivo y suma
@@ -157,6 +157,20 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   factura que registre entra como `estado_revision = 'en_espera'` y el portal
   se lo explica antes de registrarla. Gerencia ve esas facturas retenidas en el
   módulo de Observaciones y puede liberarlas de a una.
+- **La contratista ve y responde sus observaciones.** El portal de Contratas
+  tiene la sección «Observaciones de obra»: lee de `pendientes` (instancia
+  Supervisor) las que tienen como responsable a su empresa o a uno de sus
+  alias, comparando por palabra completa. Puede escribir el plan de acción y
+  avisar «La estoy trabajando» (→ En proceso) o «Ya la levanté» (→ Por validar).
+  Escribe **solo** por la función `contrata_avisa_pendiente` (security
+  definer), que no deja cerrar, reabrir ni tocar fecha o responsable, guarda el
+  aviso en `aviso_contrata` / `aviso_contrata_at` y deja constancia en
+  `pendientes_historial`. El supervisor ve el aviso en la ficha y da la
+  conformidad.
+- **Estados libres para el supervisor.** Desde el 16 de septiembre de 2026 se
+  puede pasar de cualquier estado a cualquier otro, también en lote (con
+  confirmación y deshacer). Quien cierra queda como conformidad
+  (`validado_por`, `validado_at`) con la fecha del día.
 - **Consolidado en Gerencia.** `app-live/modulos/observaciones.html` junta todas
   las obras: pendientes, urgentes, avance y costo estimado (lee `pendientes` de
   Supervisor), más los adicionales y requerimientos de PMO, cuyo estado se

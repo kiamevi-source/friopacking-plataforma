@@ -196,6 +196,7 @@ const MAPA = {
     {id:'a-ct', tipo:'app', x:338, y:940, color:'#E08A2B', titulo:'Contratas · Externo', sub:'app-contratas', filas:[
       {id:'resumen', t:'Resumen y perfil'},
       {id:'proyectos', t:'Mis proyectos'},
+      {id:'observaciones', t:'Observaciones de obra', key:true},
       {id:'licitaciones', t:'Licitaciones', key:true},
       {id:'docs', t:'Documentos'},
       {id:'homologacion', t:'Homologación'},
@@ -265,6 +266,7 @@ const MAPA = {
     {from:'a-sup:riesgos', to:'d-pmo:adicionales', tipo:'lee', label:'crea adicionales y pedidos'},
     {from:'a-ger:observaciones', to:'d-sup:riesgos', tipo:'lee', label:'observaciones de todas las obras'},
     {from:'a-ct:facturas', to:'d-sup:riesgos', tipo:'lee', label:'urgentes que retienen el pago'},
+    {from:'a-ct:observaciones', to:'d-sup:riesgos', tipo:'lee', label:'avisa trabajando / levantada · plan de acción'},
 
     /* sincronización automática */
     {from:'d-sup:reportes', to:'d-pmo:reportes', tipo:'sync', fromSide:'r', toSide:'r', bulge:80,  label:'cron 2 min · sube reportes'},

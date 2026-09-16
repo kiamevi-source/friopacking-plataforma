@@ -183,6 +183,7 @@
 
     <button class="nav-item active" data-view="resumen"><svg data-lucide="layout-dashboard"></svg>Resumen</button>
     <button class="nav-item" data-view="proyectos"><svg data-lucide="folder-kanban"></svg>Mis proyectos</button>
+    <button class="nav-item" data-view="observaciones"><svg data-lucide="clipboard-check"></svg>Observaciones<span class="nav-n" id="nav-obs-n"></span></button>
     <button class="nav-item" data-view="informe"><svg data-lucide="clipboard-list"></svg>Informe diario</button>
     <button class="nav-item" data-view="licitaciones"><svg data-lucide="gavel"></svg>Licitaciones</button>
     <button class="nav-item" data-view="requisitos"><svg data-lucide="shield-check"></svg>Requisitos SSOMA</button>
@@ -266,6 +267,43 @@
         <p class="page-sub">Las obras en las que estás asignado, con tus especialidades. Fuente: Operaciones (PMO).</p>
       </div>
       <div id="mp-root"><div class="empty">Cargando tus proyectos…</div></div>
+    </section>
+
+    <!-- OBSERVACIONES DE OBRA (instancia Supervisor · solo las asignadas a esta contratista) -->
+    <section class="view" id="v-observaciones">
+      <style>
+        .nav-n{margin-left:auto;font-size:11px;font-weight:800;min-width:20px;padding:1px 7px;border-radius:999px;background:#3ECBB0;color:#0f1e35;text-align:center}
+        .nav-n:empty{display:none}
+        .nav-n.urg{background:#ef4444;color:#fff}
+        #v-observaciones .ob-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+        #v-observaciones .ob-tab{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 8px 0 14px;border-radius:11px;border:1.5px solid var(--line);background:#fff;font-family:inherit;font-size:13px;font-weight:700;color:var(--navy);cursor:pointer}
+        #v-observaciones .ob-tab i{font-style:normal;font-size:12px;min-width:24px;height:22px;line-height:22px;text-align:center;border-radius:7px;background:#f0f4fa;color:var(--muted)}
+        #v-observaciones .ob-tab.on{border-color:var(--navy)} #v-observaciones .ob-tab.on i{background:var(--navy);color:#fff}
+        #v-observaciones .ob-obra{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:18px 2px 8px}
+        #v-observaciones .ob-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow-sm)}
+        #v-observaciones .ob-card.urg{box-shadow:inset 3px 0 0 #ef4444,var(--shadow-sm)}
+        #v-observaciones .ob-top{display:flex;align-items:flex-start;gap:10px;justify-content:space-between;flex-wrap:wrap}
+        #v-observaciones .ob-t{font-size:14.5px;font-weight:700;color:var(--ink);line-height:1.35;flex:1;min-width:220px}
+        #v-observaciones .ob-tags{display:flex;gap:6px;flex-wrap:wrap}
+        #v-observaciones .ob-meta{font-size:12.5px;color:var(--muted);margin-top:5px}
+        #v-observaciones .ob-meta b.late{color:#dc2626}
+        #v-observaciones .ob-plan{margin-top:10px;padding:10px 12px;border-radius:10px;background:#f4f7fc;font-size:13px;color:var(--ink)}
+        #v-observaciones .ob-plan small{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:3px}
+        #v-observaciones .ob-plan .vacio{color:var(--muted)}
+        #v-observaciones .ob-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+        #v-observaciones .ob-acts .btn{padding:9px 14px;font-size:13px}
+        #v-observaciones .ob-wait{font-size:12.5px;font-weight:700;color:#5646be}
+        #v-observaciones .ob-form{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+        #v-observaciones .ob-form textarea{border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13.5px;min-height:70px;resize:vertical}
+        #v-observaciones .tag.danger{background:#fdecea;color:#c0453b}
+        #v-observaciones .tag.violet{background:#edebfb;color:#5646be}
+        #v-observaciones .tag.gray{background:#f0f4fa;color:#475569}
+      </style>
+      <div class="page-head">
+        <h1 class="page-title font-display">Observaciones de obra</h1>
+        <p class="page-sub">Las que el supervisor te asignó. Cuéntale en qué va cada una y avísale cuando la levantes: él la revisa y da la conformidad.</p>
+      </div>
+      <div id="ob-root"><div class="empty">Cargando observaciones…</div></div>
     </section>
 
     <!-- LICITACIONES (invitaciones recibidas · lee/escribe lic_* en PMO) -->
@@ -574,7 +612,7 @@
   // pago queda en espera mientras haya urgentes sin levantar.
   var SUP_URL = 'https://iiceeajjmugtuzcfqggs.supabase.co';
   var SUP_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpY2VlYWpqbXVndHV6Y2ZxZ2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODg5OTUsImV4cCI6MjA5NDc2NDk5NX0.xeOFlxEGoPsqO5mBLz2_o6UqMCiUw5t8Aghg0ieRqs4';
-  var OBS_URG = [], OBS_AB = [];
+  var OBS_URG = [], OBS_AB = [], OBS_TODAS = [], OBS_TAB = 'atender', OBS_FORM = null;
   function nnObs(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
   function obsUrgente(p){
     if(p.estado!=='abierta' && p.estado!=='en_proceso') return false;
@@ -588,14 +626,18 @@
       var aliases=((CUENTA&&CUENTA.aliases)||[]).map(nnObs).filter(Boolean);
       var empresa=nnObs(CUENTA&&CUENTA.empresa);
       if(empresa) aliases.push(empresa);
-      if(!aliases.length){ OBS_URG=[]; OBS_AB=[]; renderFacAviso(); return; }
-      var r=await fetch(SUP_URL+'/rest/v1/pendientes?select=id,titulo,categoria,responsable,estado,impacto,fecha_objetivo,urgente,nombre_proyecto,cod_proyecto&estado=in.(abierta,en_proceso)&limit=2000',
+      if(!aliases.length){ OBS_URG=[]; OBS_AB=[]; OBS_TODAS=[]; renderFacAviso(); renderObs(); return; }
+      var r=await fetch(SUP_URL+'/rest/v1/pendientes?select=id,titulo,descripcion,categoria,responsable,estado,impacto,fecha_objetivo,urgente,nombre_proyecto,cod_proyecto,aviso_contrata,aviso_contrata_at,validado_at,fecha_cierre&estado=neq.no_aplica&order=fecha_objetivo.asc.nullslast&limit=3000',
         {headers:{apikey:SUP_KEY, Authorization:'Bearer '+SUP_KEY}});
       var filas=await r.json();
-      OBS_AB=(filas||[]).filter(function(p){ var n=nnObs(p.responsable); return n && aliases.some(function(a){ return n.indexOf(a)>=0 || a.indexOf(n)>=0; }); });
+      // Es suya si el responsable es su empresa o uno de sus alias, como palabra completa
+      // (antes bastaba un pedazo de texto y «hh» calzaba con cualquier nombre).
+      OBS_TODAS=(filas||[]).filter(function(p){ var n=' '+nnObs(p.responsable)+' '; return n.trim() && aliases.some(function(a){ return n.indexOf(' '+a+' ')>=0; }); });
+      OBS_AB=OBS_TODAS.filter(function(p){ return p.estado==='abierta' || p.estado==='en_proceso'; });
       OBS_URG=OBS_AB.filter(obsUrgente);
-    }catch(e){ console.warn('observaciones', e); OBS_URG=[]; OBS_AB=[]; }
-    renderFacAviso();
+    }catch(e){ console.warn('observaciones', e); OBS_URG=[]; OBS_AB=[]; OBS_TODAS=[]; }
+    renderFacAviso(); renderObs();
+    if(typeof renderResumenHome==='function') renderResumenHome();
   }
   function renderFacAviso(){
     var box=$('#fac-aviso'); if(!box) return;
@@ -616,6 +658,87 @@
       + ((urg?urg:OBS_AB.length)>5?'<p style="margin:10px 0 0;font-size:12px;color:var(--muted)">y '+((urg?urg:OBS_AB.length)-5)+' más</p>':'')
       + '<p style="margin:10px 0 0;font-size:12px;color:var(--muted)">Obra(s): '+obras.map(esc).join(', ')+'</p>'
       + '</div></div>';
+  }
+
+  // ── Vista «Observaciones» ──
+  // La descripción guarda el plan de acción y, tras « · », los datos que trajo el Excel.
+  function obsPartes(desc){
+    var plan=[], datos=[];
+    String(desc||'').split(' · ').forEach(function(x){
+      if(/^(Columna [A-Z]+|Resp FRIOPACKING|Estado en el Excel|FECHA DE CIERRE|Fecha en el Excel|[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ 0-9\/.()-]{3,40}):\s*(.+)$/.test(x)) datos.push(x);
+      else if(x.trim()) plan.push(x.trim());
+    });
+    return {plan:plan.join(' · '), datos:datos};
+  }
+  function obsDias(iso){ if(!iso) return null; return Math.round((new Date(String(iso).slice(0,10)+'T00:00:00') - new Date(new Date().toISOString().slice(0,10)+'T00:00:00'))/864e5); }
+  function renderObs(){
+    var nav=$('#nav-obs-n'); if(nav){ nav.textContent=OBS_AB.length||''; nav.classList.toggle('urg', OBS_URG.length>0); }
+    var root=$('#ob-root'); if(!root) return;
+    if(!OBS_TODAS.length){ root.innerHTML='<div class="panel"><div class="empty">No tienes observaciones de obra asignadas.<br><span style="font-size:12px">Cuando un supervisor te asigne una, aparecerá aquí.</span></div></div>'; return; }
+    var grupos={ atender:OBS_AB, revision:OBS_TODAS.filter(function(p){ return p.estado==='por_validar'; }), cerradas:OBS_TODAS.filter(function(p){ return p.estado==='cerrada'; }) };
+    var tabs=[['atender','Por atender'],['revision','Esperando revisión'],['cerradas','Cerradas']];
+    var lista=grupos[OBS_TAB]||[];
+    var h='<div class="ob-tabs">'+tabs.map(function(t){ return '<button type="button" class="ob-tab'+(OBS_TAB===t[0]?' on':'')+'" data-obtab="'+t[0]+'">'+t[1]+'<i>'+grupos[t[0]].length+'</i></button>'; }).join('')+'</div>';
+    if(OBS_TAB==='atender' && OBS_URG.length) h+='<div class="panel" style="padding:12px 15px;border-color:rgba(220,38,38,.35);font-size:13px;color:#b91c1c;font-weight:600">'+OBS_URG.length+' urgente'+(OBS_URG.length>1?'s':'')+': mientras no se levanten, las facturas que registres quedan en espera.</div>';
+    if(!lista.length){ h+='<div class="panel"><div class="empty">'+(OBS_TAB==='atender'?'No tienes observaciones por atender. ¡Bien!':OBS_TAB==='revision'?'Ninguna esperando revisión.':'Aún no hay observaciones cerradas.')+'</div></div>'; root.innerHTML=h; obsEventos(root); return; }
+    var porObra={};
+    lista.forEach(function(p){ var k=p.nombre_proyecto||p.cod_proyecto||'Obra'; (porObra[k]=porObra[k]||[]).push(p); });
+    Object.keys(porObra).sort().forEach(function(obra){
+      h+='<div class="ob-obra">'+esc(obra)+' · '+porObra[obra].length+'</div>';
+      porObra[obra].forEach(function(p){
+        var d=obsDias(p.fecha_objetivo), urg=obsUrgente(p), partes=obsPartes(p.descripcion);
+        var est={abierta:['Abierta','gray'],en_proceso:['La estás trabajando','info'],por_validar:['Esperando revisión','violet'],cerrada:['Cerrada','ok']}[p.estado]||[p.estado,'gray'];
+        var fecha=p.fecha_objetivo?('Fecha: <b class="'+(d!==null&&d<0&&p.estado!=='cerrada'?'late':'')+'">'+fmtDate(String(p.fecha_objetivo).slice(0,10))+(d!==null&&p.estado!=='cerrada'?(d<0?' · vencida hace '+(-d)+' d':d===0?' · vence hoy':' · en '+d+' d'):'')+'</b>'):'Sin fecha';
+        h+='<div class="ob-card'+(urg?' urg':'')+'"><div class="ob-top"><div class="ob-t">'+esc(p.titulo)+'</div><div class="ob-tags">'
+          + (urg?'<span class="tag danger">Urgente</span>':'')+'<span class="tag '+est[1]+'">'+est[0]+'</span></div></div>'
+          + '<div class="ob-meta">'+(p.categoria?esc(p.categoria)+' · ':'')+fecha+'</div>'
+          + '<div class="ob-plan"><small>Plan de acción</small>'+(partes.plan?esc(partes.plan):'<span class="vacio">Aún no hay plan de acción.</span>')+'</div>';
+        if(OBS_FORM && OBS_FORM.id===p.id){
+          h+='<div class="ob-form">'
+            + (OBS_FORM.tipo==='plan'
+                ? '<textarea id="ob-txt" placeholder="Qué vas a hacer para levantarla y cuándo">'+esc(partes.plan)+'</textarea>'
+                : '<textarea id="ob-txt" placeholder="'+(OBS_FORM.tipo==='por_validar'?'Cuéntale al supervisor qué hiciste (opcional)':'Comentario para el supervisor (opcional)')+'"></textarea>')
+            + '<div class="ob-acts" style="margin-top:0"><button type="button" class="btn ghost" data-obcancel="1">Cancelar</button>'
+            + '<button type="button" class="btn" data-obok="'+p.id+'">'+(OBS_FORM.tipo==='plan'?'Guardar plan':OBS_FORM.tipo==='por_validar'?'Avisar que ya la levanté':'Avisar que la estoy trabajando')+'</button></div></div>';
+        } else if(p.estado!=='cerrada'){
+          h+='<div class="ob-acts">';
+          if(p.estado==='abierta') h+='<button type="button" class="btn ghost" data-obform="en_proceso" data-id="'+p.id+'"><svg data-lucide="hammer"></svg>La estoy trabajando</button>';
+          if(p.estado==='abierta'||p.estado==='en_proceso') h+='<button type="button" class="btn" data-obform="por_validar" data-id="'+p.id+'"><svg data-lucide="check-circle"></svg>Ya la levanté</button>';
+          if(p.estado==='por_validar') h+='<span class="ob-wait">Avisaste '+(p.aviso_contrata_at?'el '+fmtDate(String(p.aviso_contrata_at).slice(0,10)):'')+'. El supervisor la revisará.</span><button type="button" class="btn ghost" data-obform="en_proceso" data-id="'+p.id+'">Aún la estoy trabajando</button>';
+          h+='<button type="button" class="btn ghost" data-obform="plan" data-id="'+p.id+'"><svg data-lucide="pencil"></svg>'+(partes.plan?'Editar plan':'Escribir plan')+'</button></div>';
+        } else if(p.validado_at||p.fecha_cierre){
+          h+='<div class="ob-meta">Cerrada el '+fmtDate(String(p.validado_at||p.fecha_cierre).slice(0,10))+'</div>';
+        }
+        h+='</div>';
+      });
+    });
+    root.innerHTML=h;
+    obsEventos(root);
+    if(window.lucide) lucide.createIcons();
+    var t=$('#ob-txt'); if(t) t.focus();
+  }
+  function obsEventos(root){
+    root.querySelectorAll('[data-obtab]').forEach(function(b){ b.addEventListener('click', function(){ OBS_TAB=b.dataset.obtab; OBS_FORM=null; renderObs(); }); });
+    root.querySelectorAll('[data-obform]').forEach(function(b){ b.addEventListener('click', function(){ OBS_FORM={id:+b.dataset.id, tipo:b.dataset.obform}; renderObs(); }); });
+    root.querySelectorAll('[data-obcancel]').forEach(function(b){ b.addEventListener('click', function(){ OBS_FORM=null; renderObs(); }); });
+    root.querySelectorAll('[data-obok]').forEach(function(b){ b.addEventListener('click', function(){ obsEnviar(+b.dataset.obok, b); }); });
+  }
+  async function obsEnviar(id, btn){
+    var p=OBS_TODAS.find(function(x){ return x.id===id; }); if(!p||!OBS_FORM) return;
+    var txt=(($('#ob-txt')||{}).value||'').trim();
+    var empresa=(CUENTA&&CUENTA.empresa)||'Contratista';
+    var body={p_id:id, p_estado:null, p_descripcion:null, p_nota:null, p_empresa:empresa};
+    if(OBS_FORM.tipo==='plan'){ var partes=obsPartes(p.descripcion); body.p_descripcion=[txt].concat(partes.datos).filter(Boolean).join(' · '); }
+    else { body.p_estado=OBS_FORM.tipo; body.p_nota=txt||null; }
+    btn.disabled=true;
+    try{
+      var r=await fetch(SUP_URL+'/rest/v1/rpc/contrata_avisa_pendiente',{method:'POST',headers:{apikey:SUP_KEY, Authorization:'Bearer '+SUP_KEY, 'Content-Type':'application/json'}, body:JSON.stringify(body)});
+      if(!r.ok){ var e=await r.json().catch(function(){ return {}; }); throw new Error(e.message||('HTTP '+r.status)); }
+      var tipo=OBS_FORM.tipo; OBS_FORM=null;
+      if(tipo==='por_validar') OBS_TAB='revision';
+      toast(tipo==='plan'?'Plan de acción guardado':tipo==='por_validar'?'Aviso enviado':'Listo', tipo==='por_validar'?'El supervisor la revisará y dará la conformidad.':(tipo==='en_proceso'?'El supervisor verá que la estás trabajando.':''));
+      await cargarObsObra();
+    }catch(e){ console.warn('aviso observación', e); btn.disabled=false; toast('No se pudo enviar', String(e.message||'').slice(0,90)); }
   }
 
   var formFac = $('#form-factura');
@@ -1197,6 +1320,7 @@
     if(porResp) items.push({cls:'info',ic:'gavel',t:porResp+' licitación(es) por responder',s:'Revisa tus invitaciones y envía tu oferta',go:'licitaciones'});
     var obs=facturas.filter(function(f){ return f.estado_revision==='observada'; });
     if(obs.length) items.push({cls:'crit',ic:'receipt',t:obs.length+' factura(s) observada(s)',s:'El supervisor pide corrección — revísalas',go:'factura'});
+    if(typeof OBS_AB!=='undefined' && OBS_AB.length) items.push({cls:OBS_URG.length?'crit':'warn',ic:'clipboard-check',t:OBS_AB.length+' observación(es) de obra por atender',s:OBS_URG.length?(OBS_URG.length+' urgente(s): retienen tus facturas'):'Cuéntale al supervisor en qué va y avísale al levantarlas',go:'observaciones'});
     var reqPend=(typeof reqPendTotal==='function')?reqPendTotal():0;
     if(reqPend) items.push({cls:'warn',ic:'shield-check',t:reqPend+' requisito(s) SSOMA por cumplir',s:'Descarga el documento y marca lo entregado',go:'requisitos'});
     if(CUENTA && typeof homolEstadoDisplay==='function'){ var hd=homolEstadoDisplay(); if(hd.estado!=='Homologado'){ items.push({cls:(hd.estado==='Observado'||hd.estado==='Vencido')?'crit':'warn',ic:'badge-check',t:'Homologación: '+hd.estado,s:hd.sub,go:'homologacion'}); } }

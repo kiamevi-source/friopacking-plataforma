@@ -11169,7 +11169,7 @@ function rdPendCard(p){
     + '<input type="checkbox" class="p2-chk" id="pend-sel-'+p.id+'"'+(rdPendSel.has(p.id)?' checked':'')+' onclick="event.stopPropagation()" onchange="rdPendSelTog('+p.id+',this.checked)" aria-label="Seleccionar">'
     + '<button class="p3-pill-s s-'+pill.k+'" type="button" onclick="event.stopPropagation();rdPendPopEstado(this,'+p.id+')">'+pill.t+'</button>'
     + '<span class="p3-t">'+rdEsc2(p.titulo)+'</span>'
-    + '<span class="p3-z">'+(p.restriccion?'<i class="p3-restr" title="Genera restricción"></i>':'')+rdEsc2(p.categoria||'Sin zona')+'</span>'
+    + '<span class="p3-z">'+(p.restriccion?'<i class="p3-restr" title="Genera restricción"></i>':'')+rdEsc2(p.categoria||'Sin zona')+(p.estado==='por_validar'&&p.aviso_contrata_at?' · <b class="p3-aviso">avisó '+rdEsc2(p.responsable||'la contratista')+'</b>':'')+'</span>'
     + '<button class="p3-due '+dt.c+'" type="button" onclick="event.stopPropagation();rdPendPopFecha(this,'+p.id+')" title="Reprogramar">'
       + '<b>'+(p.fecha_objetivo?rdPendFechaLarga(p.fecha_objetivo):'—')+'</b><small>'+dt.t+'</small></button>'
     + '<i data-lucide="chevron-right" class="ri p3-chev"></i>'
@@ -11217,7 +11217,7 @@ function rdPendFichaHTML(){
       + tile('<i data-lucide="calendar" class="ri"></i>','Fecha objetivo',p.fecha_objetivo?rdPendFechaLarga(p.fecha_objetivo):'Sin fecha','<em class="'+dt.c+'">'+(rdPendAbierto(p)&&d!==null&&d<0?'hace ':'')+dt.t+'</em>','rdPendPopFecha(this,'+p.id+')')
     + '</div>'
     + '<div><div class="p2-lbl">Estado</div><div class="p2-stepper p3-stepper">'+PEND_PASOS.map((k,i)=>'<button type="button" class="p2-step'+(idx>i?' past':'')+(idx===i?' cur':'')+'" onclick="rdPendSetEstado('+p.id+',\''+k+'\')"><i></i>'+PEND_EST[k]+'</button>').join('')+'</div></div>'
-    + (p.estado==='por_validar'?'<div class="p2-conf"><p>El equipo lo dio por levantado. <b>Falta tu conformidad</b> para cerrarlo.</p>'
+    + (p.estado==='por_validar'?'<div class="p2-conf"><p>'+(p.aviso_contrata_at?('<b>'+rdEsc2(p.responsable||'La contratista')+'</b> avisó el '+rdPendFechaLarga(String(p.aviso_contrata_at).slice(0,10))+': «'+rdEsc2(p.aviso_contrata||'Ya la levanté')+'». '):'El equipo lo dio por levantado. ')+'<b>Falta tu conformidad</b> para cerrarlo.</p>'
         + '<div class="p2-quick"><button class="pend-act" type="button" onclick="rdPendSetEstado('+p.id+',\'en_proceso\')">Devolver: aún no está</button></div></div>':'')
     + (p.estado==='no_aplica'?'<span class="p2-hint">Marcada como «No aplica»: no cuenta en el avance.</span>':'')
     + (p.validado_por?'<span class="p2-hint">Conformidad de '+rdEsc2(p.validado_por)+(p.validado_at?' · '+rdPendFechaLarga(String(p.validado_at).slice(0,10)):'')+'</span>':'')
@@ -11418,23 +11418,20 @@ function rdPendToastUndo(msg){
 
 async function rdPendSetEstado(id, estado){
   const p=rdPendList.find(x=>x.id===id); if(!p || p.estado===estado) return;
-  if(estado==='cerrada' && p.estado!=='por_validar'){
-    showToast('Primero pásala a «Por validar»: el cierre lleva tu conformidad', 4200); return;
-  }
+  // Se puede pasar de cualquier estado a cualquier otro. Quien cierra queda como conformidad.
   const campos={estado};
   if(estado==='cerrada'){ campos.fecha_cierre=new Date().toISOString(); campos.validado_por=rdPendQuien(); campos.validado_at=new Date().toISOString(); }
   else { campos.fecha_cierre=null; campos.validado_por=null; campos.validado_at=null; }
-  const texto = estado==='cerrada' ? ('Conformidad de '+rdPendQuien()+' · Por validar → Cerrada') : (PEND_EST[p.estado]+' → '+PEND_EST[estado]);
+  const texto = estado==='cerrada' ? ('Cerrada con conformidad de '+rdPendQuien()+' · '+PEND_EST[p.estado]+' → Cerrada') : (PEND_EST[p.estado]+' → '+PEND_EST[estado]);
   if(await rdPendGuardar([id], campos, texto, {undoTexto:'Cambio de estado deshecho'}))
     rdPendToastUndo(estado==='cerrada'?'Cerrada con tu conformidad':'Pasó a «'+PEND_EST[estado]+'»');
 }
 async function rdPendEstadoLote(ids, estado){
-  const malas=ids.map(i=>rdPendList.find(x=>x.id===i)).filter(p=>p && estado==='cerrada' && p.estado!=='por_validar');
-  if(malas.length){ showToast('Solo se cierran las que están en «Por validar»', 4200); return; }
+  if(!confirm('¿Pasar '+ids.length+(ids.length>1?' observaciones':' observación')+' a «'+PEND_EST[estado]+'»?'+(estado==='cerrada'?'\n\nQuedarán cerradas con tu conformidad y la fecha de hoy.':'')+'\n\nLuego puedes deshacerlo.')) return;
   const campos={estado};
   if(estado!=='cerrada'){ campos.fecha_cierre=null; campos.validado_por=null; campos.validado_at=null; }
   else { campos.fecha_cierre=new Date().toISOString(); campos.validado_por=rdPendQuien(); campos.validado_at=new Date().toISOString(); }
-  if(await rdPendGuardar(ids, campos, 'Pasó a '+PEND_EST[estado]+' (en lote)', {undoTexto:'Cambio de estado deshecho'})){
+  if(await rdPendGuardar(ids, campos, p=>(estado==='cerrada'?'Cerrada con conformidad de '+rdPendQuien()+' (en lote)':'Pasó a '+PEND_EST[estado]+' (en lote)'), {undoTexto:'Cambio de estado deshecho'})){
     rdPendSel.clear();
     rdPendToastUndo(ids.length+' pendientes pasaron a «'+PEND_EST[estado]+'»');
   }
@@ -11626,7 +11623,7 @@ function rdPendPopEstado(anchor, id){
   const ids = id===null ? [...rdPendSel] : [id];
   if(!ids.length) return;
   const el=rdPendPop(anchor, '<div class="p2-pop-h">'+(ids.length>1?'Cambiar estado de '+ids.length:'Cambiar estado')+'</div><div class="p2-menu">'
-    + Object.keys(PEND_EST).map(k=>'<button type="button" data-est="'+k+'"><span class="p2-st st-'+k+'" style="pointer-events:none">'+PEND_EST[k]+'</span>'+(k==='cerrada'?'<small>con tu conformidad</small>':'')+'</button>').join('')
+    + Object.keys(PEND_EST).map(k=>'<button type="button" data-est="'+k+'"><span class="p2-st st-'+k+'" style="pointer-events:none">'+PEND_EST[k]+'</span>'+(k==='cerrada'?'<small>queda tu conformidad</small>':'')+'</button>').join('')
     + '</div>');
   el.querySelectorAll('[data-est]').forEach(b=>b.addEventListener('click',()=>{
     const k=b.dataset.est; rdPendPopCerrar();
@@ -12695,6 +12692,7 @@ function rdPendEstilos3(){
   .p3-row .p3-pill-s{grid-area:s;justify-self:start;}
   .p3-t{grid-area:t;font-size:14px;font-weight:600;color:var(--navy-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;align-self:end;}
   .p3-z{grid-area:z;display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;align-self:start;}
+  .p3-aviso{font-weight:600;color:#5646be;}
   .p3-restr{flex:none;width:8px;height:8px;border-radius:2px;background:#d97706;transform:rotate(45deg);}
   .p3-row.done .p3-t{color:var(--text-3);}
   .p3-due{grid-area:d;border:1px solid transparent;background:none;border-radius:9px;padding:3px 6px;text-align:right;font-family:inherit;cursor:pointer;font-variant-numeric:tabular-nums;}
