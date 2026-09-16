@@ -155,7 +155,10 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
 - **Modo recorrido.** Para registrar caminando la obra: se dicta por voz (motor
   del navegador, es-PE) o se escribe, se elige área, tipo e impacto, y cada una
   se guarda con `origen = 'recorrido'` y fecha objetivo según el impacto
-  (alto 2 días, medio 7, bajo 15). Al abrir la obra, un aviso resume urgentes,
+  (alto 2 días, medio 7, bajo 15). Si en lo dictado se nombra una zona que la obra ya usa
+  («Sala de máquinas, falta sello…», también «túnel tres» = «Túnel 3»), o se dice
+  «zona X,» al inicio, la observación se guarda en esa zona y la zona sale del
+  título; elegir la zona a mano manda sobre lo detectado. Al abrir la obra, un aviso resume urgentes,
   lo que vence hoy y lo que espera conformidad.
 - **QR por zona, sin plano.** Cada obra se divide en zonas con nombre (tabla
   `obra_zonas` de Supervisor, única por obra y nombre). Desde «Zonas y QR» se
@@ -245,7 +248,9 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   monto se leen de `proyectos` de PMO y se pueden corregir en el acta; lo
   corregido se recuerda en ese navegador y no toca la ficha de Gerencia.
   También sale el informe de avance en PDF y el Excel con las columnas del cliente (hojas
-  Resumen y Observaciones). Todo se arma con lo que ya está en `pendientes`:
+  Resumen y Observaciones). En todo lo que va al cliente el responsable sale
+  como «Friopacking»: qué contrata ejecuta queda interno (solo se muestra tal
+  cual si el responsable es el propio cliente). Todo se arma con lo que ya está en `pendientes`:
   no se guarda nada nuevo ni se envía a ningún servicio externo.
 
 ## 4. Cómo se mantiene

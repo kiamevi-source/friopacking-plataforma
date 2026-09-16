@@ -12242,6 +12242,14 @@ function rdPdfPies(pdf, nombre){
     pdf.text('Página '+i+' de '+n, W-14, H-8, {align:'right'});
   }
 }
+// En el acta, el informe y el Excel del cliente el responsable es Friopacking: qué contrata
+// ejecuta es interno. Solo se muestra tal cual si lo asignado es el propio cliente.
+function rdPendRespCliente(p){
+  const r=String((p&&p.responsable)||'').trim();
+  const cliente=String((currentProyecto&&currentProyecto.nombre)||'').split(/\s+/)[0]||'';
+  if(r && (/\bcliente\b/i.test(r) || (cliente.length>3 && rdSimNorm(r).indexOf(rdSimNorm(cliente))>=0))) return r;
+  return 'Friopacking';
+}
 function rdPdfFecha(iso){ return iso?rdPendFechaLarga(String(iso).slice(0,10)):'Por definir'; }
 const rdPdfOrdenZona=(a,b)=>String(a.categoria||'~').localeCompare(String(b.categoria||'~'),'es') || rdPendDias(a.fecha_objetivo)-rdPendDias(b.fecha_objetivo);
 
@@ -12380,7 +12388,7 @@ async function rdPendActaGenerar(){
     const levantadas=rdPendList.filter(rdPendCerrada).sort(rdPdfOrdenZona);
     const na=rdPendList.filter(p=>p.estado==='no_aplica').sort(rdPdfOrdenZona);
     const bloqueAbiertas=()=>tabla('Observaciones por levantar', ['N°','Zona','Observación','Estado','Fecha comprometida','Responsable'],
-      abiertas.map((p,i)=>[String(i+1), p.categoria||'Sin zona', p.titulo, PEND_EST[p.estado]||p.estado, p.fecha_objetivo?rdPendFechaLarga(p.fecha_objetivo):'Por definir', p.responsable||'—']),
+      abiertas.map((p,i)=>[String(i+1), p.categoria||'Sin zona', p.titulo, PEND_EST[p.estado]||p.estado, p.fecha_objetivo?rdPendFechaLarga(p.fecha_objetivo):'Por definir', rdPendRespCliente(p)]),
       {1:{cellWidth:28},3:{cellWidth:19},4:{cellWidth:27},5:{cellWidth:24}});
     if(provisional) bloqueAbiertas();
     tabla('Observaciones levantadas', ['N°','Zona','Observación','Levantada'],
@@ -12421,9 +12429,9 @@ async function rdPendInforme(){
         return [z.nombre, String(z.pend), String(vz), z.lev+' de '+(z.total-z.na), z.pct+' %']; }),
       {1:{cellWidth:24,halign:'right'},2:{cellWidth:20,halign:'right'},3:{cellWidth:26,halign:'right'},4:{cellWidth:18,halign:'right'}});
     if(prox.length) y=rdPdfTabla(pdf, y, 'Comprometidas para las próximas dos semanas', ['Zona','Observación','Fecha','Responsable'],
-      prox.map(p=>[p.categoria||'Sin zona', p.titulo, rdPdfFecha(p.fecha_objetivo), p.responsable||'—']), {0:{cellWidth:36},2:{cellWidth:24},3:{cellWidth:30}});
+      prox.map(p=>[p.categoria||'Sin zona', p.titulo, rdPdfFecha(p.fecha_objetivo), rdPendRespCliente(p)]), {0:{cellWidth:36},2:{cellWidth:24},3:{cellWidth:30}});
     if(venc.length) y=rdPdfTabla(pdf, y, 'Con fecha vencida', ['Zona','Observación','Fecha','Responsable'],
-      venc.sort((a,b)=>rdPendDias(a.fecha_objetivo)-rdPendDias(b.fecha_objetivo)).map(p=>[p.categoria||'Sin zona', p.titulo, rdPdfFecha(p.fecha_objetivo), p.responsable||'—']),
+      venc.sort((a,b)=>rdPendDias(a.fecha_objetivo)-rdPendDias(b.fecha_objetivo)).map(p=>[p.categoria||'Sin zona', p.titulo, rdPdfFecha(p.fecha_objetivo), rdPendRespCliente(p)]),
       {0:{cellWidth:36},2:{cellWidth:24},3:{cellWidth:30}});
     if(r.decision.length) y=rdPdfTabla(pdf, y, 'Requieren una decisión o cotización', ['Zona','Observación','Motivo'],
       r.decision.map(p=>[p.categoria||'Sin zona', p.titulo, p.fuera_alcance?'Fuera de alcance':'Requiere cotización']), {0:{cellWidth:36},2:{cellWidth:34}});
@@ -12447,7 +12455,7 @@ function rdPendExcelWb(){
     const par=rdPendParse(p.descripcion);
     filas.push([p.categoria||'', p.titulo||'', PEND_EST[p.estado]||p.estado,
       p.fecha_objetivo?rdPendFechaCorta(p.fecha_objetivo)+'/'+String(p.fecha_objetivo).slice(0,4):'',
-      p.responsable||'', p.impacto||'', p.restriccion?'Restricción':'', par.com||'', p.origen==='excel'?'Excel':(p.origen==='recorrido'?'Recorrido':'App')]);
+      rdPendRespCliente(p), p.impacto||'', p.restriccion?'Restricción':'', par.com||'', p.origen==='excel'?'Excel':(p.origen==='recorrido'?'Recorrido':'App')]);
   });
   const ws=window.XLSX.utils.aoa_to_sheet(filas);
   ws['!cols']=[{wch:24},{wch:60},{wch:14},{wch:14},{wch:18},{wch:10},{wch:14},{wch:50},{wch:10}];
@@ -12513,12 +12521,13 @@ function rdRecPintar(){
       + '<button class="p2-x" type="button" onclick="rdRecCerrar()" aria-label="Terminar">✕</button></div>'
     + '<div class="rec-body">'
       + '<label class="p2-lbl" for="rec-txt">Qué observaste</label>'
-      + '<div class="rec-dic"><textarea id="rec-txt" class="pend-inp" rows="3" placeholder="'+(dictado?'Dicta o escribe…':'Escribe la observación…')+'"></textarea>'
+      + '<div class="rec-dic"><textarea id="rec-txt" class="pend-inp" rows="3" placeholder="'+(dictado?'Dicta o escribe… (ej: «Sala de máquinas, falta sello en pase»)':'Escribe la observación…')+'" oninput="rdRecDetectarVivo()"></textarea>'
         + (dictado?'<button class="rec-mic" id="rec-mic" type="button" onclick="rdRecMic()" aria-label="Dictar"><i data-lucide="mic" class="ri"></i></button>':'')+'</div>'
       + (dictado?'<span class="p2-hint" id="rec-estado">Toca el micrófono y habla; el texto se puede corregir antes de guardar.</span>':'<span class="p2-hint">Este navegador no tiene dictado: escribe la observación.</span>')
+      + '<span class="p2-hint rec-zona-auto" id="rec-zona-auto"></span>'
       + '<label class="p2-lbl" style="margin-top:14px">Área</label>'
-      + '<div class="rec-chips" id="rec-areas">'+areas.map(a=>'<button type="button" class="p2-chip'+(rdRecArea===a?' on':'')+'" onclick="rdRecSetArea(this,\''+rdEsc2(a).replace(/'/g,"\\'")+'\')">'+rdEsc2(a)+'</button>').join('')
-        + '<input class="pend-inp rec-area-otra" id="rec-area" list="pend-zonas-dl" placeholder="Otra área" value="'+rdEsc2(rdRecArea)+'" oninput="rdRecArea=this.value">' + '</div>'
+      + '<div class="rec-chips" id="rec-areas">'+areas.map(a=>'<button type="button" class="p2-chip'+(rdRecArea===a?' on':'')+'" onclick="rdRecAreaManual=true;rdRecSetArea(this,\''+rdEsc2(a).replace(/'/g,"\\'")+'\')">'+rdEsc2(a)+'</button>').join('')
+        + '<input class="pend-inp rec-area-otra" id="rec-area" list="pend-zonas-dl" placeholder="Otra área" value="'+rdEsc2(rdRecArea)+'" oninput="rdRecArea=this.value;rdRecAreaManual=true">' + '</div>'
       + '<div class="rec-row">'
         + '<div><label class="p2-lbl">¿Bloquea el avance?</label><label class="p2-check" style="height:36px"><input type="checkbox" id="rec-restriccion"'+(rdRecRestr?' checked':'')+' onchange="rdRecRestr=this.checked"> Genera restricción</label></div>'
         + '<div><label class="p2-lbl">Impacto</label><div class="p2-seg3">'+['alto','medio','bajo'].map(k=>'<button type="button" class="'+(rdRecImpacto===k?'on':'')+'" onclick="rdRecSetImpacto(\''+k+'\')">'+k[0].toUpperCase()+k.slice(1)+'</button>').join('')+'</div></div>'
@@ -12544,6 +12553,51 @@ function rdRecPintarBotones(){
   if(h) h.textContent='Se guarda con fecha objetivo a '+PEND_PLAZO[rdRecImpacto]+' días, por el impacto elegido. Se puede cambiar después.';
 }
 // Dictado del navegador (Chrome/Safari). Si falla, el texto se escribe a mano.
+let rdRecAreaManual=false;
+const REC_NUMEROS={uno:1,una:1,primer:1,primero:1,dos:2,segundo:2,tres:3,tercer:3,tercero:3,cuatro:4,cuarto:4,cinco:5,quinto:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+function rdRecNumeros(s){ return String(s||'').replace(/\b(uno|una|primer|primero|dos|segundo|tres|tercer|tercero|cuatro|cuarto|cinco|quinto|seis|siete|ocho|nueve|diez)\b/gi, w=>REC_NUMEROS[w.toLowerCase()]); }
+// Busca en lo dictado una zona que la obra ya usa (o «zona X,» al inicio aunque sea nueva).
+// Devuelve {zona, resto}; «resto» es el texto sin la zona cuando la zona va al principio.
+function rdRecDetectarZona(txt){
+  const texto=String(txt||'').trim(); if(!texto) return null;
+  const conocidas=[...new Set((rdZonas||[]).map(z=>z.nombre).concat(rdPendList.map(p=>p.categoria)).filter(Boolean))];
+  const palabras=[...texto.matchAll(/[^\s,.;:]+/g)].map(m=>({raw:m[0], fin:m.index+m[0].length, k:rdZonaKey(rdRecNumeros(m[0]))}));
+  const claveTexto=' '+palabras.map(w=>w.k).filter(Boolean).join(' ')+' ';
+  let mejor=null;
+  conocidas.forEach(z=>{
+    const k=rdZonaKey(rdRecNumeros(z));
+    if(k.replace(/ /g,'').length<3) return;
+    if(claveTexto.indexOf(' '+k+' ')>=0 && (!mejor || k.length>mejor.k.length)) mejor={zona:z, k};
+  });
+  const cortar=(fin)=>{ let r=texto.slice(fin).replace(/^[\s,.;:\-–]+/,''); return r ? r.charAt(0).toUpperCase()+r.slice(1) : ''; };
+  if(mejor){
+    // ¿La zona va al inicio? Se saltan «en / la / zona / área / de» y se comparan palabra por palabra.
+    const objetivo=mejor.k.split(' '); let i=0, j=0;
+    while(i<palabras.length && (!palabras[i].k || /^(en|zona|area|sector|ambiente)$/.test(palabras[i].k))) i++;
+    while(i<palabras.length && j<objetivo.length){
+      if(!palabras[i].k){ i++; continue; }
+      const partes=palabras[i].k.split(' ');
+      if(partes.every((w,n)=>w===objetivo[j+n])){ j+=partes.length; i++; } else break;
+    }
+    const alInicio=j===objetivo.length && i>0;
+    return {zona:mejor.zona, resto:alInicio?cortar(palabras[i-1].fin):texto};
+  }
+  const m=texto.match(/^\s*(?:en\s+)?(?:la\s+|el\s+)?(?:zona|[áa]rea|sector)\s+(?:de\s+(?:la\s+|los\s+|las\s+|el\s+)?)?([^,.;:]{2,40})[,.;:]\s*(.+)$/i);
+  if(m) return {zona:rdTextoOrdenado(m[1].trim().replace(/^./,c=>c.toUpperCase()),true), resto:m[2].charAt(0).toUpperCase()+m[2].slice(1)};
+  return null;
+}
+function rdRecDetectarVivo(){
+  const out=document.getElementById('rec-zona-auto'); if(!out) return;
+  const t=document.getElementById('rec-txt');
+  const det=rdRecAreaManual?null:rdRecDetectarZona(t?t.value:'');
+  if(det){
+    out.innerHTML='<i data-lucide="map-pin" class="ri"></i> Zona detectada: <b>'+rdEsc2(det.zona)+'</b> · se guarda ahí';
+    document.querySelectorAll('#rec-areas .p2-chip').forEach(b=>b.classList.toggle('on', rdZonaKey(b.textContent)===rdZonaKey(det.zona)));
+    const ia=document.getElementById('rec-area'); if(ia) ia.value=det.zona;
+    if(window.lucide) lucide.createIcons();
+  } else out.innerHTML='';
+}
+
 function rdRecMic(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){ showToast('Este navegador no tiene dictado'); return; }
@@ -12557,6 +12611,7 @@ function rdRecMic(){
       let txt='';
       for(let i=0;i<e.results.length;i++) txt+=(txt?' ':'')+e.results[i][0].transcript.trim();
       const t=document.getElementById('rec-txt'); if(t) t.value=(base?base+' ':'')+txt.trim();
+      rdRecDetectarVivo();
     };
     rdRecRec.onerror=ev=>{ rdRecDetener(); showToast('No se pudo dictar: '+(ev.error||''),3500); };
     rdRecRec.onend=()=>{ rdRecEstado(false); };
@@ -12572,14 +12627,19 @@ function rdRecEstado(on){
 async function rdRecGuardar(){
   const t=document.getElementById('rec-txt'); const txt=(t?t.value:'').trim();
   if(!txt){ showToast('Falta la observación'); if(t) t.focus(); return; }
-  const area=(document.getElementById('rec-area')||{}).value||rdRecArea||'';
+  let area=(document.getElementById('rec-area')||{}).value||rdRecArea||'';
+  let titulo=txt;
+  // Si se dijo la zona («Sala de máquinas, falta sello…») y no se eligió a mano, se usa esa zona
+  // y se quita del título cuando va al inicio.
+  const det=rdRecAreaManual?null:rdRecDetectarZona(txt);
+  if(det){ area=det.zona; titulo=det.resto||txt; }
   const btn=document.getElementById('rec-go');
   if(rdPendGuardando || (btn && btn.disabled)) return;   // doble toque
   rdPendGuardando=true; if(btn){ btn.disabled=true; }
   rdRecDetener();
   const row={ cod_proyecto:rdPendCod(), nombre_proyecto:(currentProyecto&&currentProyecto.nombre)||null,
     tipo:'observacion', restriccion:rdRecRestr, impacto:rdRecImpacto,
-    titulo:txt.slice(0,300), descripcion:txt.length>300?txt:null,
+    titulo:titulo.slice(0,300), descripcion:titulo.length>300?titulo:null,
     categoria:area.trim()||null, responsable:null,
     fecha_objetivo:rdPendMasDias(PEND_PLAZO[rdRecImpacto]),
     estado:'abierta', origen:'recorrido', causa:'Por definir',
@@ -12596,7 +12656,9 @@ async function rdRecGuardar(){
     rdRecCuenta++;
     const c=document.getElementById('rec-cuenta'); if(c) c.textContent=rdRecCuenta+' registradas en este recorrido';
     if(t){ t.value=''; t.focus(); }
-    showToast('Guardada ✓ · sigue con la siguiente', 2200);
+    if(det){ rdRecArea=det.zona; const ia=document.getElementById('rec-area'); if(ia) ia.value=det.zona; }
+    rdRecAreaManual=false; rdRecDetectarVivo();
+    showToast('Guardada ✓'+(area?' en '+area:'')+' · sigue con la siguiente', 2600);
   }catch(e){ console.warn('recorrido', e); showToast('No se pudo guardar: revisa la señal e intenta de nuevo',4000); }
   finally{ rdPendGuardando=false; if(btn) btn.disabled=false; }
 }
@@ -13365,6 +13427,8 @@ function rdPendEstilos2(){
     background:var(--surface);color:var(--text-2);display:grid;place-items:center;cursor:pointer;}
   .rec-mic.on{background:var(--danger);border-color:var(--danger);color:#fff;box-shadow:0 0 0 6px var(--danger-bg);}
   .rec-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .rec-zona-auto{display:flex;align-items:center;gap:5px;color:var(--teal-700);font-weight:600;margin-top:4px;}
+  .rec-zona-auto:empty{display:none;} .rec-zona-auto .ri{width:14px;height:14px;}
   .rec-area-otra{height:28px;width:130px;font-size:12px;}
   .rec-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;margin-bottom:8px;}
   .rec-f{display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--border);background:var(--surface-2);}
