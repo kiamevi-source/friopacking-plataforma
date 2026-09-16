@@ -61,6 +61,8 @@ select.est{height:30px;border:1px solid var(--line-2);border-radius:8px;backgrou
   <div class="card"><div class="card-h"><div><h2>Requieren compra o cotización</h2><p>Van a Compras o a Licitaciones</p></div></div>
     <div class="tw"><table id="t-req"></table></div></div>
 </div>
+<div class="card"><div class="card-h"><div><h2>Pagos en espera</h2><p>Facturas de contratistas retenidas por observaciones urgentes sin levantar</p></div></div>
+  <div class="tw"><table id="t-pagos"></table></div></div>
 <div class="dos">
   <div class="card"><div class="card-h"><div><h2>Por responsable</h2><p>Para la evaluación de contratistas: cuántas dejó cada uno y cuántas son por su instalación</p></div></div>
     <div class="tw"><table id="t-resp"></table></div></div>
@@ -69,6 +71,7 @@ select.est{height:30px;border:1px solid var(--line-2);border-radius:8px;backgrou
 </div>
 <script>
 const SUP_URL='https://iiceeajjmugtuzcfqggs.supabase.co', SUP_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpY2VlYWpqbXVndHV6Y2ZxZ2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODg5OTUsImV4cCI6MjA5NDc2NDk5NX0.xeOFlxEGoPsqO5mBLz2_o6UqMCiUw5t8Aghg0ieRqs4';
+const CT_URL='https://uijuokwcsvnlzxoyvrcj.supabase.co', CT_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpanVva3djc3ZubHp4b3l2cmNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTUwMDgsImV4cCI6MjA5NjA5MTAwOH0.-JtaWOf3QPRB5W1Z7rLp5Rabr83xdWIqX4GngkpFeJU';
 const PMO_URL='https://vsploxglutkbeokumunp.supabase.co', PMO_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
 const H=k=>({apikey:k,Authorization:'Bearer '+k,'Content-Type':'application/json'});
 const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -78,16 +81,17 @@ const abierto=p=>p.estado==='abierta'||p.estado==='en_proceso';
 const urgente=p=>abierto(p)&&(p.urgente==null?((dias(p.fecha_objetivo)!=null)&&(dias(p.fecha_objetivo)<-30||(p.impacto==='alto'&&dias(p.fecha_objetivo)<0))):!!p.urgente);
 const money=n=>n?('US$ '+Number(n).toLocaleString('es-PE',{maximumFractionDigits:0})):'—';
 const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
-let PEND=[], PROY=[], ADIC=[], REQ=[];
+let PEND=[], PROY=[], ADIC=[], REQ=[], PAGOS=[];
 async function get(url,k){ const r=await fetch(url,{headers:H(k)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
 async function cargar(){
   document.getElementById('ref').textContent='Cargando…';
   try{
-    [PEND,PROY,ADIC,REQ]=await Promise.all([
+    [PEND,PROY,ADIC,REQ,PAGOS]=await Promise.all([
       get(SUP_URL+'/rest/v1/pendientes?select=*&limit=5000',SUP_KEY),
       get(PMO_URL+'/rest/v1/proyectos?select=cod_proyecto,nombre,estado,supervisor&limit=1000',PMO_KEY),
       get(PMO_URL+'/rest/v1/adicionales?select=*&order=created_at.desc&limit=500',PMO_KEY),
-      get(PMO_URL+'/rest/v1/requerimientos_compra?select=*&order=created_at.desc&limit=500',PMO_KEY)
+      get(PMO_URL+'/rest/v1/requerimientos_compra?select=*&order=created_at.desc&limit=500',PMO_KEY),
+      get(CT_URL+'/rest/v1/contratas_facturas?select=id,num,proyecto,contrata,monto,moneda,fecha,estado,estado_revision,obs_supervisor&estado_revision=eq.en_espera&order=created_at.desc&limit=200',CT_KEY)
     ]);
   }catch(e){ console.warn(e); document.getElementById('kpis').innerHTML='<div class="kpi late"><b>!</b><span>no se pudo cargar</span></div>'; }
   document.getElementById('ref').textContent='Actualizar';
@@ -106,7 +110,8 @@ function pintar(){
    + kpi(urg.length,'urgentes',urg.length?'late':'')
    + kpi(venc.length,'con fecha vencida',venc.length?'late':'')
    + kpi(base?Math.round(cerr.length*100/base)+' %':'—','levantado','ok')
-   + kpi(costo?money(costo):'—','costo estimado pendiente');
+   + kpi(costo?money(costo):'—','costo estimado pendiente')
+   + kpi(PAGOS.length,'pagos en espera',PAGOS.length?'late':'');
   // ── por obra ──
   const m=new Map();
   PEND.forEach(p=>{
@@ -159,6 +164,14 @@ function pintar(){
         + '<td><select class="est" onchange="cambiarEstado(\'requerimientos_compra\','+a.id+',this.value)">'
           + estReq.map(e=>'<option value="'+e+'"'+(a.estado===e?' selected':'')+'>'+e[0].toUpperCase()+e.slice(1)+'</option>').join('')+'</select></td></tr>').join('')
       : '<tr><td colspan="4" class="vacio">Nada esperando compra o cotización.</td></tr>');
+  // ── pagos retenidos por observaciones ──
+  document.getElementById('t-pagos').innerHTML='<tr><th>Contratista</th><th>Factura</th><th>Obra</th><th class="n">Monto</th><th>Motivo</th><th></th></tr>'
+    + (PAGOS.length?PAGOS.map(f=>'<tr><td>'+esc(f.contrata||'—')+'</td><td><b>'+esc(f.num)+'</b><span class="cod">'+esc(f.fecha||'')+'</span></td>'
+        + '<td>'+esc(f.proyecto||'—')+'</td>'
+        + '<td class="n">'+((f.moneda==='USD'?'US$ ':'S/ ')+Number(f.monto||0).toLocaleString('es-PE'))+'</td>'
+        + '<td><span class="tit hint">'+esc(f.obs_supervisor||'Observaciones urgentes sin levantar')+'</span></td>'
+        + '<td class="n"><button class="btn" onclick="liberarPago('+f.id+')">Liberar</button></td></tr>').join('')
+      : '<tr><td colspan="6" class="vacio">Ninguna factura retenida.</td></tr>');
   // ── por responsable (evaluación de contratistas) ──
   const r=new Map();
   PEND.filter(p=>p.responsable).forEach(p=>{
@@ -196,6 +209,16 @@ async function cambiarEstado(tabla,id,estado){
       body:JSON.stringify({estado, updated_at:new Date().toISOString()})});
     const arr=tabla==='adicionales'?ADIC:REQ; const it=arr.find(x=>x.id===id); if(it) it.estado=estado;
   }catch(e){ console.warn(e); alert('No se pudo guardar el estado'); }
+}
+// Liberar el pago: la factura vuelve a la cola normal del supervisor.
+async function liberarPago(id){
+  if(!confirm('Liberar esta factura para que el supervisor la revise?')) return;
+  try{
+    await fetch(CT_URL+'/rest/v1/contratas_facturas?id=eq.'+id,{method:'PATCH',
+      headers:Object.assign(H(CT_KEY),{Prefer:'return=minimal'}),
+      body:JSON.stringify({estado_revision:'pendiente', obs_supervisor:null})});
+    PAGOS=PAGOS.filter(f=>f.id!==id); pintar();
+  }catch(e){ console.warn(e); alert('No se pudo liberar el pago'); }
 }
 // Al cerrar la obra, lo que queda abierto pasa a postventa sin perderse.
 async function postventa(cod){

@@ -390,6 +390,7 @@
         <div class="kpi"><div class="kpi-l"><svg data-lucide="clock"></svg>Por cobrar</div><div class="kpi-v" id="f-pend">$0</div></div>
         <div class="kpi"><div class="kpi-l"><svg data-lucide="check-circle"></svg>Pagado</div><div class="kpi-v" id="f-paid">$0</div></div>
       </div>
+      <div id="fac-aviso"></div>
       <div class="panel">
         <div class="panel-h"><h3>Nueva factura</h3></div>
         <form id="form-factura">
@@ -568,10 +569,60 @@
   }
 
   // ── FACTURACIÓN ──
+  // ── Observaciones de obra pendientes de esta contrata ──
+  // Viven en la instancia del supervisor; aquí solo se leen para avisar que el
+  // pago queda en espera mientras haya urgentes sin levantar.
+  var SUP_URL = 'https://iiceeajjmugtuzcfqggs.supabase.co';
+  var SUP_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpY2VlYWpqbXVndHV6Y2ZxZ2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODg5OTUsImV4cCI6MjA5NDc2NDk5NX0.xeOFlxEGoPsqO5mBLz2_o6UqMCiUw5t8Aghg0ieRqs4';
+  var OBS_URG = [], OBS_AB = [];
+  function nnObs(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
+  function obsUrgente(p){
+    if(p.estado!=='abierta' && p.estado!=='en_proceso') return false;
+    if(p.urgente!=null) return !!p.urgente;
+    if(!p.fecha_objetivo) return false;
+    var d=Math.round((new Date(String(p.fecha_objetivo).slice(0,10)+'T00:00:00') - new Date(new Date().toISOString().slice(0,10)+'T00:00:00'))/864e5);
+    return d < -30 || (p.impacto==='alto' && d<0);
+  }
+  async function cargarObsObra(){
+    try{
+      var aliases=((CUENTA&&CUENTA.aliases)||[]).map(nnObs).filter(Boolean);
+      var empresa=nnObs(CUENTA&&CUENTA.empresa);
+      if(empresa) aliases.push(empresa);
+      if(!aliases.length){ OBS_URG=[]; OBS_AB=[]; renderFacAviso(); return; }
+      var r=await fetch(SUP_URL+'/rest/v1/pendientes?select=id,titulo,categoria,responsable,estado,impacto,fecha_objetivo,urgente,nombre_proyecto,cod_proyecto&estado=in.(abierta,en_proceso)&limit=2000',
+        {headers:{apikey:SUP_KEY, Authorization:'Bearer '+SUP_KEY}});
+      var filas=await r.json();
+      OBS_AB=(filas||[]).filter(function(p){ var n=nnObs(p.responsable); return n && aliases.some(function(a){ return n.indexOf(a)>=0 || a.indexOf(n)>=0; }); });
+      OBS_URG=OBS_AB.filter(obsUrgente);
+    }catch(e){ console.warn('observaciones', e); OBS_URG=[]; OBS_AB=[]; }
+    renderFacAviso();
+  }
+  function renderFacAviso(){
+    var box=$('#fac-aviso'); if(!box) return;
+    if(!OBS_AB.length){ box.innerHTML=''; return; }
+    var obras=[...new Set(OBS_AB.map(function(p){ return p.nombre_proyecto||p.cod_proyecto; }))];
+    var urg=OBS_URG.length;
+    box.innerHTML='<div class="panel" style="border-color:'+(urg?'rgba(220,38,38,.35)':'var(--line)')+'">'
+      + '<div class="panel-h"><h3>'+(urg?('Tienes '+urg+' observación'+(urg>1?'es':'')+' urgente'+(urg>1?'s':'')+' sin levantar'):('Tienes '+OBS_AB.length+' observación'+(OBS_AB.length>1?'es':'')+' de obra abierta'+(OBS_AB.length>1?'s':'')))+'</h3></div>'
+      + '<div style="padding:14px 16px">'
+      + '<p style="margin:0 0 10px;font-size:13px;color:var(--muted)">'
+        + (urg?'Las facturas que registres quedan <b>en espera</b> hasta levantarlas. Coordina con el supervisor de la obra.'
+             :'Ninguna está urgente todavía. Si pasan 30 días vencidas, las facturas nuevas quedarán en espera.')+'</p>'
+      + '<ul style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.7">'
+        + (urg?OBS_URG:OBS_AB).slice(0,5).map(function(p){
+            return '<li><b>'+esc(p.titulo.slice(0,90))+'</b><br><span style="color:var(--muted)">'+esc(p.nombre_proyecto||p.cod_proyecto)+(p.categoria?' · '+esc(p.categoria):'')+(p.fecha_objetivo?' · fecha '+fmtDate(p.fecha_objetivo):'')+'</span></li>';
+          }).join('')
+      + '</ul>'
+      + ((urg?urg:OBS_AB.length)>5?'<p style="margin:10px 0 0;font-size:12px;color:var(--muted)">y '+((urg?urg:OBS_AB.length)-5)+' más</p>':'')
+      + '<p style="margin:10px 0 0;font-size:12px;color:var(--muted)">Obra(s): '+obras.map(esc).join(', ')+'</p>'
+      + '</div></div>';
+  }
+
   var formFac = $('#form-factura');
   $('#fac-fecha').value = new Date().toISOString().slice(0,10);
   var ESTADO = { emitida:{t:'Emitida',c:'info'}, presentada:{t:'Presentada',c:'warn'}, pagada:{t:'Pagada',c:'ok'} };
-  var ESTADO_REV = { pendiente:{t:'Pendiente',c:'warn'}, aprobada:{t:'Aprobada',c:'ok'}, observada:{t:'Observada',c:'danger'} };
+  var ESTADO_REV = { pendiente:{t:'Pendiente',c:'warn'}, aprobada:{t:'Aprobada',c:'ok'}, observada:{t:'Observada',c:'danger'},
+    en_espera:{t:'En espera · observaciones',c:'danger'} };
 
   // ── Documentos adjuntos a la factura (pendientes de subir hasta guardar) ──
   var facPending = [];
@@ -606,6 +657,7 @@
     var res = await sb.from('contratas_facturas').select('*').order('created_at',{ascending:false});
     if(res.error){ console.warn('facturas', res.error); return; }
     facturas = res.data || []; renderFacturas();
+    cargarObsObra();
   }
   formFac.addEventListener('submit', async function(e){
     e.preventDefault();
@@ -626,7 +678,10 @@
     if(!sb){ toast('Sin conexión','No se pudo conectar a Supabase'); return; }
     if(!USER_ID){ toast('Sin sesión','Ingresa desde el portal para registrar'); return; }
     var btn = formFac.querySelector('[type=submit]'); btn.disabled = true;
-    payload.estado_revision = 'pendiente';
+    // Pago condicionado: con observaciones urgentes sin levantar, la factura
+    // entra en espera y el supervisor la ve así.
+    payload.estado_revision = OBS_URG.length ? 'en_espera' : 'pendiente';
+    if(OBS_URG.length) payload.obs_supervisor = 'En espera: ' + OBS_URG.length + ' observación(es) urgente(s) sin levantar al registrar la factura.';
     var res = await sb.from('contratas_facturas').insert(payload).select().single();
     if(res.error){ btn.disabled = false; toast('No se pudo guardar', res.error.message); return; }
     var fac = res.data;
@@ -646,7 +701,9 @@
     facPending = []; renderFacPending();
     formFac.reset(); $('#fac-fecha').value = new Date().toISOString().slice(0,10);
     renderFacturas(); renderDocs(); renderResumen(); renderContratos();
-    toast('Factura enviada al supervisor', fac.num + ' · ' + money2(fac.monto,fac.moneda) + (subidos?(' · '+subidos+' doc(s)'):''));
+    toast(OBS_URG.length?'Factura registrada · queda en espera':'Factura enviada al supervisor',
+      fac.num + ' · ' + money2(fac.monto,fac.moneda) + (subidos?(' · '+subidos+' doc(s)'):'')
+      + (OBS_URG.length?(' · hay '+OBS_URG.length+' observación(es) urgente(s) por levantar'):''));
   });
   async function delFactura(id){
     if(!sb) return;

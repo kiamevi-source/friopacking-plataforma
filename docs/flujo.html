@@ -264,6 +264,7 @@ const MAPA = {
     {from:'a-sup:costos', to:'d-pmo:lic', tipo:'lee', label:'estado de cada licitación'},
     {from:'a-sup:riesgos', to:'d-pmo:adicionales', tipo:'lee', label:'crea adicionales y pedidos'},
     {from:'a-ger:observaciones', to:'d-sup:riesgos', tipo:'lee', label:'observaciones de todas las obras'},
+    {from:'a-ct:facturas', to:'d-sup:riesgos', tipo:'lee', label:'urgentes que retienen el pago'},
 
     /* sincronización automática */
     {from:'d-sup:reportes', to:'d-pmo:reportes', tipo:'sync', fromSide:'r', toSide:'r', bulge:80,  label:'cron 2 min · sube reportes'},

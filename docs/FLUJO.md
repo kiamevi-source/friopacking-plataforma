@@ -134,6 +134,12 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   observación guarda el id (`adicional_id`, `requerimiento_id`) y al desmarcar
   se borra el pedido. Es la única escritura de Supervisor hacia PMO, y solo
   crea pedidos: nunca toca la información base del proyecto.
+- **El pago espera a que la obra quede limpia.** El portal de Contratas lee
+  (solo lectura) las observaciones abiertas de la instancia Supervisor que
+  calzan con los alias de esa contrata. Si tiene urgentes sin levantar, la
+  factura que registre entra como `estado_revision = 'en_espera'` y el portal
+  se lo explica antes de registrarla. Gerencia ve esas facturas retenidas en el
+  módulo de Observaciones y puede liberarlas de a una.
 - **Consolidado en Gerencia.** `app-live/modulos/observaciones.html` junta todas
   las obras: pendientes, urgentes, avance y costo estimado (lee `pendientes` de
   Supervisor), más los adicionales y requerimientos de PMO, cuyo estado se
