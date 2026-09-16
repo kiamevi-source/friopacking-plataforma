@@ -482,15 +482,14 @@ input[type=date]{font-family:inherit;color:var(--ink);background:transparent;bor
 .ct-badge.info{background:#dbeafe;color:#1e40af}
 
 /* --- Toast notifications --- */
-#toast-container{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column-reverse;align-items:center;gap:8px;pointer-events:none;max-width:calc(100vw - 32px)}
-@media(max-width:700px){#toast-container{bottom:88px}}
+#toast-container{position:fixed;top:72px;left:16px;z-index:9999;display:flex;flex-direction:column;align-items:flex-start;gap:8px;pointer-events:none;max-width:calc(100vw - 32px)}
 .toast{background:#0d2436;color:#fff;padding:12px 14px 12px 16px;border-radius:10px;font-size:13px;line-height:1.4;box-shadow:0 6px 24px rgba(0,0,0,.4);display:flex;gap:10px;align-items:flex-start;min-width:300px;max-width:400px;pointer-events:all;animation:toastSlide .35s cubic-bezier(.22,.68,0,1.2) both;border-left:4px solid #2dc4a6}
 .toast.alert-t{border-left-color:#E24B4A}.toast.warn-t{border-left-color:#EF9F27}.toast.ok-t{border-left-color:#2dc4a6}
 .toast .t-ico{font-size:18px;flex-shrink:0;margin-top:1px}
 .toast .t-msg{flex:1}
 .toast .t-close{background:none;border:none;color:rgba(255,255,255,.5);font-size:18px;cursor:pointer;padding:0;line-height:1;margin-left:4px;flex-shrink:0}
 .toast .t-close:hover{color:#fff}
-@keyframes toastSlide{from{transform:translateX(110%) scale(.92);opacity:0}to{transform:translateX(0) scale(1);opacity:1}}
+@keyframes toastSlide{from{transform:translateX(-110%) scale(.92);opacity:0}to{transform:translateX(0) scale(1);opacity:1}}
 
 /* --- Map dark theme --- */
 .map-stage{background:#0d1f2d;border-radius:10px;overflow:hidden}

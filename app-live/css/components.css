@@ -278,9 +278,10 @@
 .cta-new .ic { width: 16px; height: 16px; stroke-width: 2.5; }
 
 /* ─── Toast ─── */
-/* Abajo al centro: en la esquina derecha lo tapaba el botón del asistente. */
+/* Arriba a la izquierda: abajo a la derecha lo tapaba el botón del asistente.
+   top: 72px deja libre la barra flotante de la plataforma. */
 .toast {
-  position: fixed; bottom: 24px; left: 50%;
+  position: fixed; top: 72px; left: 16px;
   background: white;
   border: 1px solid #e7ebf2;
   border-left: 4px solid #3ECBB0;
@@ -290,12 +291,12 @@
   z-index: 100000;
   display: flex; align-items: center; gap: 11px;
   min-width: 280px; max-width: min(420px, calc(100vw - 32px));
-  transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+  transform: translateY(-16px); opacity: 0; pointer-events: none;
   transition: all .3s cubic-bezier(.4,0,.2,1);
   font-family: 'Inter', sans-serif;
 }
-.toast.on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
-@media (max-width: 700px) { .toast { bottom: 88px; min-width: 0; } }
+.toast.on { transform: translateY(0); opacity: 1; pointer-events: auto; }
+@media (max-width: 700px) { .toast { min-width: 0; } }
 .toast.err { border-left-color: #ef4444; }
 .toast .ic-wrap {
   width: 34px; height: 34px;
