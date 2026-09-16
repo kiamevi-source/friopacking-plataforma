@@ -10948,7 +10948,7 @@ function rvalEnsureStyles(){
 // el avance de la obra. «Punch list» dejó de ser un tipo: es el origen.
 const PEND_TIPOS=[{k:'observacion',t:'Observación'}];
 function rdPendTipoLabel(){ return 'Observación'; }
-const PEND_EST={abierta:'Abierta',en_proceso:'En proceso',por_validar:'Por validar',cerrada:'Cerrada',no_aplica:'No aplica'};
+const PEND_EST={abierta:'Pendiente',en_proceso:'En proceso',por_validar:'Por validar',cerrada:'Cerrada',no_aplica:'No aplica'};
 const PEND_PASOS=['abierta','en_proceso','por_validar','cerrada'];
 // Plazo sugerido en dias segun el impacto.
 const PEND_PLAZO={alto:2,medio:7,bajo:15};
@@ -10957,7 +10957,7 @@ const PEND_CAUSAS=['Por definir','Diseño','Fabricación del equipo','Instalaci�
 const PEND_VISTAS=[
   {k:'todas',       l:'Todas',       f:()=>true},
   {k:'urg',         l:'Urgentes',    f:p=>rdPendUrgente(p), hot:true},
-  {k:'abierta',     l:'Abiertas',    f:p=>p.estado==='abierta' && !rdPendUrgente(p)},
+  {k:'abierta',     l:'Pendientes',    f:p=>p.estado==='abierta' && !rdPendUrgente(p)},
   {k:'en_proceso',  l:'En proceso',  f:p=>p.estado==='en_proceso' && !rdPendUrgente(p)},
   {k:'por_validar', l:'Por validar', f:p=>p.estado==='por_validar'},
   {k:'cerrada',     l:'Cerradas',    f:p=>rdPendFuera(p)}
@@ -11614,28 +11614,50 @@ function rdPendToggleForm(){
 }
 
 /* ── guardar: un PATCH por fila + historial + deshacer ── */
+// Aplica cambios en una tanda: las filas con el mismo cambio van en UN solo PATCH
+// (cerrar 30 en lote = una llamada, entran todas o ninguna) y el historial en UN POST.
+async function rdPendPatchLote(grupos){
+  for(const g of grupos){
+    const r=await sbFetch('/rest/v1/pendientes?id=in.('+g.ids.join(',')+')&select=id',
+      {method:'PATCH',headers:{'Prefer':'return=representation'},body:JSON.stringify(g.patch)});
+    const n=Array.isArray(r)?r.length:0;
+    if(n<g.ids.length) throw new Error(n?('solo se guardaron '+n+' de '+g.ids.length+': revisa tu acceso a la obra'):'sin permiso para guardar en esta obra');
+  }
+}
+function rdPendAgrupar(filas, clave){
+  const m=new Map();
+  filas.forEach(f=>{ const k=JSON.stringify(f[clave]); if(!m.has(k)) m.set(k,{patch:f[clave], ids:[]}); m.get(k).ids.push(f.id); });
+  return [...m.values()];
+}
+async function rdPendHistorialLote(filas){
+  if(!filas.length) return;
+  try{
+    await sbFetch('/rest/v1/pendientes_historial',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(filas)});
+    filas.forEach(f=>{ if(rdPendHist[f.pendiente_id]) rdPendHist[f.pendiente_id].unshift({created_at:new Date().toISOString(), texto:f.texto, autor:f.autor}); });
+  }catch(e){ console.warn('historial', e); }
+}
 async function rdPendGuardar(ids, campos, texto, opts){
   opts=opts||{};
-  const prev=[];
+  const prev=[], filas=[];
   for(const id of ids){
     const p=rdPendList.find(x=>x.id===id); if(!p) continue;
     const patch=typeof campos==='function'?campos(p):campos;
+    if(!patch || !Object.keys(patch).length) continue;
     // El «antes» sale del patch ya calculado: con campos como función, Object.keys daba []
     // y «Deshacer» de una reprogramación no revertía nada aunque avisara que sí.
     const antes={}; Object.keys(patch).forEach(k=>{ antes[k]=p[k]===undefined?null:p[k]; });
-    prev.push({id, antes});
-    try{
-      await sbFetch('/rest/v1/pendientes?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(patch)});
-      Object.assign(p, patch);
-      const t=typeof texto==='function'?texto(p):texto;
-      if(t && !opts.sinHistorial){
-        try{
-          await sbFetch('/rest/v1/pendientes_historial',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({pendiente_id:id, texto:t, autor:rdPendQuien()})});
-          if(rdPendHist[id]) rdPendHist[id].unshift({created_at:new Date().toISOString(), texto:t, autor:rdPendQuien()});
-        }catch(e){ console.warn('historial', e); }
-      }
-    }catch(e){ console.warn('pendiente patch', e); showToast('No se pudo guardar: '+(e.message||''),4000); return false; }
+    prev.push({id, antes}); filas.push({id, patch, p});
   }
+  if(!filas.length) return true;
+  try{ await rdPendPatchLote(rdPendAgrupar(filas,'patch')); }
+  catch(e){ console.warn('pendiente patch', e); showToast('No se pudo guardar: '+(e.message||''),5000); return false; }
+  const hist=[];
+  filas.forEach(f=>{
+    Object.assign(f.p, f.patch);
+    const t=typeof texto==='function'?texto(f.p):texto;
+    if(t && !opts.sinHistorial) hist.push({pendiente_id:f.id, texto:t, autor:rdPendQuien()});
+  });
+  await rdPendHistorialLote(hist);
   if(!opts.sinDeshacer) rdPendUndo={prev, texto:opts.undoTexto||'Cambio deshecho'};
   if(ids.length===1){ rdPendFlash=ids[0]; setTimeout(()=>{ rdPendFlash=null; },1600); }
   rdPendRender();
@@ -11644,19 +11666,22 @@ async function rdPendGuardar(ids, campos, texto, opts){
 async function rdPendDeshacer(){
   if(!rdPendUndo) return;
   const u=rdPendUndo; rdPendUndo=null;
-  for(const it of u.prev){
-    const p=rdPendList.find(x=>x.id===it.id); if(!p) continue;
-    try{
-      await sbFetch('/rest/v1/pendientes?id=eq.'+it.id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(it.antes)});
-      Object.assign(p, it.antes);
-      await sbFetch('/rest/v1/pendientes_historial',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({pendiente_id:it.id, texto:u.texto, autor:rdPendQuien()})});
-      delete rdPendHist[it.id];
-    }catch(e){ console.warn('deshacer', e); }
+  const filas=u.prev.map(it=>({id:it.id, antes:it.antes, p:rdPendList.find(x=>x.id===it.id)})).filter(f=>f.p);
+  try{ await rdPendPatchLote(rdPendAgrupar(filas,'antes')); }
+  catch(e){ console.warn('deshacer', e); showToast('No se pudo deshacer: '+(e.message||''),5000); rdPendRender(); return; }
+  filas.forEach(f=>{ Object.assign(f.p, f.antes); delete rdPendHist[f.id]; });
+  await rdPendHistorialLote(filas.map(f=>({pendiente_id:f.id, texto:u.texto, autor:rdPendQuien()})));
+  // Si lo deshecho era una marca que abre un pedido en Gerencia, el pedido vuelve a quedar como la marca.
+  for(const f of filas){
+    for(const campo of ['fuera_alcance','requiere_cotizacion']){
+      if(campo in f.antes) await rdPendAvisarGerencia(f.p, campo, !!f.p[campo]);
+    }
   }
   showToast('Listo, se deshizo el cambio');
   rdPendRender();
   if(rdPendOpen) rdPendCargarHist(rdPendOpen);
 }
+
 function rdPendToastUndo(msg){
   showToast(msg, 6000);
   setTimeout(()=>{
@@ -11739,32 +11764,39 @@ async function rdPendTogCampo(id, campo){
    para Comercial, o un requerimiento para Compras / Licitaciones. */
 async function rdPendAvisarGerencia(p, campo, val){
   const esAdic = campo==='fuera_alcance';
-  const tabla = esAdic ? 'adicionales' : 'requerimientos_compra';
   const campoId = esAdic ? 'adicional_id' : 'requerimiento_id';
   const G='https://vsploxglutkbeokumunp.supabase.co';
   const H={apikey:PEND_PMO_KEY, Authorization:'Bearer '+PEND_PMO_KEY, 'Content-Type':'application/json'};
+  // Gerencia ya no deja escribir directo en sus tablas: se pide y se retira por funciones
+  // que validan la obra y no borran un pedido que Comercial o Compras ya empezaron.
+  const rpc=async(fn, body)=>{
+    const r=await fetch(G+'/rest/v1/rpc/'+fn,{method:'POST',headers:H,body:JSON.stringify(body)});
+    const txt=await r.text(); let j=null; try{ j=JSON.parse(txt); }catch(_){}
+    if(!r.ok) throw new Error((j&&j.message)||txt);
+    return j;
+  };
+  const guardarId=async(v)=>{
+    if((p[campoId]||null)===(v||null)) return;
+    await sbFetch('/rest/v1/pendientes?id=eq.'+p.id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({[campoId]:v||null})});
+    p[campoId]=v||null;
+  };
   try{
     if(val){
       const par=rdPendParse(p.descripcion);
-      const fila={ cod_proyecto:rdPendCod(), nombre_proyecto:(currentProyecto&&currentProyecto.nombre)||null,
-        origen:'observacion', origen_pendiente_id:p.id, titulo:p.titulo, descripcion:par.com||null,
-        area:p.categoria||null, solicitado_por:rdPendQuien() };
-      if(esAdic) fila.monto_estimado=p.costo_estimado||null;
-      const r=await fetch(G+'/rest/v1/'+tabla,{method:'POST',headers:Object.assign({Prefer:'return=representation'},H),body:JSON.stringify(fila)});
-      if(!r.ok) throw new Error(await r.text());
-      const j=await r.json(); const nuevo=Array.isArray(j)?j[0]:null;
-      if(nuevo){
-        await sbFetch('/rest/v1/pendientes?id=eq.'+p.id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({[campoId]:nuevo.id})});
-        p[campoId]=nuevo.id;
-      }
+      const nuevo=await rpc('obs_pedido_solicitar',{ p_tipo:esAdic?'adicional':'requerimiento', p_cod:rdPendCod(),
+        p_nombre:(currentProyecto&&currentProyecto.nombre)||null, p_pendiente_id:p.id, p_titulo:p.titulo,
+        p_descripcion:par.com||null, p_area:p.categoria||null, p_monto:esAdic?(p.costo_estimado||null):null, p_solicitado_por:rdPendQuien() });
+      await guardarId(nuevo);
       showToast(esAdic?'Enviada a Comercial como adicional ✓':'Enviada a Compras ✓', 3500);
-    } else if(p[campoId]){
-      await fetch(G+'/rest/v1/'+tabla+'?id=eq.'+p[campoId],{method:'DELETE',headers:H});
-      await sbFetch('/rest/v1/pendientes?id=eq.'+p.id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({[campoId]:null})});
-      p[campoId]=null;
+    } else {
+      const res=await rpc('obs_pedido_retirar',{ p_tipo:esAdic?'adicional':'requerimiento', p_pendiente_id:p.id });
+      await guardarId(null);
+      if(res && res!=='retirado' && res!=='no_existe')
+        showToast((esAdic?'Comercial':'Compras')+' ya lo está trabajando («'+res+'»): avísales que ya no va', 6000);
     }
   }catch(e){ console.warn('avisar gerencia', e); showToast('Se guardó la marca, pero no llegó a Gerencia: '+String(e.message||'').slice(0,60), 5000); }
 }
+
 async function rdPendTogUrg(id){
   const p=rdPendList.find(x=>x.id===id); if(!p) return;
   const val=!rdPendUrgente(p);
@@ -13788,7 +13820,7 @@ function rdPendImpModal(info){
     + '<td>'+rdEsc2(r.responsable||'—')+'</td>'
     + '<td>'+(r.fecha_objetivo?rdPendFechaCorta(r.fecha_objetivo):'—')+'</td>'
     + '<td><span class="pend-imp '+r.impacto+'">'+r.impacto+'</span></td>'
-    + '<td>'+({abierta:'Abierta',en_proceso:'En proceso',cerrada:'Cerrada'}[r.estado])+'</td></tr>').join('');
+    + '<td>'+({abierta:'Pendiente',en_proceso:'En proceso',cerrada:'Cerrada'}[r.estado])+'</td></tr>').join('');
 
   box.innerHTML='<div class="pend-modal-bg" onclick="rdPendImpClose()"></div><div class="pend-modal wide">'
     + '<div class="pend-modal-hd"><i data-lucide="file-spreadsheet" class="ri"></i><div>'
@@ -13896,9 +13928,9 @@ function rdPendPlantilla(){
   if(!window.XLSX){ showToast('SheetJS no cargó. Recarga la página.',4000); return; }
   const datos=[
     ['Título','Descripción','Tipo','Categoría','Responsable','Fecha objetivo','Impacto','Estado'],
-    ['Falta sello en pase de tubería sala de máquinas','Pase sin sellar hacia cámara 3','Observación','Obras civiles','Contratista civil','30/09/2026','Alto','Abierta'],
+    ['Falta sello en pase de tubería sala de máquinas','Pase sin sellar hacia cámara 3','Observación','Obras civiles','Contratista civil','30/09/2026','Alto','Pendiente'],
     ['Aislamiento de línea de succión incompleto','Tramo de 4 m sin recubrimiento','Punch list','Aislamiento','Metalfresh','05/10/2026','Medio','En proceso'],
-    ['No llegó válvula de expansión de cámara 2','Restringe la puesta en marcha','Restricción','Materiales','Logística','','Alto','Abierta']
+    ['No llegó válvula de expansión de cámara 2','Restringe la puesta en marcha','Restricción','Materiales','Logística','','Alto','Pendiente']
   ];
   const ws=window.XLSX.utils.aoa_to_sheet(datos);
   ws['!cols']=[{wch:46},{wch:40},{wch:14},{wch:18},{wch:20},{wch:14},{wch:10},{wch:12}];

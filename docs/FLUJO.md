@@ -181,8 +181,14 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   Comercial lo cotice; si la marca es «requiere cotización», crea un
   **requerimiento** (`requerimientos_compra`) para Compras o Licitaciones. La
   observación guarda el id (`adicional_id`, `requerimiento_id`) y al desmarcar
-  se borra el pedido. Es la única escritura de Supervisor hacia PMO, y solo
-  crea pedidos: nunca toca la información base del proyecto.
+  se retira el pedido. Es la única escritura de Supervisor hacia PMO, y solo
+  crea pedidos: nunca toca la información base del proyecto. Desde el 16 de
+  septiembre de 2026 va **solo** por las funciones `obs_pedido_solicitar` y
+  `obs_pedido_retirar` (security definer en PMO): validan que la obra exista,
+  no duplican (una observación = un pedido) y no borran un pedido que ya salió
+  de «solicitado»; en ese caso avisan al supervisor. Las tablas quedaron de solo
+  lectura para anon, salvo el `estado` que cambia Gerencia. «Deshacer» sobre
+  una marca vuelve a pedir o retirar el pedido.
 - **El pago espera a que la obra quede limpia.** El portal de Contratas lee
   (solo lectura) las observaciones abiertas de la instancia Supervisor que
   calzan con los alias de esa contrata (palabra completa; los alias de menos de

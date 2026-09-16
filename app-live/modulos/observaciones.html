@@ -186,7 +186,7 @@ function pintar(){
     if(/contrata/i.test(p.causa||'')) o.contrata++;
   });
   const resp=[...r.entries()].sort((a,b)=>b[1].ab-a[1].ab||b[1].n-a[1].n).slice(0,12);
-  document.getElementById('t-resp').innerHTML='<tr><th>Responsable</th><th class="n">Obras</th><th class="n">Total</th><th class="n">Abiertas</th><th class="n">Urgentes</th><th class="n">Por su instalación</th></tr>'
+  document.getElementById('t-resp').innerHTML='<tr><th>Responsable</th><th class="n">Obras</th><th class="n">Total</th><th class="n">Pendientes</th><th class="n">Urgentes</th><th class="n">Por su instalación</th></tr>'
     + (resp.length?resp.map(([k,o])=>'<tr><td>'+esc(k)+'</td><td class="n">'+o.obras.size+'</td><td class="n">'+o.n+'</td><td class="n">'+o.ab+'</td>'
         + '<td class="n">'+(o.urg?'<span class="pill late">'+o.urg+'</span>':'0')+'</td>'
         + '<td class="n">'+(o.contrata?'<span class="pill warn">'+o.contrata+'</span>':'0')+'</td></tr>').join('')

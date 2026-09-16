@@ -710,7 +710,7 @@
       h+='<div class="ob-obra">'+esc(obra)+' · '+porObra[obra].length+'</div>';
       porObra[obra].forEach(function(p){
         var d=obsDias(p.fecha_objetivo), urg=obsUrgente(p), partes=obsPartes(p.descripcion);
-        var est={abierta:['Abierta','gray'],en_proceso:['La estás trabajando','info'],por_validar:['Esperando revisión','violet'],cerrada:['Cerrada','ok']}[p.estado]||[p.estado,'gray'];
+        var est={abierta:['Pendiente','gray'],en_proceso:['La estás trabajando','info'],por_validar:['Esperando revisión','violet'],cerrada:['Cerrada','ok']}[p.estado]||[p.estado,'gray'];
         var fecha=p.fecha_objetivo?('Fecha: <b class="'+(d!==null&&d<0&&p.estado!=='cerrada'?'late':'')+'">'+fmtDate(String(p.fecha_objetivo).slice(0,10))+(d!==null&&p.estado!=='cerrada'?(d<0?' · vencida hace '+(-d)+' d':d===0?' · vence hoy':' · en '+d+' d'):'')+'</b>'):'Sin fecha';
         h+='<div class="ob-card'+(urg?' urg':'')+'"><div class="ob-top"><div class="ob-t">'+esc(p.titulo)+'</div><div class="ob-tags">'
           + (urg?'<span class="tag danger">Urgente</span>':'')+'<span class="tag '+est[1]+'">'+est[0]+'</span></div></div>'
