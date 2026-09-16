@@ -11245,6 +11245,7 @@ function rdPendToolsHTML(){
       + '<button class="pend-act" type="button" onclick="rdPendPopEstado(this,null)">Cambiar estado</button>'
       + '<button class="pend-act" type="button" onclick="rdPendPopZonaLote(this)">Cambiar zona</button>'
       + '<button class="pend-act" type="button" onclick="rdPendBulkUrg()">Quitar de urgentes</button>'
+      + '<button class="pend-act p4-peligro" type="button" onclick="rdPendEliminar([...rdPendSel])"><i data-lucide="trash-2" class="ri"></i>Eliminar</button>'
       + '<button class="pend-act ghost" type="button" onclick="rdPendSelTodas()">Marcar las '+rdPendFiltrada().length+'</button>'
       + '<span class="p2-sep"></span>'
       + '<button class="pend-act ghost" type="button" onclick="rdPendSelLimpiar()">Quitar selección</button></div>';
@@ -11797,6 +11798,40 @@ async function rdPendAvisarGerencia(p, campo, val){
   }catch(e){ console.warn('avisar gerencia', e); showToast('Se guardó la marca, pero no llegó a Gerencia: '+String(e.message||'').slice(0,60), 5000); }
 }
 
+/* Eliminar: para lo cargado por error, repetido o de prueba. No se puede deshacer.
+   Antes se retiran los pedidos en Gerencia que nadie empezó a trabajar. */
+async function rdPendEliminar(ids){
+  ids=(ids||[]).filter(id=>rdPendList.some(p=>p.id===id));
+  if(!ids.length) return;
+  const filas=ids.map(id=>rdPendList.find(p=>p.id===id));
+  const nombre=filas.length===1 ? '«'+String(rdTextoOrdenado(filas[0].titulo)).slice(0,80)+'»' : filas.length+' observaciones';
+  if(!confirm('¿Eliminar '+nombre+'?\n\nSe borra junto con su historial y no se puede recuperar.\nSi solo no corresponde, usa «No aplica».')) return;
+  const G='https://vsploxglutkbeokumunp.supabase.co';
+  const H={apikey:PEND_PMO_KEY, Authorization:'Bearer '+PEND_PMO_KEY, 'Content-Type':'application/json'};
+  const enCurso=[];
+  for(const p of filas){
+    for(const [marca, tipo] of [['fuera_alcance','adicional'],['requiere_cotizacion','requerimiento']]){
+      if(!p[marca] && !p[tipo==='adicional'?'adicional_id':'requerimiento_id']) continue;
+      try{
+        const r=await fetch(G+'/rest/v1/rpc/obs_pedido_retirar',{method:'POST',headers:H,body:JSON.stringify({p_tipo:tipo, p_pendiente_id:p.id})});
+        const res=await r.json().catch(()=>null);
+        if(r.ok && res && res!=='retirado' && res!=='no_existe') enCurso.push((tipo==='adicional'?'Comercial':'Compras')+' («'+res+'»)');
+      }catch(e){ console.warn('retirar pedido', e); }
+    }
+  }
+  try{
+    const r=await sbFetch('/rest/v1/pendientes?id=in.('+ids.join(',')+')&select=id',{method:'DELETE',headers:{'Prefer':'return=representation'}});
+    const borradas=new Set((Array.isArray(r)?r:[]).map(x=>x.id));
+    if(borradas.size<ids.length) throw new Error(borradas.size?('solo se eliminaron '+borradas.size+' de '+ids.length+': revisa tu acceso a la obra'):'sin permiso para eliminar en esta obra');
+    rdPendList=rdPendList.filter(p=>!borradas.has(p.id));
+    ids.forEach(id=>{ rdPendSel.delete(id); delete rdPendHist[id]; });
+    if(rdPendOpen && borradas.has(rdPendOpen)) rdPendOpen=null;
+    rdPendUndo=null;
+    rdPendRender();
+    showToast((ids.length>1?ids.length+' observaciones eliminadas':'Observación eliminada')+(enCurso.length?' · ya en curso en '+[...new Set(enCurso)].join(' y ')+': avísales':''), enCurso.length?7000:3500);
+  }catch(e){ console.warn('eliminar', e); showToast('No se pudo eliminar: '+String(e.message||'').slice(0,90),5000); rdPendLoad(); }
+}
+
 async function rdPendTogUrg(id){
   const p=rdPendList.find(x=>x.id===id); if(!p) return;
   const val=!rdPendUrgente(p);
@@ -11835,7 +11870,7 @@ function rdPendPop(anchor, html){
 }
 function rdPendPopMenu(anchor, titulo, items){
   const el=rdPendPop(anchor, (titulo?'<div class="p2-pop-h">'+titulo+'</div>':'')+'<div class="p2-menu">'
-    + items.map((it,i)=>'<button type="button" data-i="'+i+'"><i data-lucide="'+it[0]+'" class="ri"></i>'+it[1]+'</button>').join('')+'</div>');
+    + items.map((it,i)=>'<button type="button" data-i="'+i+'"'+(it[3]?' class="p4-peligro"':'')+'><i data-lucide="'+it[0]+'" class="ri"></i>'+it[1]+'</button>').join('')+'</div>');
   el.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{ rdPendPopCerrar(); items[+b.dataset.i][2](); }));
   if(window.lucide) lucide.createIcons();
 }
@@ -11856,6 +11891,7 @@ function rdPendPopFicha(anchor, id){
   if(rdPendAbierto(p)) items.push(['flame', rdPendUrgente(p)?'Quitar de urgentes':'Marcar como urgente', ()=>rdPendTogUrg(id)]);
   items.push(p.estado==='no_aplica' ? ['rotate-ccw','Reabrir', ()=>rdPendSetEstado(id,'abierta')] : ['circle-slash','Marcar «No aplica»', ()=>rdPendSetEstado(id,'no_aplica')]);
   items.push(['map', p.plano_x!=null?'Ver en el plano':'Ubicar en el plano', ()=>rdPlanoAbrir(id)]);
+  items.push(['trash-2', 'Eliminar', ()=>rdPendEliminar([id]), true]);
   rdPendPopMenu(anchor, '', items);
 }
 function rdPendPopTexto(anchor, id, campo){
@@ -13067,6 +13103,7 @@ function rdPendEstilos3(){
   .p3-zmore .ri{width:15px;height:15px;}
   /* Resumen por zona en filas (16-sep) */
   .p4-zres{margin:14px 2px 10px;font-size:13px;color:var(--text-2);}
+  .p2-menu button.p4-peligro,.pend-act.p4-peligro{color:var(--danger);}
   .p4-crumb{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 0 2px;}
   .p4-crumb-z b{display:block;font-size:17px;font-weight:700;color:var(--navy-800);}
   .p4-crumb-z small{display:block;font-size:12.5px;color:var(--text-3);margin-top:1px;}

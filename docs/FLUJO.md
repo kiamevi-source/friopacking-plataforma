@@ -227,6 +227,10 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   puede pasar de cualquier estado a cualquier otro, también en lote (con
   confirmación y deshacer). Quien cierra queda como conformidad
   (`validado_por`, `validado_at`) con la fecha del día.
+- **Eliminar.** Desde la ficha (⋯ → Eliminar) o en lote, quien tiene acceso a
+  la obra puede borrar observaciones cargadas por error. Se pide confirmación,
+  se borra el historial (en cascada), no se puede deshacer, y antes se retiran
+  por `obs_pedido_retirar` los pedidos en Gerencia que nadie empezó a trabajar.
 - **Consolidado en Gerencia.** `app-live/modulos/observaciones.html` junta todas
   las obras: pendientes, urgentes, avance y costo estimado (lee `pendientes` de
   Supervisor), más los adicionales y requerimientos de PMO, cuyo estado se
