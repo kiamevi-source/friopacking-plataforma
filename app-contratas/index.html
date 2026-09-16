@@ -638,14 +638,17 @@
     if(p.estado!=='abierta' && p.estado!=='en_proceso') return false;
     if(p.urgente!=null) return !!p.urgente;
     if(!p.fecha_objetivo) return false;
-    var d=Math.round((new Date(String(p.fecha_objetivo).slice(0,10)+'T00:00:00') - new Date(new Date().toISOString().slice(0,10)+'T00:00:00'))/864e5);
+    // «Hoy» en hora de Lima: con toISOString después de las 19:00 ya era mañana y una de impacto alto que vence hoy retenía la factura.
+    var h=new Date(), hoy=new Date(h.getFullYear(), h.getMonth(), h.getDate());
+    var d=Math.round((new Date(String(p.fecha_objetivo).slice(0,10)+'T00:00:00') - hoy)/864e5);
     return d < -30 || (p.impacto==='alto' && d<0);
   }
   async function cargarObsObra(){
     try{
-      var aliases=((CUENTA&&CUENTA.aliases)||[]).map(nnObs).filter(Boolean);
+      // Alias de 1–2 letras calzan con cualquier responsable («FP», «HH»): no sirven para decidir si retener un pago.
+      var aliases=((CUENTA&&CUENTA.aliases)||[]).map(nnObs).filter(function(a){ return a.length>=3; });
       var empresa=nnObs(CUENTA&&CUENTA.empresa);
-      if(empresa) aliases.push(empresa);
+      if(empresa && empresa.length>=3) aliases.push(empresa);
       if(!aliases.length){ OBS_URG=[]; OBS_AB=[]; OBS_TODAS=[]; renderFacAviso(); renderObs(); return; }
       var r=await fetch(SUP_URL+'/rest/v1/pendientes?select=id,titulo,descripcion,categoria,responsable,estado,impacto,fecha_objetivo,urgente,nombre_proyecto,cod_proyecto,aviso_contrata,aviso_contrata_at,validado_at,fecha_cierre&estado=neq.no_aplica&order=fecha_objetivo.asc.nullslast&limit=3000',
         {headers:{apikey:SUP_KEY, Authorization:'Bearer '+SUP_KEY}});
@@ -668,8 +671,8 @@
       + '<div class="panel-h"><h3>'+(urg?('Tienes '+urg+' observación'+(urg>1?'es':'')+' urgente'+(urg>1?'s':'')+' sin levantar'):('Tienes '+OBS_AB.length+' observación'+(OBS_AB.length>1?'es':'')+' de obra abierta'+(OBS_AB.length>1?'s':'')))+'</h3></div>'
       + '<div style="padding:14px 16px">'
       + '<p style="margin:0 0 10px;font-size:13px;color:var(--muted)">'
-        + (urg?'Las facturas que registres quedan <b>en espera</b> hasta levantarlas. Coordina con el supervisor de la obra.'
-             :'Ninguna está urgente todavía. Si pasan 30 días vencidas, las facturas nuevas quedarán en espera.')+'</p>'
+        + (urg?'Las facturas que registres <b>de esas obras</b> quedan <b>en espera</b> hasta levantarlas. Coordina con el supervisor de la obra.'
+             :'Ninguna está urgente todavía. Si pasan 30 días vencidas, las facturas nuevas de esa obra quedarán en espera.')+'</p>'
       + '<ul style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.7">'
         + (urg?OBS_URG:OBS_AB).slice(0,5).map(function(p){
             return '<li><b>'+esc(p.titulo.slice(0,90))+'</b><br><span style="color:var(--muted)">'+esc(p.nombre_proyecto||p.cod_proyecto)+(p.categoria?' · '+esc(p.categoria):'')+(p.fecha_objetivo?' · fecha '+fmtDate(p.fecha_objetivo):'')+'</span></li>';
@@ -699,7 +702,7 @@
     var tabs=[['atender','Por atender'],['revision','Esperando revisión'],['cerradas','Cerradas']];
     var lista=grupos[OBS_TAB]||[];
     var h='<div class="ob-tabs">'+tabs.map(function(t){ return '<button type="button" class="ob-tab'+(OBS_TAB===t[0]?' on':'')+'" data-obtab="'+t[0]+'">'+t[1]+'<i>'+grupos[t[0]].length+'</i></button>'; }).join('')+'</div>';
-    if(OBS_TAB==='atender' && OBS_URG.length) h+='<div class="panel" style="padding:12px 15px;border-color:rgba(220,38,38,.35);font-size:13px;color:#b91c1c;font-weight:600">'+OBS_URG.length+' urgente'+(OBS_URG.length>1?'s':'')+': mientras no se levanten, las facturas que registres quedan en espera.</div>';
+    if(OBS_TAB==='atender' && OBS_URG.length) h+='<div class="panel" style="padding:12px 15px;border-color:rgba(220,38,38,.35);font-size:13px;color:#b91c1c;font-weight:600">'+OBS_URG.length+' urgente'+(OBS_URG.length>1?'s':'')+': mientras no se levanten, las facturas que registres de esa obra quedan en espera.</div>';
     if(!lista.length){ h+='<div class="panel"><div class="empty">'+(OBS_TAB==='atender'?'No tienes observaciones por atender. ¡Bien!':OBS_TAB==='revision'?'Ninguna esperando revisión.':'Aún no hay observaciones cerradas.')+'</div></div>'; root.innerHTML=h; obsEventos(root); return; }
     var porObra={};
     lista.forEach(function(p){ var k=p.nombre_proyecto||p.cod_proyecto||'Obra'; (porObra[k]=porObra[k]||[]).push(p); });
@@ -823,8 +826,10 @@
     var btn = formFac.querySelector('[type=submit]'); btn.disabled = true;
     // Pago condicionado: con observaciones urgentes sin levantar, la factura
     // entra en espera y el supervisor la ve así.
-    payload.estado_revision = OBS_URG.length ? 'en_espera' : 'pendiente';
-    if(OBS_URG.length) payload.obs_supervisor = 'En espera: ' + OBS_URG.length + ' observación(es) urgente(s) sin levantar al registrar la factura.';
+    // Solo retienen las urgentes de LA OBRA que se factura: una observación en otra obra no frena este pago.
+    var urgObra = OBS_URG.filter(function(p){ return nnObs(p.nombre_proyecto) && nnObs(p.nombre_proyecto)===nnObs(payload.proyecto); });
+    payload.estado_revision = urgObra.length ? 'en_espera' : 'pendiente';
+    if(urgObra.length) payload.obs_supervisor = 'En espera: ' + urgObra.length + ' observación(es) urgente(s) sin levantar en ' + payload.proyecto + ' al registrar la factura.';
     var res = await sb.from('contratas_facturas').insert(payload).select().single();
     if(res.error){ btn.disabled = false; toast('No se pudo guardar', res.error.message); return; }
     var fac = res.data;
@@ -844,9 +849,9 @@
     facPending = []; renderFacPending();
     formFac.reset(); $('#fac-fecha').value = new Date().toISOString().slice(0,10);
     renderFacturas(); renderDocs(); renderResumen(); renderContratos();
-    toast(OBS_URG.length?'Factura registrada · queda en espera':'Factura enviada al supervisor',
+    toast(urgObra.length?'Factura registrada · queda en espera':'Factura enviada al supervisor',
       fac.num + ' · ' + money2(fac.monto,fac.moneda) + (subidos?(' · '+subidos+' doc(s)'):'')
-      + (OBS_URG.length?(' · hay '+OBS_URG.length+' observación(es) urgente(s) por levantar'):''));
+      + (urgObra.length?(' · hay '+urgObra.length+' observación(es) urgente(s) por levantar en esta obra'):''));
   });
   async function delFactura(id){
     if(!sb) return;

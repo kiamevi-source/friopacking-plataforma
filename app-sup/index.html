@@ -4934,19 +4934,59 @@ const RD_CHECKLIST = ['Charla de seguridad realizada','Personal con equipo de pr
 // ═══════════════════════════════════════════════
 // SUPABASE FETCH
 // ═══════════════════════════════════════════════
-async function sbFetch(path, opts = {}) {
+// La sesión de Supabase dura 1 h. Sin renovarla, un recorrido que empieza una hora
+// después de entrar fallaba en cada «Guardar» con «JWT expired».
+function sbTokenVence(token){
+  try{
+    const b=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+    return (JSON.parse(atob(b)).exp||0)*1000;
+  }catch(e){ return 0; }
+}
+let _sbRefrescando=null;
+function sbRefrescarSesion(){
+  if(_sbRefrescando) return _sbRefrescando;           // diez pedidos a la vez → una sola renovación
+  const rt=localStorage.getItem('sb_refresh');
+  if(!rt) return Promise.resolve(false);
+  const p=(async()=>{
+    try{
+      const r=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',
+        headers:{'apikey':SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({refresh_token:rt})});
+      if(!r.ok) return false;
+      const d=await r.json();
+      if(!d.access_token) return false;
+      localStorage.setItem('sb_token', d.access_token);
+      if(d.refresh_token) localStorage.setItem('sb_refresh', d.refresh_token);
+      return true;
+    }catch(e){ console.warn('renovar sesión', e); return false; }
+  })();
+  _sbRefrescando=p;
+  p.finally(()=>{ if(_sbRefrescando===p) _sbRefrescando=null; });   // la siguiente vez, renovación nueva
+  return p;
+}
+// Renueva antes de que venza (margen de 5 min) para que nada falle a mitad de camino.
+async function sbTokenVigente(){
+  const t=localStorage.getItem('sb_token');
+  if(t && sbTokenVence(t)-Date.now() < 5*60*1000) await sbRefrescarSesion();
+  return localStorage.getItem('sb_token');
+}
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && localStorage.getItem('sb_token')) sbTokenVigente(); });
+
+async function sbFetch(path, opts = {}, _reintento) {
   const headers = {
     'apikey': SB_KEY,
     'Content-Type': 'application/json',
     ...opts.headers
   };
   // Si hay sesión guardada, agregar token
-  const token = localStorage.getItem('sb_token');
+  const token = await sbTokenVigente();
   if (token) headers['Authorization'] = 'Bearer ' + token;
 
   const res = await fetch(SB_URL + path, { ...opts, headers });
   if (!res.ok) {
     const err = await res.text();
+    // Token vencido igual (el celular estuvo dormido): renovar y reintentar una vez.
+    if (!_reintento && token && (res.status===401 || /JWT expired|PGRST30[13]/.test(err)) && await sbRefrescarSesion())
+      return sbFetch(path, opts, true);
     throw new Error(err);
   }
   const ct = res.headers.get('content-type') || '';
@@ -5032,7 +5072,8 @@ async function iniciarApp() {
 
 // Auto-login si hay token
 window.addEventListener('load', async () => {
-  const token = localStorage.getItem('sb_token');
+  // Si la sesión venció mientras la app estaba cerrada, se renueva en vez de pedir login.
+  const token = localStorage.getItem('sb_token') ? await sbTokenVigente() : null;
   if (token) {
     // Verificar token
     try {
@@ -10927,6 +10968,8 @@ let rdPendList=[], rdPendView='todas', rdPendQ='', rdPendGroup='venc', rdPendMod
 let rdPendFArea='', rdPendFResp='', rdPendFImp='', rdPendFEst='', rdPendSoloRestr=false;
 let rdPendSel=new Set(), rdPendOpen=null, rdPendHist={}, rdPendFlash=null, rdPendUndo=null;
 let rdPendCargadaObra=null;
+let rdPendErr=null;          // error de la última carga: bloquea importar y registrar
+let rdPendGuardando=false;   // evita el doble toque en «Guardar»
 let rdPendFormOn=false, rdPendImpOn=false, rdPendImpData=null;
 
 function rdPendCod(){ return (currentProyecto && (currentProyecto.cod || currentProyecto.nombre)) || ''; }
@@ -10983,8 +11026,22 @@ async function rdPendLoad(){
   rdPlanoCargado=false; rdPlanoObra=null;
   if(rdZonasObra!==cod){ rdZonas=null; rdZonasObra=cod; if(rdPendZona && rdPendZona.cod!==cod){ rdPendZona=null; rdPendFArea=''; } }
   rdZonasCargar().then(()=>{ const dl=document.getElementById('pend-zonas-dl'); if(dl) dl.innerHTML=rdZonasNombres().map(z=>'<option value="'+rdEsc2(z)+'">').join(''); });
-  try{ rdPendList=await sbFetch('/rest/v1/pendientes?cod_proyecto=eq.'+encodeURIComponent(cod)+'&order=created_at.desc')||[]; }
-  catch(e){ rdPendList=[]; console.warn('pendientes load', e); }
+  let filas;
+  try{ filas=await sbFetch('/rest/v1/pendientes?cod_proyecto=eq.'+encodeURIComponent(cod)+'&order=created_at.desc')||[]; rdPendErr=null; }
+  catch(e){ filas=null; rdPendErr=String((e&&e.message)||e||'Sin conexión'); console.warn('pendientes load', e); }
+  // Si mientras cargaba se cambió de obra, esta respuesta ya no corresponde: no pintar la lista de otra obra.
+  if(rdPendCod()!==cod) return;
+  if(rdPendErr){
+    // Antes quedaba la lista vacía con «Agregar la primera» e «Importar Excel»:
+    // importar ahí duplicaba la obra entera porque el importador no veía nada.
+    rdPendList=[]; rdPendImpOn=false; rdPendImpData=null;
+    m.innerHTML='<div class="pend-blank"><i data-lucide="wifi-off" class="ri"></i>'
+      +'<b>No se pudieron cargar las observaciones</b><span>Revisa la señal e intenta de nuevo. Mientras no carguen, no se puede importar ni registrar para no duplicar.</span>'
+      +'<div class="pend-blank-a"><button class="pend-act primary" type="button" onclick="rdPendLoad()"><i data-lucide="refresh-cw" class="ri"></i>Reintentar</button></div></div>';
+    if(window.lucide) lucide.createIcons();
+    return;
+  }
+  rdPendList=filas;
   if(rdPendOpen && !rdPendList.some(p=>p.id===rdPendOpen)) rdPendOpen=null;
   if(rdPendCargadaObra!==cod){ rdPendCargadaObra=cod; if(!rdPendZona){ rdPendModo=null; rdPendFArea=''; } rdPendSel.clear(); }
   rdPendRender();
@@ -11368,9 +11425,11 @@ async function rdPendGuardar(ids, campos, texto, opts){
   const prev=[];
   for(const id of ids){
     const p=rdPendList.find(x=>x.id===id); if(!p) continue;
-    const antes={}; Object.keys(campos).forEach(k=>{ antes[k]=p[k]===undefined?null:p[k]; });
-    prev.push({id, antes});
     const patch=typeof campos==='function'?campos(p):campos;
+    // El «antes» sale del patch ya calculado: con campos como función, Object.keys daba []
+    // y «Deshacer» de una reprogramación no revertía nada aunque avisara que sí.
+    const antes={}; Object.keys(patch).forEach(k=>{ antes[k]=p[k]===undefined?null:p[k]; });
+    prev.push({id, antes});
     try{
       await sbFetch('/rest/v1/pendientes?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(patch)});
       Object.assign(p, patch);
@@ -11656,6 +11715,7 @@ function rdPendPopFecha(anchor, id, preset){
 
 async function rdPendAdd(){
   const cod=rdPendCod(); if(!cod){ showToast('Selecciona un proyecto'); return; }
+  if(rdPendErr){ showToast('Primero tienen que cargar las observaciones de la obra',4000); return; }
   const titulo=(document.getElementById('pend-titulo')?.value||'').trim();
   if(!titulo){ showToast('Escribe un título'); return; }
   const impacto=document.getElementById('pend-impacto')?.value||'medio';
@@ -11669,12 +11729,21 @@ async function rdPendAdd(){
     descripcion:(document.getElementById('pend-desc')?.value||'').trim()||null,
     estado:'abierta', origen:'manual', causa:'Por definir',
     supervisor:currentProyecto?.supervisor||currentUser?.nombre||null };
+  if(rdPendGuardando) return;               // doble toque o Enter dos veces
+  rdPendGuardando=true;
+  let nuevo=null;
   try{
     const res=await sbFetch('/rest/v1/pendientes',{method:'POST',headers:{'Prefer':'return=representation'},body:JSON.stringify(row)});
-    const nuevo=Array.isArray(res)?res[0]:null;
-    if(nuevo) await sbFetch('/rest/v1/pendientes_historial',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({pendiente_id:nuevo.id, texto:'Registrada en obra'+(fecha?'':' · fecha por plazo de impacto '+impacto), autor:rdPendQuien()})});
-    showToast('Pendiente agregado ✓'); rdPendFormOn=false; await rdPendLoad();
-  }catch(e){ console.warn('pendiente add', e); showToast('Error al agregar'); }
+    nuevo=Array.isArray(res)?res[0]:null;
+  }catch(e){ console.warn('pendiente add', e); showToast('No se pudo agregar: revisa la señal e intenta de nuevo',4000); rdPendGuardando=false; return; }
+  // La observación ya está guardada: si falla la línea del historial no se avisa «error»,
+  // porque el supervisor volvería a tocar Guardar y quedaría duplicada.
+  if(nuevo){
+    try{ await sbFetch('/rest/v1/pendientes_historial',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({pendiente_id:nuevo.id, texto:'Registrada en obra'+(fecha?'':' · fecha por plazo de impacto '+impacto), autor:rdPendQuien()})}); }
+    catch(e){ console.warn('historial alta', e); }
+  }
+  showToast('Observación agregada ✓'); rdPendFormOn=false; rdPendGuardando=false;
+  await rdPendLoad();
 }
 
 /* ══════════════════════════════════════════════
@@ -12226,7 +12295,9 @@ async function rdRecGuardar(){
   const t=document.getElementById('rec-txt'); const txt=(t?t.value:'').trim();
   if(!txt){ showToast('Falta la observación'); if(t) t.focus(); return; }
   const area=(document.getElementById('rec-area')||{}).value||rdRecArea||'';
-  const btn=document.getElementById('rec-go'); if(btn){ btn.disabled=true; }
+  const btn=document.getElementById('rec-go');
+  if(rdPendGuardando || (btn && btn.disabled)) return;   // doble toque
+  rdPendGuardando=true; if(btn){ btn.disabled=true; }
   rdRecDetener();
   const row={ cod_proyecto:rdPendCod(), nombre_proyecto:(currentProyecto&&currentProyecto.nombre)||null,
     tipo:'observacion', restriccion:rdRecRestr, impacto:rdRecImpacto,
@@ -12238,14 +12309,18 @@ async function rdRecGuardar(){
   try{
     const res=await sbFetch('/rest/v1/pendientes',{method:'POST',headers:{'Prefer':'return=representation'},body:JSON.stringify(row)});
     const nuevo=Array.isArray(res)?res[0]:null;
-    if(nuevo) await sbFetch('/rest/v1/pendientes_historial',{method:'POST',headers:{'Prefer':'return=minimal'},
-      body:JSON.stringify({pendiente_id:nuevo.id, texto:'Registrada en recorrido de obra', autor:rdPendQuien()})});
+    // Guardada: si el historial falla no se reporta error (evita que se vuelva a guardar duplicada).
+    if(nuevo){
+      try{ await sbFetch('/rest/v1/pendientes_historial',{method:'POST',headers:{'Prefer':'return=minimal'},
+        body:JSON.stringify({pendiente_id:nuevo.id, texto:'Registrada en recorrido de obra', autor:rdPendQuien()})}); }
+      catch(e2){ console.warn('historial recorrido', e2); }
+    }
     rdRecCuenta++;
     const c=document.getElementById('rec-cuenta'); if(c) c.textContent=rdRecCuenta+' registradas en este recorrido';
     if(t){ t.value=''; t.focus(); }
     showToast('Guardada ✓ · sigue con la siguiente', 2200);
-  }catch(e){ console.warn('recorrido', e); showToast('No se pudo guardar: '+(e.message||''),4000); }
-  finally{ if(btn) btn.disabled=false; }
+  }catch(e){ console.warn('recorrido', e); showToast('No se pudo guardar: revisa la señal e intenta de nuevo',4000); }
+  finally{ rdPendGuardando=false; if(btn) btn.disabled=false; }
 }
 
 /* Aviso al entrar: lo que no puede esperar. */
@@ -13251,6 +13326,7 @@ function rdPendVFecha(v){
 }
 
 function rdPendImpToggle(){
+  if(rdPendErr && !rdPendImpOn){ showToast('Primero tienen que cargar las observaciones de la obra, para no duplicarlas',4000); return; }
   rdPendImpOn=!rdPendImpOn; if(rdPendImpOn) rdPendFormOn=false;
   rdPendRender();
 }
@@ -13369,11 +13445,21 @@ async function rdPendImpParse(file){
     // Dos observaciones con el mismo texto en áreas distintas siguen siendo dos.
     const ex=yaHay.get(clave(row.titulo,row.categoria));
     if(ex){
+      // Lo decidido en obra manda sobre el Excel del cliente, que suele venir atrasado:
+      // - el estado solo AVANZA (nunca reabre ni retrocede lo que el supervisor movió);
+      // - «cerrada» en el Excel no cierra: pasa a «Por validar» para que el supervisor dé su conformidad;
+      // - lo cerrado, por validar o «No aplica» en la app no se toca;
+      // - la fecha no pisa una reprogramación hecha con motivo; responsable e impacto solo llenan vacíos.
       const cambios={};
-      if(row.estado!==ex.estado && !(ex.estado==='cerrada' && row.estado==='abierta')) cambios.estado=row.estado;
-      if(row.fecha_objetivo && row.fecha_objetivo!==ex.fecha_objetivo) cambios.fecha_objetivo=row.fecha_objetivo;
-      if(row.responsable && row.responsable!==ex.responsable) cambios.responsable=row.responsable;
-      if(row.impacto && row.impacto!==ex.impacto) cambios.impacto=row.impacto;
+      const RANGO={abierta:0, en_proceso:1, por_validar:2};
+      const destino = row.estado==='cerrada' ? 'por_validar' : row.estado;
+      if(ex.estado in RANGO){
+        if(destino==='no_aplica' && ex.estado!=='por_validar') cambios.estado='no_aplica';
+        else if((destino in RANGO) && RANGO[destino]>RANGO[ex.estado]) cambios.estado=destino;
+      }
+      if(row.fecha_objetivo && row.fecha_objetivo!==ex.fecha_objetivo && !(ex.reprogramaciones>0) && (ex.estado in RANGO)) cambios.fecha_objetivo=row.fecha_objetivo;
+      if(row.responsable && !ex.responsable) cambios.responsable=row.responsable;
+      if(row.impacto && !ex.impacto) cambios.impacto=row.impacto;
       if(Object.keys(cambios).length) actualiza.push({id:ex.id, titulo:row.titulo, cambios});
       else enObra++;
       continue;
@@ -13384,7 +13470,7 @@ async function rdPendImpParse(file){
     salida.push(row);
   }
 
-  rdPendImpData={nuevas:salida, actualiza};
+  rdPendImpData={nuevas:salida, actualiza, cod};
   const cols={}; Object.keys(map).forEach(c=>{ cols[c]=colLbl(map[c]); });
   rdPendImpModal({ archivo:file.name, hoja:mejor.nombre, filaEnc:hIdx+mejor.r0+1, cols,
     extras:extras.map(colLbl), tipoArchivo,
@@ -13449,7 +13535,7 @@ function rdPendImpModal(info){
       + ((n||nAct)?('<div class="pend-imp-cols"><h5>Primeras '+Math.min(8,n)+' de '+n+'</h5>'
           + '<div class="pend-imp-scroll"><table class="pend-imp-prev"><thead><tr><th>Tipo</th><th>Título</th><th>Categoría</th><th>Responsable</th><th>Objetivo</th><th>Impacto</th><th>Estado</th></tr></thead>'
           + '<tbody>'+prev+'</tbody></table></div>'
-          + (nAct?('<p class="pend-modal-p">Además se actualizan '+nAct+' que ya estaban en la obra: '+rdEsc2(info.actualiza.slice(0,3).map(a=>a.titulo.slice(0,40)).join(' · '))+(nAct>3?'…':'')+'</p>'):'')
+          + (nAct?('<p class="pend-modal-p">Además se actualizan '+nAct+' que ya estaban en la obra: '+rdEsc2(info.actualiza.slice(0,3).map(a=>a.titulo.slice(0,40)).join(' · '))+(nAct>3?'…':'')+'. Lo que ya se avanzó o cerró en obra se respeta, y lo que el Excel da por cerrado pasa a «Por validar».</p>'):'')
           + '</div>'):'<p class="pend-modal-p">No quedó ninguna fila nueva por importar ni por actualizar.</p>')
     + '</div>'
     + '<div class="pend-modal-ft"><button class="pend-act" onclick="rdPendImpClose()">Cancelar</button>'
@@ -13467,6 +13553,7 @@ function rdPendImpClose(){
 async function rdPendImpConfirm(){
   const datos=rdPendImpData||{}; const filas=datos.nuevas||[], actualiza=datos.actualiza||[];
   if(!filas.length && !actualiza.length){ rdPendImpClose(); return; }
+  if(rdPendErr || datos.cod!==rdPendCod()){ rdPendImpClose(); showToast('La obra cambió o no cargó: vuelve a subir el archivo',4000); return; }
   const btn=document.getElementById('pend-imp-go');
   if(btn){ btn.disabled=true; btn.textContent='Importando…'; }
   const post=body=>sbFetch('/rest/v1/pendientes',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(body)});
@@ -13488,7 +13575,7 @@ async function rdPendImpConfirm(){
   for(const a of actualiza){
     try{
       await sbFetch('/rest/v1/pendientes?id=eq.'+a.id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(a.cambios)});
-      const detalle=Object.keys(a.cambios).map(k=>({estado:'estado',fecha_objetivo:'fecha',responsable:'responsable',impacto:'impacto'}[k]||k)+': '+a.cambios[k]).join(' · ');
+      const detalle=Object.keys(a.cambios).map(k=>({estado:'estado',fecha_objetivo:'fecha',responsable:'responsable',impacto:'impacto'}[k]||k)+': '+(k==='estado'?(PEND_EST[a.cambios[k]]||a.cambios[k]):a.cambios[k])).join(' · ');
       await sbFetch('/rest/v1/pendientes_historial',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({pendiente_id:a.id, texto:'Actualizada desde el Excel · '+detalle, autor:rdPendQuien()})});
       act++;
     }catch(e){ console.warn('pendiente update', e); fallas.push({titulo:a.titulo, error:String((e&&e.message)||e)}); }

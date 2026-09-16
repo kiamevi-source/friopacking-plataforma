@@ -176,9 +176,10 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   crea pedidos: nunca toca la información base del proyecto.
 - **El pago espera a que la obra quede limpia.** El portal de Contratas lee
   (solo lectura) las observaciones abiertas de la instancia Supervisor que
-  calzan con los alias de esa contrata. Si tiene urgentes sin levantar, la
-  factura que registre entra como `estado_revision = 'en_espera'` y el portal
-  se lo explica antes de registrarla. Gerencia ve esas facturas retenidas en el
+  calzan con los alias de esa contrata (palabra completa; los alias de menos de
+  3 letras no cuentan). Si tiene urgentes sin levantar **en la obra que
+  factura**, esa factura entra como `estado_revision = 'en_espera'` y el portal
+  se lo explica antes de registrarla. «Hoy» se calcula en hora local. Gerencia ve esas facturas retenidas en el
   módulo de Observaciones y puede liberarlas de a una.
 - **La contratista ve y responde sus observaciones.** El portal de Contratas
   tiene la sección «Observaciones de obra»: lee de `pendientes` (instancia
@@ -190,6 +191,23 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   aviso en `aviso_contrata` / `aviso_contrata_at` y deja constancia en
   `pendientes_historial`. El supervisor ve el aviso en la ficha y da la
   conformidad.
+- **Quién escribe en las tablas de observaciones** (instancia Supervisor, desde
+  el 16 de septiembre de 2026). La lectura sigue abierta: Gerencia y Contratas
+  leen con la clave anónima. Escribir en `pendientes` y `obra_zonas` exige
+  sesión y `tiene_acceso(cod_proyecto)`, igual que `reportes`. La clave anónima
+  solo puede cambiar `pendientes.postventa` (Gerencia, al cerrar una obra) y
+  agregar líneas a `pendientes_historial`, que no se editan ni se borran. La
+  contratista escribe solo por `contrata_avisa_pendiente`. Pendiente: en PMO,
+  `adicionales` y `requerimientos_compra` siguen abiertas porque el supervisor
+  borra ahí con la clave anónima al desmarcar; necesitan una función propia.
+- **Reimportar el Excel no pisa lo decidido en obra.** El estado solo avanza;
+  lo que el Excel da por cerrado pasa a «Por validar»; lo cerrado, por validar o
+  «No aplica» en la app no se toca; la fecha no reemplaza una reprogramación con
+  motivo; responsable e impacto solo llenan vacíos. Si la carga de la obra
+  falla, la app muestra el error y no deja importar ni registrar (evita
+  duplicar la obra completa).
+- **La sesión del supervisor se renueva sola** con `sb_refresh` antes de vencer
+  y ante un 401, así un recorrido largo no falla a la hora de haber entrado.
 - **Estados libres para el supervisor.** Desde el 16 de septiembre de 2026 se
   puede pasar de cualquier estado a cualquier otro, también en lote (con
   confirmación y deshacer). Quien cierra queda como conformidad
