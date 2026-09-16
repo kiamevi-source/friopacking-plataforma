@@ -12471,8 +12471,10 @@ function rdRecMic(){
     rdRecRec=new SR(); rdRecRec.lang='es-PE'; rdRecRec.continuous=true; rdRecRec.interimResults=true;
     const base=(document.getElementById('rec-txt').value||'').trim();
     rdRecRec.onresult=e=>{
+      // Se arma con TODO lo reconocido en esta toma (no solo lo último):
+      // antes, al hacer una pausa, la frase nueva borraba la anterior.
       let txt='';
-      for(let i=e.resultIndex;i<e.results.length;i++) txt+=e.results[i][0].transcript;
+      for(let i=0;i<e.results.length;i++) txt+=(txt?' ':'')+e.results[i][0].transcript.trim();
       const t=document.getElementById('rec-txt'); if(t) t.value=(base?base+' ':'')+txt.trim();
     };
     rdRecRec.onerror=ev=>{ rdRecDetener(); showToast('No se pudo dictar: '+(ev.error||''),3500); };
