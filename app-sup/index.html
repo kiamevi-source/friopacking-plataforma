@@ -591,8 +591,9 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 .pdf-ronda-chip{padding:4px 12px;background:#f0f3f9;border-radius:12px;font-size:10px;font-weight:600;}
 
 /* ── TOAST ── */
+/* Abajo al centro y por encima de todo: en la esquina derecha lo tapaba el botón del asistente. */
 .toast{
-  position:fixed;bottom:24px;right:24px;z-index:999;
+  position:fixed;bottom:24px;left:50%;z-index:100000;max-width:min(560px,calc(100vw - 32px));
   display:flex;align-items:center;gap:10px;
   padding:12px 18px;
   background:rgba(11,18,38,.92);
@@ -600,11 +601,12 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
   color:#fff;border-radius:12px;
   font-size:12.5px;font-weight:600;
   box-shadow:0 20px 50px rgba(11,18,38,.40);
-  transform:translateY(80px);opacity:0;
+  transform:translate(-50%,80px);opacity:0;pointer-events:none;
   transition:transform var(--d) var(--ease),opacity var(--d) var(--ease);
   border:1px solid rgba(255,255,255,.10);
 }
-.toast.show{transform:translateY(0);opacity:1;}
+.toast.show{transform:translate(-50%,0);opacity:1;pointer-events:auto;}
+@media(max-width:700px){ .toast{bottom:88px;} }
 .toast::before{content:'';width:8px;height:8px;border-radius:50%;
   background:var(--teal-400);box-shadow:0 0 10px var(--teal-400);}
 .toast.success::before{background:var(--success-2);box-shadow:0 0 10px var(--success-2);}

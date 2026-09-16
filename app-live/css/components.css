@@ -278,22 +278,24 @@
 .cta-new .ic { width: 16px; height: 16px; stroke-width: 2.5; }
 
 /* ─── Toast ─── */
+/* Abajo al centro: en la esquina derecha lo tapaba el botón del asistente. */
 .toast {
-  position: fixed; bottom: 24px; right: 24px;
+  position: fixed; bottom: 24px; left: 50%;
   background: white;
   border: 1px solid #e7ebf2;
   border-left: 4px solid #3ECBB0;
   padding: 14px 18px;
   border-radius: 12px;
   box-shadow: 0 20px 40px -10px rgba(15,30,53,.20);
-  z-index: 60;
+  z-index: 100000;
   display: flex; align-items: center; gap: 11px;
-  min-width: 280px; max-width: 420px;
-  transform: translateY(20px); opacity: 0;
+  min-width: 280px; max-width: min(420px, calc(100vw - 32px));
+  transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
   transition: all .3s cubic-bezier(.4,0,.2,1);
   font-family: 'Inter', sans-serif;
 }
-.toast.on { transform: translateY(0); opacity: 1; }
+.toast.on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+@media (max-width: 700px) { .toast { bottom: 88px; min-width: 0; } }
 .toast.err { border-left-color: #ef4444; }
 .toast .ic-wrap {
   width: 34px; height: 34px;

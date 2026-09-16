@@ -482,7 +482,8 @@ input[type=date]{font-family:inherit;color:var(--ink);background:transparent;bor
 .ct-badge.info{background:#dbeafe;color:#1e40af}
 
 /* --- Toast notifications --- */
-#toast-container{position:fixed;bottom:22px;right:22px;z-index:9999;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none}
+#toast-container{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column-reverse;align-items:center;gap:8px;pointer-events:none;max-width:calc(100vw - 32px)}
+@media(max-width:700px){#toast-container{bottom:88px}}
 .toast{background:#0d2436;color:#fff;padding:12px 14px 12px 16px;border-radius:10px;font-size:13px;line-height:1.4;box-shadow:0 6px 24px rgba(0,0,0,.4);display:flex;gap:10px;align-items:flex-start;min-width:300px;max-width:400px;pointer-events:all;animation:toastSlide .35s cubic-bezier(.22,.68,0,1.2) both;border-left:4px solid #2dc4a6}
 .toast.alert-t{border-left-color:#E24B4A}.toast.warn-t{border-left-color:#EF9F27}.toast.ok-t{border-left-color:#2dc4a6}
 .toast .t-ico{font-size:18px;flex-shrink:0;margin-top:1px}
