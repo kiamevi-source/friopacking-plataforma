@@ -10902,32 +10902,70 @@ function rvalEnsureStyles(){
 // ═══════════════════════════════════════════════
 const PEND_TIPOS=[{k:'restriccion',t:'Restricción'},{k:'punch',t:'Punch list'},{k:'observacion',t:'Observación'}];
 function rdPendTipoLabel(k){ const x=PEND_TIPOS.find(t=>t.k===k); return x?x.t:k; }
+const PEND_EST={abierta:'Abierta',en_proceso:'En proceso',por_validar:'Por validar',cerrada:'Cerrada',no_aplica:'No aplica'};
+const PEND_PASOS=['abierta','en_proceso','por_validar','cerrada'];
+// Plazo sugerido en dias segun el impacto.
+const PEND_PLAZO={alto:2,medio:7,bajo:15};
+const PEND_MOTIVOS=['Falta material','Coordinación con el cliente','Parada de planta','Depende de otro trabajo','Espera de cotización','Otro'];
+const PEND_CAUSAS=['Por definir','Diseño','Fabricación del equipo','Instalación de la contrata','Instalación propia','Daño del cliente'];
+const PEND_VISTAS=[
+  {k:'hoy',     l:'Para hoy',        f:p=>rdPendAbierto(p) && (rdPendUrgente(p) || (p.fecha_objetivo && rdPendDias(p.fecha_objetivo)<=0)), hot:true},
+  {k:'semana',  l:'Próximos 7 días', f:p=>rdPendAbierto(p) && !rdPendUrgente(p) && p.fecha_objetivo && rdPendDias(p.fecha_objetivo)>0 && rdPendDias(p.fecha_objetivo)<=7},
+  {k:'sinfecha',l:'Sin fecha',       f:p=>rdPendAbierto(p) && !p.fecha_objetivo},
+  {k:'validar', l:'Por validar',     f:p=>p.estado==='por_validar'},
+  {k:'todas',   l:'Todas',           f:()=>true}
+];
+const PEND_ORDEN=['Urgentes','Por validar · falta tu conformidad','Vencidas','Vencen hoy','Próximos 7 días','Más adelante','Sin fecha','Cerradas y no aplica'];
 
-let rdPendList=[], rdPendFTipo='todos', rdPendFEstado='abiertas', rdPendQ='';
+let rdPendList=[], rdPendView='hoy', rdPendQ='', rdPendGroup='venc';
+let rdPendFArea='', rdPendFResp='', rdPendFImp='', rdPendFEst='';
+let rdPendSel=new Set(), rdPendOpen=null, rdPendHist={}, rdPendFlash=null, rdPendUndo=null;
 let rdPendFormOn=false, rdPendImpOn=false, rdPendImpData=null;
 
 function rdPendCod(){ return (currentProyecto && (currentProyecto.cod || currentProyecto.nombre)) || ''; }
-function rdPendHoy(){ return new Date().toISOString().slice(0,10); }
-// Días desde hoy hasta la fecha objetivo. Negativo = vencida.
+function rdPendHoy(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function rdPendQuien(){ return (currentUser && currentUser.nombre) || (currentProyecto && currentProyecto.supervisor) || 'Supervisor'; }
+// Dias desde hoy hasta la fecha objetivo. Negativo = vencida.
 function rdPendDias(iso){
   if(!iso) return null;
   const a=new Date(String(iso).slice(0,10)+'T00:00:00'), b=new Date(rdPendHoy()+'T00:00:00');
   if(isNaN(a.getTime())) return null;
   return Math.round((a-b)/86400000);
 }
+function rdPendMasDias(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function rdPendAbierto(p){ return p.estado==='abierta' || p.estado==='en_proceso'; }
+function rdPendCerrada(p){ return p.estado==='cerrada'; }
+function rdPendFuera(p){ return p.estado==='cerrada' || p.estado==='no_aplica'; }
 function rdPendVencida(p){
-  if(!p || p.estado==='cerrada' || !p.fecha_objetivo) return false;
+  if(!p || !rdPendAbierto(p) || !p.fecha_objetivo) return false;
   const d=rdPendDias(p.fecha_objetivo); return d!==null && d<0;
 }
+// Urgente sola: mas de 30 dias vencida, o impacto alto ya vencido. El supervisor manda sobre la regla.
+function rdPendUrgAuto(p){
+  if(!rdPendAbierto(p)) return false;
+  const d=rdPendDias(p.fecha_objetivo);
+  return d!==null && (d < -30 || (p.impacto==='alto' && d<0));
+}
+function rdPendUrgente(p){ return rdPendAbierto(p) && (p.urgente===null || p.urgente===undefined ? rdPendUrgAuto(p) : !!p.urgente); }
 function rdPendFechaCorta(iso){
   if(!iso) return '';
   const s=String(iso).slice(0,10).split('-');
   return s.length===3 ? (s[2]+'/'+s[1]) : String(iso);
 }
+// La descripcion guarda el comentario y, tras " · ", los datos que trajo el Excel.
+function rdPendParse(desc){
+  const chips=[], com=[];
+  String(desc||'').split(' · ').forEach(s=>{
+    const m=s.match(/^(Columna [A-Z]+|Resp FRIOPACKING|Estado en el Excel|FECHA DE CIERRE|Fecha en el Excel|[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ 0-9/.()-]{3,40}):\s*(.+)$/);
+    if(m) chips.push([m[1]==='FECHA DE CIERRE'?'Fecha en el Excel':m[1], m[2], s]);
+    else if(s.trim()) com.push(s.trim());
+  });
+  return {com:com.join(' · '), chips};
+}
 
 async function rdPendLoad(){
   const m=document.getElementById('rd-pend-mount'); if(!m) return;
-  rdPendEnsureStyles();
+  rdPendEnsureStyles(); rdPendEstilos2();
   const cod=rdPendCod();
   if(!cod){
     m.innerHTML='<div class="pend-blank"><i data-lucide="clipboard-list" class="ri"></i>'
@@ -10935,90 +10973,80 @@ async function rdPendLoad(){
     if(window.lucide) lucide.createIcons();
     return;
   }
-  try{ rdPendList=await sbFetch('/rest/v1/pendientes?cod_proyecto=eq.'+encodeURIComponent(cod)+'&order=estado.asc,created_at.desc')||[]; }
+  try{ rdPendList=await sbFetch('/rest/v1/pendientes?cod_proyecto=eq.'+encodeURIComponent(cod)+'&order=created_at.desc')||[]; }
   catch(e){ rdPendList=[]; console.warn('pendientes load', e); }
+  if(rdPendOpen && !rdPendList.some(p=>p.id===rdPendOpen)) rdPendOpen=null;
   rdPendRender();
 }
-
 function rdPendFiltrada(){
-  const q=rdPendQ.trim().toLowerCase();
-  return rdPendList.filter(p=>{
-    if(rdPendFTipo!=='todos' && p.tipo!==rdPendFTipo) return false;
-    if(rdPendFEstado==='abiertas' && p.estado==='cerrada') return false;
-    if(rdPendFEstado==='vencidas' && !rdPendVencida(p)) return false;
-    if(q){
-      const blob=[p.titulo,p.descripcion,p.categoria,p.responsable].map(x=>(x||'').toLowerCase()).join(' ');
-      if(blob.indexOf(q)===-1) return false;
-    }
-    return true;
-  });
+  const v=PEND_VISTAS.find(x=>x.k===rdPendView)||PEND_VISTAS[0], q=rdPendQ.trim().toLowerCase();
+  return rdPendList.filter(p=> v.f(p)
+    && (!rdPendFArea || p.categoria===rdPendFArea)
+    && (!rdPendFResp || p.responsable===rdPendFResp)
+    && (!rdPendFImp || p.impacto===rdPendFImp)
+    && (!rdPendFEst || p.estado===rdPendFEst)
+    && (!q || [p.titulo,p.descripcion,p.categoria,p.responsable].map(x=>(x||'').toLowerCase()).join(' ').indexOf(q)!==-1));
+}
+function rdPendGrupo(p){
+  if(rdPendGroup==='area') return p.categoria||'Sin área';
+  if(rdPendGroup==='estado') return PEND_EST[p.estado]||p.estado;
+  if(rdPendFuera(p)) return 'Cerradas y no aplica';
+  if(p.estado==='por_validar') return 'Por validar · falta tu conformidad';
+  if(rdPendUrgente(p)) return 'Urgentes';
+  const d=rdPendDias(p.fecha_objetivo);
+  if(d===null) return 'Sin fecha';
+  if(d<0) return 'Vencidas';
+  if(d===0) return 'Vencen hoy';
+  if(d<=7) return 'Próximos 7 días';
+  return 'Más adelante';
 }
 
 function rdPendRender(){
   const m=document.getElementById('rd-pend-mount'); if(!m) return;
-  rdPendEnsureStyles();
-
+  rdPendEnsureStyles(); rdPendEstilos2();
   const total=rdPendList.length;
-  const abiertas=rdPendList.filter(p=>p.estado==='abierta').length;
-  const proceso =rdPendList.filter(p=>p.estado==='en_proceso').length;
-  const cerradas=rdPendList.filter(p=>p.estado==='cerrada').length;
-  const vencidas=rdPendList.filter(rdPendVencida).length;
-  const pct = total ? Math.round(cerradas*100/total) : 0;
-  const C = 119.4;   // circunferencia del anillo (r=19)
+  const na=rdPendList.filter(p=>p.estado==='no_aplica').length;
+  const cerradas=rdPendList.filter(rdPendCerrada).length;
+  const base=total-na;                                   // "No aplica" no cuenta en el %
+  const pct=base?Math.round(cerradas*100/base):0;
+  const urgentes=rdPendList.filter(rdPendUrgente).length;
+  const hoy=rdPendList.filter(p=>rdPendAbierto(p)&&rdPendDias(p.fecha_objetivo)===0).length;
+  const validar=rdPendList.filter(p=>p.estado==='por_validar').length;
+  const sinFecha=rdPendList.filter(p=>rdPendAbierto(p)&&!p.fecha_objetivo).length;
 
-  // ── Cabecera: identidad de la obra + anillo de avance de cierre ──
-  let html='<div class="pend-print" id="pend-print">';
-  html+='<div class="pend-hero">'
-    + '<div class="pend-hero-l">'
-      + '<span class="pend-eyebrow">Levantamiento de observaciones</span>'
-      + '<h2>'+rdEsc2((currentProyecto&&currentProyecto.nombre)||'Obra')+'</h2>'
-      + '<div class="pend-hero-meta">'
-        + '<span><i data-lucide="folder-open" class="ri"></i>'+rdEsc2(rdPendCod())+'</span>'
-        + '<span><i data-lucide="list-checks" class="ri"></i>'+total+' registrados</span>'
-        + (vencidas?'<span class="warn"><i data-lucide="alarm-clock" class="ri"></i>'+vencidas+' vencidos</span>':'')
+  let h='<div class="pend-print" id="pend-print">';
+  h+='<div class="p2-top">'
+    + '<div class="p2-obra"><small>'+rdEsc2(rdPendCod())+' · Levantamiento de observaciones</small>'
+      + '<strong>'+rdEsc2((currentProyecto&&currentProyecto.nombre)||'Obra')+'</strong></div>'
+    + '<div class="p2-pulse">'
+      + '<div class="p2-lev"><div class="p2-lev-h"><span>Levantadas</span><b>'+cerradas+' de '+base+' · '+pct+' %</b></div>'
+        + '<div class="p2-bar"><i style="width:'+pct+'%"></i></div>'
+        + (na?'<small>'+na+' «No aplica» fuera del cálculo</small>':'')+'</div>'
+      + '<div class="p2-sig">'
+        + '<span class="'+(urgentes?'is-late':'')+'"><b>'+urgentes+'</b>urgentes</span>'
+        + '<span><b>'+hoy+'</b>vencen hoy</span>'
+        + '<span><b>'+validar+'</b>por validar</span>'
+        + '<span><b>'+sinFecha+'</b>sin fecha</span>'
       + '</div>'
     + '</div>'
-    + '<div class="pend-ringwrap">'
-      + '<svg viewBox="0 0 44 44" class="pend-ring"><circle class="tr" cx="22" cy="22" r="19"></circle>'
-      + '<circle class="fg" cx="22" cy="22" r="19" stroke-dasharray="'+C+'" stroke-dashoffset="'+(C*(1-pct/100)).toFixed(1)+'"></circle></svg>'
-      + '<div class="pend-ringtxt"><b>'+pct+'<i>%</i></b><span>levantado</span></div>'
-    + '</div>'
   + '</div>';
 
-  // ── Semáforo: 4 tiles, cada uno filtra ──
-  html+='<div class="pend-kpis">'
-    + rdPendKpi('abiertas','Abiertas',abiertas,'circle-dot', rdPendFEstado==='abiertas')
-    + rdPendKpi('proceso','En proceso',proceso,'loader', false)
-    + rdPendKpi('vencidas','Vencidas',vencidas,'alarm-clock', rdPendFEstado==='vencidas')
-    + rdPendKpi('cerradas','Cerradas',cerradas,'check-check', false)
-  + '</div>';
+  h+='<nav class="p2-views">'+PEND_VISTAS.map(v=>{
+      const n=rdPendList.filter(v.f).length;
+      return '<button type="button" class="p2-view '+(rdPendView===v.k?'on ':'')+(v.hot&&n?'hot':'')+'" onclick="rdPendSetVista(\''+v.k+'\')">'+v.l+'<i>'+n+'</i></button>';
+    }).join('')+'</nav>';
 
-  // ── Barra de cierre ──
-  html+='<div class="pend-prog"><div class="pend-prog-hd"><span>Avance de cierre</span><b>'+cerradas+' de '+total+'</b></div>'
-    + '<div class="pend-track"><i style="width:'+pct+'%"></i></div></div>';
+  h+='<div class="p2-tools" id="p2-tools">'+rdPendToolsHTML()+'</div>';
 
-  // ── Acciones ──
-  html+='<div class="pend-bar">'
-    + '<div class="pend-bar-l">'
-      + '<button class="pend-act primary" onclick="rdPendToggleForm()"><i data-lucide="'+(rdPendFormOn?'x':'plus')+'" class="ri"></i>'+(rdPendFormOn?'Cerrar':'Nuevo pendiente')+'</button>'
-      + '<button class="pend-act" onclick="rdPendImpToggle()"><i data-lucide="file-spreadsheet" class="ri"></i>Importar Excel</button>'
-    + '</div>'
-    + '<div class="pend-bar-r">'
-      + '<div class="pend-search"><i data-lucide="search" class="ri"></i><input id="pend-q" placeholder="Buscar…" value="'+rdEsc2(rdPendQ)+'" oninput="rdPendSetQ(this.value)"></div>'
-      + '<button class="pend-act" onclick="exportarObsPdf()"><i data-lucide="file-down" class="ri"></i>PDF</button>'
-    + '</div>'
-  + '</div>';
-
-  // ── Alta manual (colapsable: no ocupa pantalla si no se usa) ──
   if(rdPendFormOn){
-    html+='<div class="pend-form">'
+    h+='<div class="pend-form">'
       + '<div class="row">'
         + '<select id="pend-tipo" class="pend-inp">'+PEND_TIPOS.map(t=>'<option value="'+t.k+'">'+t.t+'</option>').join('')+'</select>'
         + '<select id="pend-impacto" class="pend-inp"><option value="alto">Impacto alto</option><option value="medio" selected>Impacto medio</option><option value="bajo">Impacto bajo</option></select>'
         + '<input id="pend-titulo" class="pend-inp grow" placeholder="Título del pendiente" onkeydown="if(event.key===\'Enter\')rdPendAdd()">'
       + '</div>'
       + '<div class="row">'
-        + '<input id="pend-cat" class="pend-inp" placeholder="Categoría (ej: Materiales)">'
+        + '<input id="pend-cat" class="pend-inp" placeholder="Área (ej: SADEMA)">'
         + '<input id="pend-resp" class="pend-inp" placeholder="Responsable">'
         + '<input id="pend-fecha" type="date" class="pend-inp" title="Fecha objetivo">'
         + '<button class="pend-act primary" onclick="rdPendAdd()"><i data-lucide="check" class="ri"></i>Agregar</button>'
@@ -11026,15 +11054,13 @@ function rdPendRender(){
       + '<textarea id="pend-desc" class="pend-inp" rows="2" placeholder="Descripción / detalle (opcional)"></textarea>'
     + '</div>';
   }
-
-  // ── Importador de Excel (colapsable) ──
   if(rdPendImpOn){
-    html+='<label class="import-drop pend-drop" for="pend-file" id="pend-drop"'
+    h+='<label class="import-drop pend-drop" for="pend-file" id="pend-drop"'
       + ' ondragover="rdPendImpDrag(event,1)" ondragleave="rdPendImpDrag(event,0)" ondrop="rdPendImpDrop(event)">'
       + '<div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
       + '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></div>'
       + '<div class="body"><div class="title">Importar observaciones desde Excel</div>'
-      + '<div class="sub">Arrastra el archivo o haz clic. Reconoce solo los encabezados: Título, Descripción, Tipo, Categoría, Responsable, Fecha objetivo, Impacto y Estado — en el orden que sea.</div>'
+      + '<div class="sub">Cada obra usa su formato: se reconoce el encabezado esté donde esté. Si el archivo ya se importó, actualiza las que existen en vez de duplicarlas.</div>'
       + '<div class="formats"><span class="fmt xlsx">.xlsx</span><span class="fmt xlsx">.xls</span><span class="fmt csv">.csv</span>'
       + '<span class="fmt link" onclick="event.preventDefault();event.stopPropagation();rdPendPlantilla()">Descargar plantilla</span></div></div>'
       + '<span class="cta">Seleccionar archivo</span>'
@@ -11042,104 +11068,178 @@ function rdPendRender(){
     + '</label>';
   }
 
-  // ── Filtros por tipo ──
-  html+='<div class="pend-filtros"><div class="seg">'
-    + ['todos'].concat(PEND_TIPOS.map(t=>t.k)).map(k=>{
-        const n = k==='todos' ? rdPendList.length : rdPendList.filter(p=>p.tipo===k).length;
-        return '<button class="pend-fb '+(rdPendFTipo===k?'on':'')+'" onclick="rdPendSetTipo(\''+k+'\')">'
-             + (k==='todos'?'Todos':rdPendTipoLabel(k))+'<i>'+n+'</i></button>';
-      }).join('')
-    + '</div>'
-    + '<button class="pend-fb ghost '+(rdPendFEstado==='todas'?'on':'')+'" onclick="rdPendSetEstado(\''+(rdPendFEstado==='todas'?'abiertas':'todas')+'\')">'
-    + '<i data-lucide="eye" class="ri"></i>'+(rdPendFEstado==='todas'?'Viendo todas':'Ver también cerradas')+'</button>'
-  + '</div>';
-
-  // ── Lista ──
-  const lista=rdPendFiltrada();
-  if(lista.length){
-    html+='<div class="pend-list">'+lista.map((p,i)=>rdPendCard(p,i)).join('')+'</div>';
-  } else if(total===0){
-    html+='<div class="pend-blank"><i data-lucide="clipboard-check" class="ri"></i>'
-      + '<b>Sin observaciones registradas</b>'
-      + '<span>Empieza por una, o sube el Excel que ya lleva la obra.</span>'
-      + '<div class="pend-blank-a"><button class="pend-act primary" onclick="rdPendToggleForm()"><i data-lucide="plus" class="ri"></i>Agregar la primera</button>'
-      + '<button class="pend-act" onclick="rdPendImpToggle()"><i data-lucide="file-spreadsheet" class="ri"></i>Importar Excel</button></div></div>';
-  } else {
-    html+='<div class="pend-blank sm"><i data-lucide="filter" class="ri"></i><b>Nada con este filtro</b>'
-      + '<span>'+total+' pendientes registrados en la obra.</span></div>';
-  }
-  html+='</div>';
-
-  m.innerHTML=html;
+  h+='<div class="p2-body"><div class="p2-list" id="p2-list">'+rdPendListaHTML()+'</div>'
+    + '<aside class="p2-drawer'+(rdPendOpen?' show':'')+'" id="p2-drawer">'+rdPendFichaHTML()+'</aside></div>';
+  h+='</div>';
+  m.innerHTML=h;
   if(window.lucide) lucide.createIcons();
 }
 
-function rdPendKpi(k,label,n,icon,on){
-  return '<button class="pend-kpi k-'+k+(on?' on':'')+(n?'':' zero')+'" onclick="rdPendKpiClick(\''+k+'\')">'
-    + '<span class="ic"><i data-lucide="'+icon+'" class="ri"></i></span>'
-    + '<b>'+n+'</b><span class="lb">'+label+'</span></button>';
-}
-function rdPendKpiClick(k){
-  if(k==='vencidas')      rdPendFEstado = (rdPendFEstado==='vencidas'?'abiertas':'vencidas');
-  else if(k==='cerradas') rdPendFEstado = 'todas';
-  else                    rdPendFEstado = 'abiertas';
-  if(k==='proceso'){ rdPendFEstado='abiertas'; }
-  rdPendRender();
-}
-
-function rdPendCard(p,i){
-  const impCls=p.impacto==='alto'?'alto':(p.impacto==='bajo'?'bajo':'medio');
-  const estCls=p.estado==='cerrada'?'cer':(p.estado==='en_proceso'?'proc':'ab');
-  const estTxt={cerrada:'Cerrada',en_proceso:'En proceso',abierta:'Abierta'}[p.estado]||p.estado;
-
-  // Vencimiento: el dato que convierte la lista en seguimiento y no en inventario.
-  let plazo='';
-  if(p.fecha_objetivo && p.estado!=='cerrada'){
-    const d=rdPendDias(p.fecha_objetivo);
-    if(d!==null){
-      const cls = d<0 ? 'venc' : (d<=3 ? 'pronto' : '');
-      const txt = d<0 ? ('vencida hace '+Math.abs(d)+'d') : (d===0 ? 'vence hoy' : ('faltan '+d+'d'));
-      plazo='<span class="pend-plazo '+cls+'"><i data-lucide="alarm-clock" class="ri"></i>'+rdPendFechaCorta(p.fecha_objetivo)+' · '+txt+'</span>';
-    }
-  } else if(p.fecha_objetivo){
-    plazo='<span class="pend-plazo"><i data-lucide="calendar-check" class="ri"></i>'+rdPendFechaCorta(p.fecha_objetivo)+'</span>';
+function rdPendToolsHTML(){
+  if(rdPendSel.size){
+    return '<div class="p2-bulk"><b>'+rdPendSel.size+' seleccionada'+(rdPendSel.size>1?'s':'')+'</b>'
+      + '<button class="pend-act primary" type="button" onclick="rdPendPopFecha(this,null)">Reprogramar</button>'
+      + '<button class="pend-act" type="button" onclick="rdPendPopEstado(this,null)">Cambiar estado</button>'
+      + '<button class="pend-act" type="button" onclick="rdPendBulkUrg()">Quitar de urgentes</button>'
+      + '<button class="pend-act ghost" type="button" onclick="rdPendSelTodas()">Marcar las '+rdPendFiltrada().length+' de la vista</button>'
+      + '<span class="p2-sep"></span>'
+      + '<button class="pend-act ghost" type="button" onclick="rdPendSelLimpiar()">Quitar selección</button></div>';
   }
-
-  let acc;
-  if(p.estado==='abierta')          acc='<button class="pend-mini" onclick="rdPendEstado('+p.id+',\'en_proceso\')">En proceso</button><button class="pend-mini go" onclick="rdPendEstado('+p.id+',\'cerrada\')"><i data-lucide="check" class="ri"></i>Cerrar</button>';
-  else if(p.estado==='en_proceso')  acc='<button class="pend-mini go" onclick="rdPendEstado('+p.id+',\'cerrada\')"><i data-lucide="check" class="ri"></i>Cerrar</button><button class="pend-mini" onclick="rdPendEstado('+p.id+',\'abierta\')">Reabrir</button>';
-  else                              acc='<button class="pend-mini" onclick="rdPendEstado('+p.id+',\'abierta\')"><i data-lucide="rotate-ccw" class="ri"></i>Reabrir</button>';
-
-  return '<article class="pend-card '+estCls+' imp-'+impCls+(rdPendVencida(p)?' vencida':'')+'" style="animation-delay:'+Math.min(i*22,340)+'ms">'
-    + '<div class="pend-card-hd">'
-      + '<span class="pend-tag t-'+rdEsc2(p.tipo)+'">'+rdPendTipoLabel(p.tipo)+'</span>'
-      + '<strong>'+rdEsc2(p.titulo)+'</strong>'
-      + '<span class="pend-est '+estCls+'">'+estTxt+'</span>'
-    + '</div>'
-    + (p.descripcion?'<p class="pend-desc">'+rdEsc2(p.descripcion)+'</p>':'')
-    + '<div class="pend-meta">'
-      + '<span class="pend-imp '+impCls+'">Impacto '+rdEsc2(p.impacto||'medio')+'</span>'
-      + (p.categoria?'<span><i data-lucide="tag" class="ri"></i>'+rdEsc2(p.categoria)+'</span>':'')
-      + (p.responsable?'<span><i data-lucide="user" class="ri"></i>'+rdEsc2(p.responsable)+'</span>':'')
-      + plazo
-      + (p.origen==='excel'?'<span class="pend-src"><i data-lucide="file-spreadsheet" class="ri"></i>Excel</span>':'')
-      + '<span class="pend-acc">'+acc+'</span>'
-    + '</div>'
-  + '</article>';
+  const uniq=(c)=>[...new Set(rdPendList.map(p=>p[c]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'es'));
+  const opt=(vals,sel)=>vals.map(v=>'<option value="'+rdEsc2(v)+'"'+(sel===v?' selected':'')+'>'+rdEsc2(v)+'</option>').join('');
+  return '<div class="pend-search"><i data-lucide="search" class="ri"></i><input id="pend-q" placeholder="Buscar…" value="'+rdEsc2(rdPendQ)+'" oninput="rdPendSetQ(this.value)"></div>'
+    + '<select class="p2-sel'+(rdPendFArea?' set':'')+'" onchange="rdPendSetFiltro(\'area\',this.value)" aria-label="Área"><option value="">Todas las áreas</option>'+opt(uniq('categoria'),rdPendFArea)+'</select>'
+    + '<select class="p2-sel'+(rdPendFResp?' set':'')+'" onchange="rdPendSetFiltro(\'resp\',this.value)" aria-label="Responsable"><option value="">Todos los responsables</option>'+opt(uniq('responsable'),rdPendFResp)+'</select>'
+    + '<select class="p2-sel'+(rdPendFImp?' set':'')+'" onchange="rdPendSetFiltro(\'imp\',this.value)" aria-label="Impacto"><option value="">Cualquier impacto</option>'
+      + ['alto','medio','bajo'].map(k=>'<option value="'+k+'"'+(rdPendFImp===k?' selected':'')+'>Impacto '+k+'</option>').join('')+'</select>'
+    + '<select class="p2-sel'+(rdPendFEst?' set':'')+'" onchange="rdPendSetFiltro(\'est\',this.value)" aria-label="Estado"><option value="">Cualquier estado</option>'
+      + Object.keys(PEND_EST).map(k=>'<option value="'+k+'"'+(rdPendFEst===k?' selected':'')+'>'+PEND_EST[k]+'</option>').join('')+'</select>'
+    + '<select class="p2-sel" onchange="rdPendSetGrupo(this.value)" aria-label="Agrupar">'
+      + [['venc','Agrupar por vencimiento'],['area','Agrupar por área'],['estado','Agrupar por estado']].map(g=>'<option value="'+g[0]+'"'+(rdPendGroup===g[0]?' selected':'')+'>'+g[1]+'</option>').join('')+'</select>'
+    + '<span class="p2-sep"></span>'
+    + '<button class="pend-act primary" type="button" onclick="rdPendToggleForm()"><i data-lucide="'+(rdPendFormOn?'x':'plus')+'" class="ri"></i>'+(rdPendFormOn?'Cerrar':'Nuevo')+'</button>'
+    + '<button class="pend-act" type="button" onclick="rdPendImpToggle()"><i data-lucide="file-spreadsheet" class="ri"></i>Importar Excel</button>'
+    + '<button class="pend-act" type="button" onclick="exportarObsPdf()"><i data-lucide="file-down" class="ri"></i>PDF</button>';
 }
 
-function rdPendSetTipo(k){ rdPendFTipo=k; rdPendRender(); }
-function rdPendSetEstado(k){ rdPendFEstado=k; rdPendRender(); }
-function rdPendSetQ(v){
-  rdPendQ=v;
-  // Re-render parcial: repintar todo mataria el foco del buscador.
-  const cont=document.querySelector('#rd-pend-mount .pend-list');
-  const lista=rdPendFiltrada();
-  if(cont){
-    cont.innerHTML = lista.length ? lista.map((p,i)=>rdPendCard(p,i)).join('')
-      : '<div class="pend-blank sm"><b>Nada coincide con “'+rdEsc2(v)+'”</b></div>';
-    if(window.lucide) lucide.createIcons();
-  } else { rdPendRender(); }
+function rdPendListaHTML(){
+  const rows=rdPendFiltrada();
+  if(!rows.length){
+    const v=PEND_VISTAS.find(x=>x.k===rdPendView);
+    if(!rdPendList.length){
+      return '<div class="pend-blank"><i data-lucide="clipboard-check" class="ri"></i><b>Sin observaciones registradas</b>'
+        + '<span>Empieza por una, o sube el Excel que ya lleva la obra.</span>'
+        + '<div class="pend-blank-a"><button class="pend-act primary" onclick="rdPendToggleForm()"><i data-lucide="plus" class="ri"></i>Agregar la primera</button>'
+        + '<button class="pend-act" onclick="rdPendImpToggle()"><i data-lucide="file-spreadsheet" class="ri"></i>Importar Excel</button></div></div>';
+    }
+    return '<div class="pend-blank sm"><i data-lucide="filter" class="ri"></i><b>'
+      + (rdPendView==='validar'?'Nada esperando tu conformidad':'Nada en «'+(v?v.l:'')+'»')+'</b>'
+      + '<span>'+rdPendList.length+' registradas en la obra.</span></div>';
+  }
+  const grupos=new Map();
+  rows.forEach(p=>{ const g=rdPendGrupo(p); if(!grupos.has(g)) grupos.set(g,[]); grupos.get(g).push(p); });
+  let keys=[...grupos.keys()];
+  if(rdPendGroup==='venc') keys.sort((a,b)=>PEND_ORDEN.indexOf(a)-PEND_ORDEN.indexOf(b));
+  else if(rdPendGroup==='estado') keys.sort((a,b)=>Object.values(PEND_EST).indexOf(a)-Object.values(PEND_EST).indexOf(b));
+  else keys.sort((a,b)=>grupos.get(b).length-grupos.get(a).length || String(a).localeCompare(String(b),'es'));
+  return keys.map(k=>{
+    const late=(k==='Urgentes'||k==='Vencidas');
+    const nota=k==='Urgentes'?'<em>más de 30 días vencidas o impacto alto vencido</em>':'';
+    const items=grupos.get(k).slice().sort((a,b)=>{
+      const da=rdPendDias(a.fecha_objetivo), db=rdPendDias(b.fecha_objetivo);
+      if(da===null&&db===null) return 0; if(da===null) return 1; if(db===null) return -1; return da-db;
+    });
+    return '<div class="p2-grp'+(late?' late':'')+'"><div>'+rdEsc2(k)+nota+'</div><span>'+items.length+'</span></div>'
+      + items.map(p=>rdPendCard(p)).join('');
+  }).join('');
+}
+
+function rdPendCard(p){
+  const d=rdPendDias(p.fecha_objetivo);
+  let due, cls='';
+  if(!p.fecha_objetivo){ cls='none'; due='<b>Sin fecha</b><small>Asignar</small>'; }
+  else if(rdPendFuera(p)) due='<b>'+rdPendFechaCorta(p.fecha_objetivo)+'</b><small>'+PEND_EST[p.estado]+'</small>';
+  else if(d<0){ cls='late'; due='<b>'+rdPendFechaCorta(p.fecha_objetivo)+'</b><small>hace '+(-d)+' d</small>'; }
+  else if(d===0){ cls='soon'; due='<b>'+rdPendFechaCorta(p.fecha_objetivo)+'</b><small>hoy</small>'; }
+  else if(d<=7){ cls='soon'; due='<b>'+rdPendFechaCorta(p.fecha_objetivo)+'</b><small>en '+d+' d</small>'; }
+  else due='<b>'+rdPendFechaCorta(p.fecha_objetivo)+'</b><small>en '+d+' d</small>';
+  const flags=(p.fuera_alcance?'<span class="p2-flag money">Fuera de alcance</span>':'')
+            + (p.requiere_cotizacion?'<span class="p2-flag money">Cotizar</span>':'')
+            + (p.origen==='excel'?'<span class="p2-flag">Excel</span>':'');
+  return '<div class="p2-row'+(rdPendOpen===p.id?' is-open':'')+(rdPendFlash===p.id?' flash':'')+(rdPendFuera(p)?' done':'')+'" data-id="'+p.id+'">'
+    + '<input type="checkbox" class="p2-chk" id="pend-sel-'+p.id+'"'+(rdPendSel.has(p.id)?' checked':'')+' onchange="rdPendSelTog('+p.id+',this.checked)" aria-label="Seleccionar">'
+    + '<button class="p2-st st-'+p.estado+'" type="button" onclick="rdPendPopEstado(this,'+p.id+')">'+PEND_EST[p.estado]+'</button>'
+    + '<button class="p2-rt" type="button" onclick="rdPendAbrir('+p.id+')"><span class="p2-ttl">'+rdEsc2(p.titulo)+'</span>'
+      + '<span class="p2-meta">'+flags+'<span class="txt">'+rdEsc2(p.categoria||'Sin área')+' · '+rdEsc2(p.responsable||'Sin responsable')+'</span></span></button>'
+    + '<button class="p2-due '+cls+'" type="button" onclick="rdPendPopFecha(this,'+p.id+')" title="Reprogramar">'+due+'</button>'
+  + '</div>';
+}
+
+function rdPendFichaHTML(){
+  const p=rdPendList.find(x=>x.id===rdPendOpen);
+  if(!p) return '<div class="pend-blank sm"><b>Toca un pendiente</b><span>Se abre su ficha para editarlo.</span></div>';
+  const d=rdPendDias(p.fecha_objetivo), idx=PEND_PASOS.indexOf(p.estado);
+  const par=rdPendParse(p.descripcion);
+  const urg=rdPendUrgente(p), auto=rdPendUrgAuto(p);
+  let hint = !p.fecha_objetivo ? ('Sin fecha · plazo sugerido para impacto '+(p.impacto||'medio')+': '+PEND_PLAZO[p.impacto||'medio']+' días')
+    : rdPendFuera(p) ? PEND_EST[p.estado] : d<0 ? ('Vencida hace '+(-d)+' días') : d===0 ? 'Vence hoy' : ('Faltan '+d+' días');
+  if(p.reprogramaciones) hint+=' · reprogramada '+p.reprogramaciones+(p.reprogramaciones>1?' veces':' vez');
+  const hist=rdPendHist[p.id];
+  return '<div class="p2-dh"><span class="p2-tag">'+rdPendTipoLabel(p.tipo)+'</span>'+(urg?'<span class="p2-tag urg">Urgente</span>':'')
+      + '<span class="p2-area">'+rdEsc2(p.categoria||'Sin área')+'</span>'
+      + '<button class="p2-x" type="button" onclick="rdPendCerrarFicha()" aria-label="Cerrar ficha">✕</button></div>'
+    + '<h3 class="p2-dt">'+rdEsc2(p.titulo)+'</h3>'
+    + '<div class="p2-stepper">'+PEND_PASOS.map((k,i)=>'<button type="button" class="p2-step'+(idx>i?' past':'')+(idx===i?' cur':'')+'" onclick="rdPendSetEstado('+p.id+',\''+k+'\')"><i></i>'+PEND_EST[k]+'</button>').join('')+'</div>'
+    + (p.estado==='por_validar'?'<div class="p2-conf"><p>El equipo lo dio por levantado. <b>Falta tu conformidad</b> para cerrarlo.</p>'
+        + '<div class="p2-quick"><button class="pend-act primary" type="button" onclick="rdPendSetEstado('+p.id+',\'cerrada\')">Dar conformidad</button>'
+        + '<button class="pend-act" type="button" onclick="rdPendSetEstado('+p.id+',\'en_proceso\')">Devolver: aún no está</button></div></div>':'')
+    + (p.validado_por?'<span class="p2-hint">Conformidad de '+rdEsc2(p.validado_por)+(p.validado_at?' · '+rdPendFechaCorta(String(p.validado_at).slice(0,10)):'')+'</span>':'')
+    + '<div class="p2-links">'
+      + (p.estado==='no_aplica'
+          ? '<button class="p2-link" type="button" onclick="rdPendSetEstado('+p.id+',\'abierta\')">Reabrir (está como «No aplica»)</button>'
+          : '<button class="p2-link" type="button" onclick="rdPendSetEstado('+p.id+',\'no_aplica\')">Marcar como «No aplica»</button>')
+      + (rdPendAbierto(p)?'<button class="p2-link" type="button" onclick="rdPendTogUrg('+p.id+')">'+(urg?'Quitar de urgentes':'Marcar como urgente')+'</button>':'')
+    + '</div>'
+    + (rdPendAbierto(p)?'<span class="p2-hint">'+(p.urgente!==null&&p.urgente!==undefined?'Urgencia puesta a mano.':(auto?'Urgente por regla: más de 30 días vencida o impacto alto vencido.':'Se vuelve urgente sola si pasa 30 días vencida.'))+'</span>':'')
+    + '<div class="p2-fields">'
+      + '<div class="p2-f full"><label for="pf-fecha">Fecha objetivo</label><div class="p2-quick">'
+        + '<input class="pend-inp" type="date" id="pf-fecha" value="'+(p.fecha_objetivo||'')+'" onchange="rdPendFichaFecha('+p.id+',this)">'
+        + '<button class="p2-chip" type="button" onclick="rdPendPopFecha(this,'+p.id+',\''+rdPendMasDias(PEND_PLAZO[p.impacto||'medio'])+'\')">Plazo por impacto: +'+PEND_PLAZO[p.impacto||'medio']+' d</button></div>'
+        + '<span class="p2-hint'+(rdPendAbierto(p)&&d<0?' late':'')+'">'+hint+'</span></div>'
+      + '<div class="p2-f"><label for="pf-resp">Responsable</label><input class="pend-inp" id="pf-resp" value="'+rdEsc2(p.responsable||'')+'" onchange="rdPendCampo('+p.id+',\'responsable\',this.value)"></div>'
+      + '<div class="p2-f"><label for="pf-area">Área</label><input class="pend-inp" id="pf-area" value="'+rdEsc2(p.categoria||'')+'" onchange="rdPendCampo('+p.id+',\'categoria\',this.value)"></div>'
+      + '<div class="p2-f"><span class="p2-lbl">Impacto</span><div class="p2-seg3">'+['alto','medio','bajo'].map(k=>'<button type="button" class="'+((p.impacto||'medio')===k?'on':'')+'" onclick="rdPendCampo('+p.id+',\'impacto\',\''+k+'\')">'+k[0].toUpperCase()+k.slice(1)+'</button>').join('')+'</div></div>'
+      + '<div class="p2-f"><label for="pf-causa">Causa</label><select class="pend-inp" id="pf-causa" onchange="rdPendCampo('+p.id+',\'causa\',this.value)">'
+        + PEND_CAUSAS.map(c=>'<option'+((p.causa||'Por definir')===c?' selected':'')+'>'+c+'</option>').join('')+'</select></div>'
+      + '<div class="p2-f full"><label for="pf-com">Comentario</label><textarea class="pend-inp" id="pf-com" rows="3" onchange="rdPendComentario('+p.id+',this.value)">'+rdEsc2(par.com)+'</textarea></div>'
+    + '</div>'
+    + '<div class="p2-sw">'
+      + '<div class="p2-swi"><div><b>Fuera de alcance</b><span>'+(p.fuera_alcance?'Marcada para cotizar como adicional.':'No es parte del contrato: se cotiza como adicional.')+'</span></div>'
+        + '<button class="p2-tg" type="button" aria-pressed="'+(!!p.fuera_alcance)+'" onclick="rdPendTogCampo('+p.id+',\'fuera_alcance\')" aria-label="Fuera de alcance"></button></div>'
+      + '<div class="p2-swi"><div><b>Requiere cotización</b><span>'+(p.requiere_cotizacion?'Marcada: falta comprar o contratar.':'Hace falta comprar o contratar algo.')+'</span></div>'
+        + '<button class="p2-tg" type="button" aria-pressed="'+(!!p.requiere_cotizacion)+'" onclick="rdPendTogCampo('+p.id+',\'requiere_cotizacion\')" aria-label="Requiere cotización"></button></div>'
+    + '</div>'
+    + (par.chips.length?'<div><div class="p2-lbl">Del Excel</div><div class="p2-chips">'+par.chips.map(c=>'<span class="p2-kv"><em>'+rdEsc2(c[0])+'</em>'+rdEsc2(c[1])+'</span>').join('')+'</div></div>':'')
+    + '<div class="p2-hist"><div class="p2-lbl">Historial</div>'
+      + (hist===undefined?'<span class="p2-hint">Cargando…</span>'
+        : hist.length?'<ol>'+hist.map(x=>'<li><time>'+rdPendFechaCorta(String(x.created_at).slice(0,10))+'</time><span>'+rdEsc2(x.texto)+(x.autor?' · '+rdEsc2(x.autor):'')+'</span></li>').join('')+'</ol>'
+        : '<span class="p2-hint">Sin movimientos todavía.</span>')
+    + '</div>';
+}
+
+/* ── interacciones ── */
+function rdPendSetVista(k){ rdPendView=k; rdPendRender(); }
+function rdPendSetGrupo(k){ rdPendGroup=k; rdPendPintarLista(); }
+function rdPendSetFiltro(cual,val){
+  if(cual==='area') rdPendFArea=val; else if(cual==='resp') rdPendFResp=val;
+  else if(cual==='imp') rdPendFImp=val; else if(cual==='est') rdPendFEst=val;
+  rdPendPintarLista();
+}
+function rdPendSetQ(v){ rdPendQ=v; rdPendPintarLista(); }
+function rdPendPintarLista(){
+  const l=document.getElementById('p2-list'); if(!l){ rdPendRender(); return; }
+  l.innerHTML=rdPendListaHTML(); if(window.lucide) lucide.createIcons();
+}
+function rdPendPintarFicha(){
+  const d=document.getElementById('p2-drawer'); if(!d){ rdPendRender(); return; }
+  d.innerHTML=rdPendFichaHTML(); d.classList.toggle('show', !!rdPendOpen); if(window.lucide) lucide.createIcons();
+}
+function rdPendAbrir(id){
+  rdPendOpen=id; rdPendPintarLista(); rdPendPintarFicha();
+  if(rdPendHist[id]===undefined) rdPendCargarHist(id);
+}
+function rdPendCerrarFicha(){ rdPendOpen=null; rdPendPintarLista(); rdPendPintarFicha(); }
+async function rdPendCargarHist(id){
+  try{ rdPendHist[id]=await sbFetch('/rest/v1/pendientes_historial?pendiente_id=eq.'+id+'&order=created_at.desc&limit=40')||[]; }
+  catch(e){ rdPendHist[id]=[]; console.warn('historial', e); }
+  if(rdPendOpen===id) rdPendPintarFicha();
+}
+function rdPendSelTog(id,on){ on?rdPendSel.add(id):rdPendSel.delete(id); rdPendPintarTools(); }
+function rdPendSelTodas(){ rdPendFiltrada().forEach(p=>rdPendSel.add(p.id)); rdPendPintarTools(); rdPendPintarLista(); }
+function rdPendSelLimpiar(){ rdPendSel.clear(); rdPendPintarTools(); rdPendPintarLista(); }
+function rdPendPintarTools(){
+  const t=document.getElementById('p2-tools'); if(!t){ rdPendRender(); return; }
+  t.innerHTML=rdPendToolsHTML(); if(window.lucide) lucide.createIcons();
 }
 function rdPendToggleForm(){
   rdPendFormOn=!rdPendFormOn; if(rdPendFormOn) rdPendImpOn=false;
@@ -11147,27 +11247,371 @@ function rdPendToggleForm(){
   if(rdPendFormOn){ const t=document.getElementById('pend-titulo'); if(t) t.focus(); }
 }
 
+/* ── guardar: un PATCH por fila + historial + deshacer ── */
+async function rdPendGuardar(ids, campos, texto, opts){
+  opts=opts||{};
+  const prev=[];
+  for(const id of ids){
+    const p=rdPendList.find(x=>x.id===id); if(!p) continue;
+    const antes={}; Object.keys(campos).forEach(k=>{ antes[k]=p[k]===undefined?null:p[k]; });
+    prev.push({id, antes});
+    const patch=typeof campos==='function'?campos(p):campos;
+    try{
+      await sbFetch('/rest/v1/pendientes?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(patch)});
+      Object.assign(p, patch);
+      const t=typeof texto==='function'?texto(p):texto;
+      if(t && !opts.sinHistorial){
+        try{
+          await sbFetch('/rest/v1/pendientes_historial',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({pendiente_id:id, texto:t, autor:rdPendQuien()})});
+          if(rdPendHist[id]) rdPendHist[id].unshift({created_at:new Date().toISOString(), texto:t, autor:rdPendQuien()});
+        }catch(e){ console.warn('historial', e); }
+      }
+    }catch(e){ console.warn('pendiente patch', e); showToast('No se pudo guardar: '+(e.message||''),4000); return false; }
+  }
+  if(!opts.sinDeshacer) rdPendUndo={prev, texto:opts.undoTexto||'Cambio deshecho'};
+  if(ids.length===1){ rdPendFlash=ids[0]; setTimeout(()=>{ rdPendFlash=null; },1600); }
+  rdPendRender();
+  return true;
+}
+async function rdPendDeshacer(){
+  if(!rdPendUndo) return;
+  const u=rdPendUndo; rdPendUndo=null;
+  for(const it of u.prev){
+    const p=rdPendList.find(x=>x.id===it.id); if(!p) continue;
+    try{
+      await sbFetch('/rest/v1/pendientes?id=eq.'+it.id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(it.antes)});
+      Object.assign(p, it.antes);
+      await sbFetch('/rest/v1/pendientes_historial',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({pendiente_id:it.id, texto:u.texto, autor:rdPendQuien()})});
+      delete rdPendHist[it.id];
+    }catch(e){ console.warn('deshacer', e); }
+  }
+  showToast('Listo, se deshizo el cambio');
+  rdPendRender();
+  if(rdPendOpen) rdPendCargarHist(rdPendOpen);
+}
+function rdPendToastUndo(msg){
+  showToast(msg, 6000);
+  setTimeout(()=>{
+    const t=document.querySelector('.toast, #toast, .rd-toast');
+    if(t && !t.querySelector('.p2-undo')){
+      const b=document.createElement('button'); b.className='p2-undo'; b.type='button'; b.textContent='Deshacer';
+      b.onclick=()=>{ rdPendDeshacer(); };
+      t.appendChild(b);
+    }
+  }, 30);
+}
+
+async function rdPendSetEstado(id, estado){
+  const p=rdPendList.find(x=>x.id===id); if(!p || p.estado===estado) return;
+  if(estado==='cerrada' && p.estado!=='por_validar'){
+    showToast('Primero pásala a «Por validar»: el cierre lleva tu conformidad', 4200); return;
+  }
+  const campos={estado};
+  if(estado==='cerrada'){ campos.fecha_cierre=new Date().toISOString(); campos.validado_por=rdPendQuien(); campos.validado_at=new Date().toISOString(); }
+  else { campos.fecha_cierre=null; campos.validado_por=null; campos.validado_at=null; }
+  const texto = estado==='cerrada' ? ('Conformidad de '+rdPendQuien()+' · Por validar → Cerrada') : (PEND_EST[p.estado]+' → '+PEND_EST[estado]);
+  if(await rdPendGuardar([id], campos, texto, {undoTexto:'Cambio de estado deshecho'}))
+    rdPendToastUndo(estado==='cerrada'?'Cerrada con tu conformidad':'Pasó a «'+PEND_EST[estado]+'»');
+}
+async function rdPendEstadoLote(ids, estado){
+  const malas=ids.map(i=>rdPendList.find(x=>x.id===i)).filter(p=>p && estado==='cerrada' && p.estado!=='por_validar');
+  if(malas.length){ showToast('Solo se cierran las que están en «Por validar»', 4200); return; }
+  const campos={estado};
+  if(estado!=='cerrada'){ campos.fecha_cierre=null; campos.validado_por=null; campos.validado_at=null; }
+  else { campos.fecha_cierre=new Date().toISOString(); campos.validado_por=rdPendQuien(); campos.validado_at=new Date().toISOString(); }
+  if(await rdPendGuardar(ids, campos, 'Pasó a '+PEND_EST[estado]+' (en lote)', {undoTexto:'Cambio de estado deshecho'})){
+    rdPendSel.clear();
+    rdPendToastUndo(ids.length+' pendientes pasaron a «'+PEND_EST[estado]+'»');
+  }
+}
+async function rdPendReprogramar(ids, fecha, motivo){
+  if(!fecha || !motivo) return;
+  const ok=await rdPendGuardar(ids, p=>({fecha_objetivo:fecha, reprogramaciones:(p.reprogramaciones||0)+(p.fecha_objetivo?1:0), urgente:(p.urgente===true?null:p.urgente)}),
+    p=>(p.fecha_objetivo?('Reprogramada al '+rdPendFechaCorta(fecha)+' · Motivo: '+motivo):('Fecha asignada: '+rdPendFechaCorta(fecha)+' · Motivo: '+motivo)),
+    {undoTexto:'Reprogramación deshecha'});
+  if(ok){ rdPendSel.clear(); rdPendToastUndo((ids.length>1?ids.length+' reprogramados':'Reprogramada')+' al '+rdPendFechaCorta(fecha)); }
+}
+async function rdPendCampo(id, campo, valor){
+  const p=rdPendList.find(x=>x.id===id); if(!p) return;
+  valor=(typeof valor==='string')?valor.trim():valor;
+  if((p[campo]||'')===(valor||'')) return;
+  const etiqueta={responsable:'Responsable',categoria:'Área',impacto:'Impacto',causa:'Causa'}[campo]||campo;
+  if(await rdPendGuardar([id], {[campo]: valor||null}, etiqueta+': '+(p[campo]||'—')+' → '+(valor||'—'), {undoTexto:'Cambio deshecho'})){
+    rdPendToastUndo(etiqueta+' actualizado'+(campo==='causa'&&valor==='Instalación de la contrata'?' · cuenta para la evaluación de la contrata':''));
+    if(rdPendOpen===id) rdPendPintarFicha();
+  }
+}
+async function rdPendComentario(id, texto){
+  const p=rdPendList.find(x=>x.id===id); if(!p) return;
+  const par=rdPendParse(p.descripcion);
+  if(par.com===texto.trim()) return;
+  const nueva=[texto.trim()].concat(par.chips.map(c=>c[2])).filter(Boolean).join(' · ');
+  if(await rdPendGuardar([id], {descripcion:nueva||null}, 'Comentario editado', {undoTexto:'Comentario restaurado'}))
+    rdPendToastUndo('Comentario guardado');
+}
+async function rdPendTogCampo(id, campo){
+  const p=rdPendList.find(x=>x.id===id); if(!p) return;
+  const val=!p[campo];
+  const txt = campo==='fuera_alcance'
+    ? (val?'Marcada fuera de alcance · se cotiza como adicional':'Ya no está fuera de alcance')
+    : (val?'Requiere cotización · pasa a Compras o Licitaciones':'Ya no requiere cotización');
+  if(await rdPendGuardar([id], {[campo]:val}, txt, {undoTexto:'Marca deshecha'})){ rdPendToastUndo(txt); rdPendPintarFicha(); }
+}
+async function rdPendTogUrg(id){
+  const p=rdPendList.find(x=>x.id===id); if(!p) return;
+  const val=!rdPendUrgente(p);
+  if(await rdPendGuardar([id], {urgente:val}, val?'Marcada como urgente':'Quitada de urgentes', {undoTexto:'Urgencia restaurada'}))
+    rdPendToastUndo(val?'Marcada como urgente':'Quitada de urgentes');
+}
+async function rdPendBulkUrg(){
+  const ids=[...rdPendSel];
+  if(await rdPendGuardar(ids, {urgente:false}, 'Quitada de urgentes (en lote)', {undoTexto:'Urgencia restaurada'})){
+    rdPendSel.clear(); rdPendToastUndo(ids.length+' quitadas de urgentes');
+  }
+}
+function rdPendFichaFecha(id, input){
+  const p=rdPendList.find(x=>x.id===id); const nueva=input.value;
+  input.value=p&&p.fecha_objetivo?p.fecha_objetivo:'';
+  if(nueva) rdPendPopFecha(input, id, nueva);
+}
+
+/* ── popovers ── */
+function rdPendPopCerrar(){ const el=document.getElementById('pend-pop'); if(el) el.remove(); }
+function rdPendPop(anchor, html){
+  rdPendPopCerrar();
+  const el=document.createElement('div'); el.id='pend-pop'; el.className='p2-pop'; el.innerHTML=html;
+  document.body.appendChild(el);
+  const a=anchor.getBoundingClientRect(), w=el.offsetWidth, h=el.offsetHeight;
+  let left=a.right+window.scrollX-w; if(left<12) left=12;
+  if(left+w>document.documentElement.clientWidth-12) left=document.documentElement.clientWidth-12-w;
+  let top=a.bottom+window.scrollY+6;
+  if(a.bottom+h+12>window.innerHeight && a.top>h+12) top=a.top+window.scrollY-h-6;
+  el.style.left=left+'px'; el.style.top=top+'px';
+  setTimeout(()=>{
+    const fuera=ev=>{ if(!el.contains(ev.target)){ rdPendPopCerrar(); document.removeEventListener('mousedown', fuera); } };
+    document.addEventListener('mousedown', fuera);
+  },0);
+  return el;
+}
+function rdPendPopEstado(anchor, id){
+  const ids = id===null ? [...rdPendSel] : [id];
+  if(!ids.length) return;
+  const el=rdPendPop(anchor, '<div class="p2-pop-h">'+(ids.length>1?'Cambiar estado de '+ids.length:'Cambiar estado')+'</div><div class="p2-menu">'
+    + Object.keys(PEND_EST).map(k=>'<button type="button" data-est="'+k+'"><span class="p2-st st-'+k+'" style="pointer-events:none">'+PEND_EST[k]+'</span>'+(k==='cerrada'?'<small>con tu conformidad</small>':'')+'</button>').join('')
+    + '</div>');
+  el.querySelectorAll('[data-est]').forEach(b=>b.addEventListener('click',()=>{
+    const k=b.dataset.est; rdPendPopCerrar();
+    if(ids.length>1) rdPendEstadoLote(ids,k); else rdPendSetEstado(ids[0],k);
+  }));
+}
+function rdPendPopFecha(anchor, id, preset){
+  const ids = id===null ? [...rdPendSel] : [id];
+  if(!ids.length) return;
+  const p=rdPendList.find(x=>x.id===ids[0]);
+  const def = preset || rdPendMasDias(p?PEND_PLAZO[p.impacto||'medio']:7);
+  const el=rdPendPop(anchor,
+    '<div class="p2-pop-h">'+(ids.length>1?'Reprogramar '+ids.length+' pendientes':'Reprogramar')+'</div>'
+    + '<div class="p2-quick">'+[[1,'Mañana'],[3,'+3 días'],[7,'+1 semana'],[14,'+2 semanas']].map(q=>'<button type="button" class="p2-chip" data-n="'+q[0]+'">'+q[1]+'</button>').join('')+'</div>'
+    + '<label for="pop-fecha">Nueva fecha</label><input class="pend-inp" type="date" id="pop-fecha" value="'+def+'">'
+    + '<label for="pop-motivo">Motivo (obligatorio)</label><select class="pend-inp" id="pop-motivo"><option value="" selected disabled>Elige el motivo</option>'
+      + PEND_MOTIVOS.map(m=>'<option>'+m+'</option>').join('')+'</select>'
+    + '<button class="pend-act primary" type="button" id="pop-ok" disabled style="justify-content:center">Reprogramar</button>');
+  el.querySelectorAll('[data-n]').forEach(b=>b.addEventListener('click',()=>{
+    el.querySelectorAll('[data-n]').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    el.querySelector('#pop-fecha').value=rdPendMasDias(+b.dataset.n);
+  }));
+  el.querySelector('#pop-motivo').addEventListener('change',()=>{ el.querySelector('#pop-ok').disabled=false; });
+  el.querySelector('#pop-ok').addEventListener('click',()=>{
+    const f=el.querySelector('#pop-fecha').value, m=el.querySelector('#pop-motivo').value;
+    if(!f || !m) return;
+    rdPendPopCerrar(); rdPendReprogramar(ids, f, m);
+  });
+}
+
 async function rdPendAdd(){
   const cod=rdPendCod(); if(!cod){ showToast('Selecciona un proyecto'); return; }
   const titulo=(document.getElementById('pend-titulo')?.value||'').trim();
   if(!titulo){ showToast('Escribe un título'); return; }
+  const impacto=document.getElementById('pend-impacto')?.value||'medio';
+  const fecha=document.getElementById('pend-fecha')?.value||null;
   const row={ cod_proyecto:cod, nombre_proyecto:currentProyecto?.nombre||null,
     tipo:document.getElementById('pend-tipo')?.value||'restriccion',
-    impacto:document.getElementById('pend-impacto')?.value||'medio', titulo,
+    impacto, titulo,
     categoria:(document.getElementById('pend-cat')?.value||'').trim()||null,
     responsable:(document.getElementById('pend-resp')?.value||'').trim()||null,
-    fecha_objetivo:document.getElementById('pend-fecha')?.value||null,
+    fecha_objetivo:fecha || rdPendMasDias(PEND_PLAZO[impacto]),
     descripcion:(document.getElementById('pend-desc')?.value||'').trim()||null,
-    estado:'abierta', origen:'manual', supervisor:currentProyecto?.supervisor||currentUser?.nombre||null };
+    estado:'abierta', origen:'manual', causa:'Por definir',
+    supervisor:currentProyecto?.supervisor||currentUser?.nombre||null };
   try{
-    await sbFetch('/rest/v1/pendientes',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
+    const res=await sbFetch('/rest/v1/pendientes',{method:'POST',headers:{'Prefer':'return=representation'},body:JSON.stringify(row)});
+    const nuevo=Array.isArray(res)?res[0]:null;
+    if(nuevo) await sbFetch('/rest/v1/pendientes_historial',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({pendiente_id:nuevo.id, texto:'Registrada en obra'+(fecha?'':' · fecha por plazo de impacto '+impacto), autor:rdPendQuien()})});
     showToast('Pendiente agregado ✓'); rdPendFormOn=false; await rdPendLoad();
   }catch(e){ console.warn('pendiente add', e); showToast('Error al agregar'); }
 }
-async function rdPendEstado(id, estado){
-  const patch={ estado }; patch.fecha_cierre = (estado==='cerrada') ? new Date().toISOString() : null;
-  try{ await sbFetch('/rest/v1/pendientes?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(patch)}); await rdPendLoad(); }
-  catch(e){ console.warn('pendiente estado', e); showToast('Error'); }
+
+/* Estilos de la pantalla nueva: color solo como senal, el resto en blanco. */
+let _pendStyles2=false;
+function rdPendEstilos2(){
+  if(_pendStyles2) return; _pendStyles2=true;
+  const css=`
+  .p2-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px 26px;padding:2px 2px 14px;border-bottom:1px solid var(--border);}
+  .p2-obra small{display:block;font-size:11px;font-weight:600;color:var(--text-3);}
+  .p2-obra strong{display:block;margin-top:2px;font-size:19px;font-weight:800;letter-spacing:-.01em;color:var(--navy-800);}
+  .p2-pulse{display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;}
+  .p2-lev{min-width:230px;}
+  .p2-lev-h{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--text-2);margin-bottom:6px;}
+  .p2-lev-h b{color:var(--navy-800);font-variant-numeric:tabular-nums;}
+  .p2-lev small{display:block;margin-top:5px;font-size:11px;color:var(--text-3);}
+  .p2-bar{height:6px;border-radius:99px;background:var(--surface-2);border:1px solid var(--border);overflow:hidden;}
+  .p2-bar i{display:block;height:100%;border-radius:99px;background:var(--teal-600);transition:width .6s var(--ease);}
+  .p2-sig{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums;}
+  .p2-sig span b{font-size:15px;font-weight:800;color:var(--navy-800);margin-right:4px;}
+  .p2-sig .is-late b{color:var(--danger);}
+
+  .p2-views{display:flex;gap:4px;margin-top:8px;border-bottom:1px solid var(--border);overflow-x:auto;}
+  .p2-view{border:0;background:none;padding:10px 12px 11px;font-family:inherit;font-size:13px;font-weight:600;color:var(--text-2);
+    border-bottom:2px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:7px;cursor:pointer;}
+  .p2-view i{font-style:normal;font-size:11px;font-weight:700;min-width:20px;padding:1px 6px;border-radius:99px;background:var(--surface-2);color:var(--text-3);font-variant-numeric:tabular-nums;}
+  .p2-view.on{color:var(--navy-800);border-bottom-color:var(--navy-800);}
+  .p2-view.on i{background:var(--navy-800);color:#fff;}
+  .p2-view.hot i{background:var(--danger-bg);color:var(--danger);}
+  .p2-view.on.hot i{background:var(--danger);color:#fff;}
+
+  .p2-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);}
+  .p2-sep{flex:1 0 0;}
+  .p2-sel{height:34px;max-width:190px;flex:0 1 auto;border:1px solid var(--border-strong);border-radius:9px;background:var(--surface);color:var(--text-2);
+    font-family:inherit;font-size:12.5px;font-weight:600;padding:0 10px;cursor:pointer;}
+  .p2-tools .pend-search{flex:1 1 200px;max-width:280px;}
+  .p2-sel.set{border-color:var(--navy-800);color:var(--navy-800);}
+  .p2-bulk{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%;}
+  .p2-bulk b{font-size:13px;color:var(--navy-800);}
+  .pend-act.ghost{border-color:transparent;color:var(--text-2);}
+
+  .p2-body{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:0;}
+  .p2-list{padding:2px 0 16px;border-right:1px solid var(--border);}
+  .p2-grp{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:16px 4px 6px;
+    font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);}
+  .p2-grp.late{color:var(--danger);}
+  .p2-grp em{font-style:normal;font-weight:500;letter-spacing:0;text-transform:none;margin-left:6px;opacity:.85;}
+  .p2-grp span{letter-spacing:0;font-variant-numeric:tabular-nums;}
+  .p2-row{display:grid;grid-template-columns:18px 112px minmax(0,1fr) auto;align-items:center;gap:12px;
+    padding:10px 10px 10px 4px;border-top:1px solid var(--border);position:relative;}
+  .p2-grp + .p2-row{border-top-color:transparent;}
+  .p2-row:hover{background:var(--surface-2);}
+  .p2-row.is-open{background:rgba(6,182,212,.07);}
+  .p2-row.is-open::before{content:'';position:absolute;left:-4px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--teal-600);}
+  .p2-row.flash{animation:p2Flash 1.6s var(--ease);}
+  @keyframes p2Flash{0%{background:rgba(6,182,212,.18);}100%{background:transparent;}}
+  .p2-chk{width:16px;height:16px;accent-color:var(--navy-800);margin:0;cursor:pointer;}
+  .p2-rt{border:0;background:none;text-align:left;padding:0;min-width:0;cursor:pointer;font-family:inherit;}
+  .p2-ttl{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    font-size:13.5px;font-weight:600;line-height:1.35;color:var(--navy-800);}
+  .p2-meta{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:12px;color:var(--text-3);white-space:nowrap;overflow:hidden;}
+  .p2-meta .txt{overflow:hidden;text-overflow:ellipsis;}
+  .p2-flag{flex:none;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:5px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);}
+  .p2-flag.money{background:var(--warning-bg);border-color:transparent;color:#a16207;}
+  .p2-row.done .p2-ttl{color:var(--text-3);text-decoration:line-through;text-decoration-color:var(--border-strong);}
+  .p2-st{justify-self:start;display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 10px 0 8px;border-radius:99px;
+    border:1px solid transparent;font-family:inherit;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;}
+  .p2-st::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;}
+  .p2-st.st-abierta{background:var(--surface);border-color:var(--border-strong);color:var(--text-2);}
+  .p2-st.st-en_proceso{background:#e1f1f6;color:#0b6a86;}
+  .p2-st.st-por_validar{background:#edebfb;color:#5646be;}
+  .p2-st.st-cerrada{background:var(--success-bg);color:#15803d;}
+  .p2-st.st-no_aplica{background:var(--surface-2);color:var(--text-3);}
+  .p2-due{border:1px solid transparent;background:none;border-radius:9px;padding:4px 8px;text-align:right;min-width:92px;
+    font-family:inherit;cursor:pointer;font-variant-numeric:tabular-nums;}
+  .p2-due:hover{border-color:var(--border-strong);background:var(--surface);}
+  .p2-due b{display:block;font-size:12.5px;font-weight:700;color:var(--navy-800);}
+  .p2-due small{display:block;font-size:11.5px;color:var(--text-3);}
+  .p2-due.late small{color:var(--danger);font-weight:700;}
+  .p2-due.soon small{color:var(--warning);font-weight:700;}
+  .p2-due.none b{color:var(--warning);}
+
+  .p2-drawer{padding:16px 0 20px 18px;display:flex;flex-direction:column;gap:16px;min-width:0;}
+  .p2-dh{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-3);}
+  .p2-tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);}
+  .p2-tag.urg{background:var(--danger-bg);border-color:transparent;color:var(--danger);}
+  .p2-area{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .p2-x{margin-left:auto;border:0;background:none;color:var(--text-3);font-size:17px;line-height:1;cursor:pointer;}
+  .p2-dt{margin:0;font-size:15.5px;line-height:1.35;font-weight:700;color:var(--navy-800);}
+  .p2-stepper{display:grid;grid-template-columns:repeat(4,1fr);}
+  .p2-step{border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;
+    font-family:inherit;font-size:11px;font-weight:600;color:var(--text-3);cursor:pointer;}
+  .p2-step::before{content:'';position:absolute;top:8px;left:-50%;right:50%;height:2px;background:var(--border);}
+  .p2-step:first-child::before{display:none;}
+  .p2-step i{position:relative;z-index:1;width:18px;height:18px;border-radius:50%;border:2px solid var(--border-strong);background:var(--surface);}
+  .p2-step.past i{background:var(--teal-600);border-color:var(--teal-600);}
+  .p2-step.past::before,.p2-step.cur::before{background:var(--teal-600);}
+  .p2-step.cur i{border-color:var(--teal-600);box-shadow:0 0 0 4px rgba(6,182,212,.16);}
+  .p2-step.cur{color:var(--navy-800);}
+  .p2-conf{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:#edebfb;}
+  .p2-conf p{margin:0;font-size:12.5px;color:var(--text-2);}
+  .p2-conf p b{color:#5646be;}
+  .p2-quick{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .p2-links{display:flex;gap:14px;flex-wrap:wrap;}
+  .p2-link{border:0;background:none;padding:0;font-family:inherit;font-size:12px;color:var(--text-2);
+    text-decoration:underline;text-underline-offset:3px;cursor:pointer;}
+  .p2-hint{font-size:12px;color:var(--text-3);}
+  .p2-hint.late{color:var(--danger);font-weight:600;}
+  .p2-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .p2-f{display:flex;flex-direction:column;gap:5px;min-width:0;}
+  .p2-f.full{grid-column:1/-1;}
+  .p2-f label,.p2-lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
+  .p2-seg3{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--border-strong);border-radius:9px;overflow:hidden;height:36px;}
+  .p2-seg3 button{border:0;background:var(--surface);font-family:inherit;font-size:12.5px;font-weight:600;color:var(--text-2);cursor:pointer;}
+  .p2-seg3 button + button{border-left:1px solid var(--border-strong);}
+  .p2-seg3 button.on{background:var(--navy-800);color:#fff;}
+  .p2-chip{height:28px;padding:0 10px;border-radius:99px;border:1px solid var(--border-strong);background:var(--surface);
+    font-family:inherit;font-size:11.5px;font-weight:600;color:var(--text-2);cursor:pointer;}
+  .p2-chip:hover,.p2-chip.on{border-color:var(--navy-800);color:var(--navy-800);}
+  .p2-sw{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .p2-swi{display:flex;align-items:center;gap:12px;padding:11px 12px;background:var(--surface);}
+  .p2-swi + .p2-swi{border-top:1px solid var(--border);}
+  .p2-swi b{display:block;font-size:13px;font-weight:600;color:var(--navy-800);}
+  .p2-swi span{display:block;font-size:12px;color:var(--text-3);}
+  .p2-tg{margin-left:auto;flex:none;width:38px;height:22px;border-radius:99px;border:0;background:var(--border-strong);position:relative;cursor:pointer;padding:0;}
+  .p2-tg::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .18s var(--ease);box-shadow:0 1px 2px rgba(0,0,0,.2);}
+  .p2-tg[aria-pressed="true"]{background:var(--navy-800);}
+  .p2-tg[aria-pressed="true"]::after{left:19px;}
+  .p2-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .p2-kv{font-size:12px;padding:3px 8px;border-radius:7px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);}
+  .p2-kv em{font-style:normal;color:var(--text-3);margin-right:4px;}
+  .p2-hist ol{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:9px;}
+  .p2-hist li{display:grid;grid-template-columns:42px 1fr;gap:10px;font-size:12.5px;color:var(--text-2);}
+  .p2-hist li time{font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums;}
+
+  .p2-pop{position:absolute;z-index:1200;width:272px;background:var(--surface);border:1px solid var(--border-strong);
+    border-radius:14px;box-shadow:var(--sh-3);padding:12px;display:flex;flex-direction:column;gap:8px;}
+  .p2-pop-h{font-size:12px;font-weight:700;color:var(--navy-800);}
+  .p2-pop label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);}
+  .p2-menu{display:flex;flex-direction:column;}
+  .p2-menu button{border:0;background:none;text-align:left;padding:7px;border-radius:8px;display:flex;align-items:center;gap:8px;
+    font-family:inherit;font-size:13px;cursor:pointer;}
+  .p2-menu button:hover{background:var(--surface-2);}
+  .p2-menu button small{margin-left:auto;color:var(--text-3);font-size:11px;}
+  .p2-undo{margin-left:12px;border:0;background:transparent;color:inherit;font-family:inherit;font-weight:700;
+    text-decoration:underline;text-underline-offset:3px;cursor:pointer;}
+
+  @media(max-width:900px){
+    .p2-body{grid-template-columns:1fr;}
+    .p2-list{border-right:0;}
+    .p2-drawer{position:fixed;inset:auto 0 0 0;z-index:1100;max-height:86vh;overflow:auto;padding:16px;
+      background:var(--surface);border-top:1px solid var(--border-strong);border-radius:18px 18px 0 0;
+      box-shadow:0 -20px 50px -20px rgba(11,18,38,.4);transform:translateY(105%);transition:transform .3s var(--ease);}
+    .p2-drawer.show{transform:none;}
+    .p2-row{grid-template-columns:18px minmax(0,1fr) auto;grid-template-areas:"c t d" ". s d";row-gap:6px;}
+    .p2-row .p2-chk{grid-area:c;align-self:start;margin-top:3px;}
+    .p2-row .p2-rt{grid-area:t;}
+    .p2-row .p2-st{grid-area:s;}
+    .p2-row .p2-due{grid-area:d;align-self:start;}
+    .p2-fields{grid-template-columns:1fr;}
+  }
+  @media print{ .p2-tools,.p2-views,.p2-drawer,.pend-form,.pend-drop,.p2-chk{display:none !important;} .p2-body{grid-template-columns:1fr;} }
+  `;
+  const st=document.createElement('style'); st.id='rd-pend-styles-2'; st.textContent=css; document.head.appendChild(st);
 }
 
 // ═══════════════════════════════════════════════
@@ -11356,7 +11800,8 @@ function rdPendVImpacto(v){
 function rdPendVEstado(v){
   const s=rdPendNorm(v);
   if(!s) return 'abierta';
-  if(/cerrad|conclu|consluid|solucion|finaliz|terminad|levantad|resuelt|subsanad|conforme|atendid|ejecutad|entregad|no aplica|no procede|anulad|^ok\b|100/.test(s)) return 'cerrada';
+  if(/no aplica|no procede|no corresponde|anulad/.test(s)) return 'no_aplica';
+  if(/cerrad|conclu|consluid|solucion|finaliz|terminad|levantad|resuelt|subsanad|conforme|atendid|ejecutad|entregad|^ok\b|100/.test(s)) return 'cerrada';
   if(/pendient|abiert|por iniciar|sin iniciar|no iniciad/.test(s)) return 'abierta';
   if(/proceso|curso|ejecu|avance|parcial|tramite|coordinac|programad|revis/.test(s)) return 'en_proceso';
   return 'abierta';
@@ -11457,9 +11902,9 @@ async function rdPendImpParse(file){
 
   const cod=rdPendCod();
   const clave=(t,c)=>rdPendNorm(t)+'|'+rdPendNorm(c);
-  const yaHay=new Set(rdPendList.map(p=>clave(p.titulo,p.categoria)));
+  const yaHay=new Map(rdPendList.map(p=>[clave(p.titulo,p.categoria), p]));
   const vistas=new Set();
-  const salida=[]; let enObra=0, repetidas=0, vacias=0;
+  const salida=[], actualiza=[]; let enObra=0, repetidas=0, vacias=0;
 
   for(let i=hIdx+1;i<filas.length;i++){
     const r=filas[i]||[];
@@ -11502,21 +11947,36 @@ async function rdPendImpParse(file){
       origen:'excel',
       supervisor:(currentProyecto&&currentProyecto.supervisor)||(currentUser&&currentUser.nombre)||null
     };
-    // Repetida = ya está en la obra (mismo título y categoría) o es idéntica a otra fila del archivo.
-    // Dos observaciones con el mismo texto en áreas distintas son dos observaciones.
-    if(yaHay.has(clave(row.titulo,row.categoria))){ enObra++; continue; }
+    row.causa='Por definir'; row.urgente=null;
+    const marcas=(row.descripcion||'')+' '+String(rawEst||'');
+    row.fuera_alcance=/PROYECTO NUEVO|fuera de alcance|no es parte del alcance/i.test(marcas);
+    row.requiere_cotizacion=/COTIZ/i.test(marcas);
+
+    // Si ya está en la obra (mismo título y área) NO se duplica: se actualiza lo que cambió.
+    // Dos observaciones con el mismo texto en áreas distintas siguen siendo dos.
+    const ex=yaHay.get(clave(row.titulo,row.categoria));
+    if(ex){
+      const cambios={};
+      if(row.estado!==ex.estado && !(ex.estado==='cerrada' && row.estado==='abierta')) cambios.estado=row.estado;
+      if(row.fecha_objetivo && row.fecha_objetivo!==ex.fecha_objetivo) cambios.fecha_objetivo=row.fecha_objetivo;
+      if(row.responsable && row.responsable!==ex.responsable) cambios.responsable=row.responsable;
+      if(row.impacto && row.impacto!==ex.impacto) cambios.impacto=row.impacto;
+      if(Object.keys(cambios).length) actualiza.push({id:ex.id, titulo:row.titulo, cambios});
+      else enObra++;
+      continue;
+    }
     const firma=JSON.stringify([row.titulo,row.categoria,row.responsable,row.fecha_objetivo,row.estado,row.descripcion]);
     if(vistas.has(firma)){ repetidas++; continue; }
     vistas.add(firma);
     salida.push(row);
   }
 
-  rdPendImpData=salida;
+  rdPendImpData={nuevas:salida, actualiza};
   const cols={}; Object.keys(map).forEach(c=>{ cols[c]=colLbl(map[c]); });
   rdPendImpModal({ archivo:file.name, hoja:mejor.nombre, filaEnc:hIdx+mejor.r0+1, cols,
     extras:extras.map(colLbl), tipoArchivo,
     avanceLbl:(avance!==undefined && map.estado===undefined)?colLbl(avance):null,
-    filas:salida, dups:enObra+repetidas, vacias });
+    filas:salida, actualiza, dups:enObra+repetidas, vacias });
 }
 
 function rdPendImpModal(info){
@@ -11540,7 +12000,7 @@ function rdPendImpModal(info){
     return;
   }
 
-  const n=info.filas.length;
+  const n=info.filas.length, nAct=(info.actualiza||[]).length;
   const mapRows=Object.keys(PEND_CAMPO_LBL).map(c=>{
     const col=info.cols[c];
     let cel, off=false;
@@ -11567,17 +12027,21 @@ function rdPendImpModal(info){
     + '<div class="pend-modal-bd">'
       + '<div class="pend-imp-kpis">'
         + '<div class="k ok"><b>'+n+'</b><span>listas para importar</span></div>'
-        + '<div class="k'+(info.dups?' warn':'')+'"><b>'+info.dups+'</b><span>ya en la obra o repetidas</span></div>'
+        + '<div class="k'+(nAct?' ok':'')+'"><b>'+nAct+'</b><span>se actualizan</span></div>'
+        + '<div class="k'+(info.dups?' warn':'')+'"><b>'+info.dups+'</b><span>ya estaban igual</span></div>'
         + '<div class="k'+(info.vacias?' warn':'')+'"><b>'+info.vacias+'</b><span>descartadas sin título</span></div>'
       + '</div>'
       + '<div class="pend-imp-cols"><h5>Cómo leí tus columnas</h5>'
       + '<table class="pend-imp-map"><tbody>'+mapRows+'</tbody></table></div>'
-      + (n?('<div class="pend-imp-cols"><h5>Primeras '+Math.min(8,n)+' de '+n+'</h5>'
+      + ((n||nAct)?('<div class="pend-imp-cols"><h5>Primeras '+Math.min(8,n)+' de '+n+'</h5>'
           + '<div class="pend-imp-scroll"><table class="pend-imp-prev"><thead><tr><th>Tipo</th><th>Título</th><th>Categoría</th><th>Responsable</th><th>Objetivo</th><th>Impacto</th><th>Estado</th></tr></thead>'
-          + '<tbody>'+prev+'</tbody></table></div></div>'):'<p class="pend-modal-p">No quedó ninguna fila nueva por importar.</p>')
+          + '<tbody>'+prev+'</tbody></table></div>'
+          + (nAct?('<p class="pend-modal-p">Además se actualizan '+nAct+' que ya estaban en la obra: '+rdEsc2(info.actualiza.slice(0,3).map(a=>a.titulo.slice(0,40)).join(' · '))+(nAct>3?'…':'')+'</p>'):'')
+          + '</div>'):'<p class="pend-modal-p">No quedó ninguna fila nueva por importar ni por actualizar.</p>')
     + '</div>'
     + '<div class="pend-modal-ft"><button class="pend-act" onclick="rdPendImpClose()">Cancelar</button>'
-    + (n?('<button class="pend-act primary" id="pend-imp-go" onclick="rdPendImpConfirm()"><i data-lucide="upload" class="ri"></i>Importar '+n+'</button>'):'')
+    + ((n||nAct)?('<button class="pend-act primary" id="pend-imp-go" onclick="rdPendImpConfirm()"><i data-lucide="upload" class="ri"></i>'
+        + (n?('Importar '+n):'')+(n&&nAct?' y ':'')+(nAct?('actualizar '+nAct):'')+'</button>'):'')
     + '</div></div>';
   box.classList.add('on');
   if(window.lucide) lucide.createIcons();
@@ -11588,12 +12052,12 @@ function rdPendImpClose(){
   rdPendImpData=null;
 }
 async function rdPendImpConfirm(){
-  const filas=rdPendImpData||[];
-  if(!filas.length){ rdPendImpClose(); return; }
+  const datos=rdPendImpData||{}; const filas=datos.nuevas||[], actualiza=datos.actualiza||[];
+  if(!filas.length && !actualiza.length){ rdPendImpClose(); return; }
   const btn=document.getElementById('pend-imp-go');
   if(btn){ btn.disabled=true; btn.textContent='Importando…'; }
   const post=body=>sbFetch('/rest/v1/pendientes',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(body)});
-  let ok=0; const fallas=[];
+  let ok=0, act=0; const fallas=[];
   for(let i=0;i<filas.length;i+=200){
     const lote=filas.slice(i,i+200);
     try{ await post(lote); ok+=lote.length; }
@@ -11607,14 +12071,26 @@ async function rdPendImpConfirm(){
       }
     }
   }
+  // Reimportación: se actualiza lo que cambió y queda registrado en el historial.
+  for(const a of actualiza){
+    try{
+      await sbFetch('/rest/v1/pendientes?id=eq.'+a.id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(a.cambios)});
+      const detalle=Object.keys(a.cambios).map(k=>({estado:'estado',fecha_objetivo:'fecha',responsable:'responsable',impacto:'impacto'}[k]||k)+': '+a.cambios[k]).join(' · ');
+      await sbFetch('/rest/v1/pendientes_historial',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({pendiente_id:a.id, texto:'Actualizada desde el Excel · '+detalle, autor:rdPendQuien()})});
+      act++;
+    }catch(e){ console.warn('pendiente update', e); fallas.push({titulo:a.titulo, error:String((e&&e.message)||e)}); }
+  }
   rdPendImpClose();
   rdPendImpOn=false;
+  const partes=[];
+  if(ok) partes.push('Importados '+ok);
+  if(act) partes.push('actualizados '+act);
   if(fallas.length){
     console.warn('pendientes que no se importaron', fallas);
     let motivo=fallas[0].error; try{ motivo=JSON.parse(motivo).message||motivo; }catch(_){}
-    showToast('Importados '+ok+' · no entraron '+fallas.length+': '+String(motivo).slice(0,90), 8000);
+    showToast(partes.join(' · ')+' · no entraron '+fallas.length+': '+String(motivo).slice(0,90), 8000);
   } else {
-    showToast('Importados '+ok+' pendientes ✓', 4000);
+    showToast((partes.join(' · ')||'Sin cambios')+' ✓', 4000);
   }
   await rdPendLoad();
 }

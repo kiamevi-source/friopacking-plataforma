@@ -89,8 +89,17 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   costos de la app de campo consulta `lic_partidas` y `lic_licitaciones` de PMO,
   enlazadas por `lic_partidas.origen_presupuesto_id` = `presupuestos.id`. Es solo
   lectura, a propósito: una copia sincronizada podría contradecir a Gerencia.
-- **Levantamiento de observaciones admite Excel.** Restricciones, punch list y
-  observaciones viven en `pendientes` de la instancia Supervisor. Entran a mano
+- **Levantamiento de observaciones: cinco estados y bitácora.** Restricciones,
+  punch list y observaciones viven en `pendientes` de la instancia Supervisor.
+  El ciclo es Abierta → En proceso → Por validar → Cerrada, más «No aplica»;
+  el paso a Cerrada lo da el supervisor como conformidad y queda firmado en
+  `validado_por`. «No aplica» sale del % levantado. Una observación se marca
+  urgente sola a los 30 días vencida, o con impacto alto ya vencida, y el
+  supervisor puede forzarla. Reprogramar exige motivo y suma
+  `reprogramaciones`. Cada cambio se escribe en `pendientes_historial`
+  (tabla nueva) y se puede deshacer. Columnas nuevas: `urgente`, `causa`,
+  `fuera_alcance`, `requiere_cotizacion`, `reprogramaciones`, `validado_por`,
+  `validado_at`, `ubicacion`, `plano_x`, `plano_y`. Entran a mano
   o importadas desde un Excel (`origen = 'excel'`). No hay plantilla obligatoria:
   cada obra usa su formato. El importador elige la hoja y la fila de encabezado
   que mejor reconoce y asigna cada columna por palabras completas, tolerando
