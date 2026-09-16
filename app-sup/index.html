@@ -11375,6 +11375,7 @@ function rdPendFichaHTML(){
     + '</div>';
   } else {
     h+='<div class="p2-fields">'
+      + '<div class="p2-f full"><label for="pf-titulo">Observación</label><textarea class="pend-inp" id="pf-titulo" rows="2" maxlength="300" onchange="rdPendTitulo('+p.id+',this)">'+rdEsc2(p.titulo||'')+'</textarea></div>'
       + '<div class="p2-f"><label for="pf-resp">Responsable</label><input class="pend-inp" id="pf-resp" list="pend-contratas" value="'+rdEsc2(p.responsable||'')+'" onchange="rdPendCampo('+p.id+',\'responsable\',this.value)"></div>'
       + '<div class="p2-f"><label for="pf-area">Zona</label><input class="pend-inp" id="pf-area" list="pend-zonas-dl" value="'+rdEsc2(p.categoria||'')+'" onchange="rdPendCampo('+p.id+',\'categoria\',this.value)"></div>'
       + '<div class="p2-f full"><label for="pf-com">Plan de acción</label><textarea class="pend-inp" id="pf-com" rows="3" placeholder="Qué se va a hacer para levantarla" onchange="rdPendComentario('+p.id+',this.value)">'+rdEsc2(par.com)+'</textarea></div>'
@@ -11726,10 +11727,22 @@ async function rdPendCampo(id, campo, valor){
   const p=rdPendList.find(x=>x.id===id); if(!p) return;
   valor=(typeof valor==='string')?valor.trim():valor;
   if((p[campo]||'')===(valor||'')) return;
-  const etiqueta={responsable:'Responsable',categoria:'Zona',impacto:'Impacto',causa:'Causa'}[campo]||campo;
+  const etiqueta={titulo:'Nombre',responsable:'Responsable',categoria:'Zona',impacto:'Impacto',causa:'Causa'}[campo]||campo;
   if(await rdPendGuardar([id], {[campo]: valor||null}, etiqueta+': '+(p[campo]||'—')+' → '+(valor||'—'), {undoTexto:'Cambio deshecho'})){
     rdPendToastUndo(etiqueta+' actualizado'+(campo==='causa'&&valor==='Instalación de la contrata'?' · cuenta para la evaluación de la contrata':''));
     if(rdPendOpen===id) rdPendPintarFicha();
+  }
+}
+// Cambiar el nombre de la observación. Si ya tiene un pedido en Gerencia, el pedido toma el nombre nuevo.
+async function rdPendTitulo(id, input){
+  const p=rdPendList.find(x=>x.id===id); if(!p) return;
+  const nuevo=String(input.value||'').replace(/\s+/g,' ').trim();
+  if(!nuevo){ showToast('La observación necesita un nombre'); input.value=p.titulo||''; input.focus(); return; }
+  if(nuevo===p.titulo) return;
+  const antes=p.titulo;
+  if(await rdPendGuardar([id], {titulo:nuevo.slice(0,300)}, 'Nombre: '+antes+' → '+nuevo, {undoTexto:'Nombre restaurado'})){
+    rdPendToastUndo('Nombre actualizado');
+    for(const campo of ['fuera_alcance','requiere_cotizacion']) if(p[campo]) await rdPendAvisarGerencia(p, campo, true, true);
   }
 }
 async function rdPendCampoNum(id, campo, valor){
@@ -11763,7 +11776,7 @@ async function rdPendTogCampo(id, campo){
 }
 /* La marca del supervisor abre (o cierra) el pedido en Gerencia: un adicional
    para Comercial, o un requerimiento para Compras / Licitaciones. */
-async function rdPendAvisarGerencia(p, campo, val){
+async function rdPendAvisarGerencia(p, campo, val, silencioso){
   const esAdic = campo==='fuera_alcance';
   const campoId = esAdic ? 'adicional_id' : 'requerimiento_id';
   const G='https://vsploxglutkbeokumunp.supabase.co';
@@ -11788,7 +11801,7 @@ async function rdPendAvisarGerencia(p, campo, val){
         p_nombre:(currentProyecto&&currentProyecto.nombre)||null, p_pendiente_id:p.id, p_titulo:p.titulo,
         p_descripcion:par.com||null, p_area:p.categoria||null, p_monto:esAdic?(p.costo_estimado||null):null, p_solicitado_por:rdPendQuien() });
       await guardarId(nuevo);
-      showToast(esAdic?'Enviada a Comercial como adicional ✓':'Enviada a Compras ✓', 3500);
+      if(!silencioso) showToast(esAdic?'Enviada a Comercial como adicional ✓':'Enviada a Compras ✓', 3500);
     } else {
       const res=await rpc('obs_pedido_retirar',{ p_tipo:esAdic?'adicional':'requerimiento', p_pendiente_id:p.id });
       await guardarId(null);
