@@ -121,6 +121,12 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
 - **El responsable se puede elegir del banco de contratistas.** La app de campo
   lee `portafolio_servicios` de PMO solo para sugerir nombres; el banco sigue
   siendo de Gerencia.
+- **Ubicación en el plano.** El plano general de la obra se sube una vez como
+  imagen al bucket `planos` (público) y queda registrado en la tabla `planos`
+  de Supervisor. Cada observación guarda su punto en `plano_x` / `plano_y`, en
+  porcentaje, así que sirve en cualquier pantalla. GOTCHA: la subida NO puede
+  llevar la cabecera `x-upsert`; el bucket solo tiene política de INSERT para
+  `anon`, y el upsert exige UPDATE y SELECT. Cada plano sube con nombre único.
 - **Lo que sale hacia el cliente.** Desde la misma pantalla se genera el acta de
   levantamiento en PDF, con la firma del cliente tomada en el celular, el
   informe de avance en PDF y el Excel con las columnas del cliente (hojas

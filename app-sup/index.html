@@ -10973,6 +10973,7 @@ async function rdPendLoad(){
     if(window.lucide) lucide.createIcons();
     return;
   }
+  rdPlanoCargado=false; rdPlanoObra=null;
   try{ rdPendList=await sbFetch('/rest/v1/pendientes?cod_proyecto=eq.'+encodeURIComponent(cod)+'&order=created_at.desc')||[]; }
   catch(e){ rdPendList=[]; console.warn('pendientes load', e); }
   if(rdPendOpen && !rdPendList.some(p=>p.id===rdPendOpen)) rdPendOpen=null;
@@ -11100,7 +11101,8 @@ function rdPendToolsHTML(){
       + [['venc','Agrupar por vencimiento'],['area','Agrupar por área'],['estado','Agrupar por estado']].map(g=>'<option value="'+g[0]+'"'+(rdPendGroup===g[0]?' selected':'')+'>'+g[1]+'</option>').join('')+'</select>'
     + '<span class="p2-sep"></span>'
     + '<button class="pend-act primary" type="button" onclick="rdPendToggleForm()"><i data-lucide="'+(rdPendFormOn?'x':'plus')+'" class="ri"></i>'+(rdPendFormOn?'Cerrar':'Nuevo')+'</button>'
-    + '<button class="pend-act" type="button" onclick="rdRecAbrir()"><i data-lucide="map-pin" class="ri"></i>Recorrido</button>'
+    + '<button class="pend-act" type="button" onclick="rdRecAbrir()"><i data-lucide="footprints" class="ri"></i>Recorrido</button>'
+    + '<button class="pend-act" type="button" onclick="rdPlanoAbrir(null)"><i data-lucide="map" class="ri"></i>Plano</button>'
     + '<button class="pend-act" type="button" onclick="rdPendImpToggle()"><i data-lucide="file-spreadsheet" class="ri"></i>Importar Excel</button>'
     + '<button class="pend-act" type="button" onclick="rdPendActaAbrir()"><i data-lucide="file-signature" class="ri"></i>Acta</button>'
     + '<button class="pend-act" type="button" onclick="rdPendInforme()"><i data-lucide="file-text" class="ri"></i>Informe</button>'
@@ -11198,6 +11200,10 @@ function rdPendFichaHTML(){
         + PEND_CAUSAS.map(c=>'<option'+((p.causa||'Por definir')===c?' selected':'')+'>'+c+'</option>').join('')+'</select></div>'
       + '<div class="p2-f full"><label for="pf-com">Comentario</label><textarea class="pend-inp" id="pf-com" rows="3" onchange="rdPendComentario('+p.id+',this.value)">'+rdEsc2(par.com)+'</textarea></div>'
     + '</div>'
+    + '<div class="p2-swi" style="border:1px solid var(--border);border-radius:12px">'
+      + '<div><b>'+(p.plano_x!=null?'Ubicada en el plano':'Sin ubicar en el plano')+'</b>'
+      + '<span>'+(p.plano_x!=null?'Toca «Ver» para encontrarla en el plano de la obra.':'Marca dónde está para no buscarla en obra.')+'</span></div>'
+      + '<button class="pend-act" type="button" onclick="rdPlanoAbrir('+p.id+')" style="margin-left:auto">'+(p.plano_x!=null?'Ver':'Ubicar')+'</button></div>'
     + '<div class="p2-sw">'
       + '<div class="p2-swi"><div><b>Fuera de alcance</b><span>'+(p.fuera_alcance?'Marcada para cotizar como adicional.':'No es parte del contrato: se cotiza como adicional.')+'</span></div>'
         + '<button class="p2-tg" type="button" aria-pressed="'+(!!p.fuera_alcance)+'" onclick="rdPendTogCampo('+p.id+',\'fuera_alcance\')" aria-label="Fuera de alcance"></button></div>'
@@ -11801,6 +11807,121 @@ async function rdPendCargarContratas(){
   return rdPendContratas;
 }
 
+/* ══════════════════════════════════════════════
+   UBICACIÓN EN EL PLANO
+   El plano de la obra se sube una vez (imagen) y queda en `planos`. Cada
+   observación puede llevar un punto: se toca el plano y se guarda en
+   plano_x / plano_y como porcentaje, así sirve en cualquier tamaño de pantalla.
+   ══════════════════════════════════════════════ */
+let rdPlanoObra=null, rdPlanoUbicando=null, rdPlanoCargado=false;
+async function rdPlanoCargar(){
+  if(rdPlanoCargado) return rdPlanoObra;
+  try{
+    const r=await sbFetch('/rest/v1/planos?cod_proyecto=eq.'+encodeURIComponent(rdPendCod())+'&order=created_at.desc&limit=1');
+    rdPlanoObra=(r&&r[0])||null;
+  }catch(e){ console.warn('planos', e); rdPlanoObra=null; }
+  rdPlanoCargado=true;
+  return rdPlanoObra;
+}
+function rdPlanoAbrir(id){
+  rdPlanoUbicando = id||null;
+  let box=document.getElementById('pend-plano');
+  if(!box){ box=document.createElement('div'); box.id='pend-plano'; document.body.appendChild(box); }
+  box.className='on';
+  box.innerHTML='<div class="rec-bg" onclick="rdPlanoCerrar()"></div><div class="rec-card plano-card">'
+    + '<div class="rec-h"><div><span class="rec-eyebrow">Plano · '+rdEsc2((currentProyecto&&currentProyecto.nombre)||'')+'</span>'
+      + '<b id="plano-tit">'+(rdPlanoUbicando?'Toca dónde está la observación':'Ubicación de las observaciones')+'</b></div>'
+      + '<button class="p2-x" type="button" onclick="rdPlanoCerrar()" aria-label="Cerrar">✕</button></div>'
+    + '<div class="rec-body" id="plano-body"><span class="p2-hint">Cargando el plano…</span></div>'
+    + '<div class="rec-f" id="plano-f"></div></div>';
+  if(window.lucide) lucide.createIcons();
+  rdPlanoPintar();
+}
+function rdPlanoCerrar(){
+  const b=document.getElementById('pend-plano'); if(b){ b.className=''; b.innerHTML=''; }
+  rdPlanoUbicando=null;
+}
+async function rdPlanoPintar(){
+  const body=document.getElementById('plano-body'), pie=document.getElementById('plano-f');
+  if(!body) return;
+  const plano=await rdPlanoCargar();
+  if(!plano || !plano.archivo_url){
+    body.innerHTML='<div class="plano-vacio"><i data-lucide="image-plus" class="ri"></i>'
+      + '<b>Esta obra todavía no tiene plano</b>'
+      + '<span>Sube el plano general como imagen (JPG o PNG). Se usa para marcar dónde está cada observación.</span>'
+      + '<label class="pend-act primary" for="plano-file"><i data-lucide="upload" class="ri"></i>Subir plano</label>'
+      + '<input type="file" id="plano-file" accept="image/*" style="display:none" onchange="rdPlanoSubir(this)">'
+      + '<span class="p2-hint">Si el plano está en PDF, exporta la hoja como imagen desde el visor.</span></div>';
+    if(pie) pie.innerHTML='<button class="pend-act" type="button" onclick="rdPlanoCerrar()">Cerrar</button>';
+    if(window.lucide) lucide.createIcons();
+    return;
+  }
+  const conPunto=rdPendList.filter(p=>p.plano_x!=null && p.plano_y!=null && !rdPendFuera(p));
+  body.innerHTML='<div class="plano-wrap" id="plano-wrap" onclick="rdPlanoClick(event)">'
+    + '<img src="'+rdEsc2(plano.archivo_url)+'" alt="Plano de la obra" id="plano-img">'
+    + conPunto.map(p=>'<button type="button" class="plano-pin'+(rdPendUrgente(p)?' urg':'')+(rdPendOpen===p.id?' on':'')+'" '
+        + 'style="left:'+p.plano_x+'%;top:'+p.plano_y+'%" title="'+rdEsc2(p.titulo)+'" onclick="event.stopPropagation();rdPlanoIrA('+p.id+')"><i></i></button>').join('')
+    + '</div>'
+    + '<span class="p2-hint">'+(rdPlanoUbicando?'Toca el punto exacto del plano para guardarlo.':(conPunto.length+' observaciones ubicadas · toca un punto para abrir su ficha'))+'</span>';
+  if(pie) pie.innerHTML=(rdPlanoUbicando?'<button class="pend-act" type="button" onclick="rdPlanoQuitar('+rdPlanoUbicando+')">Quitar del plano</button>':'')
+    + '<label class="pend-act" for="plano-file"><i data-lucide="refresh-ccw" class="ri"></i>Cambiar plano</label>'
+    + '<input type="file" id="plano-file" accept="image/*" style="display:none" onchange="rdPlanoSubir(this)">'
+    + '<button class="pend-act primary" type="button" onclick="rdPlanoCerrar()">Listo</button>';
+  if(window.lucide) lucide.createIcons();
+}
+async function rdPlanoSubir(input){
+  const f=input&&input.files&&input.files[0]; if(!f) return;
+  if(!/^image\//.test(f.type)){ showToast('El plano tiene que ser una imagen (JPG o PNG)',4000); return; }
+  showToast('Subiendo el plano…');
+  const cod=rdPendCod();
+  const limpio=f.name.replace(/[^\w.\-]+/g,'_');
+  const ruta=encodeURIComponent(cod).replace(/%20/g,'_')+'/'+Date.now()+'-'+limpio;
+  try{
+    const r=await fetch(SB_URL+'/storage/v1/object/planos/'+ruta,{
+      method:'POST',
+      // Sin x-upsert: el bucket solo permite insertar (upsert exige permisos de
+      // actualizacion y lectura que no tiene). Cada plano sube con nombre unico.
+      headers:{apikey:SB_KEY, Authorization:'Bearer '+(localStorage.getItem('sb_token')||SB_KEY), 'Content-Type':f.type},
+      body:f});
+    if(!r.ok) throw new Error(await r.text());
+    const url=SB_URL+'/storage/v1/object/public/planos/'+ruta;
+    const fila={cod_proyecto:cod, nombre_proyecto:(currentProyecto&&currentProyecto.nombre)||null,
+      archivo_nombre:f.name, archivo_url:url, archivo_path:ruta, mime:f.type, size_bytes:f.size,
+      subido_por:rdPendQuien()};
+    const res=await sbFetch('/rest/v1/planos',{method:'POST',headers:{'Prefer':'return=representation'},body:JSON.stringify(fila)});
+    rdPlanoObra=Array.isArray(res)?res[0]:fila; rdPlanoCargado=true;
+    showToast('Plano cargado ✓');
+    rdPlanoPintar();
+  }catch(e){ console.warn('subir plano', e); showToast('No se pudo subir el plano: '+String(e.message||'').slice(0,80),5000); }
+  finally{ if(input) input.value=''; }
+}
+async function rdPlanoClick(ev){
+  if(!rdPlanoUbicando) return;
+  const wrap=document.getElementById('plano-wrap'); if(!wrap) return;
+  const r=wrap.getBoundingClientRect();
+  const x=Math.round(((ev.clientX-r.left)/r.width)*1000)/10;
+  const y=Math.round(((ev.clientY-r.top)/r.height)*1000)/10;
+  if(x<0||x>100||y<0||y>100) return;
+  const id=rdPlanoUbicando;
+  const ok=await rdPendGuardar([id], {plano_x:x, plano_y:y}, 'Ubicada en el plano', {undoTexto:'Ubicación deshecha'});
+  if(ok){
+    showToast('Ubicada en el plano ✓');
+    rdPlanoUbicando=null;
+    const t=document.getElementById('plano-tit'); if(t) t.textContent='Ubicación de las observaciones';
+    rdPlanoPintar();
+  }
+}
+async function rdPlanoQuitar(id){
+  if(await rdPendGuardar([id], {plano_x:null, plano_y:null}, 'Quitada del plano', {undoTexto:'Ubicación restaurada'})){
+    showToast('Quitada del plano'); rdPlanoPintar();
+  }
+}
+function rdPlanoIrA(id){
+  if(rdPlanoUbicando){ rdPlanoUbicando=id; const t=document.getElementById('plano-tit'); if(t) t.textContent='Toca dónde está la observación'; return; }
+  rdPlanoCerrar(); rdPendAbrir(id);
+  const el=document.querySelector('.p2-row[data-id="'+id+'"]'); if(el) el.scrollIntoView({block:'center'});
+}
+
 /* Estilos de la pantalla nueva: color solo como senal, el resto en blanco. */
 let _pendStyles2=false;
 function rdPendEstilos2(){
@@ -11967,6 +12088,23 @@ function rdPendEstilos2(){
   .rec-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;margin-bottom:8px;}
   .rec-f{display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--border);background:var(--surface-2);}
   @media(max-width:560px){ .rec-row{grid-template-columns:1fr;} .rec-card{width:100vw;height:100vh;max-height:none;border-radius:0;top:0;left:0;transform:none;} }
+
+  /* Plano de la obra */
+  #pend-plano{display:none;} #pend-plano.on{display:block;}
+  .plano-card{width:min(900px,96vw);}
+  .plano-wrap{position:relative;display:inline-block;max-width:100%;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface-2);cursor:crosshair;}
+  .plano-wrap img{display:block;max-width:100%;max-height:62vh;}
+  .plano-pin{position:absolute;transform:translate(-50%,-100%);border:0;background:none;padding:0;cursor:pointer;}
+  .plano-pin i{display:block;width:16px;height:16px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+    background:var(--teal-600);box-shadow:0 0 0 3px var(--surface);}
+  .plano-pin.urg i{background:var(--danger);}
+  .plano-pin.on i{box-shadow:0 0 0 3px var(--surface),0 0 0 6px rgba(6,182,212,.35);}
+  .plano-vacio{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:26px 18px;
+    border:1px dashed var(--border-strong);border-radius:14px;}
+  .plano-vacio .ri{width:28px;height:28px;color:var(--teal-600);opacity:.7;}
+  .plano-vacio b{font-size:14.5px;color:var(--navy-800);}
+  .plano-vacio span{font-size:12.5px;color:var(--text-3);max-width:420px;}
+  .plano-vacio label{margin-top:6px;}
 
   @media(max-width:900px){
     .p2-body{grid-template-columns:1fr;}
