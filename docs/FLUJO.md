@@ -91,7 +91,11 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   lectura, a propósito: una copia sincronizada podría contradecir a Gerencia.
 - **Levantamiento de observaciones: cinco estados y bitácora.** Restricciones,
   punch list y observaciones viven en `pendientes` de la instancia Supervisor.
-  El ciclo es Abierta → En proceso → Por validar → Cerrada, más «No aplica»;
+  **Todo es una observación**: ya no hay tres tipos. Las que impiden avanzar se
+  marcan con `restriccion = true` (casilla «Genera restricción» en el alta, en
+  el recorrido y en la ficha, con filtro propio en la barra); «punch list» pasó
+  a ser el origen, no un tipo. El ciclo es Abierta → En proceso → Por validar →
+  Cerrada, más «No aplica»;
   el paso a Cerrada lo da el supervisor como conformidad y queda firmado en
   `validado_por`. «No aplica» sale del % levantado. Una observación se marca
   urgente sola a los 30 días vencida, o con impacto alto ya vencida, y el

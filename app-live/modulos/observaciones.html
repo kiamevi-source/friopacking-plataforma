@@ -109,6 +109,7 @@ function pintar(){
    + kpi(abiertas.length,'por levantar')
    + kpi(urg.length,'urgentes',urg.length?'late':'')
    + kpi(venc.length,'con fecha vencida',venc.length?'late':'')
+   + kpi(abiertas.filter(p=>p.restriccion).length,'restricciones abiertas')
    + kpi(base?Math.round(cerr.length*100/base)+' %':'—','levantado','ok')
    + kpi(costo?money(costo):'—','costo estimado pendiente')
    + kpi(PAGOS.length,'pagos en espera',PAGOS.length?'late':'');
@@ -119,6 +120,7 @@ function pintar(){
     if(!m.has(k)) m.set(k,{cod:k, nombre:p.nombre_proyecto||k, todas:[], ab:[], urg:[], venc:[], val:[], cer:0, na:0, costo:0, pv:0});
     const o=m.get(k); o.todas.push(p);
     if(abierto(p)) o.ab.push(p);
+    if(abierto(p)&&p.restriccion) o.restr=(o.restr||0)+1;
     if(urgente(p)) o.urg.push(p);
     if(abierto(p)&&dias(p.fecha_objetivo)<0) o.venc.push(p);
     if(p.estado==='por_validar') o.val.push(p);
@@ -133,20 +135,21 @@ function pintar(){
   const proy=c=>PROY.find(p=>p.cod_proyecto===c)||{};
   document.getElementById('obras-sub').textContent=obras.length+' obras · '+PEND.length+' observaciones registradas';
   document.getElementById('t-obras').innerHTML=
-    '<tr><th>Obra</th><th>Estado del proyecto</th><th class="n">Por levantar</th><th class="n">Urgentes</th><th class="n">Vencidas</th><th class="n">Por validar</th><th>Avance</th><th class="n">Costo pendiente</th><th></th></tr>'
+    '<tr><th>Obra</th><th>Estado del proyecto</th><th class="n">Por levantar</th><th class="n">Restricciones</th><th class="n">Urgentes</th><th class="n">Vencidas</th><th class="n">Por validar</th><th>Avance</th><th class="n">Costo pendiente</th><th></th></tr>'
     + (obras.length?obras.map(o=>{
         const pr=proy(o.cod), baseO=o.todas.length-o.na, pct=baseO?Math.round(o.cer*100/baseO):0;
         const cerrado=/cerrad/i.test(pr.estado||'');
         return '<tr><td><span class="obra">'+esc(o.nombre)+'</span><span class="cod">'+esc(o.cod)+(pr.supervisor?' · '+esc(pr.supervisor):'')+'</span></td>'
           + '<td><span class="pill '+(cerrado?'ok':'gris')+'">'+esc(pr.estado||'—')+'</span>'+(o.pv?' <span class="pill val">'+o.pv+' en postventa</span>':'')+'</td>'
           + '<td class="n">'+o.ab.length+'</td>'
+          + '<td class="n">'+(o.restr?'<span class="pill warn">'+o.restr+'</span>':'0')+'</td>'
           + '<td class="n">'+(o.urg.length?'<span class="pill late">'+o.urg.length+'</span>':'0')+'</td>'
           + '<td class="n">'+o.venc.length+'</td>'
           + '<td class="n">'+(o.val.length?'<span class="pill val">'+o.val.length+'</span>':'0')+'</td>'
           + '<td><div class="bar"><i style="width:'+pct+'%"></i></div><span class="hint">'+o.cer+' de '+baseO+' · '+pct+' %</span></td>'
           + '<td class="n">'+money(o.costo)+'</td>'
           + '<td class="n">'+(cerrado&&o.ab.length?'<button class="btn" onclick="postventa(\''+esc(o.cod)+'\')">Pasar a postventa</button>':(o.ab.length===0&&o.val.length===0?'<span class="pill ok">al día</span>':''))+'</td></tr>';
-      }).join(''):'<tr><td colspan="9" class="vacio">Ninguna obra con pendientes.</td></tr>');
+      }).join(''):'<tr><td colspan="10" class="vacio">Ninguna obra con pendientes.</td></tr>');
   // ── adicionales y requerimientos ──
   const estAdic=['solicitado','cotizado','aprobado','rechazado'];
   document.getElementById('t-adic').innerHTML='<tr><th>Obra</th><th>Observación</th><th class="n">Monto</th><th>Estado</th></tr>'

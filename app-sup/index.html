@@ -10900,8 +10900,10 @@ function rvalEnsureStyles(){
 // a cierre. Incluye importador de Excel para las obras que ya llevan su lista
 // en un archivo y no van a retipearla.
 // ═══════════════════════════════════════════════
-const PEND_TIPOS=[{k:'restriccion',t:'Restricción'},{k:'punch',t:'Punch list'},{k:'observacion',t:'Observación'}];
-function rdPendTipoLabel(k){ const x=PEND_TIPOS.find(t=>t.k===k); return x?x.t:k; }
+// Todo es una observación. Algunas, además, generan una restricción: bloquean
+// el avance de la obra. «Punch list» dejó de ser un tipo: es el origen.
+const PEND_TIPOS=[{k:'observacion',t:'Observación'}];
+function rdPendTipoLabel(){ return 'Observación'; }
 const PEND_EST={abierta:'Abierta',en_proceso:'En proceso',por_validar:'Por validar',cerrada:'Cerrada',no_aplica:'No aplica'};
 const PEND_PASOS=['abierta','en_proceso','por_validar','cerrada'];
 // Plazo sugerido en dias segun el impacto.
@@ -10918,7 +10920,7 @@ const PEND_VISTAS=[
 const PEND_ORDEN=['Urgentes','Por validar · falta tu conformidad','Vencidas','Vencen hoy','Próximos 7 días','Más adelante','Sin fecha','Cerradas y no aplica'];
 
 let rdPendList=[], rdPendView='hoy', rdPendQ='', rdPendGroup='venc';
-let rdPendFArea='', rdPendFResp='', rdPendFImp='', rdPendFEst='';
+let rdPendFArea='', rdPendFResp='', rdPendFImp='', rdPendFEst='', rdPendSoloRestr=false;
 let rdPendSel=new Set(), rdPendOpen=null, rdPendHist={}, rdPendFlash=null, rdPendUndo=null;
 let rdPendFormOn=false, rdPendImpOn=false, rdPendImpData=null;
 
@@ -10988,6 +10990,7 @@ function rdPendFiltrada(){
     && (!rdPendFResp || p.responsable===rdPendFResp)
     && (!rdPendFImp || p.impacto===rdPendFImp)
     && (!rdPendFEst || p.estado===rdPendFEst)
+    && (!rdPendSoloRestr || p.restriccion)
     && (!q || [p.titulo,p.descripcion,p.categoria,p.responsable].map(x=>(x||'').toLowerCase()).join(' ').indexOf(q)!==-1));
 }
 function rdPendGrupo(p){
@@ -11044,7 +11047,7 @@ function rdPendRender(){
   if(rdPendFormOn){
     h+='<div class="pend-form">'
       + '<div class="row">'
-        + '<select id="pend-tipo" class="pend-inp">'+PEND_TIPOS.map(t=>'<option value="'+t.k+'">'+t.t+'</option>').join('')+'</select>'
+        + '<label class="p2-check"><input type="checkbox" id="pend-restriccion"> Genera restricción (bloquea el avance)</label>'
         + '<select id="pend-impacto" class="pend-inp"><option value="alto">Impacto alto</option><option value="medio" selected>Impacto medio</option><option value="bajo">Impacto bajo</option></select>'
         + '<input id="pend-titulo" class="pend-inp grow" placeholder="Título del pendiente" onkeydown="if(event.key===\'Enter\')rdPendAdd()">'
       + '</div>'
@@ -11099,6 +11102,7 @@ function rdPendToolsHTML(){
       + Object.keys(PEND_EST).map(k=>'<option value="'+k+'"'+(rdPendFEst===k?' selected':'')+'>'+PEND_EST[k]+'</option>').join('')+'</select>'
     + '<select class="p2-sel" onchange="rdPendSetGrupo(this.value)" aria-label="Agrupar">'
       + [['venc','Agrupar por vencimiento'],['area','Agrupar por área'],['estado','Agrupar por estado']].map(g=>'<option value="'+g[0]+'"'+(rdPendGroup===g[0]?' selected':'')+'>'+g[1]+'</option>').join('')+'</select>'
+    + '<button class="pend-act'+(rdPendSoloRestr?' primary':'')+'" type="button" onclick="rdPendSoloRestricciones()"><i data-lucide="octagon-alert" class="ri"></i>Restricciones<i style="font-style:normal;margin-left:5px">'+rdPendList.filter(p=>p.restriccion&&rdPendAbierto(p)).length+'</i></button>'
     + '<span class="p2-sep"></span>'
     + '<button class="pend-act primary" type="button" onclick="rdPendToggleForm()"><i data-lucide="'+(rdPendFormOn?'x':'plus')+'" class="ri"></i>'+(rdPendFormOn?'Cerrar':'Nuevo')+'</button>'
     + '<button class="pend-act" type="button" onclick="rdRecAbrir()"><i data-lucide="footprints" class="ri"></i>Recorrido</button>'
@@ -11150,7 +11154,8 @@ function rdPendCard(p){
   else if(d===0){ cls='soon'; due='<b>'+rdPendFechaCorta(p.fecha_objetivo)+'</b><small>hoy</small>'; }
   else if(d<=7){ cls='soon'; due='<b>'+rdPendFechaCorta(p.fecha_objetivo)+'</b><small>en '+d+' d</small>'; }
   else due='<b>'+rdPendFechaCorta(p.fecha_objetivo)+'</b><small>en '+d+' d</small>';
-  const flags=(p.fuera_alcance?'<span class="p2-flag money">Fuera de alcance</span>':'')
+  const flags=(p.restriccion?'<span class="p2-flag restr">Restricción</span>':'')
+            + (p.fuera_alcance?'<span class="p2-flag money">Fuera de alcance</span>':'')
             + (p.requiere_cotizacion?'<span class="p2-flag money">Cotizar</span>':'')
             + (p.origen==='excel'?'<span class="p2-flag">Excel</span>':'');
   return '<div class="p2-row'+(rdPendOpen===p.id?' is-open':'')+(rdPendFlash===p.id?' flash':'')+(rdPendFuera(p)?' done':'')+'" data-id="'+p.id+'">'
@@ -11172,7 +11177,7 @@ function rdPendFichaHTML(){
     : rdPendFuera(p) ? PEND_EST[p.estado] : d<0 ? ('Vencida hace '+(-d)+' días') : d===0 ? 'Vence hoy' : ('Faltan '+d+' días');
   if(p.reprogramaciones) hint+=' · reprogramada '+p.reprogramaciones+(p.reprogramaciones>1?' veces':' vez');
   const hist=rdPendHist[p.id];
-  return '<div class="p2-dh"><span class="p2-tag">'+rdPendTipoLabel(p.tipo)+'</span>'+(urg?'<span class="p2-tag urg">Urgente</span>':'')
+  return '<div class="p2-dh"><span class="p2-tag">Observación</span>'+(p.restriccion?'<span class="p2-tag restr">Restricción</span>':'')+(urg?'<span class="p2-tag urg">Urgente</span>':'')
       + '<span class="p2-area">'+rdEsc2(p.categoria||'Sin área')+'</span>'
       + '<button class="p2-x" type="button" onclick="rdPendCerrarFicha()" aria-label="Cerrar ficha">✕</button></div>'
     + '<h3 class="p2-dt">'+rdEsc2(p.titulo)+'</h3>'
@@ -11207,6 +11212,8 @@ function rdPendFichaHTML(){
       + '<span>'+(p.plano_x!=null?'Toca «Ver» para encontrarla en el plano de la obra.':'Marca dónde está para no buscarla en obra.')+'</span></div>'
       + '<button class="pend-act" type="button" onclick="rdPlanoAbrir('+p.id+')" style="margin-left:auto">'+(p.plano_x!=null?'Ver':'Ubicar')+'</button></div>'
     + '<div class="p2-sw">'
+      + '<div class="p2-swi"><div><b>Genera restricción</b><span>'+(p.restriccion?'Bloquea el avance de la obra.':'Marca si impide avanzar: falta material, definición o permiso.')+'</span></div>'
+        + '<button class="p2-tg" type="button" aria-pressed="'+(!!p.restriccion)+'" onclick="rdPendTogCampo('+p.id+',\'restriccion\')" aria-label="Genera restricción"></button></div>'
       + '<div class="p2-swi"><div><b>Fuera de alcance</b><span>'+(p.fuera_alcance?(p.adicional_id?'En Comercial como adicional #'+p.adicional_id+'.':'Marcada para cotizar como adicional.'):'No es parte del contrato: se cotiza como adicional.')+'</span></div>'
         + '<button class="p2-tg" type="button" aria-pressed="'+(!!p.fuera_alcance)+'" onclick="rdPendTogCampo('+p.id+',\'fuera_alcance\')" aria-label="Fuera de alcance"></button></div>'
       + '<div class="p2-swi"><div><b>Requiere cotización</b><span>'+(p.requiere_cotizacion?(p.requerimiento_id?'En Compras como pedido #'+p.requerimiento_id+'.':'Marcada: falta comprar o contratar.'):'Hace falta comprar o contratar algo.')+'</span></div>'
@@ -11224,6 +11231,7 @@ function rdPendFichaHTML(){
 /* ── interacciones ── */
 function rdPendSetVista(k){ rdPendView=k; rdPendRender(); }
 function rdPendSetGrupo(k){ rdPendGroup=k; rdPendPintarLista(); }
+function rdPendSoloRestricciones(){ rdPendSoloRestr=!rdPendSoloRestr; rdPendPintarTools(); rdPendPintarLista(); }
 function rdPendSetFiltro(cual,val){
   if(cual==='area') rdPendFArea=val; else if(cual==='resp') rdPendFResp=val;
   else if(cual==='imp') rdPendFImp=val; else if(cual==='est') rdPendFEst=val;
@@ -11373,12 +11381,14 @@ async function rdPendComentario(id, texto){
 async function rdPendTogCampo(id, campo){
   const p=rdPendList.find(x=>x.id===id); if(!p) return;
   const val=!p[campo];
-  const txt = campo==='fuera_alcance'
+  const txt = campo==='restriccion'
+    ? (val?'Marcada como restricción: bloquea el avance':'Ya no bloquea el avance')
+    : campo==='fuera_alcance'
     ? (val?'Marcada fuera de alcance · se cotiza como adicional':'Ya no está fuera de alcance')
     : (val?'Requiere cotización · pasa a Compras o Licitaciones':'Ya no requiere cotización');
   if(await rdPendGuardar([id], {[campo]:val}, txt, {undoTexto:'Marca deshecha'})){
     rdPendToastUndo(txt);
-    await rdPendAvisarGerencia(p, campo, val);
+    if(campo!=='restriccion') await rdPendAvisarGerencia(p, campo, val);
     rdPendPintarFicha();
   }
 }
@@ -11490,7 +11500,7 @@ async function rdPendAdd(){
   const impacto=document.getElementById('pend-impacto')?.value||'medio';
   const fecha=document.getElementById('pend-fecha')?.value||null;
   const row={ cod_proyecto:cod, nombre_proyecto:currentProyecto?.nombre||null,
-    tipo:document.getElementById('pend-tipo')?.value||'restriccion',
+    tipo:'observacion', restriccion:!!document.getElementById('pend-restriccion')?.checked,
     impacto, titulo,
     categoria:(document.getElementById('pend-cat')?.value||'').trim()||null,
     responsable:(document.getElementById('pend-resp')?.value||'').trim()||null,
@@ -11669,7 +11679,7 @@ async function rdPendInforme(){
 function rdPendExcelWb(){
   if(!window.XLSX) return null;
   const r=rdPendResumen();
-  const filas=[['ÁREA','OBSERVACIÓN','ESTADO','FECHA OBJETIVO','RESPONSABLE','IMPACTO','TIPO','COMENTARIO','ORIGEN']];
+  const filas=[['ÁREA','OBSERVACIÓN','ESTADO','FECHA OBJETIVO','RESPONSABLE','IMPACTO','¿BLOQUEA?','COMENTARIO','ORIGEN']];
   rdPendList.slice().sort((a,b)=>{
     const oa=rdPendFuera(a)?1:0, ob=rdPendFuera(b)?1:0;
     if(oa!==ob) return oa-ob;
@@ -11679,7 +11689,7 @@ function rdPendExcelWb(){
     const par=rdPendParse(p.descripcion);
     filas.push([p.categoria||'', p.titulo||'', PEND_EST[p.estado]||p.estado,
       p.fecha_objetivo?rdPendFechaCorta(p.fecha_objetivo)+'/'+String(p.fecha_objetivo).slice(0,4):'',
-      p.responsable||'', p.impacto||'', rdPendTipoLabel(p.tipo), par.com||'', p.origen==='excel'?'Excel':'App']);
+      p.responsable||'', p.impacto||'', p.restriccion?'Restricción':'', par.com||'', p.origen==='excel'?'Excel':(p.origen==='recorrido'?'Recorrido':'App')]);
   });
   const ws=window.XLSX.utils.aoa_to_sheet(filas);
   ws['!cols']=[{wch:24},{wch:60},{wch:14},{wch:14},{wch:18},{wch:10},{wch:14},{wch:50},{wch:10}];
@@ -11712,7 +11722,7 @@ function rdPendExportExcel(){
    se escribe igual.
    ══════════════════════════════════════════════ */
 const PEND_PMO_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
-let rdRecOn=false, rdRecCuenta=0, rdRecArea='', rdRecImpacto='medio', rdRecTipo='observacion', rdRecRec=null, rdRecEscuchando=false;
+let rdRecOn=false, rdRecCuenta=0, rdRecArea='', rdRecImpacto='medio', rdRecRestr=false, rdRecRec=null, rdRecEscuchando=false;
 function rdPendAreasUsadas(){
   const m=new Map();
   rdPendList.forEach(p=>{ if(p.categoria) m.set(p.categoria,(m.get(p.categoria)||0)+1); });
@@ -11720,7 +11730,7 @@ function rdPendAreasUsadas(){
 }
 function rdRecAbrir(){
   if(!rdPendCod()){ showToast('Selecciona una obra'); return; }
-  rdRecOn=true; rdRecCuenta=0; rdRecArea=''; rdRecImpacto='medio'; rdRecTipo='observacion';
+  rdRecOn=true; rdRecCuenta=0; rdRecArea=''; rdRecImpacto='medio'; rdRecRestr=false;
   rdRecPintar();
 }
 function rdRecCerrar(){
@@ -11749,7 +11759,7 @@ function rdRecPintar(){
       + '<div class="rec-chips" id="rec-areas">'+areas.map(a=>'<button type="button" class="p2-chip'+(rdRecArea===a?' on':'')+'" onclick="rdRecSetArea(this,\''+rdEsc2(a).replace(/'/g,"\\'")+'\')">'+rdEsc2(a)+'</button>').join('')
         + '<input class="pend-inp rec-area-otra" id="rec-area" placeholder="Otra área" value="'+rdEsc2(rdRecArea)+'" oninput="rdRecArea=this.value">' + '</div>'
       + '<div class="rec-row">'
-        + '<div><label class="p2-lbl">Tipo</label><div class="p2-seg3">'+PEND_TIPOS.map(t=>'<button type="button" class="'+(rdRecTipo===t.k?'on':'')+'" onclick="rdRecSetTipo(\''+t.k+'\')">'+t.t+'</button>').join('')+'</div></div>'
+        + '<div><label class="p2-lbl">¿Bloquea el avance?</label><label class="p2-check" style="height:36px"><input type="checkbox" id="rec-restriccion"'+(rdRecRestr?' checked':'')+' onchange="rdRecRestr=this.checked"> Genera restricción</label></div>'
         + '<div><label class="p2-lbl">Impacto</label><div class="p2-seg3">'+['alto','medio','bajo'].map(k=>'<button type="button" class="'+(rdRecImpacto===k?'on':'')+'" onclick="rdRecSetImpacto(\''+k+'\')">'+k[0].toUpperCase()+k.slice(1)+'</button>').join('')+'</div></div>'
       + '</div>'
       + '<span class="p2-hint">Se guarda con fecha objetivo a '+PEND_PLAZO[rdRecImpacto]+' días, por el impacto elegido. Se puede cambiar después.</span>'
@@ -11765,12 +11775,10 @@ function rdRecSetArea(btn, a){
   document.querySelectorAll('#rec-areas .p2-chip').forEach(b=>b.classList.toggle('on', b===btn));
   const inp=document.getElementById('rec-area'); if(inp) inp.value=a;
 }
-function rdRecSetTipo(k){ rdRecTipo=k; rdRecPintarBotones(); }
 function rdRecSetImpacto(k){ rdRecImpacto=k; rdRecPintarBotones(); }
 function rdRecPintarBotones(){
   const filas=document.querySelectorAll('.rec-row .p2-seg3');
-  if(filas[0]) filas[0].querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on', PEND_TIPOS[i].k===rdRecTipo));
-  if(filas[1]) filas[1].querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on', ['alto','medio','bajo'][i]===rdRecImpacto));
+  if(filas[0]) filas[0].querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on', ['alto','medio','bajo'][i]===rdRecImpacto));
   const h=document.querySelector('.rec-body .p2-hint:last-of-type');
   if(h) h.textContent='Se guarda con fecha objetivo a '+PEND_PLAZO[rdRecImpacto]+' días, por el impacto elegido. Se puede cambiar después.';
 }
@@ -11805,7 +11813,7 @@ async function rdRecGuardar(){
   const btn=document.getElementById('rec-go'); if(btn){ btn.disabled=true; }
   rdRecDetener();
   const row={ cod_proyecto:rdPendCod(), nombre_proyecto:(currentProyecto&&currentProyecto.nombre)||null,
-    tipo:rdRecTipo, impacto:rdRecImpacto,
+    tipo:'observacion', restriccion:rdRecRestr, impacto:rdRecImpacto,
     titulo:txt.slice(0,300), descripcion:txt.length>300?txt:null,
     categoria:area.trim()||null, responsable:null,
     fecha_objetivo:rdPendMasDias(PEND_PLAZO[rdRecImpacto]),
@@ -12048,6 +12056,10 @@ function rdPendEstilos2(){
   .p2-dh{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-3);}
   .p2-tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);}
   .p2-tag.urg{background:var(--danger-bg);border-color:transparent;color:var(--danger);}
+  .p2-tag.restr{background:#fef3c7;border-color:transparent;color:#92400e;}
+  .p2-flag.restr{background:#fef3c7;border-color:transparent;color:#92400e;}
+  .p2-check{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-2);cursor:pointer;}
+  .p2-check input{width:16px;height:16px;accent-color:var(--navy-800);}
   .p2-area{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .p2-x{margin-left:auto;border:0;background:none;color:var(--text-3);font-size:17px;line-height:1;cursor:pointer;}
   .p2-dt{margin:0;font-size:15.5px;line-height:1.35;font-weight:700;color:var(--navy-800);}
@@ -12490,7 +12502,8 @@ async function rdPendImpParse(file){
     const rawTipo=val(map.tipo);
     const row={
       cod_proyecto:cod, nombre_proyecto:(currentProyecto&&currentProyecto.nombre)||null,
-      tipo: rawTipo!=='' ? rdPendVTipo(rawTipo) : (tipoArchivo||'observacion'),
+      tipo:'observacion',
+      restriccion: rawTipo!=='' ? (rdPendVTipo(rawTipo)==='restriccion') : (tipoArchivo==='restriccion'),
       titulo:t,
       descripcion:[ (titulo&&desc)?desc:'' ].concat(nota).filter(Boolean).join(' · ').slice(0,4000)||null,
       categoria:txt(map.categoria)||null,
@@ -12559,7 +12572,7 @@ function rdPendImpModal(info){
     const col=info.cols[c];
     let cel, off=false;
     if(col) cel=rdEsc2(col);
-    else if(c==='tipo' && info.tipoArchivo) cel='<i>no vino · por el título del archivo: '+rdPendTipoLabel(info.tipoArchivo)+'</i>';
+    else if(c==='tipo' && info.tipoArchivo) cel='<i>no vino · del título del archivo se deduce si es restricción</i>';
     else if(c==='estado' && info.avanceLbl) cel=rdEsc2(info.avanceLbl)+' <i>(100 % = cerrada · más de 0 = en proceso)</i>';
     else { cel='<i>no vino en el archivo</i>'; off=true; }
     return '<tr class="'+(off?'off':'')+'"><td>'+PEND_CAMPO_LBL[c]+'</td><td>'+cel+'</td></tr>';
@@ -12567,7 +12580,7 @@ function rdPendImpModal(info){
   + (info.extras.length?('<tr><td>A la descripción</td><td>'+rdEsc2(info.extras.join(' · '))+'</td></tr>'):'');
 
   const prev=info.filas.slice(0,8).map(r=>'<tr>'
-    + '<td><span class="pend-tag t-'+r.tipo+'">'+rdPendTipoLabel(r.tipo)+'</span></td>'
+    + '<td>'+(r.restriccion?'<span class="pend-tag t-restriccion">Restricción</span>':'<span class="pend-tag t-observacion">Observación</span>')+'</td>'
     + '<td class="ttl">'+rdEsc2(r.titulo)+'</td>'
     + '<td>'+rdEsc2(r.categoria||'—')+'</td>'
     + '<td>'+rdEsc2(r.responsable||'—')+'</td>'
