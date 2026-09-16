@@ -10977,6 +10977,8 @@ async function rdPendLoad(){
   catch(e){ rdPendList=[]; console.warn('pendientes load', e); }
   if(rdPendOpen && !rdPendList.some(p=>p.id===rdPendOpen)) rdPendOpen=null;
   rdPendRender();
+  rdPendAviso();
+  rdPendCargarContratas();
 }
 function rdPendFiltrada(){
   const v=PEND_VISTAS.find(x=>x.k===rdPendView)||PEND_VISTAS[0], q=rdPendQ.trim().toLowerCase();
@@ -11098,6 +11100,7 @@ function rdPendToolsHTML(){
       + [['venc','Agrupar por vencimiento'],['area','Agrupar por área'],['estado','Agrupar por estado']].map(g=>'<option value="'+g[0]+'"'+(rdPendGroup===g[0]?' selected':'')+'>'+g[1]+'</option>').join('')+'</select>'
     + '<span class="p2-sep"></span>'
     + '<button class="pend-act primary" type="button" onclick="rdPendToggleForm()"><i data-lucide="'+(rdPendFormOn?'x':'plus')+'" class="ri"></i>'+(rdPendFormOn?'Cerrar':'Nuevo')+'</button>'
+    + '<button class="pend-act" type="button" onclick="rdRecAbrir()"><i data-lucide="map-pin" class="ri"></i>Recorrido</button>'
     + '<button class="pend-act" type="button" onclick="rdPendImpToggle()"><i data-lucide="file-spreadsheet" class="ri"></i>Importar Excel</button>'
     + '<button class="pend-act" type="button" onclick="rdPendActaAbrir()"><i data-lucide="file-signature" class="ri"></i>Acta</button>'
     + '<button class="pend-act" type="button" onclick="rdPendInforme()"><i data-lucide="file-text" class="ri"></i>Informe</button>'
@@ -11188,7 +11191,7 @@ function rdPendFichaHTML(){
         + '<input class="pend-inp" type="date" id="pf-fecha" value="'+(p.fecha_objetivo||'')+'" onchange="rdPendFichaFecha('+p.id+',this)">'
         + '<button class="p2-chip" type="button" onclick="rdPendPopFecha(this,'+p.id+',\''+rdPendMasDias(PEND_PLAZO[p.impacto||'medio'])+'\')">Plazo por impacto: +'+PEND_PLAZO[p.impacto||'medio']+' d</button></div>'
         + '<span class="p2-hint'+(rdPendAbierto(p)&&d<0?' late':'')+'">'+hint+'</span></div>'
-      + '<div class="p2-f"><label for="pf-resp">Responsable</label><input class="pend-inp" id="pf-resp" value="'+rdEsc2(p.responsable||'')+'" onchange="rdPendCampo('+p.id+',\'responsable\',this.value)"></div>'
+      + '<div class="p2-f"><label for="pf-resp">Responsable</label><input class="pend-inp" id="pf-resp" list="pend-contratas" value="'+rdEsc2(p.responsable||'')+'" onchange="rdPendCampo('+p.id+',\'responsable\',this.value)"></div>'
       + '<div class="p2-f"><label for="pf-area">Área</label><input class="pend-inp" id="pf-area" value="'+rdEsc2(p.categoria||'')+'" onchange="rdPendCampo('+p.id+',\'categoria\',this.value)"></div>'
       + '<div class="p2-f"><span class="p2-lbl">Impacto</span><div class="p2-seg3">'+['alto','medio','bajo'].map(k=>'<button type="button" class="'+((p.impacto||'medio')===k?'on':'')+'" onclick="rdPendCampo('+p.id+',\'impacto\',\''+k+'\')">'+k[0].toUpperCase()+k.slice(1)+'</button>').join('')+'</div></div>'
       + '<div class="p2-f"><label for="pf-causa">Causa</label><select class="pend-inp" id="pf-causa" onchange="rdPendCampo('+p.id+',\'causa\',this.value)">'
@@ -11202,6 +11205,7 @@ function rdPendFichaHTML(){
         + '<button class="p2-tg" type="button" aria-pressed="'+(!!p.requiere_cotizacion)+'" onclick="rdPendTogCampo('+p.id+',\'requiere_cotizacion\')" aria-label="Requiere cotización"></button></div>'
     + '</div>'
     + (par.chips.length?'<div><div class="p2-lbl">Del Excel</div><div class="p2-chips">'+par.chips.map(c=>'<span class="p2-kv"><em>'+rdEsc2(c[0])+'</em>'+rdEsc2(c[1])+'</span>').join('')+'</div></div>':'')
+    + '<datalist id="pend-contratas">'+(rdPendContratas||[]).map(c=>'<option value="'+rdEsc2(c)+'">').join('')+'</datalist>'
     + '<div class="p2-hist"><div class="p2-lbl">Historial</div>'
       + (hist===undefined?'<span class="p2-hint">Cargando…</span>'
         : hist.length?'<ol>'+hist.map(x=>'<li><time>'+rdPendFechaCorta(String(x.created_at).slice(0,10))+'</time><span>'+rdEsc2(x.texto)+(x.autor?' · '+rdEsc2(x.autor):'')+'</span></li>').join('')+'</ol>'
@@ -11652,6 +11656,151 @@ function rdPendExportExcel(){
   showToast('Excel descargado ✓');
 }
 
+/* ══════════════════════════════════════════════
+   MODO RECORRIDO
+   Para caminar la obra y registrar seguido: dictas el título, eliges el área y
+   pasas a la siguiente. Sin foto por ahora. Si el navegador no tiene dictado,
+   se escribe igual.
+   ══════════════════════════════════════════════ */
+const PEND_PMO_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+let rdRecOn=false, rdRecCuenta=0, rdRecArea='', rdRecImpacto='medio', rdRecTipo='observacion', rdRecRec=null, rdRecEscuchando=false;
+function rdPendAreasUsadas(){
+  const m=new Map();
+  rdPendList.forEach(p=>{ if(p.categoria) m.set(p.categoria,(m.get(p.categoria)||0)+1); });
+  return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8).map(x=>x[0]);
+}
+function rdRecAbrir(){
+  if(!rdPendCod()){ showToast('Selecciona una obra'); return; }
+  rdRecOn=true; rdRecCuenta=0; rdRecArea=''; rdRecImpacto='medio'; rdRecTipo='observacion';
+  rdRecPintar();
+}
+function rdRecCerrar(){
+  rdRecDetener();
+  rdRecOn=false;
+  const b=document.getElementById('pend-rec'); if(b){ b.className=''; b.innerHTML=''; }
+  if(rdRecCuenta) showToast('Recorrido terminado · '+rdRecCuenta+' registradas', 4000);
+  rdPendLoad();
+}
+function rdRecPintar(){
+  let box=document.getElementById('pend-rec');
+  if(!box){ box=document.createElement('div'); box.id='pend-rec'; document.body.appendChild(box); }
+  box.className='on';
+  const areas=rdPendAreasUsadas();
+  const dictado = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  box.innerHTML='<div class="rec-bg"></div><div class="rec-card">'
+    + '<div class="rec-h"><div><span class="rec-eyebrow">Recorrido · '+rdEsc2((currentProyecto&&currentProyecto.nombre)||'')+'</span>'
+      + '<b id="rec-cuenta">'+rdRecCuenta+' registradas en este recorrido</b></div>'
+      + '<button class="p2-x" type="button" onclick="rdRecCerrar()" aria-label="Terminar">✕</button></div>'
+    + '<div class="rec-body">'
+      + '<label class="p2-lbl" for="rec-txt">Qué observaste</label>'
+      + '<div class="rec-dic"><textarea id="rec-txt" class="pend-inp" rows="3" placeholder="'+(dictado?'Dicta o escribe…':'Escribe la observación…')+'"></textarea>'
+        + (dictado?'<button class="rec-mic" id="rec-mic" type="button" onclick="rdRecMic()" aria-label="Dictar"><i data-lucide="mic" class="ri"></i></button>':'')+'</div>'
+      + (dictado?'<span class="p2-hint" id="rec-estado">Toca el micrófono y habla; el texto se puede corregir antes de guardar.</span>':'<span class="p2-hint">Este navegador no tiene dictado: escribe la observación.</span>')
+      + '<label class="p2-lbl" style="margin-top:14px">Área</label>'
+      + '<div class="rec-chips" id="rec-areas">'+areas.map(a=>'<button type="button" class="p2-chip'+(rdRecArea===a?' on':'')+'" onclick="rdRecSetArea(this,\''+rdEsc2(a).replace(/'/g,"\\'")+'\')">'+rdEsc2(a)+'</button>').join('')
+        + '<input class="pend-inp rec-area-otra" id="rec-area" placeholder="Otra área" value="'+rdEsc2(rdRecArea)+'" oninput="rdRecArea=this.value">' + '</div>'
+      + '<div class="rec-row">'
+        + '<div><label class="p2-lbl">Tipo</label><div class="p2-seg3">'+PEND_TIPOS.map(t=>'<button type="button" class="'+(rdRecTipo===t.k?'on':'')+'" onclick="rdRecSetTipo(\''+t.k+'\')">'+t.t+'</button>').join('')+'</div></div>'
+        + '<div><label class="p2-lbl">Impacto</label><div class="p2-seg3">'+['alto','medio','bajo'].map(k=>'<button type="button" class="'+(rdRecImpacto===k?'on':'')+'" onclick="rdRecSetImpacto(\''+k+'\')">'+k[0].toUpperCase()+k.slice(1)+'</button>').join('')+'</div></div>'
+      + '</div>'
+      + '<span class="p2-hint">Se guarda con fecha objetivo a '+PEND_PLAZO[rdRecImpacto]+' días, por el impacto elegido. Se puede cambiar después.</span>'
+    + '</div>'
+    + '<div class="rec-f"><button class="pend-act" type="button" onclick="rdRecCerrar()">Terminar</button>'
+      + '<button class="pend-act primary" id="rec-go" type="button" onclick="rdRecGuardar()"><i data-lucide="check" class="ri"></i>Guardar y siguiente</button></div>'
+  + '</div>';
+  if(window.lucide) lucide.createIcons();
+  const t=document.getElementById('rec-txt'); if(t) t.focus();
+}
+function rdRecSetArea(btn, a){
+  rdRecArea=a;
+  document.querySelectorAll('#rec-areas .p2-chip').forEach(b=>b.classList.toggle('on', b===btn));
+  const inp=document.getElementById('rec-area'); if(inp) inp.value=a;
+}
+function rdRecSetTipo(k){ rdRecTipo=k; rdRecPintarBotones(); }
+function rdRecSetImpacto(k){ rdRecImpacto=k; rdRecPintarBotones(); }
+function rdRecPintarBotones(){
+  const filas=document.querySelectorAll('.rec-row .p2-seg3');
+  if(filas[0]) filas[0].querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on', PEND_TIPOS[i].k===rdRecTipo));
+  if(filas[1]) filas[1].querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on', ['alto','medio','bajo'][i]===rdRecImpacto));
+  const h=document.querySelector('.rec-body .p2-hint:last-of-type');
+  if(h) h.textContent='Se guarda con fecha objetivo a '+PEND_PLAZO[rdRecImpacto]+' días, por el impacto elegido. Se puede cambiar después.';
+}
+// Dictado del navegador (Chrome/Safari). Si falla, el texto se escribe a mano.
+function rdRecMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ showToast('Este navegador no tiene dictado'); return; }
+  if(rdRecEscuchando){ rdRecDetener(); return; }
+  try{
+    rdRecRec=new SR(); rdRecRec.lang='es-PE'; rdRecRec.continuous=true; rdRecRec.interimResults=true;
+    const base=(document.getElementById('rec-txt').value||'').trim();
+    rdRecRec.onresult=e=>{
+      let txt='';
+      for(let i=e.resultIndex;i<e.results.length;i++) txt+=e.results[i][0].transcript;
+      const t=document.getElementById('rec-txt'); if(t) t.value=(base?base+' ':'')+txt.trim();
+    };
+    rdRecRec.onerror=ev=>{ rdRecDetener(); showToast('No se pudo dictar: '+(ev.error||''),3500); };
+    rdRecRec.onend=()=>{ rdRecEstado(false); };
+    rdRecRec.start(); rdRecEstado(true);
+  }catch(e){ showToast('No se pudo iniciar el dictado'); }
+}
+function rdRecDetener(){ try{ if(rdRecRec) rdRecRec.stop(); }catch(e){} rdRecEstado(false); }
+function rdRecEstado(on){
+  rdRecEscuchando=on;
+  const m=document.getElementById('rec-mic'); if(m) m.classList.toggle('on', on);
+  const e=document.getElementById('rec-estado'); if(e) e.textContent=on?'Escuchando… toca de nuevo para parar.':'Toca el micrófono y habla; el texto se puede corregir antes de guardar.';
+}
+async function rdRecGuardar(){
+  const t=document.getElementById('rec-txt'); const txt=(t?t.value:'').trim();
+  if(!txt){ showToast('Falta la observación'); if(t) t.focus(); return; }
+  const area=(document.getElementById('rec-area')||{}).value||rdRecArea||'';
+  const btn=document.getElementById('rec-go'); if(btn){ btn.disabled=true; }
+  rdRecDetener();
+  const row={ cod_proyecto:rdPendCod(), nombre_proyecto:(currentProyecto&&currentProyecto.nombre)||null,
+    tipo:rdRecTipo, impacto:rdRecImpacto,
+    titulo:txt.slice(0,300), descripcion:txt.length>300?txt:null,
+    categoria:area.trim()||null, responsable:null,
+    fecha_objetivo:rdPendMasDias(PEND_PLAZO[rdRecImpacto]),
+    estado:'abierta', origen:'recorrido', causa:'Por definir',
+    supervisor:(currentProyecto&&currentProyecto.supervisor)||(currentUser&&currentUser.nombre)||null };
+  try{
+    const res=await sbFetch('/rest/v1/pendientes',{method:'POST',headers:{'Prefer':'return=representation'},body:JSON.stringify(row)});
+    const nuevo=Array.isArray(res)?res[0]:null;
+    if(nuevo) await sbFetch('/rest/v1/pendientes_historial',{method:'POST',headers:{'Prefer':'return=minimal'},
+      body:JSON.stringify({pendiente_id:nuevo.id, texto:'Registrada en recorrido de obra', autor:rdPendQuien()})});
+    rdRecCuenta++;
+    const c=document.getElementById('rec-cuenta'); if(c) c.textContent=rdRecCuenta+' registradas en este recorrido';
+    if(t){ t.value=''; t.focus(); }
+    showToast('Guardada ✓ · sigue con la siguiente', 2200);
+  }catch(e){ console.warn('recorrido', e); showToast('No se pudo guardar: '+(e.message||''),4000); }
+  finally{ if(btn) btn.disabled=false; }
+}
+
+/* Aviso al entrar: lo que no puede esperar. */
+function rdPendAviso(){
+  const urg=rdPendList.filter(rdPendUrgente).length;
+  const hoy=rdPendList.filter(p=>rdPendAbierto(p)&&rdPendDias(p.fecha_objetivo)===0).length;
+  const val=rdPendList.filter(p=>p.estado==='por_validar').length;
+  const partes=[];
+  if(urg) partes.push(urg+' urgente'+(urg>1?'s':''));
+  if(hoy) partes.push(hoy+' vence'+(hoy>1?'n':'')+' hoy');
+  if(val) partes.push(val+' esperando tu conformidad');
+  if(partes.length) showToast('En esta obra: '+partes.join(' · '), 5200);
+}
+
+/* Contratistas del banco de Gerencia, para asignar responsable. */
+let rdPendContratas=null;
+async function rdPendCargarContratas(){
+  if(rdPendContratas) return rdPendContratas;
+  try{
+    // El banco de contratistas vive en Gerencia; aquí solo se lee.
+    const G='https://vsploxglutkbeokumunp.supabase.co', K=PEND_PMO_KEY;
+    const r=await fetch(G+'/rest/v1/portafolio_servicios?select=contratista&limit=1000',{headers:{apikey:K,Authorization:'Bearer '+K}});
+    const j=await r.json();
+    rdPendContratas=[...new Set((j||[]).map(x=>x.contratista).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  }catch(e){ console.warn('contratas', e); rdPendContratas=[]; }
+  return rdPendContratas;
+}
+
 /* Estilos de la pantalla nueva: color solo como senal, el resto en blanco. */
 let _pendStyles2=false;
 function rdPendEstilos2(){
@@ -11796,6 +11945,28 @@ function rdPendEstilos2(){
   .p2-menu button small{margin-left:auto;color:var(--text-3);font-size:11px;}
   .p2-undo{margin-left:12px;border:0;background:transparent;color:inherit;font-family:inherit;font-weight:700;
     text-decoration:underline;text-underline-offset:3px;cursor:pointer;}
+
+
+  /* Modo recorrido */
+  #pend-rec{display:none;} #pend-rec.on{display:block;}
+  .rec-bg{position:fixed;inset:0;z-index:1300;background:rgba(11,18,38,.55);backdrop-filter:blur(3px);}
+  .rec-card{position:fixed;z-index:1301;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,94vw);max-height:92vh;
+    display:flex;flex-direction:column;background:var(--surface);border-radius:18px;box-shadow:var(--sh-4);overflow:hidden;}
+  .rec-h{display:flex;align-items:center;gap:12px;padding:16px 18px;background:var(--grad-brand);color:#fff;}
+  .rec-eyebrow{display:block;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.75;}
+  .rec-h b{display:block;margin-top:3px;font-size:14px;}
+  .rec-h .p2-x{color:#fff;opacity:.85;}
+  .rec-body{padding:16px 18px;overflow:auto;display:flex;flex-direction:column;}
+  .rec-dic{position:relative;}
+  .rec-dic textarea{width:100%;padding-right:52px;}
+  .rec-mic{position:absolute;right:8px;top:8px;width:38px;height:38px;border-radius:50%;border:1px solid var(--border-strong);
+    background:var(--surface);color:var(--text-2);display:grid;place-items:center;cursor:pointer;}
+  .rec-mic.on{background:var(--danger);border-color:var(--danger);color:#fff;box-shadow:0 0 0 6px var(--danger-bg);}
+  .rec-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .rec-area-otra{height:28px;width:130px;font-size:12px;}
+  .rec-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;margin-bottom:8px;}
+  .rec-f{display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--border);background:var(--surface-2);}
+  @media(max-width:560px){ .rec-row{grid-template-columns:1fr;} .rec-card{width:100vw;height:100vh;max-height:none;border-radius:0;top:0;left:0;transform:none;} }
 
   @media(max-width:900px){
     .p2-body{grid-template-columns:1fr;}

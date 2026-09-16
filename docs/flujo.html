@@ -160,6 +160,7 @@ const MAPA = {
     {id:'x-costos', tipo:'ext', x:40,  y:626, titulo:'Cuadros de costo', sub:'presupuestos por partida'},
     {id:'x-gantt',  tipo:'ext', x:40,  y:726, titulo:'Gantt en PDF', sub:'cronograma de obra'},
     {id:'x-obs',    tipo:'ext', x:40,  y:826, titulo:'Excel de observaciones', sub:'punch list y restricciones'},
+    {id:'x-voz',    tipo:'ext', x:40,  y:906, titulo:'Recorrido de obra', sub:'dictado por voz en el celular'},
     {id:'x-netlify',tipo:'ext', x:1352,y:60,  titulo:'Netlify viejo', sub:'donde reportan hoy'},
     {id:'x-nisira', tipo:'ext', x:1352,y:170, titulo:'NISIRA', sub:'Orden de Proyectos · copia manual'},
 
@@ -271,6 +272,8 @@ const MAPA = {
     {from:'x-costos', to:'a-sup:costos', tipo:'entrada'},
     {from:'x-gantt', to:'a-sup:gantt', tipo:'entrada'},
     {from:'x-obs', to:'a-sup:riesgos', tipo:'entrada', label:'importador'},
+    {from:'x-voz', to:'a-sup:riesgos', tipo:'entrada', label:'modo recorrido'},
+    {from:'a-sup:riesgos', to:'d-pmo:portafolio', tipo:'lee', label:'contratistas para asignar'},
     {from:'x-netlify', to:'d-pmo:reportes', tipo:'entrada', label:'escribe directo'},
     {from:'x-nisira', to:'d-pmo:proyectos', tipo:'entrada', label:'copia manual · obras nuevas'}
   ]

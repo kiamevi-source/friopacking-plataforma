@@ -113,6 +113,14 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   están, en vez de duplicarlas. Valores guardados: tipo `restriccion` /
   `punch` / `observacion`, impacto `alto` / `medio` / `bajo`, estado
   `abierta` / `en_proceso` / `por_validar` / `cerrada` / `no_aplica`.
+- **Modo recorrido.** Para registrar caminando la obra: se dicta por voz (motor
+  del navegador, es-PE) o se escribe, se elige área, tipo e impacto, y cada una
+  se guarda con `origen = 'recorrido'` y fecha objetivo según el impacto
+  (alto 2 días, medio 7, bajo 15). Al abrir la obra, un aviso resume urgentes,
+  lo que vence hoy y lo que espera conformidad.
+- **El responsable se puede elegir del banco de contratistas.** La app de campo
+  lee `portafolio_servicios` de PMO solo para sugerir nombres; el banco sigue
+  siendo de Gerencia.
 - **Lo que sale hacia el cliente.** Desde la misma pantalla se genera el acta de
   levantamiento en PDF, con la firma del cliente tomada en el celular, el
   informe de avance en PDF y el Excel con las columnas del cliente (hojas
