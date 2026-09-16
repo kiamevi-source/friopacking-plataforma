@@ -165,8 +165,12 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   obra, desde ahí se pasan sus observaciones abiertas a **postventa**
   (`pendientes.postventa`), sin perderlas.
 - **Lo que sale hacia el cliente.** Desde la misma pantalla se genera el acta de
-  levantamiento en PDF, con la firma del cliente tomada en el celular, el
-  informe de avance en PDF y el Excel con las columnas del cliente (hojas
+  recepción (provisional o definitiva) en el formato de Friopacking: membrete,
+  datos del cliente, texto de recepción, firmas (cada firmante puede firmar en
+  el celular) y un anexo con las observaciones. Empresa, dirección, códigos y
+  monto se leen de `proyectos` de PMO y se pueden corregir en el acta; lo
+  corregido se recuerda en ese navegador y no toca la ficha de Gerencia.
+  También sale el informe de avance en PDF y el Excel con las columnas del cliente (hojas
   Resumen y Observaciones). Todo se arma con lo que ya está en `pendientes`:
   no se guarda nada nuevo ni se envía a ningún servicio externo.
 

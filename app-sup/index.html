@@ -11696,37 +11696,115 @@ function rdPendResumen(){
     decision: rdPendList.filter(p=>(p.fuera_alcance||p.requiere_cotizacion) && !rdPendFuera(p))};
 }
 
-// ── Acta de levantamiento, con la firma del cliente tomada en el celular ──
-let rdPendFirmaData=null;
-function rdPendActaAbrir(){
-  if(!rdPendList.length){ showToast('No hay observaciones que certificar'); return; }
-  rdPendFirmaData=null;
+// ── Acta de recepción, en el formato de Friopacking ──
+// Carta con membrete (marca de agua y franja con los logos), datos de la obra,
+// texto de recepción provisional o definitiva, firmas y un anexo con las
+// observaciones. Los datos del cliente salen de Gerencia y se pueden corregir
+// aquí; lo corregido se recuerda en este navegador, no cambia la ficha de la obra.
+let rdActa=null;
+const ACTA_MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function rdActaTitulo(s){ return String(s||'').toLowerCase().replace(/(^|[\s(-])([a-záéíóúñ])/g,(m,a,b)=>a+b.toUpperCase()); }
+function rdActaCorto(razon){
+  const t=String(razon||'').replace(/\b(S\.?\s?A\.?\s?C\.?|S\.?\s?A\.?\s?A\.?|S\.?\s?R\.?\s?L\.?|E\.?\s?I\.?\s?R\.?\s?L\.?|S\.?\s?A\.?)\s*$/i,'').replace(/^(corporaci[oó]n|compa[nñ][ií]a|empresa|grupo|negociaci[oó]n)\s+/i,'').trim();
+  return rdActaTitulo(t.split(/\s+/).slice(0,2).join(' '))||'Cliente';
+}
+function rdActaGuardarLocal(){
+  if(!rdActa) return;
+  const {firmando, cargando, ...resto}=rdActa;
+  const datos={...resto, firmantes:resto.firmantes.map(f=>({nombre:f.nombre, empresa:f.empresa}))};
+  try{ localStorage.setItem('fp_acta_'+rdPendCod(), JSON.stringify(datos)); }catch(e){}
+}
+async function rdPendActaAbrir(){
+  if(!rdPendList.length){ showToast('No hay observaciones en el anexo'); return; }
+  const r=rdPendResumen();
+  const pend=r.abiertas+r.validar;
+  const hoy=rdPendHoy();
+  let guardado=null;
+  try{ guardado=JSON.parse(localStorage.getItem('fp_acta_'+rdPendCod())||'null'); }catch(e){}
+  rdActa={ tipo:pend?'provisional':'definitiva', fecha:hoy, ciudad:'', empresa:'', proyecto:rdPendCod(), direccion:'', monto:'',
+    trabajos:(currentProyecto&&currentProyecto.nombre)||'', firmantes:[
+      {nombre:(currentProyecto&&currentProyecto.supervisor)||rdPendQuien(), empresa:'Friopacking', firma:null},
+      {nombre:'', empresa:'', firma:null}], firmando:null, cargando:!guardado };
+  if(guardado){ Object.assign(rdActa, guardado, {fecha:hoy, tipo:pend?'provisional':'definitiva', firmando:null, cargando:false});
+    rdActa.firmantes=(guardado.firmantes||[]).map(f=>({nombre:f.nombre||'', empresa:f.empresa||'', firma:null})); }
+  rdActaPintar();
+  if(guardado) return;
+  // Datos del cliente desde la ficha de Gerencia (solo lectura)
+  try{
+    const G='https://vsploxglutkbeokumunp.supabase.co';
+    const url=G+'/rest/v1/proyectos?select=nombre,cod_proyecto,codigos,cliente_razon_social,direccion,distrito,provincia,departamento,venta,moneda&cod_proyecto=eq.'+encodeURIComponent(rdPendCod())+'&limit=1';
+    const j=await fetch(url,{headers:{apikey:PEND_PMO_KEY,Authorization:'Bearer '+PEND_PMO_KEY}}).then(x=>x.ok?x.json():[]);
+    const P=j&&j[0];
+    if(P && rdActa){
+      const cods=[...new Set([P.cod_proyecto].concat((Array.isArray(P.codigos)?P.codigos:[]).map(c=>c&&c.codigo)).filter(Boolean))];
+      rdActa.proyecto=cods.join(' · ')||rdActa.proyecto;
+      rdActa.empresa=P.cliente_razon_social||'';
+      rdActa.direccion=[P.direccion, P.distrito, rdActaTitulo(P.provincia), rdActaTitulo(P.departamento)].filter(Boolean).join(', ');
+      rdActa.ciudad=rdActaTitulo(P.provincia||P.distrito||P.departamento||'');
+      if(P.venta!=null){ const mon=/PEN|SOL|S\//i.test(P.moneda||'')?'S/ ':'US$ ';
+        rdActa.monto=mon+Number(P.venta).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' + IGV'; }
+      if(P.cliente_razon_social) rdActa.firmantes.forEach(f=>{ if(!f.empresa) f.empresa=rdActaCorto(P.cliente_razon_social); });
+    }
+  }catch(e){ console.warn('acta datos obra', e); }
+  if(rdActa){ rdActa.cargando=false; rdActaPintar(); }
+}
+function rdActaPintar(){
+  const A=rdActa; if(!A) return;
   let box=document.getElementById('pend-acta-modal');
   if(!box){ box=document.createElement('div'); box.id='pend-acta-modal'; document.body.appendChild(box); }
-  const r=rdPendResumen();
+  const r=rdPendResumen(), pend=r.abiertas+r.validar;
+  const campo=(k,lbl,ph,full)=>'<div class="p2-f'+(full?' full':'')+'"><label for="acta-'+k+'">'+lbl+'</label><input class="pend-inp" id="acta-'+k+'" value="'+rdEsc2(A[k]||'')+'" placeholder="'+rdEsc2(ph||'')+'" oninput="rdActa.'+k+'=this.value"></div>';
   box.className='on';
-  box.innerHTML='<div class="pend-modal-bg" onclick="rdPendActaCerrar()"></div><div class="pend-modal">'
-    + '<div class="pend-modal-hd"><i data-lucide="file-signature" class="ri"></i><div><h4>Acta de levantamiento</h4>'
-    + '<p>'+rdEsc2((currentProyecto&&currentProyecto.nombre)||'')+' · '+r.cerradas+' levantadas · '+r.abiertas+' pendientes</p></div></div>'
+  box.innerHTML='<div class="pend-modal-bg" onclick="rdPendActaCerrar()"></div><div class="pend-modal wide">'
+    + '<div class="pend-modal-hd"><i data-lucide="file-signature" class="ri"></i><div><h4>Acta de recepción</h4>'
+    + '<p>'+rdEsc2((currentProyecto&&currentProyecto.nombre)||'')+' · '+r.cerradas+' levantadas · '+pend+' por levantar</p></div></div>'
     + '<div class="pend-modal-bd">'
-      + '<p class="pend-modal-p">El acta lista lo levantado y lo que queda, con su fecha. Firma el cliente y se descarga en PDF.</p>'
-      + '<div class="p2-fields"><div class="p2-f"><label for="acta-nombre">Nombre de quien firma</label><input class="pend-inp" id="acta-nombre" placeholder="Nombre y apellido"></div>'
-      + '<div class="p2-f"><label for="acta-cargo">Cargo</label><input class="pend-inp" id="acta-cargo" placeholder="Ej: Jefe de Mantenimiento"></div></div>'
-      + '<div class="p2-lbl" style="margin-top:12px">Firma del cliente</div>'
-      + '<canvas id="acta-firma" width="600" height="180" style="width:100%;height:150px;border:1px dashed var(--border-strong);border-radius:12px;background:#fff;touch-action:none;cursor:crosshair"></canvas>'
-      + '<div class="p2-quick" style="margin-top:8px"><button class="p2-chip" type="button" onclick="rdPendFirmaLimpiar()">Borrar firma</button>'
-      + '<span class="p2-hint">Se puede firmar con el dedo en el celular.</span></div>'
+      + (A.cargando?'<p class="p2-hint">Trayendo los datos de la obra…</p>':'')
+      + '<div class="p3-seg acta-tipo"><button type="button" class="'+(A.tipo==='provisional'?'on':'')+'" onclick="rdActa.tipo=\'provisional\';rdActaPintar()">Recepción provisional</button>'
+        + '<button type="button" class="'+(A.tipo==='definitiva'?'on':'')+'" onclick="rdActa.tipo=\'definitiva\';rdActaPintar()">Recepción definitiva</button></div>'
+      + '<p class="p2-hint" style="margin:6px 0 14px">'+(A.tipo==='provisional'
+          ? 'Se entrega la obra con observaciones por levantar; el anexo las lista con su fecha comprometida.'
+          : (pend?'<b style="color:var(--danger)">Quedan '+pend+' por levantar.</b> La recepción definitiva debería emitirse cuando estén todas levantadas.':'Todas las observaciones están levantadas: la obra se recibe a plena satisfacción.'))+'</p>'
+      + '<div class="p2-fields acta-grid">'
+        + campo('empresa','Empresa (cliente)','Razón social')
+        + campo('proyecto','Proyecto','PRY …')
+        + campo('direccion','Dirección','Dirección de la obra',true)
+        + campo('monto','Monto','US$ 0.00 + IGV')
+        + '<div class="p2-f"><label for="acta-fecha">Lugar y fecha</label><div class="p2-quick" style="flex-wrap:nowrap"><input class="pend-inp" id="acta-ciudad" style="width:45%" value="'+rdEsc2(A.ciudad||'')+'" placeholder="Ciudad" oninput="rdActa.ciudad=this.value">'
+          + '<input class="pend-inp" type="date" id="acta-fecha" value="'+rdEsc2(A.fecha)+'" onchange="rdActa.fecha=this.value"></div></div>'
+        + '<div class="p2-f full"><label for="acta-trabajos">Trabajos realizados (uno por línea)</label><textarea class="pend-inp" id="acta-trabajos" rows="2" oninput="rdActa.trabajos=this.value">'+rdEsc2(A.trabajos||'')+'</textarea></div>'
+      + '</div>'
+      + '<div class="p2-lbl" style="margin-top:14px">Firman el acta</div>'
+      + '<div class="acta-firmantes">'+A.firmantes.map((f,i)=>'<div class="acta-fr">'
+          + '<input class="pend-inp" placeholder="Nombre (ej: Ing. Paolo Villa Abad)" value="'+rdEsc2(f.nombre)+'" oninput="rdActa.firmantes['+i+'].nombre=this.value">'
+          + '<input class="pend-inp" list="acta-empresas" placeholder="Empresa" value="'+rdEsc2(f.empresa)+'" oninput="rdActa.firmantes['+i+'].empresa=this.value">'
+          + '<button class="pend-act'+(f.firma?' set':'')+'" type="button" onclick="rdActaFirmar('+i+')"><i data-lucide="'+(f.firma?'check':'pen-line')+'" class="ri"></i>'+(f.firma?'Firmado':'Firmar')+'</button>'
+          + '<button class="pend-act ghost p3-icon" type="button" onclick="rdActaQuitar('+i+')" aria-label="Quitar firmante"><i data-lucide="x" class="ri"></i></button></div>').join('')+'</div>'
+      + '<datalist id="acta-empresas"><option value="Friopacking">'+(A.empresa?'<option value="'+rdEsc2(rdActaCorto(A.empresa))+'">':'')+'</datalist>'
+      + '<button class="p2-chip" type="button" style="margin-top:8px" onclick="rdActaAgregar()">+ Agregar firmante</button>'
+      + (A.firmando!==null?'<div class="acta-pad"><div class="p2-lbl">Firma de '+rdEsc2(A.firmantes[A.firmando].nombre||'firmante '+(A.firmando+1))+'</div>'
+          + '<canvas id="acta-firma" width="600" height="180"></canvas>'
+          + '<div class="p2-quick" style="margin-top:8px"><button class="p2-chip" type="button" onclick="rdPendFirmaLimpiar()">Borrar</button>'
+          + '<span class="p2-hint">Firma con el dedo en el celular. Quien no firme aquí, firma a mano en el impreso.</span><span class="p2-sep"></span>'
+          + '<button class="pend-act primary" type="button" onclick="rdActaFirmaOk()">Listo</button></div></div>':'')
     + '</div>'
     + '<div class="pend-modal-ft"><button class="pend-act" onclick="rdPendActaCerrar()">Cancelar</button>'
     + '<button class="pend-act primary" onclick="rdPendActaGenerar()"><i data-lucide="download" class="ri"></i>Generar acta</button></div>'
     + '</div>';
   if(window.lucide) lucide.createIcons();
-  rdPendFirmaInit();
+  if(A.firmando!==null) rdPendFirmaInit();
 }
-function rdPendActaCerrar(){ const b=document.getElementById('pend-acta-modal'); if(b){ b.className=''; b.innerHTML=''; } }
+function rdPendActaCerrar(){ rdActaGuardarLocal(); const b=document.getElementById('pend-acta-modal'); if(b){ b.className=''; b.innerHTML=''; } }
+function rdActaAgregar(){ rdActa.firmantes.push({nombre:'', empresa:rdActa.empresa?rdActaCorto(rdActa.empresa):'', firma:null}); rdActaPintar(); }
+function rdActaQuitar(i){ rdActa.firmantes.splice(i,1); if(rdActa.firmando===i) rdActa.firmando=null; rdActaPintar(); }
+function rdActaFirmar(i){ rdActa.firmando=i; rdPendFirmaData=rdActa.firmantes[i].firma; rdActaPintar();
+  const c=document.getElementById('acta-firma'); if(c){ c.scrollIntoView({block:'center'}); } }
+function rdActaFirmaOk(){ if(rdActa.firmando===null) return; rdActa.firmantes[rdActa.firmando].firma=rdPendFirmaData||null; rdActa.firmando=null; rdPendFirmaData=null; rdActaPintar(); }
+let rdPendFirmaData=null;
 function rdPendFirmaInit(){
   const c=document.getElementById('acta-firma'); if(!c) return;
-  const ctx=c.getContext('2d'); ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.strokeStyle='#0f172a';
+  const ctx=c.getContext('2d'); ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.strokeStyle='#1e3a8a';
+  if(rdPendFirmaData){ const im=new Image(); im.onload=()=>ctx.drawImage(im,0,0); im.src=rdPendFirmaData; }
   let pintando=false;
   const pos=ev=>{ const r=c.getBoundingClientRect(); const t=ev.touches?ev.touches[0]:ev;
     return {x:(t.clientX-r.left)*(c.width/r.width), y:(t.clientY-r.top)*(c.height/r.height)}; };
@@ -11741,6 +11819,7 @@ function rdPendFirmaLimpiar(){
   const c=document.getElementById('acta-firma'); if(!c) return;
   c.getContext('2d').clearRect(0,0,c.width,c.height); rdPendFirmaData=null;
 }
+
 /* El acta y el informe se dibujan directo en el PDF (texto real, tablas que
    siguen en la página siguiente con su encabezado). Antes eran una foto de la
    pantalla y se cortaban cuando la lista era larga o la página estaba desplazada. */
@@ -11823,52 +11902,160 @@ function rdPdfPies(pdf, nombre){
 function rdPdfFecha(iso){ return iso?rdPendFechaLarga(String(iso).slice(0,10)):'Por definir'; }
 const rdPdfOrdenZona=(a,b)=>String(a.categoria||'~').localeCompare(String(b.categoria||'~'),'es') || rdPendDias(a.fecha_objetivo)-rdPendDias(b.fecha_objetivo);
 
+// Texto con tramos en negrita, justificado como en el formato de Word.
+function rdPdfRich(pdf, x, y, w, tramos, o){
+  o=Object.assign({size:10.5, lh:5.2, justify:true}, o||{});
+  pdf.setFontSize(o.size);
+  const pal=[];
+  // Un tramo que empieza con puntuación se pega a la palabra anterior (sin espacio ni salto de línea).
+  tramos.forEach(t=>{ rdPdfTxt(t.t).split(' ').filter(Boolean).forEach((p,k)=>pal.push({t:p, b:!!t.b, pegado:k===0 && pal.length>0 && /^[,.;:)]/.test(p)})); });
+  const ancho=p=>{ pdf.setFont('helvetica', p.b?'bold':'normal'); return pdf.getTextWidth(p.t); };
+  pdf.setFont('helvetica','normal'); const esp=pdf.getTextWidth(' ');
+  const lineas=[]; let act=[], wAct=0;
+  pal.forEach(p=>{ const wp=ancho(p);
+    if(!p.pegado && act.length && wAct+esp+wp>w){ lineas.push(act); act=[]; wAct=0; }
+    wAct+=(act.length&&!p.pegado?esp:0)+wp; act.push(Object.assign(p,{w:wp})); });
+  if(act.length) lineas.push(act);
+  pdf.setTextColor(17,24,39);
+  lineas.forEach((l,li)=>{
+    const suma=l.reduce((a,p)=>a+p.w,0), huecos=l.filter((p,k)=>k>0&&!p.pegado).length;
+    const gap=(o.justify && li<lineas.length-1 && huecos>0) ? (w-suma)/huecos : esp;
+    let cx=x;
+    l.forEach((p,k)=>{ if(k>0 && !p.pegado) cx+=gap; pdf.setFont('helvetica', p.b?'bold':'normal'); pdf.text(p.t, cx, y); cx+=p.w; });
+    y+=o.lh;
+  });
+  return y;
+}
+function rdActaUnir(n){ n=n.filter(Boolean); if(n.length<2) return n.join(''); const u=n[n.length-1]; return n.slice(0,-1).join(', ')+(/^(i|hi)/i.test(u.replace(/^(ing|arq|sr|sra|srta|dr|dra|lic)\.?\s+/i,''))?' e ':' y ')+u; }
 async function rdPendActaGenerar(){
-  const nombre=((document.getElementById('acta-nombre')||{}).value||'').trim();
-  const cargo=((document.getElementById('acta-cargo')||{}).value||'').trim();
-  const firma=rdPendFirmaData;
+  const A=rdActa; if(!A) return;
+  if(A.firmando!==null) rdActaFirmaOk();
+  const empresa=(A.empresa||'').trim();
+  if(!empresa){ showToast('Falta la empresa del cliente'); const e=document.getElementById('acta-empresa'); if(e) e.focus(); return; }
+  const firmantes=A.firmantes.filter(f=>(f.nombre||'').trim()).map(f=>({...f, empresa:(f.empresa||'').trim()||rdActaCorto(empresa)}));
+  if(!firmantes.length){ showToast('Agrega al menos un firmante'); return; }
   showToast('Generando el acta…');
   try{
     await rdPdfLib();
-    const r=rdPendResumen();
+    const [pie, agua]=await Promise.all([_imgData('assets/acta-pie.jpg',1400), _imgData('assets/acta-marca-agua.png',600)]);
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
-    const W=pdf.internal.pageSize.getWidth(), H=pdf.internal.pageSize.getHeight(), M=14;
-    let y=await rdPdfCabecera(pdf, 'Acta de levantamiento de observaciones', [
-      [r.cerradas,'levantadas'], [r.abiertas+r.validar,'pendientes', (r.abiertas+r.validar)?[185,28,28]:null], [r.na,'no aplican'], [r.pct+' %','de avance']]);
-    y=rdPdfParrafo(pdf, y, 'En la fecha, Grupo Friopacking y el cliente revisaron las observaciones de la obra '
-      + ((currentProyecto&&currentProyecto.nombre)||'')+'. De '+r.base+' observaciones que aplican, '+r.cerradas+' quedan levantadas'
-      + ((r.abiertas+r.validar)?(' y '+(r.abiertas+r.validar)+' quedan pendientes, con la fecha comprometida que se indica.'):'; no queda ninguna pendiente.')
-      + (r.na?(' Otras '+r.na+' se registraron como no aplicables.'):''));
-    const cerradas=rdPendList.filter(rdPendCerrada).sort(rdPdfOrdenZona);
-    const pend=rdPendList.filter(p=>!rdPendFuera(p)).sort((a,b)=>{ const da=rdPendDias(a.fecha_objetivo), db=rdPendDias(b.fecha_objetivo);
-      if(da===null&&db===null) return 0; if(da===null) return 1; if(db===null) return -1; return da-db; });
-    const na=rdPendList.filter(p=>p.estado==='no_aplica').sort(rdPdfOrdenZona);
-    if(cerradas.length) y=rdPdfTabla(pdf, y, 'Observaciones levantadas', ['Zona','Observación','Levantada','Conformidad'],
-      cerradas.map(p=>[p.categoria||'Sin zona', p.titulo, (p.validado_at||p.fecha_cierre)?rdPdfFecha(p.validado_at||p.fecha_cierre):'—', p.validado_por||(p.origen==='excel'?'Según Excel del cliente':'—')]),
-      {0:{cellWidth:36},2:{cellWidth:24},3:{cellWidth:30}});
-    if(pend.length) y=rdPdfTabla(pdf, y, 'Pendientes con fecha comprometida', ['Zona','Observación','Estado','Fecha','Responsable'],
-      pend.map(p=>[p.categoria||'Sin zona', p.titulo, PEND_EST[p.estado]||p.estado, rdPdfFecha(p.fecha_objetivo), p.responsable||'—']),
-      {0:{cellWidth:34},2:{cellWidth:20},3:{cellWidth:24},4:{cellWidth:28}});
-    if(na.length) y=rdPdfTabla(pdf, y, 'No aplican', ['Zona','Observación'],
-      na.map(p=>[p.categoria||'Sin zona', p.titulo]), {0:{cellWidth:36}});
-    // Firmas: siempre juntas, al final
-    if(y>H-58){ pdf.addPage(); y=30; }
-    y=Math.max(y+14, H-58);
-    const fw=(W-2*M-16)/2;
-    if(firma){ const im=await _imgData(firma); if(im){ const h=18, w=Math.min(fw, h*im.w/im.h); pdf.addImage(im.data,'PNG',M+fw+16,y-h-1,w,h); } }
-    pdf.setDrawColor(...PDF_NAVY); pdf.setLineWidth(.4);
-    [[M, rdPendQuien(), 'Supervisor · Grupo Friopacking'], [M+fw+16, nombre||'Cliente', cargo||'Conformidad del cliente']].forEach(f=>{
-      pdf.line(f[0], y, f[0]+fw, y);
-      pdf.setFont('helvetica','bold'); pdf.setFontSize(9.5); pdf.setTextColor(...PDF_NAVY); pdf.text(rdPdfTxt(f[1]), f[0], y+5);
-      pdf.setFont('helvetica','normal'); pdf.setFontSize(8.5); pdf.setTextColor(...PDF_GRIS); pdf.text(rdPdfTxt(f[2]), f[0], y+9.5);
+    const W=210, H=297, ML=30, MR=15, CW=W-ML-MR, PIE=22.7;
+    const conMembrete=new Set();
+    const membrete=()=>{
+      const n=pdf.internal.getCurrentPageInfo().pageNumber; if(conMembrete.has(n)) return; conMembrete.add(n);
+      if(agua) pdf.addImage(agua.data,'PNG',-40,150,165,165,'marca','FAST');
+      if(pie) pdf.addImage(pie.data,'PNG',0,H-PIE,W,PIE,'pie','FAST');
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(6.3); pdf.setTextColor(255,255,255);
+      // Centrado en el espacio libre entre los dos logos de la franja
+      pdf.text('Carretera Panamericana Sur Km. 298 Subtanjalla - Ica', 132, H-PIE/2-1.6, {align:'center'});
+      pdf.text('Tel. (51)(56) 258123 · ventas@friopacking.pe · www.friopacking.pe', 132, H-PIE/2+2.2, {align:'center'});
+    };
+    const provisional=A.tipo==='provisional';
+    const CLI=rdPdfTxt(empresa).toUpperCase(), FP='FRIOPACKING S.A.C.';
+    const r=rdPendResumen(), pend=r.abiertas+r.validar;
+    const f=(A.fecha||rdPendHoy()).split('-');
+    const fechaTxt=(+f[2])+' de '+ACTA_MESES[(+f[1])-1]+' del '+f[0];
+
+    membrete();
+    let y=34;
+    const titulo=provisional?'ACTA DE RECEPCIÓN PROVISIONAL':'ACTA DE RECEPCIÓN DEFINITIVA';
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(17); pdf.setTextColor(17,24,39);
+    pdf.text(titulo, ML+CW/2, y, {align:'center'});
+    const tw=pdf.getTextWidth(titulo); pdf.setDrawColor(17,24,39); pdf.setLineWidth(.5); pdf.line(ML+CW/2-tw/2, y+1.3, ML+CW/2+tw/2, y+1.3);
+    y+=12;
+    pdf.setFontSize(11); pdf.text(rdPdfTxt((A.ciudad?A.ciudad+', ':'')+fechaTxt), W-MR, y, {align:'right'});
+    y+=11;
+    [['Empresa',empresa],['Proyecto',A.proyecto],['Dirección',A.direccion],['Monto',A.monto]].forEach(d=>{
+      if(!(d[1]||'').trim()) return;
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(10.5); pdf.text(d[0], ML, y); pdf.text(':', ML+28, y);
+      pdf.setFont('helvetica','normal');
+      const l=pdf.splitTextToSize(rdPdfTxt(d[1]), CW-34); pdf.text(l, ML+34, y); y+=5.4*l.length;
     });
-    rdPdfPies(pdf, 'Acta de levantamiento');
+    y+=6;
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(10.5); pdf.text('Estimados Señores:', ML, y); y+=5.4;
+    y=rdPdfRich(pdf, ML, y, CW, [{t:'Mediante el presente documento la empresa'},{t:FP,b:true},{t:'hace entrega a la empresa'},{t:CLI,b:true},{t:'de los trabajos realizados en:'}]);
+    y+=3;
+    String(A.trabajos||'').split(/\n+/).map(t=>t.trim()).filter(Boolean).forEach(t=>{
+      const l=pdf.splitTextToSize(rdPdfTxt(t), CW-10); pdf.setFont('helvetica','normal'); pdf.text('-', ML+5, y); pdf.text(l, ML+9, y); y+=5.4*l.length;
+    });
+    y+=4;
+    const deFP=firmantes.filter(x=>/friopacking/i.test(x.empresa)).map(x=>x.nombre.trim());
+    const deCli=firmantes.filter(x=>!/friopacking/i.test(x.empresa)).map(x=>x.nombre.trim());
+    const tramos=[{t:'Según lo suscrito'}];
+    if(deFP.length) tramos.push({t:'por la empresa'},{t:FP+','},{t:rdActaUnir(deFP)+(deCli.length?',':'')});
+    if(deCli.length) tramos.push({t:(deFP.length?'y ':'')+'por la empresa'},{t:CLI+',',b:true},{t:rdActaUnir(deCli)});
+    tramos[tramos.length-1].t+=';';
+    tramos.push({t:'se realizó la revisión de todas las obras, anotando las observaciones, objeciones y comentarios a que hubo lugar, todos los cuales aparecen listados en detalle en el anexo que forma parte inseparable de esta Acta.'});
+    if(deFP.length) tramos[2].b=true;
+    y=rdPdfRich(pdf, ML, y, CW, tramos); y+=3;
+    if(provisional){
+      y=rdPdfRich(pdf, ML, y, CW, [{t:'Terminadas las actividades de revisión de los trabajos, la comisión decidió recepcionar las obras de manera provisional, dado que la recepción definitiva, a plena satisfacción de'},{t:CLI,b:true},
+        {t:', solo podrá ocurrir cuando todas las observaciones detalladas en el anexo hayan sido levantadas o fundamentadas por el contratista. A la fecha se registran '+r.cerradas+' observaciones levantadas y '+pend+' por levantar.'}]);
+    } else {
+      y=rdPdfRich(pdf, ML, y, CW, [{t:'Terminadas las actividades de revisión de los trabajos, la comisión verificó que las observaciones detalladas en el anexo han sido levantadas o fundamentadas por el contratista, por lo que decidió recepcionar las obras de manera definitiva, a plena satisfacción de'},{t:CLI+'.',b:true}]);
+    }
+    y+=4;
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(10.5); pdf.text('Para que así conste firman esta acta.', ML, y);
+    y+=10;
+    // Firmas en dos columnas
+    const colW=(CW-14)/2, altoFirma=30;
+    for(let k=0;k<firmantes.length;k++){
+      const col=k%2;
+      if(col===0 && k>0) y+=altoFirma;
+      if(col===0 && y+altoFirma>H-PIE-8){ pdf.addPage(); membrete(); y=30; }
+      const x=ML+col*(colW+14), base=y+18;
+      const fi=firmantes[k];
+      if(fi.firma){ const im=await _imgData(fi.firma,500); if(im){ const h=15, w=Math.min(colW-10, h*im.w/im.h); pdf.addImage(im.data,'PNG',x+(colW-w)/2,base-h-0.5,w,h); } }
+      pdf.setDrawColor(60,60,60); pdf.setLineWidth(.3); pdf.setLineDashPattern([.4,.9],0); pdf.line(x+4,base,x+colW-4,base); pdf.setLineDashPattern([],0);
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(10); pdf.setTextColor(17,24,39);
+      pdf.text(pdf.splitTextToSize(rdPdfTxt(fi.nombre.trim()+(fi.empresa?' – '+fi.empresa.trim():'')), colW)[0], x+colW/2, base+5, {align:'center'});
+    }
+
+    // ANEXO
+    pdf.addPage(); membrete();
+    y=30;
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(16); pdf.setTextColor(17,24,39);
+    pdf.text('ANEXO', W/2, y, {align:'center'});
+    y+=6.5; pdf.setFont('helvetica','normal'); pdf.setFontSize(9.5); pdf.setTextColor(...PDF_GRIS);
+    pdf.text(rdPdfTxt('Relación de observaciones · '+((currentProyecto&&currentProyecto.nombre)||'')+' · '+(A.proyecto||rdPendCod())+' · al '+fechaTxt), W/2, y, {align:'center'});
+    y+=9;
+    const tabla=(titulo, cab, filas, anchos)=>{
+      if(!filas.length) return;
+      if(y>H-PIE-40){ pdf.addPage(); membrete(); y=28; }
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(11); pdf.setTextColor(17,24,39);
+      pdf.text(rdPdfTxt(titulo)+'  ('+filas.length+')', 20, y);
+      pdf.autoTable({ startY:y+3, margin:{left:20,right:MR,top:24,bottom:PIE+10}, head:[cab], body:filas.map(fl=>fl.map(rdPdfTxt)),
+        theme:'grid', styles:{font:'helvetica',fontSize:8.5,cellPadding:1.8,textColor:[17,24,39],lineColor:[180,188,200],lineWidth:.2,valign:'top',fillColor:false},
+        headStyles:{fillColor:[10,30,100],textColor:255,fontStyle:'bold',fontSize:8},
+        columnStyles:Object.assign({0:{cellWidth:9,halign:'center'}}, anchos), rowPageBreak:'avoid',
+        willDrawPage:()=>membrete() });
+      y=pdf.lastAutoTable.finalY+10;
+    };
+    const porFecha=(a,b)=>{ const da=rdPendDias(a.fecha_objetivo), db=rdPendDias(b.fecha_objetivo); if(da===null&&db===null) return 0; if(da===null) return 1; if(db===null) return -1; return da-db; };
+    const abiertas=rdPendList.filter(p=>!rdPendFuera(p)).sort(porFecha);
+    const levantadas=rdPendList.filter(rdPendCerrada).sort(rdPdfOrdenZona);
+    const na=rdPendList.filter(p=>p.estado==='no_aplica').sort(rdPdfOrdenZona);
+    const bloqueAbiertas=()=>tabla('Observaciones por levantar', ['N°','Zona','Observación','Estado','Fecha comprometida','Responsable'],
+      abiertas.map((p,i)=>[String(i+1), p.categoria||'Sin zona', p.titulo, PEND_EST[p.estado]||p.estado, p.fecha_objetivo?rdPendFechaLarga(p.fecha_objetivo):'Por definir', p.responsable||'—']),
+      {1:{cellWidth:28},3:{cellWidth:19},4:{cellWidth:27},5:{cellWidth:24}});
+    if(provisional) bloqueAbiertas();
+    tabla('Observaciones levantadas', ['N°','Zona','Observación','Levantada'],
+      levantadas.map((p,i)=>[String(i+1), p.categoria||'Sin zona', p.titulo, (p.validado_at||p.fecha_cierre)?rdPendFechaLarga(String(p.validado_at||p.fecha_cierre).slice(0,10)):(p.origen==='excel'?'Según Excel':'—')]),
+      {1:{cellWidth:32},3:{cellWidth:24}});
+    tabla('No aplican', ['N°','Zona','Observación'], na.map((p,i)=>[String(i+1), p.categoria||'Sin zona', p.titulo]), {1:{cellWidth:32}});
+    if(!provisional) bloqueAbiertas();
+
+    const n=pdf.internal.getNumberOfPages();
+    for(let k=1;k<=n;k++){ pdf.setPage(k); pdf.setFont('helvetica','normal'); pdf.setFontSize(7.5); pdf.setTextColor(...PDF_GRIS);
+      pdf.text('Página '+k+' de '+n, W-MR, H-PIE-3, {align:'right'}); }
+    rdActaGuardarLocal();
+    pdf.save(_pdfNombre(provisional?'Acta_recepcion_provisional':'Acta_recepcion_definitiva'));
     rdPendActaCerrar();
-    pdf.save(_pdfNombre('Acta_levantamiento'));
     showToast('Acta generada ✓');
   }catch(e){ console.warn('acta', e); showToast('No se pudo generar el acta: '+String(e.message||'').slice(0,80), 5000); }
 }
+
 // ── Informe para el cliente ──
 async function rdPendInforme(){
   if(!rdPendList.length){ showToast('No hay observaciones que informar'); return; }
@@ -12575,6 +12762,13 @@ function rdPendEstilos3(){
   .p3-zc-bar small{font-size:11.5px;color:var(--text-3);font-variant-numeric:tabular-nums;}
   .p3-zmore{display:flex;align-items:center;gap:6px;margin:14px auto 10px;border:0;background:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;}
   .p3-zmore .ri{width:15px;height:15px;}
+  .acta-tipo{display:flex;width:100%;} .acta-tipo button{flex:1;justify-content:center;height:34px;font-size:13px;}
+  .acta-grid{grid-template-columns:1fr 1fr;}
+  .acta-firmantes{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+  .acta-fr{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto auto;gap:8px;align-items:center;}
+  .acta-pad{margin-top:12px;padding:12px;border:1px solid var(--border-strong);border-radius:12px;background:var(--surface-2);}
+  .acta-pad canvas{display:block;width:100%;height:150px;margin-top:6px;border:1px dashed var(--border-strong);border-radius:10px;background:#fff;touch-action:none;cursor:crosshair;}
+  @media(max-width:700px){ .acta-grid{grid-template-columns:1fr;} .acta-fr{grid-template-columns:1fr auto auto;} .acta-fr input:nth-child(2){grid-column:1;grid-row:2;} }
 
   @media(max-width:1100px){ .p3-body{grid-template-columns:1fr;} }
   @media(max-width:1100px){
