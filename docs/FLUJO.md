@@ -108,9 +108,16 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   Sin columna de estado, el estado sale del % de avance (100 = cerrada). Sin
   columna de tipo, «punch list» en el nombre o el título del archivo lo marca
   como punch. Solo se omiten las filas que ya están en la obra (mismo título y
-  categoría) o que son idénticas a otra del archivo. Valores guardados: tipo
-  `restriccion` / `punch` / `observacion`, impacto `alto` / `medio` / `bajo`,
-  estado `abierta` / `en_proceso` / `cerrada`.
+  categoría) o que son idénticas a otra del archivo; al reimportar el mismo
+  cuadro se actualizan estado, fecha, responsable e impacto de las que ya
+  están, en vez de duplicarlas. Valores guardados: tipo `restriccion` /
+  `punch` / `observacion`, impacto `alto` / `medio` / `bajo`, estado
+  `abierta` / `en_proceso` / `por_validar` / `cerrada` / `no_aplica`.
+- **Lo que sale hacia el cliente.** Desde la misma pantalla se genera el acta de
+  levantamiento en PDF, con la firma del cliente tomada en el celular, el
+  informe de avance en PDF y el Excel con las columnas del cliente (hojas
+  Resumen y Observaciones). Todo se arma con lo que ya está en `pendientes`:
+  no se guarda nada nuevo ni se envía a ningún servicio externo.
 
 ## 4. Cómo se mantiene
 

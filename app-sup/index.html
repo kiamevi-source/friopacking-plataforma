@@ -11099,7 +11099,9 @@ function rdPendToolsHTML(){
     + '<span class="p2-sep"></span>'
     + '<button class="pend-act primary" type="button" onclick="rdPendToggleForm()"><i data-lucide="'+(rdPendFormOn?'x':'plus')+'" class="ri"></i>'+(rdPendFormOn?'Cerrar':'Nuevo')+'</button>'
     + '<button class="pend-act" type="button" onclick="rdPendImpToggle()"><i data-lucide="file-spreadsheet" class="ri"></i>Importar Excel</button>'
-    + '<button class="pend-act" type="button" onclick="exportarObsPdf()"><i data-lucide="file-down" class="ri"></i>PDF</button>';
+    + '<button class="pend-act" type="button" onclick="rdPendActaAbrir()"><i data-lucide="file-signature" class="ri"></i>Acta</button>'
+    + '<button class="pend-act" type="button" onclick="rdPendInforme()"><i data-lucide="file-text" class="ri"></i>Informe</button>'
+    + '<button class="pend-act" type="button" onclick="rdPendExportExcel()"><i data-lucide="sheet" class="ri"></i>Excel</button>';
 }
 
 function rdPendListaHTML(){
@@ -11451,6 +11453,205 @@ async function rdPendAdd(){
   }catch(e){ console.warn('pendiente add', e); showToast('Error al agregar'); }
 }
 
+/* ══════════════════════════════════════════════
+   ACTA, INFORME Y EXCEL PARA EL CLIENTE
+   El acta y el informe se arman con lo que hay en pantalla; el Excel sale con
+   las mismas columnas que usa el cliente, para que siga trabajando en su archivo.
+   ══════════════════════════════════════════════ */
+function rdPendResumen(){
+  const total=rdPendList.length;
+  const na=rdPendList.filter(p=>p.estado==='no_aplica').length;
+  const cerradas=rdPendList.filter(rdPendCerrada).length;
+  const base=total-na;
+  return {total, na, cerradas, base, pct: base?Math.round(cerradas*100/base):0,
+    abiertas: rdPendList.filter(rdPendAbierto).length,
+    validar: rdPendList.filter(p=>p.estado==='por_validar').length,
+    urgentes: rdPendList.filter(rdPendUrgente).length,
+    decision: rdPendList.filter(p=>(p.fuera_alcance||p.requiere_cotizacion) && !rdPendFuera(p))};
+}
+function rdPendPorArea(lista){
+  const m=new Map();
+  lista.forEach(p=>{ const k=p.categoria||'Sin área'; m.set(k,(m.get(k)||0)+1); });
+  return [...m.entries()].sort((a,b)=>b[1]-a[1]);
+}
+function rdPendFilaTabla(p){
+  const par=rdPendParse(p.descripcion);
+  return '<tr><td>'+rdEsc2(p.categoria||'—')+'</td><td>'+rdEsc2(p.titulo)+'</td>'
+    + '<td>'+PEND_EST[p.estado]+'</td><td>'+(p.fecha_objetivo?rdPendFechaCorta(p.fecha_objetivo)+'/'+String(p.fecha_objetivo).slice(2,4):'Por definir')+'</td>'
+    + '<td>'+rdEsc2(p.responsable||'—')+'</td><td>'+rdEsc2((par.com||'').slice(0,120))+'</td></tr>';
+}
+function rdPendDocEstilos(){
+  return '<style>.pd-doc{font-family:inherit;color:#0f172a}.pd-doc h2{margin:0 0 4px;font-size:18px}'
+    + '.pd-sub{margin:0 0 14px;font-size:12px;color:#64748b}'
+    + '.pd-kpis{display:flex;gap:10px;margin:0 0 14px;flex-wrap:wrap}'
+    + '.pd-kpis div{flex:1 1 120px;border:1px solid #e2e8f0;border-radius:8px;padding:10px}'
+    + '.pd-kpis b{display:block;font-size:20px}.pd-kpis span{font-size:11px;color:#64748b}'
+    + '.pd-t{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px}'
+    + '.pd-t th{text-align:left;background:#f1f5f9;padding:6px;border-bottom:1px solid #cbd5e1;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#475569}'
+    + '.pd-t td{padding:6px;border-bottom:1px solid #e2e8f0;vertical-align:top}'
+    + '.pd-h3{margin:14px 0 6px;font-size:13px;font-weight:700}'
+    + '.pd-p{font-size:12px;line-height:1.5;margin:0 0 8px}'
+    + '.pd-firmas{display:flex;gap:30px;margin-top:26px}'
+    + '.pd-firma{flex:1;border-top:1px solid #0f172a;padding-top:6px;font-size:11px;color:#475569}'
+    + '.pd-firma b{display:block;color:#0f172a}.pd-firma img{max-height:60px;display:block;margin-bottom:4px}</style>';
+}
+// ── Acta de levantamiento, con la firma del cliente tomada en el celular ──
+let rdPendFirmaData=null;
+function rdPendActaAbrir(){
+  if(!rdPendList.length){ showToast('No hay observaciones que certificar'); return; }
+  rdPendFirmaData=null;
+  let box=document.getElementById('pend-acta-modal');
+  if(!box){ box=document.createElement('div'); box.id='pend-acta-modal'; document.body.appendChild(box); }
+  const r=rdPendResumen();
+  box.className='on';
+  box.innerHTML='<div class="pend-modal-bg" onclick="rdPendActaCerrar()"></div><div class="pend-modal">'
+    + '<div class="pend-modal-hd"><i data-lucide="file-signature" class="ri"></i><div><h4>Acta de levantamiento</h4>'
+    + '<p>'+rdEsc2((currentProyecto&&currentProyecto.nombre)||'')+' · '+r.cerradas+' levantadas · '+r.abiertas+' pendientes</p></div></div>'
+    + '<div class="pend-modal-bd">'
+      + '<p class="pend-modal-p">El acta lista lo levantado y lo que queda, con su fecha. Firma el cliente y se descarga en PDF.</p>'
+      + '<div class="p2-fields"><div class="p2-f"><label for="acta-nombre">Nombre de quien firma</label><input class="pend-inp" id="acta-nombre" placeholder="Nombre y apellido"></div>'
+      + '<div class="p2-f"><label for="acta-cargo">Cargo</label><input class="pend-inp" id="acta-cargo" placeholder="Ej: Jefe de Mantenimiento"></div></div>'
+      + '<div class="p2-lbl" style="margin-top:12px">Firma del cliente</div>'
+      + '<canvas id="acta-firma" width="600" height="180" style="width:100%;height:150px;border:1px dashed var(--border-strong);border-radius:12px;background:#fff;touch-action:none;cursor:crosshair"></canvas>'
+      + '<div class="p2-quick" style="margin-top:8px"><button class="p2-chip" type="button" onclick="rdPendFirmaLimpiar()">Borrar firma</button>'
+      + '<span class="p2-hint">Se puede firmar con el dedo en el celular.</span></div>'
+    + '</div>'
+    + '<div class="pend-modal-ft"><button class="pend-act" onclick="rdPendActaCerrar()">Cancelar</button>'
+    + '<button class="pend-act primary" onclick="rdPendActaGenerar()"><i data-lucide="download" class="ri"></i>Generar acta</button></div>'
+    + '</div>';
+  if(window.lucide) lucide.createIcons();
+  rdPendFirmaInit();
+}
+function rdPendActaCerrar(){ const b=document.getElementById('pend-acta-modal'); if(b){ b.className=''; b.innerHTML=''; } }
+function rdPendFirmaInit(){
+  const c=document.getElementById('acta-firma'); if(!c) return;
+  const ctx=c.getContext('2d'); ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.strokeStyle='#0f172a';
+  let pintando=false;
+  const pos=ev=>{ const r=c.getBoundingClientRect(); const t=ev.touches?ev.touches[0]:ev;
+    return {x:(t.clientX-r.left)*(c.width/r.width), y:(t.clientY-r.top)*(c.height/r.height)}; };
+  const ini=ev=>{ ev.preventDefault(); pintando=true; const p=pos(ev); ctx.beginPath(); ctx.moveTo(p.x,p.y); };
+  const mov=ev=>{ if(!pintando) return; ev.preventDefault(); const p=pos(ev); ctx.lineTo(p.x,p.y); ctx.stroke(); rdPendFirmaData=c.toDataURL('image/png'); };
+  const fin=()=>{ pintando=false; };
+  ['mousedown','touchstart'].forEach(e=>c.addEventListener(e,ini,{passive:false}));
+  ['mousemove','touchmove'].forEach(e=>c.addEventListener(e,mov,{passive:false}));
+  ['mouseup','mouseleave','touchend'].forEach(e=>c.addEventListener(e,fin));
+}
+function rdPendFirmaLimpiar(){
+  const c=document.getElementById('acta-firma'); if(!c) return;
+  c.getContext('2d').clearRect(0,0,c.width,c.height); rdPendFirmaData=null;
+}
+function rdPendActaNodo(){
+  const r=rdPendResumen();
+  const cerradas=rdPendList.filter(rdPendCerrada).sort((a,b)=>String(a.categoria||'').localeCompare(String(b.categoria||''),'es'));
+  const abiertas=rdPendList.filter(p=>!rdPendFuera(p)).sort((a,b)=>{
+    const da=rdPendDias(a.fecha_objetivo), db=rdPendDias(b.fecha_objetivo);
+    if(da===null) return 1; if(db===null) return -1; return da-db;
+  });
+  const nombre=(document.getElementById('acta-nombre')||{}).value||'';
+  const cargo=(document.getElementById('acta-cargo')||{}).value||'';
+  const cab='<tr><th>Área</th><th>Observación</th><th>Estado</th><th>Fecha</th><th>Responsable</th><th>Comentario</th></tr>';
+  const n=document.createElement('div');
+  n.className='pd-doc';
+  n.innerHTML=rdPendDocEstilos()
+    + '<h2>Acta de levantamiento de observaciones</h2>'
+    + '<p class="pd-sub">'+rdEsc2((currentProyecto&&currentProyecto.nombre)||'')+' · '+rdEsc2(rdPendCod())+' · '+new Date().toLocaleDateString('es-PE')+'</p>'
+    + '<div class="pd-kpis"><div><b>'+r.cerradas+'</b><span>levantadas</span></div>'
+      + '<div><b>'+r.abiertas+'</b><span>pendientes</span></div>'
+      + '<div><b>'+r.na+'</b><span>no aplican</span></div>'
+      + '<div><b>'+r.pct+' %</b><span>de avance</span></div></div>'
+    + (cerradas.length?('<div class="pd-h3">Observaciones levantadas</div><table class="pd-t">'+cab+cerradas.map(rdPendFilaTabla).join('')+'</table>'):'')
+    + (abiertas.length?('<div class="pd-h3">Pendientes, con fecha comprometida</div><table class="pd-t">'+cab+abiertas.map(rdPendFilaTabla).join('')+'</table>'):'')
+    + '<div class="pd-firmas"><div class="pd-firma"><b>'+rdEsc2(rdPendQuien())+'</b>Supervisor · Grupo Friopacking</div>'
+    + '<div class="pd-firma">'+(rdPendFirmaData?'<img src="'+rdPendFirmaData+'" alt="Firma">':'')
+      + '<b>'+rdEsc2(nombre||'Cliente')+'</b>'+rdEsc2(cargo||'Conformidad del cliente')+'</div></div>';
+  return n;
+}
+async function rdPendActaGenerar(){
+  const nodo=rdPendActaNodo();
+  rdPendActaCerrar();
+  nodo.style.cssText='position:fixed;left:-10000px;top:0;width:780px;background:#fff';
+  document.body.appendChild(nodo);
+  try{ await _pdfDesdeNodo(nodo, 'Acta de levantamiento de observaciones',
+      (currentProyecto&&currentProyecto.nombre)||'', _pdfNombre('Acta_levantamiento')); }
+  finally{ nodo.remove(); }
+}
+// ── Informe para el cliente ──
+function rdPendInformeNodo(){
+  const r=rdPendResumen();
+  const abiertas=rdPendList.filter(p=>!rdPendFuera(p));
+  const areas=rdPendPorArea(abiertas).slice(0,5);
+  const venc=abiertas.filter(p=>rdPendDias(p.fecha_objetivo)<0).length;
+  const prox=abiertas.filter(p=>{ const d=rdPendDias(p.fecha_objetivo); return d!==null && d>=0 && d<=14; });
+  const n=document.createElement('div');
+  n.className='pd-doc';
+  n.innerHTML=rdPendDocEstilos()
+    + '<h2>Avance del levantamiento de observaciones</h2>'
+    + '<p class="pd-sub">'+rdEsc2((currentProyecto&&currentProyecto.nombre)||'')+' · '+rdEsc2(rdPendCod())+' · al '+new Date().toLocaleDateString('es-PE')+'</p>'
+    + '<div class="pd-kpis"><div><b>'+r.pct+' %</b><span>levantado</span></div>'
+      + '<div><b>'+r.abiertas+'</b><span>por levantar</span></div>'
+      + '<div><b>'+r.decision.length+'</b><span>requieren decisión</span></div></div>'
+    + '<p class="pd-p">De '+r.base+' observaciones que aplican, <b>'+r.cerradas+' están levantadas</b>'
+      + (r.na?(' y '+r.na+' se registraron como no aplicables'):'')+'. '
+      + (r.abiertas?('Quedan <b>'+r.abiertas+' por levantar</b>'+(venc?(', '+venc+' de ellas con la fecha vencida'):'')+'.'):'No queda ninguna pendiente.')+'</p>'
+    + (areas.length?('<p class="pd-p">Se concentran en: '+areas.map(a=>rdEsc2(a[0])+' ('+a[1]+')').join(', ')+'.</p>'):'')
+    + (prox.length?('<div class="pd-h3">Comprometidas para las próximas dos semanas</div><table class="pd-t">'
+        + '<tr><th>Área</th><th>Observación</th><th>Estado</th><th>Fecha</th><th>Responsable</th><th>Comentario</th></tr>'
+        + prox.sort((a,b)=>rdPendDias(a.fecha_objetivo)-rdPendDias(b.fecha_objetivo)).map(rdPendFilaTabla).join('')+'</table>'):'')
+    + (r.decision.length?('<div class="pd-h3">Requieren una decisión o cotización</div><table class="pd-t">'
+        + '<tr><th>Área</th><th>Observación</th><th>Estado</th><th>Fecha</th><th>Responsable</th><th>Comentario</th></tr>'
+        + r.decision.map(rdPendFilaTabla).join('')+'</table>'):'')
+    + '<p class="pd-p" style="color:#64748b">Informe generado desde la plataforma de Grupo Friopacking por '+rdEsc2(rdPendQuien())+'.</p>';
+  return n;
+}
+async function rdPendInforme(){
+  if(!rdPendList.length){ showToast('No hay observaciones que informar'); return; }
+  const nodo=rdPendInformeNodo();
+  nodo.style.cssText='position:fixed;left:-10000px;top:0;width:780px;background:#fff';
+  document.body.appendChild(nodo);
+  try{ await _pdfDesdeNodo(nodo, 'Avance del levantamiento de observaciones',
+      (currentProyecto&&currentProyecto.nombre)||'', _pdfNombre('Informe_observaciones')); }
+  finally{ nodo.remove(); }
+}
+// ── Excel con las columnas que usa el cliente ──
+function rdPendExcelWb(){
+  if(!window.XLSX) return null;
+  const r=rdPendResumen();
+  const filas=[['ÁREA','OBSERVACIÓN','ESTADO','FECHA OBJETIVO','RESPONSABLE','IMPACTO','TIPO','COMENTARIO','ORIGEN']];
+  rdPendList.slice().sort((a,b)=>{
+    const oa=rdPendFuera(a)?1:0, ob=rdPendFuera(b)?1:0;
+    if(oa!==ob) return oa-ob;
+    const da=rdPendDias(a.fecha_objetivo), db=rdPendDias(b.fecha_objetivo);
+    if(da===null) return 1; if(db===null) return -1; return da-db;
+  }).forEach(p=>{
+    const par=rdPendParse(p.descripcion);
+    filas.push([p.categoria||'', p.titulo||'', PEND_EST[p.estado]||p.estado,
+      p.fecha_objetivo?rdPendFechaCorta(p.fecha_objetivo)+'/'+String(p.fecha_objetivo).slice(0,4):'',
+      p.responsable||'', p.impacto||'', rdPendTipoLabel(p.tipo), par.com||'', p.origen==='excel'?'Excel':'App']);
+  });
+  const ws=window.XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols']=[{wch:24},{wch:60},{wch:14},{wch:14},{wch:18},{wch:10},{wch:14},{wch:50},{wch:10}];
+  const resumen=window.XLSX.utils.aoa_to_sheet([
+    ['Obra',(currentProyecto&&currentProyecto.nombre)||''],
+    ['Código',rdPendCod()],
+    ['Fecha',new Date().toLocaleDateString('es-PE')],
+    [],
+    ['Levantadas',r.cerradas],['Por levantar',r.abiertas],['Por validar',r.validar],
+    ['No aplican',r.na],['Total que aplica',r.base],['Avance','' + r.pct + ' %']
+  ]);
+  resumen['!cols']=[{wch:22},{wch:34}];
+  const wb=window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(wb,resumen,'Resumen');
+  window.XLSX.utils.book_append_sheet(wb,ws,'Observaciones');
+  return wb;
+}
+function rdPendExportExcel(){
+  const wb=rdPendExcelWb();
+  if(!wb){ showToast('SheetJS no cargó. Recarga la página.',4000); return; }
+  const nom=((currentProyecto&&currentProyecto.nombre)||'obra').replace(/\s+/g,'_');
+  window.XLSX.writeFile(wb,'Observaciones_'+nom+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  showToast('Excel descargado ✓');
+}
+
 /* Estilos de la pantalla nueva: color solo como senal, el resto en blanco. */
 let _pendStyles2=false;
 function rdPendEstilos2(){
@@ -11583,6 +11784,7 @@ function rdPendEstilos2(){
   .p2-hist li{display:grid;grid-template-columns:42px 1fr;gap:10px;font-size:12.5px;color:var(--text-2);}
   .p2-hist li time{font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums;}
 
+  #pend-acta-modal{display:none;} #pend-acta-modal.on{display:block;}
   .p2-pop{position:absolute;z-index:1200;width:272px;background:var(--surface);border:1px solid var(--border-strong);
     border-radius:14px;box-shadow:var(--sh-3);padding:12px;display:flex;flex-direction:column;gap:8px;}
   .p2-pop-h{font-size:12px;font-weight:700;color:var(--navy-800);}
