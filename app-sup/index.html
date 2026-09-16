@@ -10959,7 +10959,7 @@ function rdPendFechaCorta(iso){
   const s=String(iso).slice(0,10).split('-');
   return s.length===3 ? (s[2]+'/'+s[1]) : String(iso);
 }
-// La descripcion guarda el comentario y, tras " · ", los datos que trajo el Excel.
+// La descripcion guarda el plan de acción (antes «comentario») y, tras " · ", los datos que trajo el Excel.
 function rdPendParse(desc){
   const chips=[], com=[];
   String(desc||'').split(' · ').forEach(s=>{
@@ -11069,7 +11069,7 @@ function rdPendRender(){
         + '<input id="pend-fecha" type="date" class="pend-inp" title="Fecha objetivo (si la dejas vacía, sale del impacto)">'
         + '<select id="pend-impacto" class="pend-inp"><option value="alto">Impacto alto</option><option value="medio" selected>Impacto medio</option><option value="bajo">Impacto bajo</option></select>'
       + '</div>'
-      + '<div class="row"><textarea id="pend-desc" class="pend-inp grow" rows="2" placeholder="Detalle (opcional)"></textarea></div>'
+      + '<div class="row"><textarea id="pend-desc" class="pend-inp grow" rows="2" placeholder="Plan de acción (opcional)"></textarea></div>'
       + '<div class="row"><label class="p2-check"><input type="checkbox" id="pend-restriccion"> Genera restricción</label><span class="p2-sep"></span>'
         + '<button class="pend-act primary" onclick="rdPendAdd()"><i data-lucide="check" class="ri"></i>Guardar</button></div>'
       + '<datalist id="pend-contratas-new">'+(rdPendContratas||[]).map(c=>'<option value="'+rdEsc2(c)+'">').join('')+'</datalist>'
@@ -11209,7 +11209,6 @@ function rdPendFichaHTML(){
       + '<button class="p3-nav" type="button" '+(next?'onclick="rdPendAbrir('+next+')"':'disabled')+' aria-label="Siguiente"><i data-lucide="chevron-right" class="ri"></i></button>'
       + '<button class="p3-nav ghost" type="button" onclick="rdPendCerrarFicha()" aria-label="Cerrar"><i data-lucide="x" class="ri"></i></button></div>'
     + '<h3 class="p3-ft'+(String(p.titulo||'').length>80?' long':'')+'">'+rdEsc2(p.titulo)+'</h3>'
-    + (par.com?'<p class="p3-fd">'+rdEsc2(par.com)+'</p>':'')
     + (p.postventa?'<span class="p2-hint">Pasó a postventa al cerrarse la obra.</span>':'')
     + '<div class="p3-tiles">'
       + tile('<i data-lucide="clipboard-list" class="ri"></i>','Obra',rdEsc2((currentProyecto&&currentProyecto.nombre)||'—'))
@@ -11231,15 +11230,15 @@ function rdPendFichaHTML(){
         : '<span class="p2-hint">Sin movimientos todavía.</span>')+'</div>';
   } else if(!rdPendEdit){
     h+='<div class="p3-det">'
-      + (par.com?'':'<div class="p3-com"><small>Comentario</small><p class="vacio">Sin comentario. Agrégalo desde «Editar».</p></div>')
+      + '<div class="p3-com"><small>Plan de acción</small>'+(par.com?'<p>'+rdEsc2(par.com)+'</p>':'<p class="vacio">Sin plan de acción. Agrégalo desde «Editar».</p>')+'</div>'
       + (marcas?'<div class="p2-chips">'+marcas+'</div>':'')
       + (par.chips.length?'<details class="p3-excel"><summary>Datos del Excel ('+par.chips.length+')</summary><div class="p2-chips">'+par.chips.map(c=>'<span class="p2-kv"><em>'+rdEsc2(c[0])+'</em>'+rdEsc2(c[1])+'</span>').join('')+'</div></details>':'')
     + '</div>';
   } else {
     h+='<div class="p2-fields">'
-      + '<div class="p2-f full"><label for="pf-com">Comentario</label><textarea class="pend-inp" id="pf-com" rows="3" onchange="rdPendComentario('+p.id+',this.value)">'+rdEsc2(par.com)+'</textarea></div>'
       + '<div class="p2-f"><label for="pf-resp">Responsable</label><input class="pend-inp" id="pf-resp" list="pend-contratas" value="'+rdEsc2(p.responsable||'')+'" onchange="rdPendCampo('+p.id+',\'responsable\',this.value)"></div>'
       + '<div class="p2-f"><label for="pf-area">Zona</label><input class="pend-inp" id="pf-area" list="pend-zonas-dl" value="'+rdEsc2(p.categoria||'')+'" onchange="rdPendCampo('+p.id+',\'categoria\',this.value)"></div>'
+      + '<div class="p2-f full"><label for="pf-com">Plan de acción</label><textarea class="pend-inp" id="pf-com" rows="3" placeholder="Qué se va a hacer para levantarla" onchange="rdPendComentario('+p.id+',this.value)">'+rdEsc2(par.com)+'</textarea></div>'
       + '<div class="p2-f"><span class="p2-lbl">Impacto</span><div class="p2-seg3">'+['alto','medio','bajo'].map(k=>'<button type="button" class="'+((p.impacto||'medio')===k?'on':'')+'" onclick="rdPendCampo('+p.id+',\'impacto\',\''+k+'\')">'+k[0].toUpperCase()+k.slice(1)+'</button>').join('')+'</div></div>'
       + '<div class="p2-f"><label for="pf-causa">Causa</label><select class="pend-inp" id="pf-causa" onchange="rdPendCampo('+p.id+',\'causa\',this.value)">'
         + PEND_CAUSAS.map(c=>'<option'+((p.causa||'Por definir')===c?' selected':'')+'>'+c+'</option>').join('')+'</select></div>'
@@ -11469,8 +11468,8 @@ async function rdPendComentario(id, texto){
   const par=rdPendParse(p.descripcion);
   if(par.com===texto.trim()) return;
   const nueva=[texto.trim()].concat(par.chips.map(c=>c[2])).filter(Boolean).join(' · ');
-  if(await rdPendGuardar([id], {descripcion:nueva||null}, 'Comentario editado', {undoTexto:'Comentario restaurado'}))
-    rdPendToastUndo('Comentario guardado');
+  if(await rdPendGuardar([id], {descripcion:nueva||null}, 'Plan de acción editado', {undoTexto:'Plan de acción restaurado'}))
+    rdPendToastUndo('Plan de acción guardado');
 }
 async function rdPendTogCampo(id, campo){
   const p=rdPendList.find(x=>x.id===id); if(!p) return;
@@ -12096,7 +12095,7 @@ async function rdPendInforme(){
 function rdPendExcelWb(){
   if(!window.XLSX) return null;
   const r=rdPendResumen();
-  const filas=[['ÁREA','OBSERVACIÓN','ESTADO','FECHA OBJETIVO','RESPONSABLE','IMPACTO','¿BLOQUEA?','COMENTARIO','ORIGEN']];
+  const filas=[['ÁREA','OBSERVACIÓN','ESTADO','FECHA OBJETIVO','RESPONSABLE','IMPACTO','¿BLOQUEA?','PLAN DE ACCIÓN','ORIGEN']];
   rdPendList.slice().sort((a,b)=>{
     const oa=rdPendFuera(a)?1:0, ob=rdPendFuera(b)?1:0;
     if(oa!==ob) return oa-ob;
@@ -13041,7 +13040,7 @@ function rdPendEstilos2(){
 // Orden = preferencia: el primer alias de cada lista pesa más que el último.
 const PEND_ALIAS = {
   titulo:        ['titulo','descripcion de la observacion','descripcion del pendiente','observacion','hallazgo','nombre de tarea','actividad','pendiente','asunto','punto','descripcion corta','detalle corto'],
-  descripcion:   ['observaciones comentarios','comentarios','comentario','detalle','descripcion del problema','descripcion','observaciones','observacion','nota','notas'],
+  descripcion:   ['plan de accion','acciones a tomar','accion correctiva','observaciones comentarios','comentarios','comentario','detalle','descripcion del problema','descripcion','observaciones','observacion','nota','notas'],
   tipo:          ['tipo','tipo de pendiente','tipo de observacion','tipo observacion','tipo de registro'],
   categoria:     ['area','ambiente','sector','especialidad','disciplina','categoria','sistema','frente','rubro','partida'],
   responsable:   ['responsable','responsable 01','encargado','asignado a','asignado','ejecuta','a cargo','contratista','contrata','empresa'],
