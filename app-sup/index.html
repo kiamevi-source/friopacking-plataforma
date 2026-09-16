@@ -11048,8 +11048,83 @@ async function rdPendLoad(){
   rdPendAviso();
   rdPendCargarContratas();
 }
-// La zona se compara sin mayúsculas, tildes ni espacios de más: «SADEMA» y «Sadema» son la misma.
-function rdZonaKey(z){ return String(z||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
+// La zona se compara sin mayúsculas, tildes, puntuación, «y/de/la» ni ceros a la izquierda:
+// «Tunel 1,2,3 y 4», «TUNEL 1,2,3,4» y «túnel 01,02,03, 04» son la misma zona.
+function rdZonaKey(z){
+  return String(z||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()
+    .replace(/[^a-z0-9]+/g,' ').split(' ').filter(w=>w && !/^(y|e|de|del|la|las|el|los|en)$/.test(w))
+    .map(w=>w.replace(/^0+(\d)/,'$1')).join(' ');
+}
+// Textos que vienen TODO EN MAYÚSCULAS se pasan a minúsculas con mayúscula inicial
+// (en zonas, cada palabra). Siglas, códigos con números y palabras sin vocales se respetan.
+const PEND_SIGLAS=new Set(['NH3','CO2','PPT','SENASA','SADEMA','TMP','PVC','HVAC','CCTV','UPS','PLC','VFD','IIAR','GLP','EPP','FPK','SSOMA','IGV','RUC','SAC','EIRL','PRY','LED','II','III','IV','OK','SS','AC','DC']);
+function rdTextoEnMayus(s){
+  const l=String(s||'').replace(/[^A-Za-zÁÉÍÓÚÑÜáéíóúñü]/g,'');
+  if(l.length<4) return false;
+  return l.replace(/[^A-ZÁÉÍÓÚÑÜ]/g,'').length/l.length>=0.8;
+}
+function rdTextoOrdenado(s, esZona){
+  if(!s || !rdTextoEnMayus(s)) return s;
+  const menores=/^(y|e|o|u|de|del|la|las|el|los|en|a|al|con|por|para|sin|un|una)$/;
+  // Una «zona» larga en realidad es una frase: va como frase, no con cada palabra en mayúscula.
+  if(esZona && String(s).trim().split(/\s+/).length>4) esZona=false;
+  let primera=true;
+  return String(s).split(/(\s+)/).map(w=>{
+    if(!w || /^\s+$/.test(w)) return w;
+    const limpio=w.replace(/[^A-Za-zÁÉÍÓÚÑÜáéíóúñü0-9]/g,'');
+    const conector=menores.test(limpio.toLowerCase());
+    let out;
+    if(limpio && !conector && (PEND_SIGLAS.has(limpio.toUpperCase()) || /\d/.test(limpio) || (limpio.length>=2 && limpio.length<=4 && !/[AEIOUÁÉÍÓÚaeiouáéíóú]/.test(limpio)))) out=w;
+    else {
+      const low=w.toLowerCase();
+      const mayus=primera || (esZona && !menores.test(low.replace(/[^a-záéíóúñü]/g,'')));
+      out=mayus ? low.replace(/[a-záéíóúñü]/, c=>c.toUpperCase()) : low;
+    }
+    if(limpio) primera=false;
+    return out;
+  }).join('');
+}
+// Parecido entre dos textos (0 a 1): lo mejor entre pares de letras y palabras en común.
+function rdSimNorm(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
+function rdSimil(a,b){
+  const A=rdSimNorm(a), B=rdSimNorm(b); if(!A || !B) return 0; if(A===B) return 1;
+  const pares=t=>{ const m=new Map(), x=t.replace(/ /g,''); for(let i=0;i<x.length-1;i++){ const k=x.substr(i,2); m.set(k,(m.get(k)||0)+1); } return m; };
+  const ma=pares(A), mb=pares(B); let comun=0, na=0, nb=0;
+  ma.forEach(v=>na+=v); mb.forEach(v=>nb+=v); ma.forEach((v,k)=>{ if(mb.has(k)) comun+=Math.min(v,mb.get(k)); });
+  const dice=(na+nb)?2*comun/(na+nb):0;
+  const vacias=/^(de|del|la|las|el|los|en|y|e|o|a|al|con|por|para|se|que|un|una|no|sin|su|sus|lo|le)$/;
+  const pal=t=>new Set(t.split(' ').filter(w=>(w.length>1 || /\d/.test(w)) && !vacias.test(w)));
+  const pa=pal(A), pb=pal(B); let pc=0; pa.forEach(w=>{ if(pb.has(w)) pc++; });
+  const jac=(pa.size+pb.size-pc)?pc/(pa.size+pb.size-pc):0;
+  return Math.max(dice, jac);
+}
+// ¿Hablan de lo mismo? Muy parecidas en cualquier zona, o bastante parecidas en la misma zona.
+// Dos zonas son la misma si su clave coincide, o si difieren solo por una errata y llevan los mismos números
+// («Tunele 1,2,3 y 4» = «Tunel 1,2,3 y 4», pero «Tunel 4» ≠ «Tunel 1,2,3 y 4»).
+function rdZonaIgual(a, b){
+  const ka=rdZonaKey(a), kb=rdZonaKey(b);
+  if(ka===kb) return true;
+  if(!ka || !kb) return false;
+  const nums=k=>(k.match(/\d+/g)||[]).join(',');
+  return nums(ka)===nums(kb) && rdSimil(ka,kb)>=0.8;
+}
+// ¿Hablan de lo mismo? En la misma zona basta con que se parezcan; en zonas distintas
+// «falta siliconear» puede repetirse con razón, así que solo cuenta si es casi idéntica y larga.
+function rdPendMismaObs(a, b){
+  const sc=rdSimil(a.titulo, b.titulo);
+  if(!a.categoria || !b.categoria) return sc>=0.86 ? sc : 0;
+  if(rdZonaIgual(a.categoria, b.categoria)) return sc>=0.72 ? sc : 0;
+  const palabras=rdSimNorm(a.titulo).split(' ').filter(w=>w.length>2).length;
+  return (sc>=0.95 && palabras>=6) ? sc : 0;
+}
+// A qué zona existente corresponde un nombre (misma clave, o casi igual por una errata).
+function rdZonaExistente(nombre, conocidas){
+  const k=rdZonaKey(nombre); if(!k) return null;
+  let mejor=null, sc=0;
+  for(const z of conocidas){ if(rdZonaKey(z)===k) return z; }
+  for(const z of conocidas){ if(rdZonaIgual(z, nombre)) return z; }
+  return null;
+}
 function rdPendFiltrada(sinZona){
   const v=PEND_VISTAS.find(x=>x.k===rdPendView)||PEND_VISTAS[0], q=rdPendQ.trim().toLowerCase(), za=rdZonaKey(rdPendFArea);
   const out=rdPendList.filter(p=> v.f(p)
@@ -11195,7 +11270,7 @@ function rdPendListaHTML(){
   rows.forEach(p=>{
     if(rdPendGroup==='area'){
       const z=p.categoria||'Sin zona';
-      if(rdZonaKey(z)!==rdZonaKey(zonaPrev)){ h+='<div class="p2-grp"><div>'+rdEsc2(z)+'</div></div>'; zonaPrev=z; }
+      if(rdZonaKey(z)!==rdZonaKey(zonaPrev)){ h+='<div class="p2-grp"><div>'+rdEsc2(rdTextoOrdenado(z,true))+'</div></div>'; zonaPrev=z; }
     }
     h+=rdPendCard(p);
   });
@@ -11225,8 +11300,8 @@ function rdPendCard(p){
   return '<div class="p3-row'+(rdPendOpen===p.id?' is-open':'')+(rdPendFlash===p.id?' flash':'')+(rdPendFuera(p)?' done':'')+'" data-id="'+p.id+'" onclick="rdPendAbrir('+p.id+')">'
     + '<input type="checkbox" class="p2-chk" id="pend-sel-'+p.id+'"'+(rdPendSel.has(p.id)?' checked':'')+' onclick="event.stopPropagation()" onchange="rdPendSelTog('+p.id+',this.checked)" aria-label="Seleccionar">'
     + '<button class="p3-pill-s s-'+pill.k+'" type="button" onclick="event.stopPropagation();rdPendPopEstado(this,'+p.id+')">'+pill.t+'</button>'
-    + '<span class="p3-t">'+rdEsc2(p.titulo)+'</span>'
-    + '<span class="p3-z">'+(p.restriccion?'<i class="p3-restr" title="Genera restricción"></i>':'')+rdEsc2(p.categoria||'Sin zona')+(p.estado==='por_validar'&&p.aviso_contrata_at?' · <b class="p3-aviso">avisó '+rdEsc2(p.responsable||'la contratista')+'</b>':'')+'</span>'
+    + '<span class="p3-t">'+rdEsc2(rdTextoOrdenado(p.titulo))+'</span>'
+    + '<span class="p3-z">'+(p.restriccion?'<i class="p3-restr" title="Genera restricción"></i>':'')+rdEsc2(rdTextoOrdenado(p.categoria,true)||'Sin zona')+(p.estado==='por_validar'&&p.aviso_contrata_at?' · <b class="p3-aviso">avisó '+rdEsc2(p.responsable||'la contratista')+'</b>':'')+'</span>'
     + '<button class="p3-due '+dt.c+'" type="button" onclick="event.stopPropagation();rdPendPopFecha(this,'+p.id+')" title="Reprogramar">'
       + '<b>'+(p.fecha_objetivo?rdPendFechaLarga(p.fecha_objetivo):'—')+'</b><small>'+dt.t+'</small></button>'
     + '<i data-lucide="chevron-right" class="ri p3-chev"></i>'
@@ -11265,11 +11340,11 @@ function rdPendFichaHTML(){
       + '<button class="p3-nav" type="button" '+(prev?'onclick="rdPendAbrir('+prev+')"':'disabled')+' aria-label="Anterior"><i data-lucide="chevron-left" class="ri"></i></button>'
       + '<button class="p3-nav" type="button" '+(next?'onclick="rdPendAbrir('+next+')"':'disabled')+' aria-label="Siguiente"><i data-lucide="chevron-right" class="ri"></i></button>'
       + '<button class="p3-nav ghost" type="button" onclick="rdPendCerrarFicha()" aria-label="Cerrar"><i data-lucide="x" class="ri"></i></button></div>'
-    + '<h3 class="p3-ft'+(String(p.titulo||'').length>80?' long':'')+'">'+rdEsc2(p.titulo)+'</h3>'
+    + '<h3 class="p3-ft'+(String(p.titulo||'').length>80?' long':'')+'">'+rdEsc2(rdTextoOrdenado(p.titulo))+'</h3>'
     + (p.postventa?'<span class="p2-hint">Pasó a postventa al cerrarse la obra.</span>':'')
     + '<div class="p3-tiles">'
       + tile('<i data-lucide="clipboard-list" class="ri"></i>','Obra',rdEsc2((currentProyecto&&currentProyecto.nombre)||'—'))
-      + tile('<i data-lucide="map-pin" class="ri"></i>','Zona',rdEsc2(p.categoria||'Sin zona'),'','rdPendPopTexto(this,'+p.id+',\'categoria\')')
+      + tile('<i data-lucide="map-pin" class="ri"></i>','Zona',rdEsc2(rdTextoOrdenado(p.categoria,true)||'Sin zona'),'','rdPendPopTexto(this,'+p.id+',\'categoria\')')
       + tile('<span class="p3-av">'+rdPendIniciales(p.responsable)+'</span>','Responsable',rdEsc2(p.responsable||'Sin asignar'),'','rdPendPopTexto(this,'+p.id+',\'responsable\')')
       + tile('<i data-lucide="calendar" class="ri"></i>','Fecha objetivo',p.fecha_objetivo?rdPendFechaLarga(p.fecha_objetivo):'Sin fecha','<em class="'+dt.c+'">'+(rdPendAbierto(p)&&d!==null&&d<0?'hace ':'')+dt.t+'</em>','rdPendPopFecha(this,'+p.id+')')
     + '</div>'
@@ -11319,6 +11394,117 @@ function rdPendFichaHTML(){
   return h;
 }
 
+/* ══ Ordenar lo ya cargado: zonas repetidas, textos en mayúsculas y observaciones duplicadas ══
+   Nada se borra: las duplicadas pasan a «No aplica» con la referencia a la que se queda.
+   Todo se aplica de una vez, queda en el historial y se puede deshacer. */
+let rdOrden=null;
+function rdPendOrdenarCalcular(){
+  const vivas=rdPendList;
+  // Zonas: grupos por clave; se juntan también las casi iguales (erratas).
+  const grupos=[];
+  vivas.forEach(p=>{
+    if(!p.categoria) return;
+    const k=rdZonaKey(p.categoria);
+    let g=grupos.find(x=>x.k===k) || grupos.find(x=>rdZonaIgual(x.k,k));
+    if(!g){ g={k, nombres:new Map(), ids:[]}; grupos.push(g); }
+    g.nombres.set(p.categoria,(g.nombres.get(p.categoria)||0)+1); g.ids.push(p.id);
+  });
+  const zonas=grupos.map(g=>{
+    const variantes=[...g.nombres.entries()].sort((a,b)=>b[1]-a[1]);
+    // Se queda la forma más usada (o la de la zona con QR), con el texto ordenado.
+    const regNombre=(rdZonas||[]).map(z=>z.nombre).find(n=>rdZonaIgual(n,g.k));
+    const base=regNombre || variantes[0][0];
+    return {variantes, nombre:rdTextoOrdenado(base,true), ids:g.ids, aplicar:true, regNombre};
+  }).filter(z=>z.variantes.length>1 || z.variantes[0][0]!==z.nombre);
+  const titulos=vivas.filter(p=>rdTextoEnMayus(p.titulo)).map(p=>({id:p.id, antes:p.titulo, despues:rdTextoOrdenado(p.titulo)})).filter(x=>x.antes!==x.despues);
+  // Duplicadas: se queda la más avanzada (o la más antigua); la otra pasa a «No aplica».
+  const rango={cerrada:4, por_validar:3, en_proceso:2, abierta:1, no_aplica:0};
+  const dups=[], usadas=new Set();
+  const activas=vivas.filter(p=>p.estado!=='no_aplica');
+  for(let i=0;i<activas.length;i++){
+    for(let j=i+1;j<activas.length;j++){
+      const a=activas[i], b=activas[j];
+      if(usadas.has(a.id)||usadas.has(b.id)) continue;
+      const sc=rdPendMismaObs(a,b); if(!sc) continue;
+      let queda=a, sale=b;
+      if((rango[b.estado]||0)>(rango[a.estado]||0) || ((rango[b.estado]||0)===(rango[a.estado]||0) && String(b.created_at)<String(a.created_at))){ queda=b; sale=a; }
+      dups.push({queda, sale, sc, aplicar:sc>=0.97 && rdZonaKey(a.categoria)===rdZonaKey(b.categoria)}); usadas.add(sale.id);
+    }
+  }
+  return {zonas, titulos, aplicarTitulos:true, dups};
+}
+function rdPendOrdenarAbrir(){
+  if(!rdPendList.length){ showToast('No hay observaciones en esta obra'); return; }
+  rdOrden=rdPendOrdenarCalcular();
+  rdPendOrdenarPintar();
+}
+function rdPendOrdenarPintar(){
+  const O=rdOrden; if(!O) return;
+  let box=document.getElementById('pend-orden-modal');
+  if(!box){ box=document.createElement('div'); box.id='pend-orden-modal'; document.body.appendChild(box); }
+  const nZ=O.zonas.filter(z=>z.aplicar).reduce((a,z)=>a+z.ids.length,0), nT=O.aplicarTitulos?O.titulos.length:0, nD=O.dups.filter(d=>d.aplicar).length;
+  const nada=!O.zonas.length && !O.titulos.length && !O.dups.length;
+  box.className='on';
+  box.innerHTML='<div class="pend-modal-bg" onclick="rdPendOrdenarCerrar()"></div><div class="pend-modal wide">'
+    + '<div class="pend-modal-hd"><i data-lucide="wand-sparkles" class="ri"></i><div><h4>Ordenar zonas y textos</h4>'
+    + '<p>'+rdEsc2((currentProyecto&&currentProyecto.nombre)||'')+' · '+rdPendList.length+' observaciones</p></div></div>'
+    + '<div class="pend-modal-bd">'
+    + (nada?'<p class="pend-modal-p">Todo está ordenado: no hay zonas repetidas, textos en mayúsculas ni observaciones duplicadas.</p>':'')
+    + (O.zonas.length?('<div class="pend-imp-cols"><h5>Zonas escritas de varias formas ('+O.zonas.length+')</h5>'
+        + '<div class="p4-orden">'+O.zonas.map((z,i)=>'<div class="p4-or">'
+          + '<input type="checkbox" '+(z.aplicar?'checked ':'')+'onchange="rdOrden.zonas['+i+'].aplicar=this.checked;rdPendOrdenarPintar()" aria-label="Unificar">'
+          + '<span class="p4-var">'+z.variantes.map(v=>'<i>'+rdEsc2(v[0])+' <small>'+v[1]+'</small></i>').join('')+'</span>'
+          + '<span class="p4-arrow">→</span>'
+          + '<input class="pend-inp" value="'+rdEsc2(z.nombre)+'" oninput="rdOrden.zonas['+i+'].nombre=this.value"></div>').join('')+'</div></div>'):'')
+    + (O.titulos.length?('<div class="pend-imp-cols"><h5>Títulos en mayúsculas ('+O.titulos.length+')</h5>'
+        + '<label class="p2-check" style="margin-bottom:8px"><input type="checkbox" '+(O.aplicarTitulos?'checked ':'')+'onchange="rdOrden.aplicarTitulos=this.checked;rdPendOrdenarPintar()"> Pasarlos a minúsculas con inicial mayúscula</label>'
+        + '<div class="p4-orden">'+O.titulos.slice(0,4).map(t=>'<div class="p4-ej"><s>'+rdEsc2(t.antes.slice(0,80))+'</s><span>'+rdEsc2(t.despues.slice(0,80))+'</span></div>').join('')
+        + (O.titulos.length>4?'<p class="p2-hint">y '+(O.titulos.length-4)+' más</p>':'')+'</div></div>'):'')
+    + (O.dups.length?('<div class="pend-imp-cols"><h5>Parecen la misma observación ('+O.dups.length+')</h5>'
+        + '<p class="pend-modal-p">Si la marcas, la repetida pasa a «No aplica» con la referencia a la que se queda. No se borra nada.</p>'
+        + '<div class="p4-dups">'+O.dups.map((d,i)=>'<label class="p4-dup"><input type="checkbox" '+(d.aplicar?'checked ':'')+'onchange="rdOrden.dups['+i+'].aplicar=this.checked;rdPendOrdenarPintar()">'
+          + '<span><b>#'+d.sale.id+' '+rdEsc2(rdTextoOrdenado(d.sale.titulo))+'</b><small>'+rdEsc2(rdTextoOrdenado(d.sale.categoria,true)||'Sin zona')+' · '+PEND_EST[d.sale.estado]+' · pasa a No aplica</small></span>'
+          + '<span class="p4-dup-eq">≈ '+Math.round(d.sc*100)+' %</span>'
+          + '<span><b>#'+d.queda.id+' '+rdEsc2(rdTextoOrdenado(d.queda.titulo))+'</b><small>'+rdEsc2(rdTextoOrdenado(d.queda.categoria,true)||'Sin zona')+' · '+PEND_EST[d.queda.estado]+' · se queda</small></span>'
+          + '<em>Marcar como repetida</em></label>').join('')+'</div></div>'):'')
+    + '</div>'
+    + '<div class="pend-modal-ft"><button class="pend-act" onclick="rdPendOrdenarCerrar()">'+(nada?'Cerrar':'Cancelar')+'</button>'
+    + (nada?'':'<button class="pend-act primary" id="pend-orden-go" onclick="rdPendOrdenarAplicar()"'+((nZ||nT||nD)?'':' disabled')+'><i data-lucide="check" class="ri"></i>Aplicar'
+      + ' ('+[nZ?nZ+' en zonas':'', nT?nT+' títulos':'', nD?nD+' repetidas':''].filter(Boolean).join(' · ')+')</button>')
+    + '</div></div>';
+  if(window.lucide) lucide.createIcons();
+}
+function rdPendOrdenarCerrar(){ const b=document.getElementById('pend-orden-modal'); if(b){ b.className=''; b.innerHTML=''; } rdOrden=null; }
+async function rdPendOrdenarAplicar(){
+  const O=rdOrden; if(!O) return;
+  const cambios=new Map(), textos=new Map();
+  const poner=(id,campo,val,txt)=>{ if(!cambios.has(id)){ cambios.set(id,{}); textos.set(id,[]); } cambios.get(id)[campo]=val; textos.get(id).push(txt); };
+  O.zonas.filter(z=>z.aplicar && (z.nombre||'').trim()).forEach(z=>z.ids.forEach(id=>{
+    const p=rdPendList.find(x=>x.id===id); const nuevo=z.nombre.replace(/\s+/g,' ').trim();
+    if(p && p.categoria!==nuevo) poner(id,'categoria',nuevo,'Zona unificada: '+p.categoria+' → '+nuevo);
+  }));
+  if(O.aplicarTitulos) O.titulos.forEach(t=>poner(t.id,'titulo',t.despues,'Título ordenado (mayúsculas)'));
+  O.dups.filter(d=>d.aplicar).forEach(d=>{
+    poner(d.sale.id,'estado','no_aplica','Repetida de #'+d.queda.id+': pasa a No aplica');
+    const par=rdPendParse(d.sale.descripcion);
+    poner(d.sale.id,'descripcion',['Repetida de #'+d.queda.id+(par.com?' · '+par.com:'')].concat(par.chips.map(c=>c[2])).join(' · '),'');
+  });
+  const ids=[...cambios.keys()];
+  if(!ids.length){ rdPendOrdenarCerrar(); return; }
+  const btn=document.getElementById('pend-orden-go'); if(btn){ btn.disabled=true; btn.textContent='Aplicando…'; }
+  const ok=await rdPendGuardar(ids, p=>cambios.get(p.id), p=>textos.get(p.id).filter(Boolean).join(' · '), {undoTexto:'Orden deshecho'});
+  // Las zonas con QR toman el nombre unificado (el QR impreso sigue sirviendo: lleva el id).
+  for(const z of O.zonas.filter(z=>z.aplicar && z.regNombre)){
+    const reg=(rdZonas||[]).find(x=>x.nombre===z.regNombre); const nuevo=z.nombre.replace(/\s+/g,' ').trim();
+    if(reg && nuevo && reg.nombre!==nuevo){
+      try{ await sbFetch('/rest/v1/obra_zonas?id=eq.'+reg.id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({nombre:nuevo})}); reg.nombre=nuevo; }
+      catch(e){ console.warn('zona QR', e); }
+    }
+  }
+  rdPendOrdenarCerrar();
+  if(ok){ rdPendModo=null; rdPendRender(); rdPendToastUndo(ids.length+' observaciones ordenadas'); }
+}
+
 /* Resumen por zona: una tarjeta por zona con lo que falta levantar. */
 function rdPendZonasResumen(todas){
   const v=PEND_VISTAS.find(x=>x.k===rdPendView)||PEND_VISTAS[0];
@@ -11350,25 +11536,27 @@ function rdPendZonasHTML(){
   if(!rdPendList.length) return rdPendListaHTML();
   if(!zonas.length) return '<div class="pend-blank sm"><i data-lucide="filter" class="ri"></i><b>Nada con este filtro</b><span>Prueba con «Todas».</span></div>';
   const conPend=zonas.filter(z=>z.pend>0), sinPend=zonas.filter(z=>z.pend===0);
-  const card=z=>'<button type="button" class="p3-zc'+(z.urg?' hot':'')+(z.pend?'':' ok')+'" onclick="rdPendVerZona('+rdEsc2(JSON.stringify(z.nombre))+')">'
-    + '<span class="p3-zc-h"><b>'+rdEsc2(z.nombre)+'</b><i data-lucide="chevron-right" class="ri"></i></span>'
-    + '<span class="p3-zc-n">'+(z.pend?'<strong>'+z.pend+'</strong> por levantar':'<strong class="ok">✓</strong> Todo levantado')+'</span>'
-    + '<span class="p3-zc-s">'
-      + (z.urg?'<em class="urg">'+z.urg+' urgente'+(z.urg>1?'s':'')+'</em>':'')
-      + (z.validar?'<em>'+z.validar+' por validar</em>':'')
-      + (z.restr?'<em class="restr">'+z.restr+' restricción'+(z.restr>1?'es':'')+'</em>':'')
-      + (!z.urg&&!z.validar&&!z.restr&&z.prox?'<em>próxima: '+rdPendFechaLarga(z.prox)+'</em>':'')
-    + '</span>'
-    + '<span class="p3-zc-bar"><span class="p2-bar"><i style="width:'+z.pct+'%"></i></span><small>'+z.lev+'/'+(z.total-z.na)+'</small></span>'
-  + '</button>';
-  let h='<div class="p3-zgrid">'+conPend.map(card).join('')+'</div>';
+  const fila=z=>{
+    const nota=[z.validar?z.validar+' por validar':'', z.restr?z.restr+' restricción'+(z.restr>1?'es':''):''].filter(Boolean).join(' · ');
+    return '<button type="button" class="p4-zr'+(z.pend?'':' ok')+'" onclick="rdPendVerZona('+rdEsc2(JSON.stringify(z.nombre))+')">'
+      + '<span class="p4-zn"><b>'+rdEsc2(rdTextoOrdenado(z.nombre,true))+'</b>'+(nota?'<small>'+nota+'</small>':'')+'</span>'
+      + '<span class="p4-zc">'+(z.pend?'<b>'+z.pend+'</b><i> por levantar</i>':'<em>—</em>')+'</span>'
+      + '<span class="p4-zc">'+(z.urg?'<b class="urg">'+z.urg+'</b><i> urgente'+(z.urg>1?'s':'')+'</i>':'<em>—</em>')+'</span>'
+      + '<span class="p4-zb"><span class="p2-bar"><i style="width:'+z.pct+'%"></i></span><small>'+z.lev+' de '+(z.total-z.na)+'</small></span>'
+      + '<i data-lucide="chevron-right" class="ri p4-zv"></i>'
+    + '</button>';
+  };
+  const cab='<div class="p4-zh"><span>Zona</span><span>Por levantar</span><span>Urgentes</span><span>Levantadas</span><span></span></div>';
+  let h='<p class="p4-zres"><b>'+conPend.length+'</b> zona'+(conPend.length===1?'':'s')+' con pendientes'
+    + (sinPend.length?' · '+sinPend.length+' ya levantada'+(sinPend.length===1?'':'s'):'')
+    + (zonas.length>8?' · <button type="button" class="p4-link" onclick="rdPendOrdenarAbrir()">¿Zonas repetidas o textos en mayúsculas? Ordenar</button>':'')+'</p>';
+  h+='<div class="p4-zt">'+cab+(conPend.length?conPend.map(fila).join(''):'<div class="pend-blank sm"><b>Todo levantado</b></div>')+'</div>';
   if(sinPend.length){
     h+='<button type="button" class="p3-zmore" onclick="rdPendVerSinPend=!rdPendVerSinPend;rdPendRender()">'
-      + (rdPendVerSinPend?'Ocultar':'Ver')+' '+sinPend.length+' zona'+(sinPend.length>1?'s':'')+' sin pendientes'
+      + (rdPendVerSinPend?'Ocultar':'Ver')+' las '+sinPend.length+' zona'+(sinPend.length>1?'s':'')+' ya levantada'+(sinPend.length>1?'s':'')
       + '<i data-lucide="chevron-'+(rdPendVerSinPend?'up':'down')+'" class="ri"></i></button>';
-    if(rdPendVerSinPend) h+='<div class="p3-zgrid">'+sinPend.map(card).join('')+'</div>';
+    if(rdPendVerSinPend) h+='<div class="p4-zt">'+sinPend.map(fila).join('')+'</div>';
   }
-  if(zonas.length>8) h+='<p class="p2-hint" style="margin-top:14px">¿Zonas repetidas con otro nombre? Pasa a «Lista», marca las observaciones y usa «Cambiar zona» para unificarlas.</p>';
   return h;
 }
 function rdPendVerZona(nombre){ rdPendFArea=nombre; rdPendModo='lista'; rdPendOpen=null; rdPendRender(); const m=document.getElementById('rd-pend-mount'); if(m) m.scrollIntoView({block:'start',behavior:'smooth'}); }
@@ -11620,7 +11808,8 @@ function rdPendPopMas(anchor){
     ['file-signature','Acta de levantamiento', rdPendActaAbrir],
     ['file-text','Informe para el cliente', rdPendInforme],
     ['sheet','Exportar Excel', rdPendExportExcel],
-    ['map','Plano', ()=>rdPlanoAbrir(null)]
+    ['map','Plano', ()=>rdPlanoAbrir(null)],
+    ['wand-sparkles','Ordenar zonas y textos', rdPendOrdenarAbrir]
   ]);
 }
 function rdPendPopFicha(anchor, id){
@@ -12595,7 +12784,7 @@ async function rdZonaRenombrar(id){
   if((rdZonas||[]).some(x=>x.id!==id && x.nombre.toLowerCase()===nuevo.toLowerCase())){ showToast('Ya hay una zona con ese nombre'); return; }
   try{
     await sbFetch('/rest/v1/obra_zonas?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({nombre:nuevo})});
-    const afectadas=rdPendList.filter(p=>p.categoria===z.nombre).map(p=>p.id);
+    const afectadas=rdPendList.filter(p=>rdZonaKey(p.categoria)===rdZonaKey(z.nombre)).map(p=>p.id);
     if(afectadas.length) await rdPendGuardar(afectadas,{categoria:nuevo},'Zona renombrada: '+z.nombre+' → '+nuevo,{undoTexto:'Nombre anterior restaurado'});
     if(rdPendZona && rdPendZona.id===id){ rdPendZona.nombre=nuevo; rdPendFArea=nuevo; }
     await rdZonasCargar(true); rdZonasPintar(); rdPendRender();
@@ -12836,6 +13025,54 @@ function rdPendEstilos3(){
   .p3-zc-bar small{font-size:11.5px;color:var(--text-3);font-variant-numeric:tabular-nums;}
   .p3-zmore{display:flex;align-items:center;gap:6px;margin:14px auto 10px;border:0;background:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;}
   .p3-zmore .ri{width:15px;height:15px;}
+  /* Resumen por zona en filas (16-sep) */
+  .p4-zres{margin:14px 2px 10px;font-size:13px;color:var(--text-2);}
+  .p4-zres b{color:var(--navy-800);}
+  .p4-link{border:0;background:none;padding:0;font-family:inherit;font-size:13px;font-weight:600;color:var(--teal-700);cursor:pointer;text-decoration:underline;text-underline-offset:3px;}
+  .p4-zt{border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden;}
+  .p4-zh,.p4-zr{display:grid;grid-template-columns:minmax(0,1fr) 120px 110px 170px 20px;align-items:center;gap:16px;padding:0 18px;}
+  .p4-zh{height:38px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--border);background:var(--surface-2);}
+  .p4-zr{width:100%;min-height:58px;border:0;border-top:1px solid var(--border);background:none;text-align:left;font-family:inherit;cursor:pointer;}
+  .p4-zh + .p4-zr, .p4-zt > .p4-zr:first-child{border-top:0;}
+  .p4-zr:hover{background:#f6f9fd;}
+  .p4-zn{min-width:0;}
+  .p4-zn b{display:block;font-size:14px;font-weight:600;color:var(--navy-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .p4-zn small{display:block;margin-top:2px;font-size:12px;color:var(--text-3);}
+  .p4-zc{font-size:14px;color:var(--text-2);font-variant-numeric:tabular-nums;}
+  .p4-zc b{font-weight:700;color:var(--navy-800);} .p4-zc b.urg{color:var(--danger);}
+  .p4-zc i{display:none;font-style:normal;}
+  .p4-zc em{font-style:normal;color:var(--text-3);}
+  .p4-zb{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;}
+  .p4-zb small{font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .p4-zv{width:16px;height:16px;color:var(--text-3);}
+  .p4-zr.ok .p4-zn b{color:var(--text-2);font-weight:500;}
+  @media(max-width:700px){
+    .p4-zh{display:none;}
+    .p4-zr{grid-template-columns:minmax(0,1fr) auto 16px;grid-template-areas:"n c v" "s u v";row-gap:2px;padding:10px 14px;}
+    .p4-zr .p4-zn{grid-area:n;} .p4-zr .p4-zc:nth-of-type(2){grid-area:c;text-align:right;} .p4-zr .p4-zc:nth-of-type(3){grid-area:u;text-align:right;}
+    .p4-zr .p4-zb{grid-area:s;} .p4-zr .p4-zv{grid-area:v;}
+    .p4-zc i{display:inline;font-size:12px;color:var(--text-3);}
+    .p4-zc em{display:none;}
+  }
+  /* Repetidas y orden */
+  .p4-dups{display:flex;flex-direction:column;gap:8px;}
+  .p4-dup{display:grid;grid-template-columns:18px minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:12px;cursor:pointer;}
+  .p4-dup b{display:block;font-size:13px;font-weight:600;color:var(--navy-800);}
+  .p4-dup small{display:block;font-size:11.5px;color:var(--text-3);margin-top:2px;}
+  .p4-dup em{grid-column:2 / -1;font-style:normal;font-size:11.5px;color:var(--text-3);}
+  .p4-dup-eq{font-size:12px;font-weight:700;color:var(--warning);white-space:nowrap;}
+  .p4-dup input{width:16px;height:16px;accent-color:var(--navy-800);}
+  .p4-orden{display:flex;flex-direction:column;gap:8px;}
+  .p4-or{display:grid;grid-template-columns:18px minmax(0,1fr) auto minmax(160px,.7fr);gap:10px;align-items:center;}
+  .p4-or input[type=checkbox]{width:16px;height:16px;accent-color:var(--navy-800);}
+  .p4-var{display:flex;flex-wrap:wrap;gap:5px;}
+  .p4-var i{font-style:normal;font-size:12px;padding:3px 8px;border-radius:7px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);}
+  .p4-var small{color:var(--text-3);margin-left:3px;}
+  .p4-arrow{color:var(--text-3);}
+  .p4-ej{display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12.5px;}
+  .p4-ej s{color:var(--text-3);} .p4-ej span{color:var(--navy-800);}
+  #pend-orden-modal{display:none;} #pend-orden-modal.on{display:block;}
+  @media(max-width:700px){ .p4-dup{grid-template-columns:18px 1fr;} .p4-dup-eq{grid-column:2;} .p4-or{grid-template-columns:18px 1fr;} .p4-or .p4-arrow{display:none;} .p4-or input.pend-inp{grid-column:2;} .p4-ej{grid-template-columns:1fr;} }
   .acta-tipo{display:flex;width:100%;} .acta-tipo button{flex:1;justify-content:center;height:34px;font-size:13px;}
   .acta-grid{grid-template-columns:1fr 1fr;}
   .acta-firmantes{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
@@ -13389,7 +13626,7 @@ async function rdPendImpParse(file){
   const tipoArchivo=/punch/.test(contexto)?'punch':(/restric/.test(contexto)?'restriccion':null);
 
   const cod=rdPendCod();
-  const clave=(t,c)=>rdPendNorm(t)+'|'+rdPendNorm(c);
+  const clave=(t,c)=>rdPendNorm(t)+'|'+rdZonaKey(c);
   const yaHay=new Map(rdPendList.map(p=>[clave(p.titulo,p.categoria), p]));
   const vistas=new Set();
   const salida=[], actualiza=[]; let enObra=0, repetidas=0, vacias=0;
@@ -13470,12 +13707,32 @@ async function rdPendImpParse(file){
     salida.push(row);
   }
 
-  rdPendImpData={nuevas:salida, actualiza, cod};
+  // Orden de textos: mayúsculas a frase, y cada zona al nombre que ya usa la obra (o el primero del archivo).
+  const zonasConocidas=[...new Set((rdZonas||[]).map(z=>z.nombre).concat(rdPendList.map(p=>p.categoria)).filter(Boolean))];
+  let textosOrdenados=0, zonasUnificadas=0;
+  salida.forEach(row=>{
+    const t0=row.titulo; row.titulo=rdTextoOrdenado(row.titulo); if(row.titulo!==t0) textosOrdenados++;
+    if(row.categoria){
+      const ex=rdZonaExistente(row.categoria, zonasConocidas);
+      if(ex){ if(ex!==row.categoria) zonasUnificadas++; row.categoria=ex; }
+      else { row.categoria=rdTextoOrdenado(row.categoria,true); zonasConocidas.push(row.categoria); }
+    }
+  });
+  // ¿Hablan de lo mismo que algo que ya está en la obra, o que otra fila del mismo archivo?
+  const parecidas=[];
+  salida.forEach((row,idx)=>{
+    let mejor=null, sc=0;
+    rdPendList.forEach(p=>{ const v=rdPendMismaObs(row,p); if(v>sc){ sc=v; mejor={id:p.id, titulo:p.titulo, categoria:p.categoria, estado:p.estado}; } });
+    for(let k=0;k<idx;k++){ const v=rdPendMismaObs(row,salida[k]); if(v>sc){ sc=v; mejor={fila:k, titulo:salida[k].titulo, categoria:salida[k].categoria}; } }
+    if(mejor) parecidas.push({idx, sc, con:mejor});
+  });
+
+  rdPendImpData={nuevas:salida, actualiza, cod, parecidas, omitir:new Set(parecidas.map(x=>x.idx))};
   const cols={}; Object.keys(map).forEach(c=>{ cols[c]=colLbl(map[c]); });
   rdPendImpModal({ archivo:file.name, hoja:mejor.nombre, filaEnc:hIdx+mejor.r0+1, cols,
     extras:extras.map(colLbl), tipoArchivo,
     avanceLbl:(avance!==undefined && map.estado===undefined)?colLbl(avance):null,
-    filas:salida, actualiza, dups:enObra+repetidas, vacias });
+    filas:salida, actualiza, dups:enObra+repetidas, vacias, parecidas, textosOrdenados, zonasUnificadas });
 }
 
 function rdPendImpModal(info){
@@ -13499,7 +13756,9 @@ function rdPendImpModal(info){
     return;
   }
 
-  const n=info.filas.length, nAct=(info.actualiza||[]).length;
+  const nPar=(info.parecidas||[]).length;
+  const omitir=(rdPendImpData&&rdPendImpData.omitir)||new Set();
+  const n=info.filas.length-omitir.size, nAct=(info.actualiza||[]).length;
   const mapRows=Object.keys(PEND_CAMPO_LBL).map(c=>{
     const col=info.cols[c];
     let cel, off=false;
@@ -13511,7 +13770,7 @@ function rdPendImpModal(info){
   }).join('')
   + (info.extras.length?('<tr><td>A la descripción</td><td>'+rdEsc2(info.extras.join(' · '))+'</td></tr>'):'');
 
-  const prev=info.filas.slice(0,8).map(r=>'<tr>'
+  const prev=info.filas.filter((r,i)=>!omitir.has(i)).slice(0,8).map(r=>'<tr>'
     + '<td>'+(r.restriccion?'<span class="pend-tag t-restriccion">Restricción</span>':'<span class="pend-tag t-observacion">Observación</span>')+'</td>'
     + '<td class="ttl">'+rdEsc2(r.titulo)+'</td>'
     + '<td>'+rdEsc2(r.categoria||'—')+'</td>'
@@ -13528,8 +13787,23 @@ function rdPendImpModal(info){
         + '<div class="k ok"><b>'+n+'</b><span>listas para importar</span></div>'
         + '<div class="k'+(nAct?' ok':'')+'"><b>'+nAct+'</b><span>se actualizan</span></div>'
         + '<div class="k'+(info.dups?' warn':'')+'"><b>'+info.dups+'</b><span>ya estaban igual</span></div>'
+        + '<div class="k'+(nPar?' warn':'')+'"><b>'+nPar+'</b><span>parecen repetidas</span></div>'
         + '<div class="k'+(info.vacias?' warn':'')+'"><b>'+info.vacias+'</b><span>descartadas sin título</span></div>'
       + '</div>'
+      + (nPar?('<div class="pend-imp-cols"><h5>Parecen la misma observación ('+nPar+')</h5>'
+          + '<p class="pend-modal-p">No se importan, salvo que marques «Importar igual». Revísalas: puede ser la misma observación escrita distinto.</p>'
+          + '<div class="p4-dups">'+info.parecidas.map(x=>{
+              const r=info.filas[x.idx];
+              return '<label class="p4-dup"><input type="checkbox" '+(omitir.has(x.idx)?'':'checked ')+'onchange="rdPendImpForzar('+x.idx+',this.checked)">'
+                + '<span><b>'+rdEsc2(r.titulo)+'</b><small>'+rdEsc2(r.categoria||'Sin zona')+' · en el Excel</small></span>'
+                + '<span class="p4-dup-eq">≈ '+Math.round(x.sc*100)+' %</span>'
+                + '<span><b>'+rdEsc2(rdTextoOrdenado(x.con.titulo))+'</b><small>'+rdEsc2(rdTextoOrdenado(x.con.categoria,true)||'Sin zona')+' · '
+                  + (x.con.id?('ya está en la obra (#'+x.con.id+', '+(PEND_EST[x.con.estado]||x.con.estado)+')'):'otra fila del mismo Excel')+'</small></span>'
+                + '<em>Importar igual</em></label>';
+            }).join('')+'</div></div>'):'')
+      + ((info.textosOrdenados||info.zonasUnificadas)?('<p class="pend-modal-p">Ordené los textos: '
+          + [info.textosOrdenados?info.textosOrdenados+(info.textosOrdenados>1?' títulos en mayúsculas pasan':' título en mayúsculas pasa')+' a minúsculas con inicial mayúscula':'',
+             info.zonasUnificadas?info.zonasUnificadas+(info.zonasUnificadas>1?' zonas toman':' zona toma')+' el nombre que ya usa la obra':''].filter(Boolean).join(' y ')+'.</p>'):'')
       + '<div class="pend-imp-cols"><h5>Cómo leí tus columnas</h5>'
       + '<table class="pend-imp-map"><tbody>'+mapRows+'</tbody></table></div>'
       + ((n||nAct)?('<div class="pend-imp-cols"><h5>Primeras '+Math.min(8,n)+' de '+n+'</h5>'
@@ -13545,13 +13819,24 @@ function rdPendImpModal(info){
   box.classList.add('on');
   if(window.lucide) lucide.createIcons();
 }
+function rdPendImpForzar(idx, importar){
+  if(!rdPendImpData || !rdPendImpData.omitir) return;
+  if(importar) rdPendImpData.omitir.delete(idx); else rdPendImpData.omitir.add(idx);
+  const btn=document.getElementById('pend-imp-go');
+  const n=rdPendImpData.nuevas.length-rdPendImpData.omitir.size, nAct=(rdPendImpData.actualiza||[]).length;
+  const k=document.querySelector('#pend-imp-modal .pend-imp-kpis .k b'); if(k) k.textContent=n;
+  if(btn) btn.innerHTML='<i data-lucide="upload" class="ri"></i>'+(n?('Importar '+n):'')+(n&&nAct?' y ':'')+(nAct?('actualizar '+nAct):'')+((n||nAct)?'':'Nada que importar');
+  if(btn) btn.disabled=!(n||nAct);
+  if(window.lucide) lucide.createIcons();
+}
 function rdPendImpClose(){
   const box=document.getElementById('pend-imp-modal');
   if(box){ box.classList.remove('on'); box.innerHTML=''; }
   rdPendImpData=null;
 }
 async function rdPendImpConfirm(){
-  const datos=rdPendImpData||{}; const filas=datos.nuevas||[], actualiza=datos.actualiza||[];
+  const datos=rdPendImpData||{}; const omitir=datos.omitir||new Set();
+  const filas=(datos.nuevas||[]).filter((r,i)=>!omitir.has(i)), actualiza=datos.actualiza||[];
   if(!filas.length && !actualiza.length){ rdPendImpClose(); return; }
   if(rdPendErr || datos.cod!==rdPendCod()){ rdPendImpClose(); showToast('La obra cambió o no cargó: vuelve a subir el archivo',4000); return; }
   const btn=document.getElementById('pend-imp-go');

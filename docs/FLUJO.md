@@ -143,6 +143,15 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   están, en vez de duplicarlas. Valores guardados: tipo `restriccion` /
   `punch` / `observacion`, impacto `alto` / `medio` / `bajo`, estado
   `abierta` / `en_proceso` / `por_validar` / `cerrada` / `no_aplica`.
+- **Repetidas y textos ordenados.** Al importar, cada fila nueva se compara con
+  lo que ya tiene la obra y con las otras filas del archivo: si habla de lo mismo
+  (títulos muy parecidos, o parecidos en la misma zona) no se importa salvo que
+  el supervisor marque «Importar igual». Los textos en MAYÚSCULAS pasan a
+  minúsculas con inicial mayúscula (respetando siglas) y la zona toma el nombre
+  que ya usa la obra. Para lo ya cargado está «Ordenar zonas y textos» (menú ⋯):
+  unifica zonas escritas distinto (también la zona con QR), ordena mayúsculas y
+  pasa las repetidas a «No aplica» con referencia a la que se queda; no borra y
+  se puede deshacer.
 - **Modo recorrido.** Para registrar caminando la obra: se dicta por voz (motor
   del navegador, es-PE) o se escribe, se elige área, tipo e impacto, y cada una
   se guarda con `origen = 'recorrido'` y fecha objetivo según el impacto
