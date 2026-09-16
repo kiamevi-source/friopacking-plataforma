@@ -93,8 +93,11 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   punch list y observaciones viven en `pendientes` de la instancia Supervisor.
   **Todo es una observación**: ya no hay tres tipos. Las que impiden avanzar se
   marcan con `restriccion = true` (casilla «Genera restricción» en el alta, en
-  el recorrido y en la ficha, con filtro propio en la barra); «punch list» pasó
-  a ser el origen, no un tipo. El ciclo es Abierta → En proceso → Por validar →
+  el recorrido y en la ficha, con su filtro en «Filtros»); «punch list» pasó
+  a ser el origen, no un tipo. La pantalla abre con un resumen por zona (una
+  tarjeta por zona con lo que falta levantar); las zonas se agrupan sin
+  distinguir mayúsculas, tildes ni espacios, y se unifican en lote con
+  «Cambiar zona». El ciclo es Abierta → En proceso → Por validar →
   Cerrada, más «No aplica»;
   el paso a Cerrada lo da el supervisor como conformidad y queda firmado en
   `validado_por`. «No aplica» sale del % levantado. Una observación se marca

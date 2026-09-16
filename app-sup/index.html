@@ -10912,17 +10912,19 @@ const PEND_PLAZO={alto:2,medio:7,bajo:15};
 const PEND_MOTIVOS=['Falta material','Coordinación con el cliente','Parada de planta','Depende de otro trabajo','Espera de cotización','Otro'];
 const PEND_CAUSAS=['Por definir','Diseño','Fabricación del equipo','Instalación de la contrata','Instalación propia','Daño del cliente'];
 const PEND_VISTAS=[
-  {k:'hoy',     l:'Para hoy',        f:p=>rdPendAbierto(p) && (rdPendUrgente(p) || (p.fecha_objetivo && rdPendDias(p.fecha_objetivo)<=0)), hot:true},
-  {k:'semana',  l:'Próximos 7 días', f:p=>rdPendAbierto(p) && !rdPendUrgente(p) && p.fecha_objetivo && rdPendDias(p.fecha_objetivo)>0 && rdPendDias(p.fecha_objetivo)<=7},
-  {k:'sinfecha',l:'Sin fecha',       f:p=>rdPendAbierto(p) && !p.fecha_objetivo},
-  {k:'validar', l:'Por validar',     f:p=>p.estado==='por_validar'},
-  {k:'todas',   l:'Todas',           f:()=>true}
+  {k:'todas',       l:'Todas',       f:()=>true},
+  {k:'urg',         l:'Urgentes',    f:p=>rdPendUrgente(p), hot:true},
+  {k:'abierta',     l:'Abiertas',    f:p=>p.estado==='abierta' && !rdPendUrgente(p)},
+  {k:'en_proceso',  l:'En proceso',  f:p=>p.estado==='en_proceso' && !rdPendUrgente(p)},
+  {k:'por_validar', l:'Por validar', f:p=>p.estado==='por_validar'},
+  {k:'cerrada',     l:'Cerradas',    f:p=>rdPendFuera(p)}
 ];
 const PEND_ORDEN=['Urgentes','Por validar · falta tu conformidad','Vencidas','Vencen hoy','Próximos 7 días','Más adelante','Sin fecha','Cerradas y no aplica'];
 
-let rdPendList=[], rdPendView='hoy', rdPendQ='', rdPendGroup='venc';
+let rdPendList=[], rdPendView='todas', rdPendQ='', rdPendGroup='venc', rdPendModo=null, rdPendTab='det', rdPendEdit=false, rdPendVerSinPend=false;
 let rdPendFArea='', rdPendFResp='', rdPendFImp='', rdPendFEst='', rdPendSoloRestr=false;
 let rdPendSel=new Set(), rdPendOpen=null, rdPendHist={}, rdPendFlash=null, rdPendUndo=null;
+let rdPendCargadaObra=null;
 let rdPendFormOn=false, rdPendImpOn=false, rdPendImpData=null;
 
 function rdPendCod(){ return (currentProyecto && (currentProyecto.cod || currentProyecto.nombre)) || ''; }
@@ -10982,19 +10984,27 @@ async function rdPendLoad(){
   try{ rdPendList=await sbFetch('/rest/v1/pendientes?cod_proyecto=eq.'+encodeURIComponent(cod)+'&order=created_at.desc')||[]; }
   catch(e){ rdPendList=[]; console.warn('pendientes load', e); }
   if(rdPendOpen && !rdPendList.some(p=>p.id===rdPendOpen)) rdPendOpen=null;
+  if(rdPendCargadaObra!==cod){ rdPendCargadaObra=cod; if(!rdPendZona){ rdPendModo=null; rdPendFArea=''; } rdPendSel.clear(); }
   rdPendRender();
   rdPendAviso();
   rdPendCargarContratas();
 }
-function rdPendFiltrada(){
-  const v=PEND_VISTAS.find(x=>x.k===rdPendView)||PEND_VISTAS[0], q=rdPendQ.trim().toLowerCase();
-  return rdPendList.filter(p=> v.f(p)
-    && (!rdPendFArea || p.categoria===rdPendFArea)
+// La zona se compara sin mayúsculas, tildes ni espacios de más: «SADEMA» y «Sadema» son la misma.
+function rdZonaKey(z){ return String(z||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
+function rdPendFiltrada(sinZona){
+  const v=PEND_VISTAS.find(x=>x.k===rdPendView)||PEND_VISTAS[0], q=rdPendQ.trim().toLowerCase(), za=rdZonaKey(rdPendFArea);
+  const out=rdPendList.filter(p=> v.f(p)
+    && (sinZona || !rdPendFArea || rdZonaKey(p.categoria)===za)
     && (!rdPendFResp || p.responsable===rdPendFResp)
     && (!rdPendFImp || p.impacto===rdPendFImp)
-    && (!rdPendFEst || p.estado===rdPendFEst)
     && (!rdPendSoloRestr || p.restriccion)
     && (!q || [p.titulo,p.descripcion,p.categoria,p.responsable].map(x=>(x||'').toLowerCase()).join(' ').indexOf(q)!==-1));
+  const rango=p=> rdPendFuera(p)?4 : rdPendUrgente(p)?0 : p.estado==='por_validar'?1 : !p.fecha_objetivo?3 : 2;
+  const dias=p=>{ const d=rdPendDias(p.fecha_objetivo); return d===null?99999:d; };
+  if(rdPendGroup==='recientes') out.sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+  else if(rdPendGroup==='area') out.sort((a,b)=>String(a.categoria||'~').localeCompare(String(b.categoria||'~'),'es') || rango(a)-rango(b) || dias(a)-dias(b));
+  else out.sort((a,b)=>rango(a)-rango(b) || dias(a)-dias(b));
+  return out;
 }
 function rdPendGrupo(p){
   if(rdPendGroup==='area') return p.categoria||'Sin área';
@@ -11012,57 +11022,55 @@ function rdPendGrupo(p){
 
 function rdPendRender(){
   const m=document.getElementById('rd-pend-mount'); if(!m) return;
-  rdPendEnsureStyles(); rdPendEstilos2();
+  rdPendEnsureStyles(); rdPendEstilos2(); rdPendEstilos3();
   const total=rdPendList.length;
   const na=rdPendList.filter(p=>p.estado==='no_aplica').length;
   const cerradas=rdPendList.filter(rdPendCerrada).length;
   const base=total-na;                                   // "No aplica" no cuenta en el %
   const pct=base?Math.round(cerradas*100/base):0;
-  const urgentes=rdPendList.filter(rdPendUrgente).length;
-  const hoy=rdPendList.filter(p=>rdPendAbierto(p)&&rdPendDias(p.fecha_objetivo)===0).length;
-  const validar=rdPendList.filter(p=>p.estado==='por_validar').length;
-  const sinFecha=rdPendList.filter(p=>rdPendAbierto(p)&&!p.fecha_objetivo).length;
+  if(rdPendModo===null) rdPendModo = (total>12 && rdPendZonasResumen(true).length>3 && !rdPendFArea) ? 'zonas' : 'lista';
+  if(rdPendFArea) rdPendModo='lista';
 
-  let h='<div class="pend-print" id="pend-print">';
-  h+='<div class="p2-top">'
-    + '<div class="p2-obra"><small>'+rdEsc2(rdPendCod())+' · Levantamiento de observaciones</small>'
-      + '<strong>'+rdEsc2((currentProyecto&&currentProyecto.nombre)||'Obra')+'</strong></div>'
-    + '<div class="p2-pulse">'
-      + '<div class="p2-lev"><div class="p2-lev-h"><span>Levantadas</span><b>'+cerradas+' de '+base+' · '+pct+' %</b></div>'
-        + '<div class="p2-bar"><i style="width:'+pct+'%"></i></div>'
-        + (na?'<small>'+na+' «No aplica» fuera del cálculo</small>':'')+'</div>'
-      + '<div class="p2-sig">'
-        + '<span class="'+(urgentes?'is-late':'')+'"><b>'+urgentes+'</b>urgentes</span>'
-        + '<span><b>'+hoy+'</b>vencen hoy</span>'
-        + '<span><b>'+validar+'</b>por validar</span>'
-        + '<span><b>'+sinFecha+'</b>sin fecha</span>'
-      + '</div>'
-    + '</div>'
-  + '</div>';
+  let h='<div class="pend-print p3" id="pend-print">';
+  h+='<div class="p3-head">'
+    + '<div class="p3-obra"><small>'+rdEsc2(rdPendCod())+'</small><strong>'+rdEsc2((currentProyecto&&currentProyecto.nombre)||'Obra')+'</strong></div>'
+    + '<div class="p3-prog" title="«No aplica» no cuenta"><span><b>'+cerradas+'</b> de '+base+' levantadas</span><div class="p2-bar"><i style="width:'+pct+'%"></i></div><em>'+pct+' %</em></div>'
+    + '<div class="p3-acts">'
+      + '<button class="pend-act primary" type="button" onclick="rdPendToggleForm()"><i data-lucide="'+(rdPendFormOn?'x':'plus')+'" class="ri"></i>'+(rdPendFormOn?'Cerrar':'Nueva')+'</button>'
+      + '<button class="pend-act" type="button" onclick="rdRecAbrir()"><i data-lucide="footprints" class="ri"></i><span class="p3-hide-s">Recorrido</span></button>'
+      + '<button class="pend-act p3-icon" type="button" onclick="rdPendPopMas(this)" aria-label="Más opciones"><i data-lucide="more-horizontal" class="ri"></i></button>'
+    + '</div></div>';
 
   h+=rdZonaBannerHTML();
 
-  h+='<nav class="p2-views">'+PEND_VISTAS.map(v=>{
+  h+='<div class="p3-pills-row"><nav class="p3-pills">'+PEND_VISTAS.map(v=>{
       const n=rdPendList.filter(v.f).length;
-      return '<button type="button" class="p2-view '+(rdPendView===v.k?'on ':'')+(v.hot&&n?'hot':'')+'" onclick="rdPendSetVista(\''+v.k+'\')">'+v.l+'<i>'+n+'</i></button>';
-    }).join('')+'</nav>';
+      return '<button type="button" class="p3-pill k-'+v.k+(rdPendView===v.k?' on':'')+'" onclick="rdPendSetVista(\''+v.k+'\')">'+v.l+'<i>'+n+'</i></button>';
+    }).join('')+'</nav>'
+    + '<div class="p3-view">'
+      + '<div class="p3-seg"><button type="button" class="'+(rdPendModo==='zonas'?'on':'')+'" onclick="rdPendSetModo(\'zonas\')"><i data-lucide="layout-grid" class="ri"></i>Por zona</button>'
+      + '<button type="button" class="'+(rdPendModo==='lista'?'on':'')+'" onclick="rdPendSetModo(\'lista\')"><i data-lucide="list" class="ri"></i>Lista</button></div>'
+      + (rdPendModo==='lista'?'<select class="p3-sort" onchange="rdPendSetGrupo(this.value)" aria-label="Ordenar">'
+        + [['venc','Ordenar: más atrasadas'],['recientes','Ordenar: más recientes'],['area','Ordenar: por zona']].map(g=>'<option value="'+g[0]+'"'+(rdPendGroup===g[0]?' selected':'')+'>'+g[1]+'</option>').join('')+'</select>':'')
+    + '</div></div>';
 
-  h+='<div class="p2-tools" id="p2-tools">'+rdPendToolsHTML()+'</div>';
+  h+='<div class="p3-tools" id="p2-tools">'+rdPendToolsHTML()+'</div>';
 
   if(rdPendFormOn){
     h+='<div class="pend-form">'
       + '<div class="row">'
-        + '<label class="p2-check"><input type="checkbox" id="pend-restriccion"> Genera restricción (bloquea el avance)</label>'
-        + '<select id="pend-impacto" class="pend-inp"><option value="alto">Impacto alto</option><option value="medio" selected>Impacto medio</option><option value="bajo">Impacto bajo</option></select>'
-        + '<input id="pend-titulo" class="pend-inp grow" placeholder="Título del pendiente" onkeydown="if(event.key===\'Enter\')rdPendAdd()">'
+        + '<input id="pend-titulo" class="pend-inp grow" placeholder="¿Qué observaste?" onkeydown="if(event.key===\'Enter\')rdPendAdd()">'
       + '</div>'
       + '<div class="row">'
-        + '<input id="pend-cat" class="pend-inp" list="pend-zonas-dl" placeholder="Área o zona (ej: SADEMA)" value="'+rdEsc2(rdPendZona?rdPendZona.nombre:'')+'">'
-        + '<input id="pend-resp" class="pend-inp" placeholder="Responsable">'
-        + '<input id="pend-fecha" type="date" class="pend-inp" title="Fecha objetivo">'
-        + '<button class="pend-act primary" onclick="rdPendAdd()"><i data-lucide="check" class="ri"></i>Agregar</button>'
+        + '<input id="pend-cat" class="pend-inp" list="pend-zonas-dl" placeholder="Zona (ej: SADEMA)" value="'+rdEsc2(rdPendZona?rdPendZona.nombre:(rdPendFArea||''))+'">'
+        + '<input id="pend-resp" class="pend-inp" list="pend-contratas-new" placeholder="Responsable">'
+        + '<input id="pend-fecha" type="date" class="pend-inp" title="Fecha objetivo (si la dejas vacía, sale del impacto)">'
+        + '<select id="pend-impacto" class="pend-inp"><option value="alto">Impacto alto</option><option value="medio" selected>Impacto medio</option><option value="bajo">Impacto bajo</option></select>'
       + '</div>'
-      + '<textarea id="pend-desc" class="pend-inp" rows="2" placeholder="Descripción / detalle (opcional)"></textarea>'
+      + '<div class="row"><textarea id="pend-desc" class="pend-inp grow" rows="2" placeholder="Detalle (opcional)"></textarea></div>'
+      + '<div class="row"><label class="p2-check"><input type="checkbox" id="pend-restriccion"> Genera restricción</label><span class="p2-sep"></span>'
+        + '<button class="pend-act primary" onclick="rdPendAdd()"><i data-lucide="check" class="ri"></i>Guardar</button></div>'
+      + '<datalist id="pend-contratas-new">'+(rdPendContratas||[]).map(c=>'<option value="'+rdEsc2(c)+'">').join('')+'</datalist>'
     + '</div>';
   }
   if(rdPendImpOn){
@@ -11078,10 +11086,13 @@ function rdPendRender(){
       + '<input type="file" id="pend-file" accept=".xlsx,.xls,.csv" onchange="rdPendImpFile(this)">'
     + '</label>';
   }
-
   h+='<datalist id="pend-zonas-dl">'+rdZonasNombres().map(z=>'<option value="'+rdEsc2(z)+'">').join('')+'</datalist>';
-  h+='<div class="p2-body"><div class="p2-list" id="p2-list">'+rdPendListaHTML()+'</div>'
-    + '<aside class="p2-drawer'+(rdPendOpen?' show':'')+'" id="p2-drawer">'+rdPendFichaHTML()+'</aside></div>';
+  if(rdPendModo==='zonas'){
+    h+='<div class="p3-zonas" id="p2-list">'+rdPendZonasHTML()+'</div>';
+  } else {
+    h+='<div class="p2-body p3-body"><div class="p2-list p3-list" id="p2-list">'+rdPendListaHTML()+'</div>'
+      + '<aside class="p2-drawer p3-drawer'+(rdPendOpen?' show':'')+'" id="p2-drawer">'+rdPendFichaHTML()+'</aside></div>';
+  }
   h+='</div>';
   m.innerHTML=h;
   if(window.lucide) lucide.createIcons();
@@ -11092,32 +11103,20 @@ function rdPendToolsHTML(){
     return '<div class="p2-bulk"><b>'+rdPendSel.size+' seleccionada'+(rdPendSel.size>1?'s':'')+'</b>'
       + '<button class="pend-act primary" type="button" onclick="rdPendPopFecha(this,null)">Reprogramar</button>'
       + '<button class="pend-act" type="button" onclick="rdPendPopEstado(this,null)">Cambiar estado</button>'
+      + '<button class="pend-act" type="button" onclick="rdPendPopZonaLote(this)">Cambiar zona</button>'
       + '<button class="pend-act" type="button" onclick="rdPendBulkUrg()">Quitar de urgentes</button>'
-      + '<button class="pend-act ghost" type="button" onclick="rdPendSelTodas()">Marcar las '+rdPendFiltrada().length+' de la vista</button>'
+      + '<button class="pend-act ghost" type="button" onclick="rdPendSelTodas()">Marcar las '+rdPendFiltrada().length+'</button>'
       + '<span class="p2-sep"></span>'
       + '<button class="pend-act ghost" type="button" onclick="rdPendSelLimpiar()">Quitar selección</button></div>';
   }
-  const uniq=(c)=>[...new Set(rdPendList.map(p=>p[c]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'es'));
-  const opt=(vals,sel)=>vals.map(v=>'<option value="'+rdEsc2(v)+'"'+(sel===v?' selected':'')+'>'+rdEsc2(v)+'</option>').join('');
-  return '<div class="pend-search"><i data-lucide="search" class="ri"></i><input id="pend-q" placeholder="Buscar…" value="'+rdEsc2(rdPendQ)+'" oninput="rdPendSetQ(this.value)"></div>'
-    + '<select class="p2-sel'+(rdPendFArea?' set':'')+'" onchange="rdPendSetFiltro(\'area\',this.value)" aria-label="Área"><option value="">Todas las áreas</option>'+opt(uniq('categoria'),rdPendFArea)+'</select>'
-    + '<select class="p2-sel'+(rdPendFResp?' set':'')+'" onchange="rdPendSetFiltro(\'resp\',this.value)" aria-label="Responsable"><option value="">Todos los responsables</option>'+opt(uniq('responsable'),rdPendFResp)+'</select>'
-    + '<select class="p2-sel'+(rdPendFImp?' set':'')+'" onchange="rdPendSetFiltro(\'imp\',this.value)" aria-label="Impacto"><option value="">Cualquier impacto</option>'
-      + ['alto','medio','bajo'].map(k=>'<option value="'+k+'"'+(rdPendFImp===k?' selected':'')+'>Impacto '+k+'</option>').join('')+'</select>'
-    + '<select class="p2-sel'+(rdPendFEst?' set':'')+'" onchange="rdPendSetFiltro(\'est\',this.value)" aria-label="Estado"><option value="">Cualquier estado</option>'
-      + Object.keys(PEND_EST).map(k=>'<option value="'+k+'"'+(rdPendFEst===k?' selected':'')+'>'+PEND_EST[k]+'</option>').join('')+'</select>'
-    + '<select class="p2-sel" onchange="rdPendSetGrupo(this.value)" aria-label="Agrupar">'
-      + [['venc','Agrupar por vencimiento'],['area','Agrupar por área'],['estado','Agrupar por estado']].map(g=>'<option value="'+g[0]+'"'+(rdPendGroup===g[0]?' selected':'')+'>'+g[1]+'</option>').join('')+'</select>'
-    + '<button class="pend-act'+(rdPendSoloRestr?' primary':'')+'" type="button" onclick="rdPendSoloRestricciones()"><i data-lucide="octagon-alert" class="ri"></i>Restricciones<i style="font-style:normal;margin-left:5px">'+rdPendList.filter(p=>p.restriccion&&rdPendAbierto(p)).length+'</i></button>'
-    + '<span class="p2-sep"></span>'
-    + '<button class="pend-act primary" type="button" onclick="rdPendToggleForm()"><i data-lucide="'+(rdPendFormOn?'x':'plus')+'" class="ri"></i>'+(rdPendFormOn?'Cerrar':'Nuevo')+'</button>'
-    + '<button class="pend-act" type="button" onclick="rdRecAbrir()"><i data-lucide="footprints" class="ri"></i>Recorrido</button>'
-    + '<button class="pend-act" type="button" onclick="rdZonasAbrir()"><i data-lucide="qr-code" class="ri"></i>Zonas y QR</button>'
-    + '<button class="pend-act" type="button" onclick="rdPlanoAbrir(null)"><i data-lucide="map" class="ri"></i>Plano</button>'
-    + '<button class="pend-act" type="button" onclick="rdPendImpToggle()"><i data-lucide="file-spreadsheet" class="ri"></i>Importar Excel</button>'
-    + '<button class="pend-act" type="button" onclick="rdPendActaAbrir()"><i data-lucide="file-signature" class="ri"></i>Acta</button>'
-    + '<button class="pend-act" type="button" onclick="rdPendInforme()"><i data-lucide="file-text" class="ri"></i>Informe</button>'
-    + '<button class="pend-act" type="button" onclick="rdPendExportExcel()"><i data-lucide="sheet" class="ri"></i>Excel</button>';
+  const nf=(rdPendFResp?1:0)+(rdPendFImp?1:0)+(rdPendSoloRestr?1:0);
+  const chip=(txt,fn)=>'<span class="p3-fchip">'+txt+'<button type="button" onclick="'+fn+'" aria-label="Quitar filtro">✕</button></span>';
+  return '<div class="pend-search p3-search"><i data-lucide="search" class="ri"></i><input id="pend-q" placeholder="Buscar observación, zona o responsable" value="'+rdEsc2(rdPendQ)+'" oninput="rdPendSetQ(this.value)"></div>'
+    + '<button class="pend-act'+(nf?' set':'')+'" type="button" onclick="rdPendPopFiltros(this)"><i data-lucide="sliders-horizontal" class="ri"></i>Filtros'+(nf?'<i class="p3-n">'+nf+'</i>':'')+'</button>'
+    + (rdPendFArea && !(rdPendZona && rdZonaKey(rdPendZona.nombre)===rdZonaKey(rdPendFArea)) ? chip('Zona: '+rdEsc2(rdPendFArea),"rdPendSetFiltro('area','')") : '')
+    + (rdPendFResp?chip(rdEsc2(rdPendFResp),"rdPendSetFiltro('resp','')"):'')
+    + (rdPendFImp?chip('Impacto '+rdPendFImp,"rdPendSetFiltro('imp','')"):'')
+    + (rdPendSoloRestr?chip('Solo restricciones','rdPendSoloRestricciones()'):'');
 }
 
 function rdPendListaHTML(){
@@ -11130,131 +11129,216 @@ function rdPendListaHTML(){
         + '<div class="pend-blank-a"><button class="pend-act primary" onclick="rdPendToggleForm()"><i data-lucide="plus" class="ri"></i>Agregar la primera</button>'
         + '<button class="pend-act" onclick="rdPendImpToggle()"><i data-lucide="file-spreadsheet" class="ri"></i>Importar Excel</button></div></div>';
     }
-    return '<div class="pend-blank sm"><i data-lucide="filter" class="ri"></i><b>'
-      + (rdPendView==='validar'?'Nada esperando tu conformidad':'Nada en «'+(v?v.l:'')+'»')+'</b>'
+    return '<div class="pend-blank sm"><i data-lucide="filter" class="ri"></i><b>Nada en «'+(v?v.l:'')+'»'+(rdPendFArea?' en esta zona':'')+'</b>'
       + '<span>'+rdPendList.length+' registradas en la obra.</span></div>';
   }
-  const grupos=new Map();
-  rows.forEach(p=>{ const g=rdPendGrupo(p); if(!grupos.has(g)) grupos.set(g,[]); grupos.get(g).push(p); });
-  let keys=[...grupos.keys()];
-  if(rdPendGroup==='venc') keys.sort((a,b)=>PEND_ORDEN.indexOf(a)-PEND_ORDEN.indexOf(b));
-  else if(rdPendGroup==='estado') keys.sort((a,b)=>Object.values(PEND_EST).indexOf(a)-Object.values(PEND_EST).indexOf(b));
-  else keys.sort((a,b)=>grupos.get(b).length-grupos.get(a).length || String(a).localeCompare(String(b),'es'));
-  return keys.map(k=>{
-    const late=(k==='Urgentes'||k==='Vencidas');
-    const nota=k==='Urgentes'?'<em>más de 30 días vencidas o impacto alto vencido</em>':'';
-    const items=grupos.get(k).slice().sort((a,b)=>{
-      const da=rdPendDias(a.fecha_objetivo), db=rdPendDias(b.fecha_objetivo);
-      if(da===null&&db===null) return 0; if(da===null) return 1; if(db===null) return -1; return da-db;
-    });
-    return '<div class="p2-grp'+(late?' late':'')+'"><div>'+rdEsc2(k)+nota+'</div><span>'+items.length+'</span></div>'
-      + items.map(p=>rdPendCard(p)).join('');
-  }).join('');
+  let h='', zonaPrev=null;
+  rows.forEach(p=>{
+    if(rdPendGroup==='area'){
+      const z=p.categoria||'Sin zona';
+      if(rdZonaKey(z)!==rdZonaKey(zonaPrev)){ h+='<div class="p2-grp"><div>'+rdEsc2(z)+'</div></div>'; zonaPrev=z; }
+    }
+    h+=rdPendCard(p);
+  });
+  return h;
 }
 
-function rdPendCard(p){
+const PEND_MESES=['ene','feb','mar','abr','may','jun','jul','ago','set','oct','nov','dic'];
+function rdPendFechaLarga(iso){
+  if(!iso) return '';
+  const s=String(iso).slice(0,10).split('-');
+  return s.length===3 ? (+s[2])+' '+PEND_MESES[(+s[1])-1]+' '+s[0] : String(iso);
+}
+function rdPendPill(p){
+  if(rdPendUrgente(p)) return {k:'urg', t:'Urgente'};
+  return {k:p.estado, t:PEND_EST[p.estado]||p.estado};
+}
+function rdPendDiasTxt(p){
   const d=rdPendDias(p.fecha_objetivo);
-  let due, cls='';
-  if(!p.fecha_objetivo){ cls='none'; due='<b>Sin fecha</b><small>Asignar</small>'; }
-  else if(rdPendFuera(p)) due='<b>'+rdPendFechaCorta(p.fecha_objetivo)+'</b><small>'+PEND_EST[p.estado]+'</small>';
-  else if(d<0){ cls='late'; due='<b>'+rdPendFechaCorta(p.fecha_objetivo)+'</b><small>hace '+(-d)+' d</small>'; }
-  else if(d===0){ cls='soon'; due='<b>'+rdPendFechaCorta(p.fecha_objetivo)+'</b><small>hoy</small>'; }
-  else if(d<=7){ cls='soon'; due='<b>'+rdPendFechaCorta(p.fecha_objetivo)+'</b><small>en '+d+' d</small>'; }
-  else due='<b>'+rdPendFechaCorta(p.fecha_objetivo)+'</b><small>en '+d+' d</small>';
-  const flags=(p.restriccion?'<span class="p2-flag restr">Restricción</span>':'')
-            + (p.fuera_alcance?'<span class="p2-flag money">Fuera de alcance</span>':'')
-            + (p.requiere_cotizacion?'<span class="p2-flag money">Cotizar</span>':'')
-            + (p.origen==='excel'?'<span class="p2-flag">Excel</span>':'');
-  return '<div class="p2-row'+(rdPendOpen===p.id?' is-open':'')+(rdPendFlash===p.id?' flash':'')+(rdPendFuera(p)?' done':'')+'" data-id="'+p.id+'">'
-    + '<input type="checkbox" class="p2-chk" id="pend-sel-'+p.id+'"'+(rdPendSel.has(p.id)?' checked':'')+' onchange="rdPendSelTog('+p.id+',this.checked)" aria-label="Seleccionar">'
-    + '<button class="p2-st st-'+p.estado+'" type="button" onclick="rdPendPopEstado(this,'+p.id+')">'+PEND_EST[p.estado]+'</button>'
-    + '<button class="p2-rt" type="button" onclick="rdPendAbrir('+p.id+')"><span class="p2-ttl">'+rdEsc2(p.titulo)+'</span>'
-      + '<span class="p2-meta">'+flags+'<span class="txt">'+rdEsc2(p.categoria||'Sin área')+' · '+rdEsc2(p.responsable||'Sin responsable')+'</span></span></button>'
-    + '<button class="p2-due '+cls+'" type="button" onclick="rdPendPopFecha(this,'+p.id+')" title="Reprogramar">'+due+'</button>'
+  if(!p.fecha_objetivo) return {c:'none', t:'Sin fecha'};
+  if(rdPendFuera(p)) return {c:'', t:PEND_EST[p.estado]};
+  if(d<0) return {c:'late', t:(-d)+(d===-1?' día':' días')};
+  if(d===0) return {c:'soon', t:'Vence hoy'};
+  return {c:d<=7?'soon':'', t:'en '+d+(d===1?' día':' días')};
+}
+function rdPendCard(p){
+  const pill=rdPendPill(p), dt=rdPendDiasTxt(p);
+  return '<div class="p3-row'+(rdPendOpen===p.id?' is-open':'')+(rdPendFlash===p.id?' flash':'')+(rdPendFuera(p)?' done':'')+'" data-id="'+p.id+'" onclick="rdPendAbrir('+p.id+')">'
+    + '<input type="checkbox" class="p2-chk" id="pend-sel-'+p.id+'"'+(rdPendSel.has(p.id)?' checked':'')+' onclick="event.stopPropagation()" onchange="rdPendSelTog('+p.id+',this.checked)" aria-label="Seleccionar">'
+    + '<button class="p3-pill-s s-'+pill.k+'" type="button" onclick="event.stopPropagation();rdPendPopEstado(this,'+p.id+')">'+pill.t+'</button>'
+    + '<span class="p3-t">'+rdEsc2(p.titulo)+'</span>'
+    + '<span class="p3-z">'+(p.restriccion?'<i class="p3-restr" title="Genera restricción"></i>':'')+rdEsc2(p.categoria||'Sin zona')+'</span>'
+    + '<button class="p3-due '+dt.c+'" type="button" onclick="event.stopPropagation();rdPendPopFecha(this,'+p.id+')" title="Reprogramar">'
+      + '<b>'+(p.fecha_objetivo?rdPendFechaLarga(p.fecha_objetivo):'—')+'</b><small>'+dt.t+'</small></button>'
+    + '<i data-lucide="chevron-right" class="ri p3-chev"></i>'
   + '</div>';
 }
 
+function rdPendIniciales(n){
+  const w=String(n||'').replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ ]/g,' ').trim().split(/\s+/).filter(Boolean);
+  if(!w.length) return '—';
+  return (w.length===1 ? w[0].slice(0,2) : w[0][0]+w[1][0]).toUpperCase();
+}
 function rdPendFichaHTML(){
   const p=rdPendList.find(x=>x.id===rdPendOpen);
-  if(!p) return '<div class="pend-blank sm"><b>Toca un pendiente</b><span>Se abre su ficha para editarlo.</span></div>';
+  if(!p) return '<div class="pend-blank sm"><i data-lucide="mouse-pointer-click" class="ri"></i><b>Elige una observación</b><span>Se abre aquí su ficha.</span></div>';
   const d=rdPendDias(p.fecha_objetivo), idx=PEND_PASOS.indexOf(p.estado);
   const par=rdPendParse(p.descripcion);
-  const urg=rdPendUrgente(p), auto=rdPendUrgAuto(p);
-  let hint = !p.fecha_objetivo ? ('Sin fecha · plazo sugerido para impacto '+(p.impacto||'medio')+': '+PEND_PLAZO[p.impacto||'medio']+' días')
-    : rdPendFuera(p) ? PEND_EST[p.estado] : d<0 ? ('Vencida hace '+(-d)+' días') : d===0 ? 'Vence hoy' : ('Faltan '+d+' días');
-  if(p.reprogramaciones) hint+=' · reprogramada '+p.reprogramaciones+(p.reprogramaciones>1?' veces':' vez');
+  const pill=rdPendPill(p), dt=rdPendDiasTxt(p);
   const hist=rdPendHist[p.id];
-  return '<div class="p2-dh"><span class="p2-tag">Observación</span>'+(p.restriccion?'<span class="p2-tag restr">Restricción</span>':'')+(urg?'<span class="p2-tag urg">Urgente</span>':'')
-      + '<span class="p2-area">'+rdEsc2(p.categoria||'Sin área')+'</span>'
-      + '<button class="p2-x" type="button" onclick="rdPendCerrarFicha()" aria-label="Cerrar ficha">✕</button></div>'
-    + '<h3 class="p2-dt">'+rdEsc2(p.titulo)+'</h3>'
-   + (p.postventa?'<span class="p2-hint">Pasó a postventa al cerrarse la obra.</span>':'')
-    + '<div class="p2-stepper">'+PEND_PASOS.map((k,i)=>'<button type="button" class="p2-step'+(idx>i?' past':'')+(idx===i?' cur':'')+'" onclick="rdPendSetEstado('+p.id+',\''+k+'\')"><i></i>'+PEND_EST[k]+'</button>').join('')+'</div>'
-    + (p.estado==='por_validar'?'<div class="p2-conf"><p>El equipo lo dio por levantado. <b>Falta tu conformidad</b> para cerrarlo.</p>'
-        + '<div class="p2-quick"><button class="pend-act primary" type="button" onclick="rdPendSetEstado('+p.id+',\'cerrada\')">Dar conformidad</button>'
-        + '<button class="pend-act" type="button" onclick="rdPendSetEstado('+p.id+',\'en_proceso\')">Devolver: aún no está</button></div></div>':'')
-    + (p.validado_por?'<span class="p2-hint">Conformidad de '+rdEsc2(p.validado_por)+(p.validado_at?' · '+rdPendFechaCorta(String(p.validado_at).slice(0,10)):'')+'</span>':'')
-    + '<div class="p2-links">'
-      + (p.estado==='no_aplica'
-          ? '<button class="p2-link" type="button" onclick="rdPendSetEstado('+p.id+',\'abierta\')">Reabrir (está como «No aplica»)</button>'
-          : '<button class="p2-link" type="button" onclick="rdPendSetEstado('+p.id+',\'no_aplica\')">Marcar como «No aplica»</button>')
-      + (rdPendAbierto(p)?'<button class="p2-link" type="button" onclick="rdPendTogUrg('+p.id+')">'+(urg?'Quitar de urgentes':'Marcar como urgente')+'</button>':'')
+  const lista=rdPendFiltrada(), pos=lista.findIndex(x=>x.id===p.id);
+  const prev=pos>0?lista[pos-1].id:null, next=(pos>=0&&pos<lista.length-1)?lista[pos+1].id:null;
+  const sig={abierta:['en_proceso','Marcar en proceso','play'], en_proceso:['por_validar','Pasar a validar','send'],
+    por_validar:['cerrada','Dar conformidad','check'], cerrada:['abierta','Reabrir','rotate-ccw'], no_aplica:['abierta','Reabrir','rotate-ccw']}[p.estado];
+  const tile=(ic,lbl,val,extra,fn)=>'<button type="button" class="p3-tile" '+(fn?'onclick="'+fn+'"':'disabled')+'>'+ic+'<span><small>'+lbl+'</small><b>'+val+'</b>'+(extra||'')+'</span></button>';
+  const marcas=[
+    p.restriccion?'<span class="p2-tag restr">Genera restricción</span>':'',
+    p.fuera_alcance?'<span class="p2-flag money">Fuera de alcance'+(p.adicional_id?' · adicional #'+p.adicional_id:'')+'</span>':'',
+    p.requiere_cotizacion?'<span class="p2-flag money">Cotizar'+(p.requerimiento_id?' · pedido #'+p.requerimiento_id:'')+'</span>':'',
+    p.impacto?'<span class="p2-kv"><em>Impacto</em>'+rdEsc2(p.impacto)+'</span>':'',
+    (p.causa&&p.causa!=='Por definir')?'<span class="p2-kv"><em>Causa</em>'+rdEsc2(p.causa)+'</span>':'',
+    p.costo_estimado!=null?'<span class="p2-kv"><em>Costo</em>US$ '+Number(p.costo_estimado).toLocaleString('es-PE')+'</span>':'',
+    p.reprogramaciones?'<span class="p2-kv"><em>Reprogramada</em>'+p.reprogramaciones+(p.reprogramaciones>1?' veces':' vez')+'</span>':''
+  ].join('');
+
+  let h='<div class="p3-fh"><span class="p3-pill-s s-'+pill.k+'">'+pill.t+'</span><span class="p3-id">#'+String(p.id).padStart(3,'0')+'</span>'
+      + '<span class="p2-sep"></span>'
+      + '<button class="p3-nav" type="button" '+(prev?'onclick="rdPendAbrir('+prev+')"':'disabled')+' aria-label="Anterior"><i data-lucide="chevron-left" class="ri"></i></button>'
+      + '<button class="p3-nav" type="button" '+(next?'onclick="rdPendAbrir('+next+')"':'disabled')+' aria-label="Siguiente"><i data-lucide="chevron-right" class="ri"></i></button>'
+      + '<button class="p3-nav ghost" type="button" onclick="rdPendCerrarFicha()" aria-label="Cerrar"><i data-lucide="x" class="ri"></i></button></div>'
+    + '<h3 class="p3-ft'+(String(p.titulo||'').length>80?' long':'')+'">'+rdEsc2(p.titulo)+'</h3>'
+    + (par.com?'<p class="p3-fd">'+rdEsc2(par.com)+'</p>':'')
+    + (p.postventa?'<span class="p2-hint">Pasó a postventa al cerrarse la obra.</span>':'')
+    + '<div class="p3-tiles">'
+      + tile('<i data-lucide="clipboard-list" class="ri"></i>','Obra',rdEsc2((currentProyecto&&currentProyecto.nombre)||'—'))
+      + tile('<i data-lucide="map-pin" class="ri"></i>','Zona',rdEsc2(p.categoria||'Sin zona'),'','rdPendPopTexto(this,'+p.id+',\'categoria\')')
+      + tile('<span class="p3-av">'+rdPendIniciales(p.responsable)+'</span>','Responsable',rdEsc2(p.responsable||'Sin asignar'),'','rdPendPopTexto(this,'+p.id+',\'responsable\')')
+      + tile('<i data-lucide="calendar" class="ri"></i>','Fecha objetivo',p.fecha_objetivo?rdPendFechaLarga(p.fecha_objetivo):'Sin fecha','<em class="'+dt.c+'">'+(rdPendAbierto(p)&&d!==null&&d<0?'hace ':'')+dt.t+'</em>','rdPendPopFecha(this,'+p.id+')')
     + '</div>'
-    + (rdPendAbierto(p)?'<span class="p2-hint">'+(p.urgente!==null&&p.urgente!==undefined?'Urgencia puesta a mano.':(auto?'Urgente por regla: más de 30 días vencida o impacto alto vencido.':'Se vuelve urgente sola si pasa 30 días vencida.'))+'</span>':'')
-    + '<div class="p2-fields">'
-      + '<div class="p2-f full"><label for="pf-fecha">Fecha objetivo</label><div class="p2-quick">'
-        + '<input class="pend-inp" type="date" id="pf-fecha" value="'+(p.fecha_objetivo||'')+'" onchange="rdPendFichaFecha('+p.id+',this)">'
-        + '<button class="p2-chip" type="button" onclick="rdPendPopFecha(this,'+p.id+',\''+rdPendMasDias(PEND_PLAZO[p.impacto||'medio'])+'\')">Plazo por impacto: +'+PEND_PLAZO[p.impacto||'medio']+' d</button></div>'
-        + '<span class="p2-hint'+(rdPendAbierto(p)&&d<0?' late':'')+'">'+hint+'</span></div>'
+    + '<div><div class="p2-lbl">Estado</div><div class="p2-stepper p3-stepper">'+PEND_PASOS.map((k,i)=>'<button type="button" class="p2-step'+(idx>i?' past':'')+(idx===i?' cur':'')+'" onclick="rdPendSetEstado('+p.id+',\''+k+'\')"><i></i>'+PEND_EST[k]+'</button>').join('')+'</div></div>'
+    + (p.estado==='por_validar'?'<div class="p2-conf"><p>El equipo lo dio por levantado. <b>Falta tu conformidad</b> para cerrarlo.</p>'
+        + '<div class="p2-quick"><button class="pend-act" type="button" onclick="rdPendSetEstado('+p.id+',\'en_proceso\')">Devolver: aún no está</button></div></div>':'')
+    + (p.estado==='no_aplica'?'<span class="p2-hint">Marcada como «No aplica»: no cuenta en el avance.</span>':'')
+    + (p.validado_por?'<span class="p2-hint">Conformidad de '+rdEsc2(p.validado_por)+(p.validado_at?' · '+rdPendFechaLarga(String(p.validado_at).slice(0,10)):'')+'</span>':'')
+    + '<nav class="p3-tabs"><button type="button" class="'+(rdPendTab==='det'?'on':'')+'" onclick="rdPendSetTab(\'det\')">Detalles</button>'
+      + '<button type="button" class="'+(rdPendTab==='hist'?'on':'')+'" onclick="rdPendSetTab(\'hist\')">Historial'+(hist&&hist.length?'<i>'+hist.length+'</i>':'')+'</button></nav>';
+
+  if(rdPendTab==='hist'){
+    h+='<div class="p2-hist">'+(hist===undefined?'<span class="p2-hint">Cargando…</span>'
+        : hist.length?'<ol>'+hist.map(x=>'<li><time>'+rdPendFechaCorta(String(x.created_at).slice(0,10))+'</time><span>'+rdEsc2(x.texto)+(x.autor?' · '+rdEsc2(x.autor):'')+'</span></li>').join('')+'</ol>'
+        : '<span class="p2-hint">Sin movimientos todavía.</span>')+'</div>';
+  } else if(!rdPendEdit){
+    h+='<div class="p3-det">'
+      + (par.com?'':'<div class="p3-com"><small>Comentario</small><p class="vacio">Sin comentario. Agrégalo desde «Editar».</p></div>')
+      + (marcas?'<div class="p2-chips">'+marcas+'</div>':'')
+      + (par.chips.length?'<details class="p3-excel"><summary>Datos del Excel ('+par.chips.length+')</summary><div class="p2-chips">'+par.chips.map(c=>'<span class="p2-kv"><em>'+rdEsc2(c[0])+'</em>'+rdEsc2(c[1])+'</span>').join('')+'</div></details>':'')
+    + '</div>';
+  } else {
+    h+='<div class="p2-fields">'
+      + '<div class="p2-f full"><label for="pf-com">Comentario</label><textarea class="pend-inp" id="pf-com" rows="3" onchange="rdPendComentario('+p.id+',this.value)">'+rdEsc2(par.com)+'</textarea></div>'
       + '<div class="p2-f"><label for="pf-resp">Responsable</label><input class="pend-inp" id="pf-resp" list="pend-contratas" value="'+rdEsc2(p.responsable||'')+'" onchange="rdPendCampo('+p.id+',\'responsable\',this.value)"></div>'
-      + '<div class="p2-f"><label for="pf-area">Área</label><input class="pend-inp" id="pf-area" list="pend-zonas-dl" value="'+rdEsc2(p.categoria||'')+'" onchange="rdPendCampo('+p.id+',\'categoria\',this.value)"></div>'
+      + '<div class="p2-f"><label for="pf-area">Zona</label><input class="pend-inp" id="pf-area" list="pend-zonas-dl" value="'+rdEsc2(p.categoria||'')+'" onchange="rdPendCampo('+p.id+',\'categoria\',this.value)"></div>'
       + '<div class="p2-f"><span class="p2-lbl">Impacto</span><div class="p2-seg3">'+['alto','medio','bajo'].map(k=>'<button type="button" class="'+((p.impacto||'medio')===k?'on':'')+'" onclick="rdPendCampo('+p.id+',\'impacto\',\''+k+'\')">'+k[0].toUpperCase()+k.slice(1)+'</button>').join('')+'</div></div>'
-      + '<div class="p2-f"><label for="pf-costo">Costo estimado (US$)</label><input class="pend-inp" id="pf-costo" type="number" min="0" step="10" value="'+(p.costo_estimado!=null?p.costo_estimado:'')+'" onchange="rdPendCampoNum('+p.id+',\'costo_estimado\',this.value)"></div>'
       + '<div class="p2-f"><label for="pf-causa">Causa</label><select class="pend-inp" id="pf-causa" onchange="rdPendCampo('+p.id+',\'causa\',this.value)">'
         + PEND_CAUSAS.map(c=>'<option'+((p.causa||'Por definir')===c?' selected':'')+'>'+c+'</option>').join('')+'</select></div>'
-      + '<div class="p2-f full"><label for="pf-com">Comentario</label><textarea class="pend-inp" id="pf-com" rows="3" onchange="rdPendComentario('+p.id+',this.value)">'+rdEsc2(par.com)+'</textarea></div>'
+      + '<div class="p2-f"><label for="pf-costo">Costo estimado (US$)</label><input class="pend-inp" id="pf-costo" type="number" min="0" step="10" value="'+(p.costo_estimado!=null?p.costo_estimado:'')+'" onchange="rdPendCampoNum('+p.id+',\'costo_estimado\',this.value)"></div>'
     + '</div>'
-    + '<div class="p2-swi" style="border:1px solid var(--border);border-radius:12px">'
-      + '<div><b>'+(p.plano_x!=null?'Ubicada en el plano':'Sin ubicar en el plano')+'</b>'
-      + '<span>'+(p.plano_x!=null?'Toca «Ver» para encontrarla en el plano de la obra.':'Marca dónde está para no buscarla en obra.')+'</span></div>'
-      + '<button class="pend-act" type="button" onclick="rdPlanoAbrir('+p.id+')" style="margin-left:auto">'+(p.plano_x!=null?'Ver':'Ubicar')+'</button></div>'
     + '<div class="p2-sw">'
-      + '<div class="p2-swi"><div><b>Genera restricción</b><span>'+(p.restriccion?'Bloquea el avance de la obra.':'Marca si impide avanzar: falta material, definición o permiso.')+'</span></div>'
+      + '<div class="p2-swi"><div><b>Genera restricción</b><span>Impide avanzar: falta material, definición o permiso.</span></div>'
         + '<button class="p2-tg" type="button" aria-pressed="'+(!!p.restriccion)+'" onclick="rdPendTogCampo('+p.id+',\'restriccion\')" aria-label="Genera restricción"></button></div>'
-      + '<div class="p2-swi"><div><b>Fuera de alcance</b><span>'+(p.fuera_alcance?(p.adicional_id?'En Comercial como adicional #'+p.adicional_id+'.':'Marcada para cotizar como adicional.'):'No es parte del contrato: se cotiza como adicional.')+'</span></div>'
+      + '<div class="p2-swi"><div><b>Fuera de alcance</b><span>'+(p.adicional_id?'En Comercial como adicional #'+p.adicional_id+'.':'Se cotiza como adicional.')+'</span></div>'
         + '<button class="p2-tg" type="button" aria-pressed="'+(!!p.fuera_alcance)+'" onclick="rdPendTogCampo('+p.id+',\'fuera_alcance\')" aria-label="Fuera de alcance"></button></div>'
-      + '<div class="p2-swi"><div><b>Requiere cotización</b><span>'+(p.requiere_cotizacion?(p.requerimiento_id?'En Compras como pedido #'+p.requerimiento_id+'.':'Marcada: falta comprar o contratar.'):'Hace falta comprar o contratar algo.')+'</span></div>'
+      + '<div class="p2-swi"><div><b>Requiere cotización</b><span>'+(p.requerimiento_id?'En Compras como pedido #'+p.requerimiento_id+'.':'Falta comprar o contratar algo.')+'</span></div>'
         + '<button class="p2-tg" type="button" aria-pressed="'+(!!p.requiere_cotizacion)+'" onclick="rdPendTogCampo('+p.id+',\'requiere_cotizacion\')" aria-label="Requiere cotización"></button></div>'
-    + '</div>'
-    + (par.chips.length?'<div><div class="p2-lbl">Del Excel</div><div class="p2-chips">'+par.chips.map(c=>'<span class="p2-kv"><em>'+rdEsc2(c[0])+'</em>'+rdEsc2(c[1])+'</span>').join('')+'</div></div>':'')
-    + '<datalist id="pend-contratas">'+(rdPendContratas||[]).map(c=>'<option value="'+rdEsc2(c)+'">').join('')+'</datalist>'
-    + '<div class="p2-hist"><div class="p2-lbl">Historial</div>'
-      + (hist===undefined?'<span class="p2-hint">Cargando…</span>'
-        : hist.length?'<ol>'+hist.map(x=>'<li><time>'+rdPendFechaCorta(String(x.created_at).slice(0,10))+'</time><span>'+rdEsc2(x.texto)+(x.autor?' · '+rdEsc2(x.autor):'')+'</span></li>').join('')+'</ol>'
-        : '<span class="p2-hint">Sin movimientos todavía.</span>')
     + '</div>';
+  }
+  h+='<datalist id="pend-contratas">'+(rdPendContratas||[]).map(c=>'<option value="'+rdEsc2(c)+'">').join('')+'</datalist>'
+    + '<div class="p3-foot">'
+      + '<button class="pend-act primary p3-main" type="button" onclick="rdPendSetEstado('+p.id+',\''+sig[0]+'\')"><i data-lucide="'+sig[2]+'" class="ri"></i>'+sig[1]+'</button>'
+      + '<button class="pend-act'+(rdPendEdit?' set':'')+'" type="button" onclick="rdPendToggleEdit()"><i data-lucide="'+(rdPendEdit?'check':'pencil')+'" class="ri"></i>'+(rdPendEdit?'Listo':'Editar')+'</button>'
+      + '<button class="pend-act p3-icon" type="button" onclick="rdPendPopFicha(this,'+p.id+')" aria-label="Más acciones"><i data-lucide="more-vertical" class="ri"></i></button>'
+    + '</div>';
+  return h;
 }
 
+/* Resumen por zona: una tarjeta por zona con lo que falta levantar. */
+function rdPendZonasResumen(todas){
+  const v=PEND_VISTAS.find(x=>x.k===rdPendView)||PEND_VISTAS[0];
+  const base=todas?rdPendList:rdPendFiltrada(true);
+  const reg=new Map((rdZonas||[]).map(z=>[rdZonaKey(z.nombre), z.nombre]));
+  const m=new Map();
+  rdPendList.forEach(p=>{
+    const k=rdZonaKey(p.categoria);
+    if(!m.has(k)) m.set(k,{k, nombres:new Map(), total:0, lev:0, na:0, pend:0, urg:0, validar:0, restr:0, vista:0, prox:null});
+    const z=m.get(k); z.total++;
+    z.nombres.set(p.categoria||'', (z.nombres.get(p.categoria||'')||0)+1);
+    if(p.estado==='no_aplica') z.na++; else if(rdPendCerrada(p)) z.lev++;
+    if(!rdPendFuera(p)){ z.pend++; if(p.restriccion) z.restr++; }
+    if(rdPendUrgente(p)) z.urg++;
+    if(p.estado==='por_validar') z.validar++;
+    if(rdPendAbierto(p) && p.fecha_objetivo && (!z.prox || p.fecha_objetivo<z.prox)) z.prox=p.fecha_objetivo;
+  });
+  base.forEach(p=>{ const z=m.get(rdZonaKey(p.categoria)); if(z) z.vista++; });
+  return [...m.values()].map(z=>{
+    z.nombre = reg.get(z.k) || ([...z.nombres.entries()].sort((a,b)=>b[1]-a[1])[0][0]) || 'Sin zona';
+    if(!z.k) z.nombre='Sin zona';
+    z.pct = (z.total-z.na) ? Math.round(z.lev*100/(z.total-z.na)) : 100;
+    return z;
+  }).filter(z=>todas || z.vista>0)
+    .sort((a,b)=>b.urg-a.urg || b.pend-a.pend || a.nombre.localeCompare(b.nombre,'es'));
+}
+function rdPendZonasHTML(){
+  const zonas=rdPendZonasResumen(false);
+  if(!rdPendList.length) return rdPendListaHTML();
+  if(!zonas.length) return '<div class="pend-blank sm"><i data-lucide="filter" class="ri"></i><b>Nada con este filtro</b><span>Prueba con «Todas».</span></div>';
+  const conPend=zonas.filter(z=>z.pend>0), sinPend=zonas.filter(z=>z.pend===0);
+  const card=z=>'<button type="button" class="p3-zc'+(z.urg?' hot':'')+(z.pend?'':' ok')+'" onclick="rdPendVerZona('+rdEsc2(JSON.stringify(z.nombre))+')">'
+    + '<span class="p3-zc-h"><b>'+rdEsc2(z.nombre)+'</b><i data-lucide="chevron-right" class="ri"></i></span>'
+    + '<span class="p3-zc-n">'+(z.pend?'<strong>'+z.pend+'</strong> por levantar':'<strong class="ok">✓</strong> Todo levantado')+'</span>'
+    + '<span class="p3-zc-s">'
+      + (z.urg?'<em class="urg">'+z.urg+' urgente'+(z.urg>1?'s':'')+'</em>':'')
+      + (z.validar?'<em>'+z.validar+' por validar</em>':'')
+      + (z.restr?'<em class="restr">'+z.restr+' restricción'+(z.restr>1?'es':'')+'</em>':'')
+      + (!z.urg&&!z.validar&&!z.restr&&z.prox?'<em>próxima: '+rdPendFechaLarga(z.prox)+'</em>':'')
+    + '</span>'
+    + '<span class="p3-zc-bar"><span class="p2-bar"><i style="width:'+z.pct+'%"></i></span><small>'+z.lev+'/'+(z.total-z.na)+'</small></span>'
+  + '</button>';
+  let h='<div class="p3-zgrid">'+conPend.map(card).join('')+'</div>';
+  if(sinPend.length){
+    h+='<button type="button" class="p3-zmore" onclick="rdPendVerSinPend=!rdPendVerSinPend;rdPendRender()">'
+      + (rdPendVerSinPend?'Ocultar':'Ver')+' '+sinPend.length+' zona'+(sinPend.length>1?'s':'')+' sin pendientes'
+      + '<i data-lucide="chevron-'+(rdPendVerSinPend?'up':'down')+'" class="ri"></i></button>';
+    if(rdPendVerSinPend) h+='<div class="p3-zgrid">'+sinPend.map(card).join('')+'</div>';
+  }
+  if(zonas.length>8) h+='<p class="p2-hint" style="margin-top:14px">¿Zonas repetidas con otro nombre? Pasa a «Lista», marca las observaciones y usa «Cambiar zona» para unificarlas.</p>';
+  return h;
+}
+function rdPendVerZona(nombre){ rdPendFArea=nombre; rdPendModo='lista'; rdPendOpen=null; rdPendRender(); const m=document.getElementById('rd-pend-mount'); if(m) m.scrollIntoView({block:'start',behavior:'smooth'}); }
+function rdPendSetModo(k){ rdPendModo=k; if(k==='zonas'){ rdPendFArea=''; rdPendZona=null; rdPendOpen=null; } rdPendRender(); }
+function rdPendSetTab(k){ rdPendTab=k; rdPendPintarFicha(); }
+function rdPendToggleEdit(){ rdPendEdit=!rdPendEdit; rdPendTab='det'; rdPendPintarFicha(); }
+
 /* ── interacciones ── */
-function rdPendSetVista(k){ rdPendView=k; rdPendRender(); }
+function rdPendSetVista(k){ rdPendView=k; rdPendSel.clear(); rdPendRender(); }
 function rdPendSetGrupo(k){ rdPendGroup=k; rdPendPintarLista(); }
-function rdPendSoloRestricciones(){ rdPendSoloRestr=!rdPendSoloRestr; rdPendPintarTools(); rdPendPintarLista(); }
+function rdPendSoloRestricciones(){ rdPendSoloRestr=!rdPendSoloRestr; rdPendRender(); }
 function rdPendSetFiltro(cual,val){
-  if(cual==='area'){ rdPendFArea=val; if(rdPendZona && rdPendZona.nombre!==val){ rdPendZona=null; rdPendFArea=val; rdPendRender(); return; } }
+  if(cual==='area'){ rdPendFArea=val; if(rdPendZona && rdZonaKey(rdPendZona.nombre)!==rdZonaKey(val)) rdPendZona=null; if(!val && rdPendModo==='lista') rdPendModo='lista'; }
   else if(cual==='resp') rdPendFResp=val;
   else if(cual==='imp') rdPendFImp=val; else if(cual==='est') rdPendFEst=val;
-  rdPendPintarLista();
+  rdPendRender();
 }
 function rdPendSetQ(v){ rdPendQ=v; rdPendPintarLista(); }
 function rdPendPintarLista(){
   const l=document.getElementById('p2-list'); if(!l){ rdPendRender(); return; }
-  l.innerHTML=rdPendListaHTML(); if(window.lucide) lucide.createIcons();
+  l.innerHTML = rdPendModo==='zonas' ? rdPendZonasHTML() : rdPendListaHTML(); if(window.lucide) lucide.createIcons();
 }
 function rdPendPintarFicha(){
   const d=document.getElementById('p2-drawer'); if(!d){ rdPendRender(); return; }
   d.innerHTML=rdPendFichaHTML(); d.classList.toggle('show', !!rdPendOpen); if(window.lucide) lucide.createIcons();
 }
 function rdPendAbrir(id){
+  if(rdPendOpen!==id){ rdPendEdit=false; rdPendTab='det'; }
   rdPendOpen=id; rdPendPintarLista(); rdPendPintarFicha();
   if(rdPendHist[id]===undefined) rdPendCargarHist(id);
 }
@@ -11365,7 +11449,7 @@ async function rdPendCampo(id, campo, valor){
   const p=rdPendList.find(x=>x.id===id); if(!p) return;
   valor=(typeof valor==='string')?valor.trim():valor;
   if((p[campo]||'')===(valor||'')) return;
-  const etiqueta={responsable:'Responsable',categoria:'Área',impacto:'Impacto',causa:'Causa'}[campo]||campo;
+  const etiqueta={responsable:'Responsable',categoria:'Zona',impacto:'Impacto',causa:'Causa'}[campo]||campo;
   if(await rdPendGuardar([id], {[campo]: valor||null}, etiqueta+': '+(p[campo]||'—')+' → '+(valor||'—'), {undoTexto:'Cambio deshecho'})){
     rdPendToastUndo(etiqueta+' actualizado'+(campo==='causa'&&valor==='Instalación de la contrata'?' · cuenta para la evaluación de la contrata':''));
     if(rdPendOpen===id) rdPendPintarFicha();
@@ -11466,6 +11550,77 @@ function rdPendPop(anchor, html){
   },0);
   return el;
 }
+function rdPendPopMenu(anchor, titulo, items){
+  const el=rdPendPop(anchor, (titulo?'<div class="p2-pop-h">'+titulo+'</div>':'')+'<div class="p2-menu">'
+    + items.map((it,i)=>'<button type="button" data-i="'+i+'"><i data-lucide="'+it[0]+'" class="ri"></i>'+it[1]+'</button>').join('')+'</div>');
+  el.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{ rdPendPopCerrar(); items[+b.dataset.i][2](); }));
+  if(window.lucide) lucide.createIcons();
+}
+function rdPendPopMas(anchor){
+  rdPendPopMenu(anchor, '', [
+    ['qr-code','Zonas y QR', rdZonasAbrir],
+    ['file-spreadsheet','Importar Excel', rdPendImpToggle],
+    ['file-signature','Acta de levantamiento', rdPendActaAbrir],
+    ['file-text','Informe para el cliente', rdPendInforme],
+    ['sheet','Exportar Excel', rdPendExportExcel],
+    ['map','Plano', ()=>rdPlanoAbrir(null)]
+  ]);
+}
+function rdPendPopFicha(anchor, id){
+  const p=rdPendList.find(x=>x.id===id); if(!p) return;
+  const items=[['calendar-clock','Reprogramar', ()=>rdPendPopFecha(anchor,id)]];
+  if(rdPendAbierto(p)) items.push(['flame', rdPendUrgente(p)?'Quitar de urgentes':'Marcar como urgente', ()=>rdPendTogUrg(id)]);
+  items.push(p.estado==='no_aplica' ? ['rotate-ccw','Reabrir', ()=>rdPendSetEstado(id,'abierta')] : ['circle-slash','Marcar «No aplica»', ()=>rdPendSetEstado(id,'no_aplica')]);
+  items.push(['map', p.plano_x!=null?'Ver en el plano':'Ubicar en el plano', ()=>rdPlanoAbrir(id)]);
+  rdPendPopMenu(anchor, '', items);
+}
+function rdPendPopTexto(anchor, id, campo){
+  const p=rdPendList.find(x=>x.id===id); if(!p) return;
+  const zona=campo==='categoria';
+  const el=rdPendPop(anchor, '<div class="p2-pop-h">'+(zona?'Zona':'Responsable')+'</div>'
+    + '<input class="pend-inp" id="pop-txt" list="'+(zona?'pend-zonas-dl':'pend-contratas')+'" value="'+rdEsc2(p[campo]||'')+'">'
+    + '<button class="pend-act primary" type="button" id="pop-ok" style="justify-content:center">Guardar</button>');
+  const inp=el.querySelector('#pop-txt'); inp.focus(); inp.select();
+  const ok=()=>{ const v=inp.value; rdPendPopCerrar(); rdPendCampo(id, campo, v); };
+  el.querySelector('#pop-ok').addEventListener('click', ok);
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter') ok(); });
+}
+function rdPendPopZonaLote(anchor){
+  const ids=[...rdPendSel]; if(!ids.length) return;
+  const el=rdPendPop(anchor, '<div class="p2-pop-h">Pasar '+ids.length+' a la zona</div>'
+    + '<input class="pend-inp" id="pop-txt" list="pend-zonas-dl" placeholder="Nombre de la zona">'
+    + '<button class="pend-act primary" type="button" id="pop-ok" style="justify-content:center">Cambiar zona</button>');
+  const inp=el.querySelector('#pop-txt'); inp.focus();
+  const ok=async()=>{
+    const v=inp.value.replace(/\s+/g,' ').trim(); if(!v) return;
+    rdPendPopCerrar();
+    if(await rdPendGuardar(ids, {categoria:v}, 'Zona unificada: '+v, {undoTexto:'Zona restaurada'})){ rdPendSel.clear(); rdPendToastUndo(ids.length+' pasaron a «'+v+'»'); }
+  };
+  el.querySelector('#pop-ok').addEventListener('click', ok);
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter') ok(); });
+}
+function rdPendPopFiltros(anchor){
+  const uniq=(c)=>[...new Set(rdPendList.map(p=>p[c]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'es'));
+  const opt=(vals,sel)=>vals.map(v=>'<option value="'+rdEsc2(v)+'"'+(sel===v?' selected':'')+'>'+rdEsc2(v)+'</option>').join('');
+  const zonas=rdPendZonasResumen(true).map(z=>z.nombre);
+  const el=rdPendPop(anchor, '<div class="p2-pop-h">Filtros</div>'
+    + '<label for="pf-z">Zona</label><select class="pend-inp" id="pf-z"><option value="">Todas las zonas</option>'+opt(zonas, rdPendFArea)+'</select>'
+    + '<label for="pf-r">Responsable</label><select class="pend-inp" id="pf-r"><option value="">Todos</option>'+opt(uniq('responsable'), rdPendFResp)+'</select>'
+    + '<label for="pf-i">Impacto</label><select class="pend-inp" id="pf-i"><option value="">Cualquiera</option>'+['alto','medio','bajo'].map(k=>'<option value="'+k+'"'+(rdPendFImp===k?' selected':'')+'>'+k[0].toUpperCase()+k.slice(1)+'</option>').join('')+'</select>'
+    + '<label class="p2-check" style="text-transform:none;letter-spacing:0;font-size:13px;margin-top:4px"><input type="checkbox" id="pf-x"'+(rdPendSoloRestr?' checked':'')+'> Solo las que generan restricción</label>'
+    + '<div class="p2-quick" style="justify-content:space-between;margin-top:6px"><button class="pend-act ghost" type="button" id="pf-clear">Limpiar</button><button class="pend-act primary" type="button" id="pf-ok">Aplicar</button></div>');
+  el.querySelector('#pf-ok').addEventListener('click',()=>{
+    const z=el.querySelector('#pf-z').value;
+    rdPendFResp=el.querySelector('#pf-r').value; rdPendFImp=el.querySelector('#pf-i').value; rdPendSoloRestr=el.querySelector('#pf-x').checked;
+    rdPendPopCerrar();
+    if(z!==rdPendFArea){ rdPendFArea=z; if(z) rdPendModo='lista'; if(rdPendZona && rdZonaKey(rdPendZona.nombre)!==rdZonaKey(z)) rdPendZona=null; }
+    rdPendRender();
+  });
+  el.querySelector('#pf-clear').addEventListener('click',()=>{
+    rdPendFArea=''; rdPendFResp=''; rdPendFImp=''; rdPendSoloRestr=false; rdPendZona=null; rdPendPopCerrar(); rdPendRender();
+  });
+}
+
 function rdPendPopEstado(anchor, id){
   const ids = id===null ? [...rdPendSel] : [id];
   if(!ids.length) return;
@@ -12210,7 +12365,7 @@ async function rdQrEntrada(){
   if(!opt){ showToast('Este QR es de '+(z.nombre_proyecto||z.cod_proyecto)+'. Tu cuenta no tiene acceso a esa obra.', 6000); return; }
   sel.value=opt.value;
   rdPendZona={id:z.id, nombre:z.nombre, cod:z.cod_proyecto};
-  rdPendFArea=z.nombre; rdPendView='todas'; rdPendFEst=''; rdPendFResp=''; rdPendFImp=''; rdPendSoloRestr=false; rdPendQ='';
+  rdPendFArea=z.nombre; rdPendView='todas'; rdPendModo='lista'; rdPendOpen=null; rdPendFEst=''; rdPendFResp=''; rdPendFImp=''; rdPendSoloRestr=false; rdPendQ='';
   showTab('diario');
   rdSetTipo('obs');
   try{ await cargarProyecto(); }catch(e){ console.warn('qr proyecto', e); }
@@ -12230,7 +12385,153 @@ function rdZonaRegistrar(){
   if(!rdPendZona) return;
   rdRecAbrir(); rdRecArea=rdPendZona.nombre; rdRecPintar();
 }
-function rdZonaSalir(){ rdPendZona=null; rdPendFArea=''; rdPendView='hoy'; rdPendRender(); }
+function rdZonaSalir(){ rdPendZona=null; rdPendFArea=''; rdPendView='todas'; rdPendModo='zonas'; rdPendRender(); }
+
+/* Vista liviana (16-sep): pastillas de estado, filas de una línea, ficha con recuadros y resumen por zona. */
+let _pendStyles3=false;
+function rdPendEstilos3(){
+  if(_pendStyles3) return; _pendStyles3=true;
+  const css=`
+  .p3-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;padding:2px 0 14px;}
+  .p3-obra{min-width:0;flex:1 1 220px;}
+  .p3-obra small{display:block;font-size:11px;font-weight:600;color:var(--text-3);}
+  .p3-obra strong{display:block;font-size:19px;font-weight:800;letter-spacing:-.01em;color:var(--navy-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .p3-prog{display:grid;grid-template-columns:auto 140px auto;align-items:center;gap:10px;font-size:12.5px;color:var(--text-2);font-variant-numeric:tabular-nums;}
+  .p3-prog b{color:var(--navy-800);} .p3-prog em{font-style:normal;font-weight:700;color:var(--navy-800);}
+  .p3-acts{display:flex;gap:8px;margin-left:auto;}
+  .pend-act.p3-icon{width:34px;padding:0;justify-content:center;}
+  .pend-act.set{border-color:var(--navy-800);color:var(--navy-800);}
+  .p3-pills-row{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;padding:4px 0 10px;}
+  .p3-pills{display:flex;gap:8px;overflow-x:auto;flex:1 1 auto;min-width:0;padding:2px;scrollbar-width:none;}
+  .p3-pills::-webkit-scrollbar{display:none;}
+  .p3-pill{flex:none;display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 8px 0 14px;border-radius:11px;
+    border:1px solid var(--border-strong);background:var(--surface);font-family:inherit;font-size:13px;font-weight:600;color:var(--navy-800);cursor:pointer;}
+  .p3-pill i{font-style:normal;font-size:12px;font-weight:700;min-width:24px;height:22px;line-height:22px;text-align:center;padding:0 6px;border-radius:7px;background:var(--surface-2);color:var(--text-2);font-variant-numeric:tabular-nums;}
+  .p3-pill.k-urg{background:#fdf1f1;border-color:transparent;color:var(--danger);} .p3-pill.k-urg i{background:#fbdcdc;color:var(--danger);}
+  .p3-pill.k-en_proceso{background:#eef5fd;border-color:transparent;color:#1d5fb8;} .p3-pill.k-en_proceso i{background:#dce9fa;color:#1d5fb8;}
+  .p3-pill.k-en_proceso::before,.p3-pill.k-abierta::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:-2px;}
+  .p3-pill.k-abierta::before{background:var(--navy-800);}
+  .p3-pill.on{background:var(--surface);border-color:var(--navy-800);box-shadow:inset 0 -2px 0 var(--navy-800);}
+  .p3-pill.on i{background:var(--navy-800);color:#fff;}
+  .p3-pill.k-urg.on{border-color:var(--danger);box-shadow:inset 0 -2px 0 var(--danger);} .p3-pill.k-urg.on i{background:var(--danger);}
+  .p3-view{display:flex;align-items:center;gap:8px;margin-left:auto;}
+  .p3-seg{display:inline-flex;padding:3px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);}
+  .p3-seg button{display:inline-flex;align-items:center;gap:6px;height:28px;white-space:nowrap;padding:0 10px;border:0;border-radius:7px;background:none;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--text-2);cursor:pointer;}
+  .p3-seg button .ri{width:14px;height:14px;}
+  .p3-seg button.on{background:var(--surface);color:var(--navy-800);box-shadow:var(--sh-1);}
+  .p3-sort{height:34px;border:0;background:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;}
+  .p3-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:0 0 12px;border-bottom:1px solid var(--border);}
+  .p3-search{flex:1 1 240px;max-width:380px;}
+  .p3-n{font-style:normal;font-size:11px;font-weight:700;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:99px;background:var(--navy-800);color:#fff;}
+  .p3-fchip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 6px 0 11px;border-radius:99px;background:#e9eef9;color:var(--navy-800);font-size:12.5px;font-weight:600;}
+  .p3-fchip button{border:0;background:none;color:var(--text-2);cursor:pointer;font-size:12px;padding:2px 4px;}
+
+  .p3-body{grid-template-columns:minmax(0,1fr) minmax(360px,440px);gap:18px;padding-top:12px;}
+  .p3-list{border-right:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .p3-list .p2-grp{padding:10px 4px 0;}
+  .p3-row{display:grid;grid-template-columns:18px 108px minmax(0,1fr) auto 16px;grid-template-areas:"c s t d v" "c s z d v";
+    align-items:center;column-gap:14px;row-gap:3px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);cursor:pointer;
+    transition:border-color var(--d-fast),box-shadow var(--d-fast);}
+  .p3-row:hover{border-color:var(--border-strong);box-shadow:var(--sh-1);}
+  .p3-row.is-open{border-color:var(--teal-500);box-shadow:0 0 0 3px rgba(6,182,212,.12);background:#f5fcfe;}
+  .p3-row.flash{animation:p2Flash 1.6s var(--ease);}
+  .p3-row .p2-chk{grid-area:c;}
+  .p3-row .p3-pill-s{grid-area:s;justify-self:start;}
+  .p3-t{grid-area:t;font-size:14px;font-weight:600;color:var(--navy-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;align-self:end;}
+  .p3-z{grid-area:z;display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;align-self:start;}
+  .p3-restr{flex:none;width:8px;height:8px;border-radius:2px;background:#d97706;transform:rotate(45deg);}
+  .p3-row.done .p3-t{color:var(--text-3);}
+  .p3-due{grid-area:d;border:1px solid transparent;background:none;border-radius:9px;padding:3px 6px;text-align:right;font-family:inherit;cursor:pointer;font-variant-numeric:tabular-nums;}
+  .p3-due:hover{border-color:var(--border-strong);}
+  .p3-due b{display:block;font-size:13px;font-weight:500;color:var(--navy-800);}
+  .p3-due small{display:block;font-size:12.5px;color:var(--text-3);}
+  .p3-due.late small{color:var(--danger);font-weight:600;} .p3-due.soon small{color:var(--warning);font-weight:600;} .p3-due.none small{color:var(--warning);}
+  .p3-chev{grid-area:v;width:16px;height:16px;color:var(--text-3);}
+  .p3-pill-s{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 11px 0 9px;border-radius:99px;border:0;font-family:inherit;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;background:#eef1f6;color:var(--navy-800);}
+  .p3-pill-s::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;}
+  .p3-pill-s.s-urg{background:#fde8e8;color:#c81e1e;}
+  .p3-pill-s.s-en_proceso{background:#fff1e0;color:#c2410c;}
+  .p3-pill-s.s-abierta::before{background:#475569;}
+  .p3-pill-s.s-por_validar{background:#edebfb;color:#5646be;}
+  .p3-pill-s.s-cerrada{background:var(--success-bg);color:#15803d;}
+  .p3-pill-s.s-no_aplica{background:var(--surface-2);color:var(--text-3);}
+
+  .p3-drawer{padding:18px 20px;border:1px solid var(--border);border-radius:16px;background:var(--surface);align-self:start;position:sticky;top:12px;gap:14px;}
+  .p3-fh{display:flex;align-items:center;gap:10px;}
+  .p3-id{font-size:13px;color:var(--text-2);font-variant-numeric:tabular-nums;}
+  .p3-nav{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;border:1px solid var(--border-strong);background:var(--surface);color:var(--navy-800);cursor:pointer;}
+  .p3-nav:disabled{opacity:.4;cursor:default;} .p3-nav.ghost{border-color:transparent;}
+  .p3-nav .ri{width:16px;height:16px;}
+  .p3-ft{margin:0;font-size:19px;line-height:1.3;font-weight:800;color:var(--navy-800);}
+  .p3-ft.long{font-size:15.5px;line-height:1.4;font-weight:700;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}
+  .p3-fd{margin:-6px 0 0;font-size:14px;line-height:1.5;color:var(--text-2);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .p3-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+  .p3-tile{display:flex;align-items:center;gap:10px;min-width:0;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);text-align:left;font-family:inherit;cursor:pointer;}
+  .p3-tile:hover:not(:disabled){border-color:var(--border-strong);background:var(--surface-2);}
+  .p3-tile:disabled{cursor:default;color:inherit;}
+  .p3-tile>.ri{flex:none;width:20px;height:20px;color:var(--navy-800);}
+  .p3-tile>span:last-child{min-width:0;}
+  .p3-tile small{display:block;font-size:11px;color:var(--text-3);}
+  .p3-tile b{display:block;font-size:13px;font-weight:700;color:var(--navy-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .p3-tile em{display:block;font-style:normal;font-size:12px;color:var(--text-3);} .p3-tile em.late{color:var(--danger);font-weight:600;} .p3-tile em.soon{color:var(--warning);font-weight:600;}
+  .p3-av{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#e9eef9;color:var(--navy-800);font-size:12px;font-weight:700;}
+  .p3-stepper{margin-top:10px;}
+  .p3-tabs{display:flex;gap:20px;border-bottom:1px solid var(--border);}
+  .p3-tabs button{border:0;background:none;padding:8px 0 10px;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--text-3);border-bottom:2px solid transparent;cursor:pointer;display:flex;align-items:center;gap:6px;}
+  .p3-tabs button i{font-style:normal;font-size:11px;min-width:20px;padding:1px 6px;border-radius:99px;background:var(--surface-2);}
+  .p3-tabs button.on{color:var(--navy-800);border-bottom-color:var(--teal-600);}
+  .p3-det{display:flex;flex-direction:column;gap:10px;}
+  .p3-com{padding:12px 14px;border-radius:12px;background:#eef3fb;}
+  .p3-com small{display:block;font-size:12px;font-weight:700;color:var(--navy-800);margin-bottom:4px;}
+  .p3-com p{margin:0;font-size:13.5px;line-height:1.5;color:var(--text-2);} .p3-com p.vacio{color:var(--text-3);}
+  .p3-excel summary{cursor:pointer;font-size:12.5px;color:var(--text-2);font-weight:600;}
+  .p3-foot{display:flex;gap:8px;padding:10px 0 2px;position:sticky;bottom:-18px;background:var(--surface);}
+  .p3-foot .p3-main{flex:1;justify-content:center;height:42px;font-size:14px;}
+  .p3-foot .pend-act{height:42px;}
+
+  .p3-zonas{padding-top:14px;}
+  .p3-zgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;}
+  .p3-zc{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:14px;border:1px solid var(--border);background:var(--surface);text-align:left;font-family:inherit;cursor:pointer;min-width:0;
+    transition:border-color var(--d-fast),box-shadow var(--d-fast),transform var(--d-fast);}
+  .p3-zc:hover{border-color:var(--border-strong);box-shadow:var(--sh-2);transform:translateY(-1px);}
+  .p3-zc.hot{box-shadow:inset 3px 0 0 var(--danger);}
+  .p3-zc.ok{opacity:.8;}
+  .p3-zc-h{display:flex;align-items:center;gap:6px;}
+  .p3-zc-h b{flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--navy-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .p3-zc-h .ri{width:16px;height:16px;color:var(--text-3);}
+  .p3-zc-n{font-size:13px;color:var(--text-2);} .p3-zc-n strong{font-size:22px;font-weight:800;color:var(--navy-800);margin-right:4px;} .p3-zc-n strong.ok{color:var(--success);}
+  .p3-zc-s{display:flex;flex-wrap:wrap;gap:6px;min-height:20px;}
+  .p3-zc-s em{font-style:normal;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--surface-2);color:var(--text-2);}
+  .p3-zc-s em.urg{background:#fde8e8;color:#c81e1e;} .p3-zc-s em.restr{background:#fef3c7;color:#92400e;}
+  .p3-zc-bar{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;}
+  .p3-zc-bar small{font-size:11.5px;color:var(--text-3);font-variant-numeric:tabular-nums;}
+  .p3-zmore{display:flex;align-items:center;gap:6px;margin:14px auto 10px;border:0;background:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;}
+  .p3-zmore .ri{width:15px;height:15px;}
+
+  @media(max-width:1100px){ .p3-body{grid-template-columns:1fr;} }
+  @media(max-width:1100px){
+    .p3-drawer{position:fixed;inset:auto 0 0 0;top:auto;z-index:1100;max-height:88vh;overflow:auto;border-radius:18px 18px 0 0;
+      box-shadow:0 -20px 50px -20px rgba(11,18,38,.4);transform:translateY(105%);transition:transform .3s var(--ease);}
+    .p3-drawer.show{transform:none;}
+  }
+  @media(max-width:700px){
+    .p3-hide-s{display:none;}
+    .p3-prog{grid-template-columns:auto 1fr auto;width:100%;order:3;}
+    .p3-view{margin-left:0;width:100%;justify-content:space-between;}
+    .p3-row{grid-template-columns:18px auto minmax(0,1fr) auto;grid-template-areas:"c t t d" "c s z d";padding:11px 12px;column-gap:10px;}
+    .p3-row .p3-pill-s{height:22px;font-size:11px;padding:0 8px 0 7px;}
+    .p3-chev{display:none;}
+    .p3-t{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+    .p3-due b{font-size:12px;} .p3-due small{font-size:12px;}
+    .p3-tiles{grid-template-columns:1fr 1fr;}
+    .p3-zgrid{grid-template-columns:1fr 1fr;}
+    .p3-zc{padding:12px;} .p3-zc-n strong{font-size:19px;}
+    .p3-zc-h{align-items:flex-start;} .p3-zc-h b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:13px;line-height:1.3;min-height:34px;}
+  }
+  @media print{ .p3-tools,.p3-pills-row,.p3-acts,.p3-drawer,.p2-chk{display:none !important;} .p3-body{grid-template-columns:1fr;} }
+  `;
+  const st=document.createElement('style'); st.id='rd-pend-styles-3'; st.textContent=css; document.head.appendChild(st);
+}
 
 /* Estilos de la pantalla nueva: color solo como senal, el resto en blanco. */
 let _pendStyles2=false;
