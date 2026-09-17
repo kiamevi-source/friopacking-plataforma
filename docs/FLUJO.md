@@ -84,7 +84,10 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   `v_partidas_licitables` de la instancia Supervisor y agrupa las partidas por
   rubro y partida, para mandar un rubro entero a licitar. En obras cargadas
   desde NISIRA el código de partida es la EDT (`0003.001.002.014`) y el monto
-  viene en dólares.
+  viene en dólares. **Los «Servicios generales» no se licitan** (fletes,
+  viáticos, alquiler de grúas y andamios, transporte): la vista los deja fuera
+  aunque NISIRA los marque SER. Lo que sí queda es todo el trabajo de obra,
+  incluidos pintura, arenado, limpieza, presurizado y puesta en marcha.
 - **Se invita a cuentas reales del portal.** El cockpit lista las empresas de
   `contratas_cuentas` (instancia Contratas) con la función
   `contratistas_para_licitar()` (security definer: la tabla no es legible sin
