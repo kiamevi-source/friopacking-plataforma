@@ -5,7 +5,7 @@ fuente de verdad: los datos del mapa viven en el bloque `const MAPA` que está a
 inicio del `<script>`. Si cambia el flujo, se edita ahí, en el **mismo commit**
 que el código. Este documento es la letra chica que no cabe en el dibujo.
 
-Última revisión: **16 de septiembre de 2026**
+Última revisión: **21 de septiembre de 2026**
 
 ---
 
@@ -109,6 +109,20 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   invitado. Consultas y ofertas se aceptan solo con la licitación abierta y
   hasta el final del día de `fecha_limite`; la oferta se puede corregir hasta
   ese momento.
+- **El portal entra a licitaciones solo por la función `lic-portal` (PMO).**
+  Desde el 21 de septiembre de 2026 el portal ya no lee ni escribe las tablas
+  `lic_*` con la llave pública de Gerencia. Llama a la Edge Function
+  `lic-portal` con el token de su sesión de Contratas; la función lo valida
+  contra `/auth/v1/user` de Contratas, toma el correo y devuelve **solo lo de
+  ese contratista**: sus invitaciones, el expediente de las licitaciones donde
+  está invitado, su oferta, las consultas públicas o propias (las de otros
+  nunca) y sus contratos y requisitos. Si la licitación se adjudicó a otra
+  empresa, solo sabe que existe, sin nombre ni monto. La oferta se guarda con
+  `lic_portal_guardar_oferta` (solo `service_role`): una sola oferta por
+  invitado, el total lo calcula el servidor con las cantidades de las
+  partidas y el cierre se valida en hora de Lima. Los adjuntos se suben con un
+  link firmado a la carpeta `<licitacion_id>/ofertas/<correo>/` que decide el
+  servidor; solo se pueden descargar los propios y el expediente.
 - **La adjudicación guarda `email` y `licitacion_codigo`.** Sin eso el ganador
   no veía su contrato en «Mis contratos».
 - **El supervisor ve el estado de la licitación, no lo copia.** La pestaña de

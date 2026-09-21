@@ -535,6 +535,21 @@
   var GER_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
   var gsb = null;
   try { gsb = window.supabase.createClient(GER_URL, GER_KEY); } catch(e){ console.warn('GER init', e); }
+  // Licitaciones, contratos y requisitos pasan por la función lic-portal (instancia PMO):
+  // valida la sesión de este portal y devuelve SOLO lo del contratista. Ya no se leen
+  // las tablas lic_* con la llave pública, que dejaba ver ofertas de otras empresas.
+  var LIC_FN = GER_URL + '/functions/v1/lic-portal';
+  async function licApi(accion, datos){
+    var s = null;
+    try { s = sb ? (await sb.auth.getSession()).data.session : null; } catch(e){}
+    if(!s) throw new Error('Tu sesión venció: vuelve a ingresar');
+    var r = await fetch(LIC_FN, { method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+s.access_token },
+      body: JSON.stringify(Object.assign({ accion:accion }, datos||{})) });
+    var j = await r.json().catch(function(){ return {}; });
+    if(!r.ok) throw new Error(j.error || ('Error '+r.status));
+    return j;
+  }
 
   // ── Estado (en memoria; persistido en Supabase) ──
   var informes = [];
@@ -982,11 +997,9 @@
 
   // ── Contratos adjudicados a esta contrata (PMO) + saldo vs facturas (Contratas) ──
   async function loadContratos(){
-    if(!gsb || !USER_EMAIL) return;
-    try{
-      var r = await gsb.from('lic_adjudicaciones').select('*').ilike('email', USER_EMAIL).order('fecha',{ascending:false});
-      LZ.contratos = r.data || [];
-    }catch(e){ console.warn('contratos', e); LZ.contratos = []; }
+    if(!USER_EMAIL) return;
+    try{ LZ.contratos = await licApi('contratos') || []; }
+    catch(e){ console.warn('contratos', e); LZ.contratos = []; }
     // poblar selector de factura
     var sel = $('#fac-contrato');
     if(sel){
@@ -1022,8 +1035,8 @@
   // ══════════════ REQUISITOS SSOMA (solo contratista adjudicado) ══════════════
   var REQUISITOS = [];
   async function loadRequisitos(){
-    if(!gsb || !USER_EMAIL) return;
-    try{ var r=await gsb.from('lic_requisitos').select('*').ilike('email', USER_EMAIL).order('created_at',{ascending:false}); REQUISITOS=r.data||[]; }catch(e){ console.warn('requisitos',e); REQUISITOS=[]; }
+    if(!USER_EMAIL) return;
+    try{ REQUISITOS = await licApi('requisitos') || []; }catch(e){ console.warn('requisitos',e); REQUISITOS=[]; }
     renderRequisitos();
   }
   function reqStats(rq){ var cl=rq.checklist||[]; var cum=rq.cumplimiento||{}; var done=cl.filter(function(it){ return cum[it.n]; }).length; return {total:cl.length, done:done, pend:cl.length-done}; }
@@ -1053,7 +1066,7 @@
     var cum=Object.assign({}, rq.cumplimiento||{});
     if(cum[n]) delete cum[n]; else cum[n]='entregado';
     rq.cumplimiento=cum; renderRequisitos();
-    try{ await gsb.from('lic_requisitos').update({cumplimiento:cum}).eq('id',reqId); }catch(e){ console.warn('upd req',e); }
+    try{ await licApi('requisito', { id:reqId, cumplimiento:cum }); }catch(e){ console.warn('upd req',e); toast('No se guardó el check', String(e.message||e)); }
     if(typeof renderResumenHome==='function') renderResumenHome();
   }
 
@@ -1168,9 +1181,10 @@
     var b=ev.target.closest && ev.target.closest('[data-lzfile]'); if(!b) return;
     ev.preventDefault();
     var w=window.open('about:blank','_blank');
-    var r=await gsb.storage.from(LZ_BUCKET).createSignedUrl(b.getAttribute('data-lzfile'), 3600);
-    if(r.error||!r.data){ if(w) w.close(); toast('No se pudo abrir el archivo','Intenta de nuevo'); return; }
-    if(w) w.location.href=r.data.signedUrl; else window.location.href=r.data.signedUrl;
+    var url=null;
+    try{ url=(await licApi('descargar', { path:b.getAttribute('data-lzfile') })).url; }catch(e){ console.warn('descargar', e); }
+    if(!url){ if(w) w.close(); toast('No se pudo abrir el archivo','Intenta de nuevo'); return; }
+    if(w) w.location.href=url; else window.location.href=url;
   });
   // Recepción abierta: estado abierto y hasta el final del día de cierre
   function lzAbierta(L){
@@ -1192,19 +1206,12 @@
 
   async function loadLicitaciones(){
     var root = $('#lz-root'); if(!root) return;
-    if(!gsb){ root.innerHTML='<div class="empty">Sin conexión al sistema de licitaciones.</div>'; return; }
     if(!USER_EMAIL){ root.innerHTML='<div class="empty">Inicia sesión desde el portal para ver tus invitaciones.</div>'; return; }
     try{
-      var inv = await gsb.from('lic_invitados').select('*').ilike('email', USER_EMAIL);
-      var invit = inv.data || [];
-      var ids = invit.map(function(v){ return v.licitacion_id; });
-      var res = ids.length ? await Promise.all([
-        gsb.from('lic_licitaciones').select('*').in('id', ids),
-        gsb.from('lic_eventos').select('licitacion_id,accion,detalle,usuario,created_at').in('licitacion_id', ids).order('created_at',{ascending:false}).limit(500)
-      ]) : [{data:[]},{data:[]}];
-      LZ.lics = (res[0].data || []).filter(function(L){ return LZ_OCULTAS.indexOf(L.estado)<0; });
-      LZ.eventos = res[1].data || [];
-      LZ.invit = invit.filter(function(v){ return LZ.lics.some(function(L){ return L.id===v.licitacion_id; }); });
+      var bz = await licApi('invitaciones');
+      LZ.lics = (bz.lics || []).filter(function(L){ return LZ_OCULTAS.indexOf(L.estado)<0; });
+      LZ.eventos = bz.eventos || [];
+      LZ.invit = (bz.invit || []).filter(function(v){ return LZ.lics.some(function(L){ return L.id===v.licitacion_id; }); });
       lzPintarContador();
       if(!LZ.invit.length){ root.innerHTML='<div class="empty">Aún no tienes invitaciones a licitación.<br><span style="font-size:12px;color:var(--muted)">Cuando Operaciones te invite, aparecerá aquí.</span></div>'; return; }
       renderLzInbox();
@@ -1243,33 +1250,17 @@
   async function openLic(id){
     var root=$('#lz-root'); root.innerHTML='<div class="empty">Cargando…</div>';
     try{
-      var r=await Promise.all([
-        gsb.from('lic_licitaciones').select('*').eq('id',id).single(),
-        gsb.from('lic_partidas').select('*').eq('licitacion_id',id).order('orden'),
-        gsb.from('lic_planos').select('*').eq('licitacion_id',id).order('codigo'),
-        gsb.from('lic_adendas').select('*').eq('licitacion_id',id).order('numero'),
-        gsb.from('lic_consultas').select('*').eq('licitacion_id',id).order('created_at'),
-        gsb.from('lic_invitados').select('*').eq('licitacion_id',id).ilike('email',USER_EMAIL).maybeSingle(),
-        gsb.from('lic_ofertas').select('*').eq('licitacion_id',id).ilike('email',USER_EMAIL).maybeSingle(),
-        gsb.from('lic_documentos').select('*').eq('licitacion_id',id).order('created_at'),
-        gsb.from('lic_adjudicaciones').select('licitacion_id,contratista,email,monto_adjudicado,contrato_codigo').eq('licitacion_id',id).maybeSingle(),
-        gsb.from('lic_eventos').select('licitacion_id,accion,detalle,usuario,created_at').eq('licitacion_id',id).order('created_at',{ascending:false}).limit(100)
-      ]);
-      var L=r[0].data;
-      if(!L || LZ_OCULTAS.indexOf(L.estado)>=0){ root.innerHTML='<div class="empty">Esta licitación aún no está publicada.</div>'; return; }
-      var planos=r[2].data||[], invit=r[5].data, oferta=r[6].data;
-      var pids=planos.map(function(p){ return p.id; });
-      var r2=await Promise.all([
-        pids.length ? gsb.from('lic_plano_versiones').select('*').in('plano_id',pids).order('created_at') : Promise.resolve({data:[]}),
-        oferta ? gsb.from('lic_oferta_items').select('*').eq('oferta_id',oferta.id) : Promise.resolve({data:[]})
-      ]);
-      var nov = invit ? lzNovedades(invit, r[9].data||[]) : [];
-      LZ.cur={ L:L, partidas:r[1].data||[], planos:planos, planoVers:r2[0].data||[], adendas:r[3].data||[], consultas:r[4].data||[], invit:invit, oferta:oferta, ofItems:r2[1].data||[], docs:r[7].data||[], adj:r[8].data, nov:nov, pend:[], quitar:{} };
+      var d=await licApi('detalle', { id:id });
+      var L=d.L;
+      if(d.oculta || !L || LZ_OCULTAS.indexOf(L.estado)>=0){ root.innerHTML='<div class="empty">Esta licitación aún no está publicada.</div>'; return; }
+      var invit=d.invit, oferta=d.oferta;
+      var nov = invit ? lzNovedades(invit, d.eventos||[]) : [];
+      LZ.cur={ L:L, partidas:d.partidas||[], planos:d.planos||[], planoVers:d.planoVers||[], adendas:d.adendas||[], consultas:d.consultas||[], invit:invit, oferta:oferta, ofItems:d.ofItems||[], docs:d.docs||[], adj:d.adj, nov:nov, pend:[], quitar:{} };
       renderLic();
       // marcar como vista (las novedades de arriba se quedan en pantalla hasta salir)
       if(invit){
-        var ahora=new Date().toISOString();
-        gsb.from('lic_invitados').update({ visto_at:ahora }).eq('id',invit.id).then(function(){
+        licApi('visto', { id:L.id }).then(function(v){
+          var ahora=(v&&v.visto_at)||new Date().toISOString();
           invit.visto_at=ahora;
           var loc=LZ.invit.find(function(v){ return v.id===invit.id; }); if(loc) loc.visto_at=ahora;
           lzPintarContador();
@@ -1399,23 +1390,20 @@
 
   async function setInvEstado(est,msg){
     var c=LZ.cur; if(!c.invit){ toast('Sin invitación',''); return; }
-    try{ await gsb.from('lic_invitados').update({ estado:est, confirmado_at:(est==='Confirmó'?new Date().toISOString():null) }).eq('id',c.invit.id);
-      await gsb.from('lic_eventos').insert({ licitacion_id:c.L.id, usuario:USER_EMAIL, accion:'Participación', detalle:(c.invit.contratista||USER_EMAIL)+': '+est });
+    try{ await licApi('participar', { id:c.L.id, estado:est });
       toast(msg,''); openLic(c.L.id);
     }catch(e){ toast('Error',String(e.message||e)); }
   }
   async function sendConsulta(){
     var c=LZ.cur; var t=($('#lz-qtext').value||'').trim(); if(!t){ toast('Escribe tu consulta',''); return; }
     if(!lzAbierta(c.L)){ toast('La recepción ya cerró','No se pueden enviar consultas'); return; }
-    try{ await gsb.from('lic_consultas').insert({ licitacion_id:c.L.id, contratista:(c.invit&&c.invit.contratista)||USER_EMAIL, email:USER_EMAIL, pregunta:t, estado:'Pendiente' });
-      await gsb.from('lic_eventos').insert({ licitacion_id:c.L.id, usuario:USER_EMAIL, accion:'Consulta', detalle:t.slice(0,80) });
+    try{ await licApi('consulta', { id:c.L.id, pregunta:t });
       toast('Consulta enviada','Operaciones la responderá'); openLic(c.L.id);
     }catch(e){ toast('Error',String(e.message||e)); }
   }
   async function sendOferta(){
     var c=LZ.cur, L=c.L;
-    // se vuelve a leer la licitación: pudo cerrarse mientras el contratista llenaba precios
-    try{ var fresh=(await gsb.from('lic_licitaciones').select('estado,fecha_limite').eq('id',L.id).single()).data; if(fresh){ L.estado=fresh.estado; L.fecha_limite=fresh.fecha_limite; } }catch(e){}
+    // El cierre lo vuelve a verificar el servidor al guardar (hora de Lima); esto solo evita el viaje.
     if(!lzAbierta(L)){ toast('La recepción de ofertas ya cerró','No se registró la oferta'); renderLic(); return; }
     var items=[], total=0, sinPrecio=0;
     document.querySelectorAll('#lz-items tr').forEach(function(tr){ var pu=Number(tr.querySelector('.lz-pu').value||0); var cant=Number(tr.dataset.cant||0); if(!pu) sinPrecio++; items.push({ partida_id:tr.dataset.pid, pu:pu, cantidad:cant }); total+=pu*cant; });
@@ -1427,26 +1415,18 @@
     try{
       // 1) adjuntos nuevos
       var adj=((c.oferta&&c.oferta.adjuntos)||[]).filter(function(a){ return !c.quitar[a.path]; });
+      // La ruta del adjunto la pone el servidor (carpeta de este contratista) y firma la subida.
       for(var i=0;i<c.pend.length;i++){
-        var x=c.pend[i], path=L.id+'/ofertas/'+lzSafe(USER_EMAIL)+'/'+Date.now()+'-'+lzSafe(x.file.name);
-        var up=await gsb.storage.from(LZ_BUCKET).upload(path, x.file, { contentType:x.file.type||undefined, upsert:false });
+        var x=c.pend[i];
+        var f=await licApi('subir', { id:L.id, nombre:x.file.name });
+        var up=await gsb.storage.from(LZ_BUCKET).uploadToSignedUrl(f.path, f.token, x.file, { contentType:x.file.type||undefined });
         if(up.error) throw new Error('No se pudo subir '+x.file.name+': '+up.error.message);
-        adj.push({ nombre:x.file.name, tipo:x.tipo, path:path, bytes:x.file.size, subido_at:new Date().toISOString() });
+        adj.push({ nombre:x.file.name, tipo:x.tipo, path:f.path, bytes:x.file.size, subido_at:new Date().toISOString() });
       }
-      // 2) cabecera + items
-      var ofId, datos={ monto_total:total, plazo_dias:plazo, estado:'Enviada', enviada_at:new Date().toISOString(), adjuntos:adj };
-      if(c.oferta){
-        ofId=c.oferta.id;
-        var u=await gsb.from('lic_ofertas').update(datos).eq('id',ofId); if(u.error) throw u.error;
-        await gsb.from('lic_oferta_items').delete().eq('oferta_id',ofId);
-      } else {
-        var of=await gsb.from('lic_ofertas').insert(Object.assign({ licitacion_id:L.id, contratista:nombre, email:USER_EMAIL, moneda:L.moneda, validacion:{economica:'ok',formato:'ok',tecnica:'pend',cronograma:'pend',garantias:'pend',documentos:'pend'} }, datos)).select().single();
-        if(of.error) throw of.error; ofId=of.data.id;
-      }
-      if(items.length){ var ins=await gsb.from('lic_oferta_items').insert(items.map(function(it){ it.oferta_id=ofId; return it; })); if(ins.error) throw ins.error; }
-      if(c.invit) await gsb.from('lic_invitados').update({ estado:'Oferta enviada' }).eq('id',c.invit.id);
-      await gsb.from('lic_eventos').insert({ licitacion_id:L.id, usuario:USER_EMAIL, accion:'Oferta recibida', detalle:nombre+(c.oferta?' actualizó su oferta: ':': ')+lzMoney(total,L.moneda)+(adj.length?' · '+adj.length+' adjunto(s)':'') });
-      toast(c.oferta?'Oferta actualizada':'Oferta enviada', lzMoney(total,L.moneda)); openLic(L.id);
+      // 2) la oferta se guarda en una sola operación: el servidor recalcula el total con las cantidades
+      var res=await licApi('oferta', { id:L.id, plazo_dias:plazo, items:items.map(function(it){ return { partida_id:it.partida_id, pu:it.pu }; }), adjuntos:adj });
+      var totalOk=Number(res&&res.total)||total;
+      toast(res&&res.actualizada?'Oferta actualizada':'Oferta enviada', lzMoney(totalOk,L.moneda)); openLic(L.id);
     }catch(e){ console.warn(e); toast('Error al enviar',String(e.message||e)); if(btn){ btn.disabled=false; btn.textContent='Reintentar envío'; } }
   }
 

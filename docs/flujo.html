@@ -145,7 +145,7 @@
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    DATOS DEL FLUJO — esto es lo único que se edita cuando algo cambia.
-   Revisado: 16 de septiembre de 2026
+   Revisado: 21 de septiembre de 2026
    ═══════════════════════════════════════════════════════════════════ */
 const MAPA = {
   nodes:[
@@ -258,7 +258,7 @@ const MAPA = {
 
     /* lecturas cruzadas entre instancias */
     {from:'a-sup:dash', to:'d-pmo:proyectos', tipo:'lee', label:'obras y valorización'},
-    {from:'a-ct:licitaciones', to:'d-pmo:lic', tipo:'lee', label:'expediente, novedades y oferta con adjuntos'},
+    {from:'a-ct:licitaciones', to:'d-pmo:lic', tipo:'lee', label:'solo lo suyo, vía función lic-portal'},
     {from:'a-ger:equipos', to:'d-sup:equipos_pmo', tipo:'lee', label:'escribe equipos importados'},
     {from:'a-ger:proyectos', to:'d-sup:checklist', tipo:'lee', label:'lee la preparación'},
     {from:'a-ger:licitaciones', to:'d-sup:presupuestos', tipo:'lee', label:'partidas licitables por rubro'},
