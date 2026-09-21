@@ -1560,7 +1560,7 @@ function tabPartidas(){
     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">'+
       '<div><div class="panel-t"><i data-lucide="table-2"></i>Partidas · Formato único de licitación</div>'+
       '<div class="panel-d" style="margin:0">Esta estructura es la base del formato único: todos los contratistas cotizan sobre estas mismas partidas.</div></div>'+
-      '<button class="btn btn-primary btn-sm" id="add-part"><i data-lucide="plus"></i>Agregar partida</button>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" id="add-ppto"><i data-lucide="list-checks"></i>Traer del presupuesto</button><button class="btn btn-sm" id="add-part"><i data-lucide="plus"></i>Agregar partida a mano</button></div>'+
     '</div>'+
     (c.partidas.length?'<div class="tbl-wrap" style="margin-top:12px"><table class="tbl"><thead><tr><th style="width:70px">Código</th><th>Partida</th><th style="width:60px">Und</th><th class="num" style="width:90px">Cantidad</th><th class="num" style="width:120px">P.U. base</th><th class="num" style="width:130px">Parcial</th><th style="width:40px"></th></tr></thead><tbody>'+
       c.partidas.map(function(p){
@@ -1578,8 +1578,42 @@ function tabPartidas(){
 }
 window.bind_partidas=function(){
   var a=$('#add-part'); if(a) a.onclick=openAddPart;
+  var ap=$('#add-ppto'); if(ap) ap.onclick=openAddFromPpto;
   document.querySelectorAll('[data-delpart]').forEach(function(b){ b.onclick=function(){ delRow('lic_partidas',b.getAttribute('data-delpart'),'Partida eliminada'); }; });
 };
+function openAddFromPpto(){
+  var L=STATE.cur.lic;
+  var ya={}; STATE.cur.partidas.forEach(function(p){ if(p.origen_presupuesto_id!=null) ya[p.origen_presupuesto_id]=true; });
+  var arr=(STATE.partidasLic[normname(L.proyecto)]||[]).filter(function(pt){ return !ya[pt.presupuesto_id] && !STATE.licitadas[pt.presupuesto_id]; });
+  if(!arr.length){ toast(L.proyecto?'No quedan partidas por licitar en el presupuesto de '+L.proyecto:'La licitación no tiene proyecto asignado', true); return; }
+  var byR={}, rubros=[]; arr.forEach(function(pt){ var r=pt.rubro||'Sin rubro'; if(!byR[r]){ byR[r]=[]; rubros.push(r); } byR[r].push(pt); });
+  var MON='USD'; // el presupuesto de NISIRA viene en dólares
+  openModal({ title:'Traer partidas del presupuesto', sub:'Partidas de '+esc(L.proyecto)+' que todavía no están en ninguna licitación. Marca un rubro entero o partidas sueltas.', wide:true,
+    body:'<div style="border:1px solid var(--bd);border-radius:12px;max-height:420px;overflow:auto">'+rubros.map(function(r,gi){
+      var tot=byR[r].reduce(function(s,x){ return s+x.costo; },0);
+      return '<div style="display:flex;align-items:center;gap:9px;padding:8px 12px;background:#eef2f8;border-bottom:1px solid #e2e8f0;position:sticky;top:0"><input type="checkbox" class="pp-grp" data-g="'+gi+'" style="width:15px;height:15px"><b style="flex:1;font-size:12.5px">'+esc(r)+'</b><span style="font-size:11.5px;color:#64748b">'+byR[r].length+' partidas · '+money(tot,MON)+'</span></div>'+
+        byR[r].map(function(pt){ return '<label style="display:flex;align-items:center;gap:9px;padding:7px 12px 7px 34px;border-bottom:1px solid #f1f5f9;font-size:12.5px;cursor:pointer"><input type="checkbox" class="pp-it" data-g="'+gi+'" data-pid="'+pt.presupuesto_id+'" style="width:14px;height:14px"><span style="font-family:monospace;color:#64748b;white-space:nowrap">'+esc(pt.item)+'</span><span style="flex:1;min-width:0">'+esc(pt.descripcion)+'</span><span style="color:#64748b;white-space:nowrap">'+Number(pt.cantidad||1).toLocaleString('es-PE')+' '+esc(pt.unidad||'')+'</span><b style="white-space:nowrap;min-width:90px;text-align:right">'+money(pt.costo,MON)+'</b></label>'; }).join('');
+    }).join('')+'</div><div class="fhint" id="pp-sum" style="margin-top:8px">0 partidas seleccionadas</div>',
+    okText:'Agregar a la licitación', ok: async function(){
+      var sel={}; document.querySelectorAll('.pp-it:checked').forEach(function(cb){ sel[cb.getAttribute('data-pid')]=true; });
+      var elegidas=arr.filter(function(pt){ return sel[pt.presupuesto_id]; });
+      if(!elegidas.length){ toast('Marca al menos una partida', true); return false; }
+      var base=STATE.cur.partidas.length;
+      var filas=elegidas.map(function(pt,i){ var cant=Number(pt.cantidad||1)||1; return { licitacion_id:L.id, orden:base+i+1, codigo:pt.item, descripcion:pt.descripcion, unidad:pt.unidad||null, cantidad:cant, pu_base:Math.round((pt.costo/cant)*100)/100, origen_presupuesto_id:Number(pt.presupuesto_id) }; });
+      try{
+        var r=await sb.from('lic_partidas').insert(filas); if(r.error) throw r.error;
+        var suma=elegidas.reduce(function(s,x){ return s+x.costo; },0);
+        if(!Number(L.presupuesto_base)){ await sb.from('lic_licitaciones').update({ presupuesto_base:Math.round(suma), moneda:'USD' }).eq('id',L.id); }
+        await logEvento(L.id,'Partidas agregadas',elegidas.length+' partida'+(elegidas.length===1?'':'s')+' del presupuesto · '+money(suma,MON));
+        elegidas.forEach(function(pt){ STATE.licitadas[pt.presupuesto_id]=true; });
+        closeModal(); toast(elegidas.length+' partida'+(elegidas.length===1?'':'s')+' agregada'+(elegidas.length===1?'':'s')); openDetail(L.id);
+      }catch(e){ toast('No se pudieron agregar: '+(e.message||e), true); return false; }
+    }, after:function(){
+      function sum(){ var n=0,t=0; document.querySelectorAll('.pp-it:checked').forEach(function(cb){ n++; var pt=arr.find(function(x){ return String(x.presupuesto_id)===cb.getAttribute('data-pid'); }); if(pt) t+=pt.costo; }); $('#pp-sum').textContent=n+' partida'+(n===1?'':'s')+' seleccionada'+(n===1?'':'s')+' · '+money(t,MON); }
+      document.querySelectorAll('.pp-grp').forEach(function(g){ g.onchange=function(){ var gi=g.getAttribute('data-g'); document.querySelectorAll('.pp-it[data-g="'+gi+'"]').forEach(function(cb){ cb.checked=g.checked; }); sum(); }; });
+      document.querySelectorAll('.pp-it').forEach(function(cb){ cb.onchange=sum; });
+    }});
+}
 function openAddPart(){
   var n=STATE.cur.partidas.length+1;
   openModal({ title:'Agregar partida', sub:'Se suma al formato único.',
@@ -1616,6 +1650,8 @@ window.bind_invitados=function(){
   document.querySelectorAll('[data-delinv]').forEach(function(b){ b.onclick=function(){ delRow('lic_invitados',b.getAttribute('data-delinv'),'Invitación eliminada'); }; });
 };
 function portalCell(v){
+  var est=STATE.cur&&STATE.cur.lic&&STATE.cur.lic.estado;
+  if(est==='Borrador'||est==='Preparación') return '<span title="El portal solo muestra licitaciones desde «Publicada»" style="font-size:11.5px;font-weight:800;color:#b45309">La verá al publicar</span>';
   if(v.visto_at) return '<span style="font-size:11.5px;font-weight:700;color:#0d7d70">Vista · '+fmtDate(v.visto_at)+'</span>';
   if(!cuentaDe(v.email)) return '<span title="No hay cuenta del portal con este correo: no verá la invitación" style="font-size:11.5px;font-weight:800;color:#b45309">⚠ Sin cuenta</span>';
   return '<span style="font-size:11.5px;font-weight:700;color:#64748b">Aún no la abre</span>';
