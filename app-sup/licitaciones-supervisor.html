@@ -230,7 +230,18 @@ function bindEditor(){
   var as=$('#a-subir'); if(as) as.onclick=subirAdjunto;
   var sg=$('#add-sug'); if(sg) sg.onclick=elegirSugeridos;
   $('#guardar').onclick=function(){ guardar(false); };
-  $('#enviar').onclick=async function(){ if(!confirm('¿Enviar a Gerencia? Ya no podrás editarla, salvo que te la devuelvan con observaciones.')) return; var ok=await guardar(true); if(!ok) return; try{ await api('enviar',{id:S.cur.id}); toast('Enviada a Gerencia'); cargar(); }catch(e){ toast(e.message,true); } };
+  $('#enviar').onclick=async function(){
+    if(!confirm('¿Enviar a Gerencia? Ya no podrás editarla, salvo que te la devuelvan con observaciones.')) return;
+    var be=$('#enviar'), bg=$('#guardar'); be.disabled=true; bg.disabled=true; be.textContent='Enviando…';
+    var ok=await guardar(true); if(!ok){ be.disabled=false; bg.disabled=false; be.textContent='Enviar a Gerencia'; return; }
+    try{
+      await api('enviar',{id:S.cur.id});
+      // se muestra ya con su estado nuevo (solo lectura), sin esperar a recargar
+      S.cur.estado='Por aprobar'; S.cur.editable=false; S.cur.observacion_gerencia=null; pintarEditor();
+      toast('Enviada a Gerencia: queda por aprobar');
+      api('listar',{cod_proyecto:S.cod}).then(function(l){ S.lics=l; }).catch(function(){});
+    }catch(e){ toast(e.message,true); be.disabled=false; bg.disabled=false; be.textContent='Enviar a Gerencia'; }
+  };
 }
 async function guardar(silencioso){
   leerForm(); var L=S.cur;

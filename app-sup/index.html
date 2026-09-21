@@ -16028,7 +16028,7 @@ function showTab(tab) {
 function abrirLicitacionesSup(){
   const fr=document.getElementById('lic-sup-frame'); if(!fr) return;
   const cod=(currentProyecto&&currentProyecto.cod)||'', nombre=(currentProyecto&&currentProyecto.nombre)||'';
-  const src='licitaciones-supervisor.html?v=20260921a&cod='+encodeURIComponent(cod)+'&nombre='+encodeURIComponent(nombre);
+  const src='licitaciones-supervisor.html?v=20260921b&cod='+encodeURIComponent(cod)+'&nombre='+encodeURIComponent(nombre);
   if(fr.dataset.src!==src){ fr.dataset.src=src; fr.src=src; }
 }
 
