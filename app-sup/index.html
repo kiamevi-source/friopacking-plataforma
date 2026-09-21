@@ -18109,27 +18109,24 @@ let _dashSources = null;
     'cerrada':'contratado', 'contratada':'contratado',
     'cancelada':'cancelado', 'desierta':'cancelado'
   };
+  // El estado vive en Gerencia (lic_*). Se consulta por la función lic-supervisor con la
+  // sesión del supervisor: ya no se leen las tablas de licitaciones con la llave pública.
   async function _estadosDesdeGerencia(presupuestoIds){
     const out = {};
     const ids = (presupuestoIds||[]).filter(v => v != null);
     if(!ids.length) return out;
-    const G_URL = 'https://vsploxglutkbeokumunp.supabase.co';
-    const G_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
-    const H = { apikey: G_KEY, Authorization: 'Bearer ' + G_KEY };
     try{
-      const parts = await fetch(G_URL + '/rest/v1/lic_partidas?select=origen_presupuesto_id,licitacion_id&origen_presupuesto_id=in.(' + ids.join(',') + ')', { headers:H })
-        .then(r => r.ok ? r.json() : []);
-      if(!parts.length) return out;
-      const licIds = Array.from(new Set(parts.map(p => p.licitacion_id).filter(Boolean)));
-      if(!licIds.length) return out;
-      const lics = await fetch(G_URL + '/rest/v1/lic_licitaciones?select=id,codigo,nombre,estado&id=in.(' + licIds.map(i => '"'+i+'"').join(',') + ')', { headers:H })
-        .then(r => r.ok ? r.json() : []);
-      const byId = {}; lics.forEach(l => { byId[l.id] = l; });
-      parts.forEach(p => {
-        const L = byId[p.licitacion_id]; if(!L) return;
-        out[p.origen_presupuesto_id] = {
-          codigo: L.codigo, nombre: L.nombre, estadoRaw: L.estado,
-          estado: _LIC_ESTADO_MAP[String(L.estado||'').toLowerCase()] || 'en_licitacion'
+      const token = await sbTokenVigente();
+      if(!token) return out;
+      const r = await fetch('https://vsploxglutkbeokumunp.supabase.co/functions/v1/lic-supervisor', {
+        method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + token },
+        body: JSON.stringify({ accion:'estados', presupuesto_ids: ids })
+      });
+      const filas = r.ok ? await r.json() : [];
+      (filas||[]).forEach(f => {
+        out[f.presupuesto_id] = {
+          codigo: f.codigo, nombre: f.nombre, estadoRaw: f.estado,
+          estado: _LIC_ESTADO_MAP[String(f.estado||'').toLowerCase()] || 'en_licitacion'
         };
       });
     }catch(e){ console.warn('[lic] no se pudo leer el estado desde Gerencia:', e); }
