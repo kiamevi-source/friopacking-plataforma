@@ -3588,6 +3588,11 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       <span>Contratas</span>
       <span class="tab-badge hidden"></span>
     </button>
+    <button class="nav-tab" data-tab="licitaciones" onclick="showTab('licitaciones')">
+      <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 12.5-8 8a2.12 2.12 0 1 1-3-3l8-8"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></svg></span>
+      <span>Licitaciones</span>
+      <span class="tab-badge hidden"></span>
+    </button>
     <button class="nav-tab" data-tab="riesgos" onclick="showTab('riesgos')">
       <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
       <span>Riesgos</span>
@@ -4421,6 +4426,11 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
     </div>
 
     <!-- ══ COSTOS & MÁRGENES · Fase 3 #4 ══ -->
+    <!-- LICITACIONES: el supervisor arma la licitación y la envía a Gerencia (pantalla aparte: licitaciones-supervisor.html) -->
+    <div class="tab-content" id="tab-licitaciones">
+      <iframe id="lic-sup-frame" title="Licitaciones" style="width:100%;min-height:calc(100vh - 170px);border:0;background:transparent"></iframe>
+    </div>
+
     <div class="tab-content" id="tab-costos">
 
       <!-- Importador de presupuesto embebido (movido acá desde el ex-tab Imports).
@@ -16011,6 +16021,15 @@ function showTab(tab) {
   if (tab === 'diario' && currentProyecto && !_rdCargado) { try { cargarReporteDiario(); } catch(e){} }
   if (tab === 'diario') { try { initFirmaCanvas(); } catch(e){} }
   if (tab === 'preparacion' && currentProyecto) { try { cargarChecklist(); } catch(e){} }
+  if (tab === 'licitaciones') { try { abrirLicitacionesSup(); } catch(e){} }
+}
+
+// Licitaciones del supervisor: se abre en un marco con la obra elegida; se recarga si cambia la obra.
+function abrirLicitacionesSup(){
+  const fr=document.getElementById('lic-sup-frame'); if(!fr) return;
+  const cod=(currentProyecto&&currentProyecto.cod)||'', nombre=(currentProyecto&&currentProyecto.nombre)||'';
+  const src='licitaciones-supervisor.html?v=20260921a&cod='+encodeURIComponent(cod)+'&nombre='+encodeURIComponent(nombre);
+  if(fr.dataset.src!==src){ fr.dataset.src=src; fr.src=src; }
 }
 
 /* ════ Checklist de preparación de obra (kick-off) — captura Supervisor ════ */

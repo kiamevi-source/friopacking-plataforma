@@ -124,6 +124,10 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   link firmado a la carpeta `<licitacion_id>/ofertas/<correo>/` que decide el
   servidor; solo se pueden descargar los propios y el expediente.
 - **El supervisor arma la licitación por la función `lic-supervisor` (PMO).**
+  La pantalla es `app-sup/licitaciones-supervisor.html`, que se abre en la
+  pestaña «Licitaciones» del Supervisor dentro de un marco con la obra elegida
+  (usa `sbTokenVigente()` del shell). El service worker solo guarda el shell
+  como copia sin señal: esa página siempre va a la red.
   Desde el 21 de septiembre de 2026 el flujo es: el supervisor crea el borrador
   desde app-sup (partidas del presupuesto, especificación, adjuntos y
   contratistas sugeridos) y lo envía a Gerencia (`Por aprobar`); Gerencia

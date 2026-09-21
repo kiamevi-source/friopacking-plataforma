@@ -5,7 +5,7 @@
    red (el offline de datos ya lo maneja la cola local `fp_rd_*` de la app).
    Subir la versión (v1 → v2…) al cambiar este archivo para forzar refresco.
    ════════════════════════════════════════════════════════════════ */
-const VERSION   = 'fp-sup-v34';   // subir en cada cambio del shell: fuerza refresco del SW
+const VERSION   = 'fp-sup-v35';   // subir en cada cambio del shell: fuerza refresco del SW
 const APP_SHELL = VERSION + '-shell';
 const RUNTIME   = VERSION + '-runtime';
 
@@ -61,6 +61,8 @@ self.addEventListener('fetch', (event) => {
   // 2) Navegación (el HTML de la app): red primero → cae a caché sin señal.
   //    Ignora el query `?v=timestamp` que el shell agrega al iframe.
   if (req.mode === 'navigate') {
+    // Solo el shell se guarda como index.html; otras páginas (p. ej. licitaciones-supervisor.html, que se abre en un marco) van a la red.
+    if (!/\/(index\.html)?$/.test(url.pathname)) return;
     event.respondWith((async () => {
       try {
         const fresh = await fetch(req);

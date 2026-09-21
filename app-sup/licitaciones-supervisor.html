@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Licitaciones · Supervisor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--brand:#2E7DD1;--brand-d:#1d4ed8;--teal:#0ea5a4;--ink:#0b1226;--t2:#475569;--t3:#94a3b8;--bd:#e3e8f0;--bg:#f4f6fb;--card:#fff;--ok:#12805c;--warn:#b45309;--bad:#b42318}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+.wrap{max-width:1100px;margin:0 auto;padding:18px 16px 60px}
+button{font-family:inherit;cursor:pointer}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.h1{font-size:21px;font-weight:800;letter-spacing:-.3px}
+.sub{font-size:13px;color:var(--t2);margin-top:2px}
+.btn{border:1px solid var(--bd);background:#fff;color:var(--ink);font-weight:700;font-size:13px;padding:9px 14px;border-radius:10px;display:inline-flex;align-items:center;gap:7px}
+.btn:hover{border-color:#b9c7dd}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.pri:hover{background:var(--brand-d)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.sm{padding:6px 10px;font-size:12px}
+.btn:disabled{opacity:.55;cursor:default}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px 18px;margin-bottom:12px}
+.card h3{font-size:14.5px;font-weight:800;margin-bottom:4px}
+.card .hint{font-size:12.5px;color:var(--t2);margin-bottom:10px}
+.lic{display:flex;justify-content:space-between;gap:12px;align-items:center;cursor:pointer}
+.lic:hover{border-color:#b9c7dd}
+.cod{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--teal);font-weight:700}
+.nm{font-size:15px;font-weight:800;margin-top:2px}
+.meta{font-size:12px;color:var(--t2);margin-top:3px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;padding:4px 11px;border-radius:20px;white-space:nowrap}
+.p-borr{background:#eef1f5;color:#475569}.p-apr{background:#fdf3d7;color:#8a5a00}.p-obs{background:#fff1e6;color:#c2410c}.p-ok{background:#e3f6ee;color:#12805c}.p-cur{background:#e5eefd;color:#1f5fbf}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg.full{grid-column:1/-1}
+.fg label{font-size:12px;font-weight:700;color:var(--t2)}
+.fg input,.fg textarea,.fg select{border:1px solid var(--bd);border-radius:9px;padding:9px 11px;font-family:inherit;font-size:13.5px;background:#fff;color:var(--ink)}
+.fg textarea{min-height:70px;resize:vertical}
+.req{color:var(--bad)}
+.rubro{display:flex;align-items:center;gap:9px;padding:9px 12px;background:#eef2f8;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:800;position:sticky;top:0;z-index:1}
+.rubro span.t{flex:1}
+.rubro small{font-weight:600;color:var(--t2);font-size:11.5px}
+.it{display:flex;align-items:center;gap:9px;padding:8px 12px 8px 30px;border-bottom:1px solid #f1f4f8;font-size:13px;cursor:pointer}
+.it.off{opacity:.5;cursor:default}
+.it .c{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--t3);white-space:nowrap}
+.it .d{flex:1;min-width:0}
+.it .q{font-size:12px;color:var(--t2);white-space:nowrap}
+.tag{font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:6px;background:#e2e8f0;color:#475569;white-space:nowrap}
+.lista{border:1px solid var(--bd);border-radius:12px;max-height:420px;overflow:auto}
+.sel{border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+.sel .row{padding:10px 12px;border-bottom:1px solid #f1f4f8}
+.sel .row:last-child{border-bottom:0}
+.sel .row b{font-size:13px}
+.sel .row textarea{width:100%;margin-top:6px;border:1px solid var(--bd);border-radius:8px;padding:7px 9px;font-family:inherit;font-size:12.5px;min-height:46px;resize:vertical}
+.doc{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f4f8;font-size:13px}
+.doc:last-child{border-bottom:0}
+.doc .n{flex:1;min-width:0}
+.doc .n small{display:block;color:var(--t2);font-size:12px}
+.obs{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:11px 14px;font-size:13px;margin-bottom:12px}
+.info{background:#eef4fe;border:1px solid #cfe0fb;color:#1f4f9c;border-radius:12px;padding:11px 14px;font-size:13px;margin-bottom:12px}
+.empty{padding:30px 16px;text-align:center;color:var(--t3);font-weight:600;background:#fff;border:1px dashed var(--bd);border-radius:14px}
+.bar{position:sticky;bottom:0;background:rgba(244,246,251,.96);backdrop-filter:blur(4px);padding:12px 0;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;border-top:1px solid var(--bd);margin-top:6px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:#0b1226;color:#fff;padding:11px 16px;border-radius:11px;font-size:13px;font-weight:600;opacity:0;transition:.2s;z-index:50;max-width:90vw}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.toast.err{background:#b42318}
+.sug{display:flex;align-items:center;gap:9px;padding:7px 12px;border-bottom:1px solid #f1f4f8;font-size:13px;cursor:pointer}
+.sug .e{color:var(--t2);font-size:11.5px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}.h1{font-size:18px}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="empty">Cargando…</div></div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+// Canal seguro: función lic-supervisor en PMO (valida el token del supervisor y su acceso a la obra)
+var FN='https://vsploxglutkbeokumunp.supabase.co/functions/v1/lic-supervisor';
+var PMO_URL='https://vsploxglutkbeokumunp.supabase.co';
+var PMO_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+var CT_URL='https://uijuokwcsvnlzxoyvrcj.supabase.co';
+var CT_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpanVva3djc3ZubHp4b3l2cmNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTUwMDgsImV4cCI6MjA5NjA5MTAwOH0.-JtaWOf3QPRB5W1Z7rLp5Rabr83xdWIqX4GngkpFeJU';
+var TIPOS=['Plano','Especificación técnica','Metrado','Bases','Cronograma referencial','Foto','Otro'];
+var pmo=null, ct=null;
+try{ pmo=supabase.createClient(PMO_URL,PMO_ANON,{auth:{persistSession:false}}); ct=supabase.createClient(CT_URL,CT_ANON,{auth:{persistSession:false}}); }catch(e){}
+
+var $=function(s){ return document.querySelector(s); };
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function nn(s){ return String(s==null?'':s).trim().toLowerCase(); }
+function usd(n){ return 'US$ '+Number(n||0).toLocaleString('es-PE',{maximumFractionDigits:0}); }
+function fdate(s){ if(!s) return '—'; var d=new Date(String(s).length<=10?s+'T12:00:00':s); return isNaN(d)?'—':d.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'}); }
+var tt; function toast(m,err){ var t=$('#toast'); t.textContent=m; t.classList.toggle('err',!!err); t.classList.add('on'); clearTimeout(tt); tt=setTimeout(function(){ t.classList.remove('on'); },3600); }
+
+async function token(){ try{ if(parent && parent.sbTokenVigente) return await parent.sbTokenVigente(); }catch(e){} try{ return localStorage.getItem('sb_token'); }catch(e){ return null; } }
+async function api(accion, body){
+  var t=await token(); if(!t) throw new Error('Inicia sesión en el Centro de Control del Supervisor');
+  var r=await fetch(FN,{ method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer '+t}, body:JSON.stringify(Object.assign({accion:accion}, body||{})) });
+  var j=null; try{ j=await r.json(); }catch(e){}
+  if(!r.ok) throw new Error((j&&j.error)||('Error '+r.status));
+  return j;
+}
+
+var qs=new URLSearchParams(location.search);
+var S={ cod:qs.get('cod')||'', nombre:qs.get('nombre')||'', obras:[], lics:[], cur:null, lic:[], cuentas:null };
+
+function pill(e){ var m={'Borrador':'p-borr','Observada':'p-obs','Por aprobar':'p-apr','Preparación':'p-apr','Publicada':'p-cur','Invitaciones':'p-cur','Ofertas':'p-cur','Evaluación':'p-cur','Negociación':'p-cur','Adjudicación':'p-cur','Contratada':'p-ok','Cerrada':'p-ok','Desierta':'p-obs'}; var lab={'Por aprobar':'Enviada a Gerencia','Observada':'Observada por Gerencia','Preparación':'Enviada a Gerencia'}[e]||e; return '<span class="pill '+(m[e]||'p-borr')+'">'+esc(lab)+'</span>'; }
+
+async function boot(){
+  var app=$('#app');
+  try{
+    if(!S.cod){
+      S.obras=await api('obras');
+      if(!S.obras.length){ app.innerHTML='<div class="empty">No tienes obras asignadas para licitar.</div>'; return; }
+      if(S.obras.length===1){ S.cod=S.obras[0].cod_proyecto; S.nombre=S.obras[0].nombre; }
+      else return pintarObras();
+    }
+    await cargar();
+  }catch(e){ app.innerHTML='<div class="empty">'+esc(e.message||e)+'</div>'; }
+}
+function pintarObras(){
+  $('#app').innerHTML='<div class="head"><div><div class="h1">Licitaciones</div><div class="sub">Elige la obra.</div></div></div>'+
+    S.obras.map(function(o){ return '<div class="card lic" data-obra="'+esc(o.cod_proyecto)+'"><div><div class="cod">'+esc(o.cod_proyecto)+'</div><div class="nm">'+esc(o.nombre)+'</div></div><span class="pill p-borr">'+esc(o.estado||'')+'</span></div>'; }).join('');
+  document.querySelectorAll('[data-obra]').forEach(function(el){ el.onclick=function(){ var o=S.obras.find(function(x){ return x.cod_proyecto===el.dataset.obra; }); S.cod=o.cod_proyecto; S.nombre=o.nombre; cargar(); }; });
+}
+async function cargar(){
+  $('#app').innerHTML='<div class="empty">Cargando licitaciones de '+esc(S.nombre||S.cod)+'…</div>';
+  S.lics=await api('listar',{cod_proyecto:S.cod});
+  pintarLista();
+}
+function pintarLista(){
+  var app=$('#app');
+  app.innerHTML='<div class="head"><div><div class="h1">Licitaciones · '+esc(S.nombre||S.cod)+'</div><div class="sub">Arma la licitación con las partidas del presupuesto, sus especificaciones y adjuntos, y envíala a Gerencia para que la apruebe.</div></div>'+
+      '<div style="display:flex;gap:8px">'+(S.obras.length>1?'<button class="btn" id="otra">Cambiar obra</button>':'')+'<button class="btn pri" id="nueva">+ Nueva licitación</button></div></div>'+
+    (S.lics.length? S.lics.map(function(L){
+      return '<div class="card lic" data-lic="'+L.id+'"><div style="min-width:0"><div class="cod">'+esc(L.codigo)+'</div><div class="nm">'+esc(L.nombre)+'</div>'+
+        '<div class="meta">'+L.partidas.length+' partida'+(L.partidas.length===1?'':'s')+' · '+L.adjuntos.length+' adjunto'+(L.adjuntos.length===1?'':'s')+(L.fecha_limite?' · cierre '+fdate(L.fecha_limite):'')+(L.origen==='supervisor'&&L.creado_por_email?' · armada por '+esc(L.creado_por_email):(L.origen!=='supervisor'?' · creada por Gerencia':''))+'</div>'+
+        (L.estado==='Observada'&&L.observacion_gerencia?'<div class="meta" style="color:#c2410c;font-weight:700">Gerencia pide: '+esc(L.observacion_gerencia)+'</div>':'')+
+        '</div>'+pill(L.estado)+'</div>';
+    }).join('') : '<div class="empty">Aún no hay licitaciones en esta obra. Crea la primera con «Nueva licitación».</div>');
+  $('#nueva').onclick=function(){ abrir(null); };
+  var o=$('#otra'); if(o) o.onclick=function(){ S.cod=''; boot(); };
+  document.querySelectorAll('[data-lic]').forEach(function(el){ el.onclick=function(){ abrir(S.lics.find(function(x){ return x.id===el.dataset.lic; })); }; });
+}
+
+// ─── Editor ───
+async function abrir(L){
+  var app=$('#app'); app.innerHTML='<div class="empty">Cargando presupuesto de la obra…</div>';
+  try{
+    S.cur=L?JSON.parse(JSON.stringify(L)):{ id:null, nombre:'', especialidad:'', fecha_limite:'', plazo_dias:'', alcance_desc:'', exclusiones:'', entregables:'', partidas:[], adjuntos:[], invitados:[], editable:true, estado:'Borrador', origen:'supervisor' };
+    var filas=S.cur.editable? await api('partidas_licitables',{cod_proyecto:S.cod}) : [];
+    // juntar ítems iguales (misma descripción y unidad, p. ej. uno por ambiente) dentro del rubro
+    var byR={}, rubros=[];
+    filas.forEach(function(f){
+      var r=f.rubro||'Sin rubro'; if(!byR[r]){ byR[r]={ g:{}, k:[] }; rubros.push(r); }
+      var k=nn(f.descripcion)+'|'+nn(f.unidad); var g=byR[r].g[k];
+      if(!g){ g=byR[r].g[k]={ key:r+'||'+k, codigo:f.item, descripcion:f.descripcion, unidad:f.unidad, cantidad:0, costo:0, ids:[], en:null }; byR[r].k.push(k); }
+      g.cantidad+=Number(f.cantidad||1)||1; g.costo+=Number(f.mano_obra_costo||0); g.ids.push(Number(f.presupuesto_id));
+      if(f.licitacion && f.licitacion.id!==S.cur.id) g.en=f.licitacion;
+    });
+    S.rubros=rubros.map(function(r){ return { nombre:r, items:byR[r].k.map(function(k){ return byR[r].g[k]; }) }; });
+    // lo que ya tiene el borrador
+    S.sel={};
+    (S.cur.partidas||[]).forEach(function(p){ var ids=(p.origen_presupuesto_ids||[]).map(Number); var hit=null;
+      S.rubros.forEach(function(R){ R.items.forEach(function(it){ if(!hit && it.ids.some(function(x){ return ids.indexOf(x)>=0; })) hit=it; }); });
+      if(hit) S.sel[hit.key]={ especificacion:p.especificacion||'' }; });
+    pintarEditor();
+  }catch(e){ app.innerHTML='<div class="empty">'+esc(e.message||e)+'</div>'; }
+}
+function pintarEditor(){
+  var L=S.cur, ed=L.editable, app=$('#app');
+  var todos=[]; S.rubros.forEach(function(R){ R.items.forEach(function(it){ todos.push(it); }); });
+  var elegidos=todos.filter(function(it){ return S.sel[it.key]; });
+  var total=elegidos.reduce(function(s,it){ return s+it.costo; },0);
+  app.innerHTML=
+    '<button class="btn sm" id="volver" style="margin-bottom:10px">← Volver</button>'+
+    '<div class="head"><div><div class="cod">'+esc(L.codigo||'Nueva licitación')+'</div><div class="h1">'+esc(L.nombre||'Nueva licitación')+'</div><div class="sub">'+esc(S.nombre||'')+'</div></div>'+pill(L.estado)+'</div>'+
+    (L.estado==='Observada'&&L.observacion_gerencia?'<div class="obs"><b>Gerencia pide corregir:</b> '+esc(L.observacion_gerencia)+'</div>':'')+
+    (!ed?'<div class="info">Esta licitación ya está en manos de Gerencia (<b>'+esc(L.estado)+'</b>). Aquí solo puedes verla.</div>':'')+
+    '<div class="card"><h3>Datos generales</h3><div class="hint">La dirección y los datos de la obra se toman de la ficha del proyecto en Gerencia.</div><div class="grid">'+
+      campo('f-nombre','Nombre de la licitación <span class="req">*</span>',L.nombre,'text',true)+
+      campo('f-esp','Especialidad',L.especialidad,'text')+
+      campo('f-flim','Fecha límite para ofertar',L.fecha_limite,'date')+
+      campo('f-plazo','Plazo de ejecución (días)',L.plazo_dias,'number')+
+      area('f-alc','Alcance del trabajo',L.alcance_desc)+
+      area('f-exc','Exclusiones',L.exclusiones)+
+      area('f-ent','Entregables',L.entregables)+
+    '</div></div>'+
+    (ed?'<div class="card"><h3>Partidas del presupuesto</h3><div class="hint">Marca un rubro completo o partidas sueltas. Los ítems iguales (por ejemplo, uno por ambiente) van juntos en una sola línea. Las que ya están en otra licitación aparecen bloqueadas.</div><div class="lista">'+
+      (S.rubros.length? S.rubros.map(function(R,ri){
+        var libres=R.items.filter(function(it){ return !it.en; });
+        return '<div class="rubro"><input type="checkbox" data-rub="'+ri+'"'+(libres.length&&libres.every(function(it){ return S.sel[it.key]; })?' checked':'')+(libres.length?'':' disabled')+'><span class="t">'+esc(R.nombre)+'</span><small>'+R.items.length+' líneas · '+usd(R.items.reduce(function(s,x){ return s+x.costo; },0))+'</small></div>'+
+          R.items.map(function(it,ii){ return '<label class="it'+(it.en?' off':'')+'"><input type="checkbox" data-it="'+ri+'-'+ii+'"'+(S.sel[it.key]?' checked':'')+(it.en?' disabled':'')+'><span class="c">'+esc(it.codigo)+'</span><span class="d">'+esc(it.descripcion)+(it.ids.length>1?' <span class="tag">'+it.ids.length+' ítems</span>':'')+'</span>'+(it.en?'<span class="tag">en '+esc(it.en.codigo)+'</span>':'')+'<span class="q">'+Number(Math.round(it.cantidad*100)/100).toLocaleString('es-PE')+' '+esc(it.unidad||'')+'</span></label>'; }).join('');
+      }).join('') : '<div class="empty" style="border:0">Esta obra no tiene partidas licitables en el presupuesto.</div>')+
+      '</div><div class="hint" style="margin:8px 0 0">'+elegidos.length+' línea'+(elegidos.length===1?'':'s')+' elegida'+(elegidos.length===1?'':'s')+' · presupuesto de referencia '+usd(total)+' (solo lo ve Gerencia)</div></div>':'')+
+    '<div class="card"><h3>Especificaciones por partida</h3><div class="hint">Lo que el contratista debe saber de cada partida: materiales, medidas, normas, acabados, pruebas.</div>'+
+      (ed? (elegidos.length?'<div class="sel">'+elegidos.map(function(it){ return '<div class="row"><b>'+esc(it.descripcion)+'</b> <span style="color:var(--t2);font-size:12px">· '+Number(Math.round(it.cantidad*100)/100).toLocaleString('es-PE')+' '+esc(it.unidad||'')+'</span><textarea data-esp="'+esc(it.key)+'" placeholder="Especificación de esta partida">'+esc(S.sel[it.key].especificacion||'')+'</textarea></div>'; }).join('')+'</div>':'<div class="hint" style="margin:0">Marca partidas arriba para escribir sus especificaciones.</div>')
+        : ((L.partidas||[]).length?'<div class="sel">'+L.partidas.map(function(p){ return '<div class="row"><b>'+esc(p.descripcion)+'</b> <span style="color:var(--t2);font-size:12px">· '+Number(p.cantidad||0).toLocaleString('es-PE')+' '+esc(p.unidad||'')+'</span><div style="font-size:12.5px;color:var(--t2);margin-top:4px;white-space:pre-wrap">'+esc(p.especificacion||'Sin especificación')+'</div></div>'; }).join('')+'</div>':'<div class="hint" style="margin:0">Sin partidas.</div>'))+
+    '</div>'+
+    '<div class="card"><h3>Adjuntos necesarios</h3><div class="hint">Planos, especificaciones, metrados, fotos… Di qué es cada uno.'+(ed&&!L.id?' Guarda el borrador para poder subir archivos.':'')+'</div>'+
+      ((L.adjuntos||[]).length? L.adjuntos.map(function(d){ return '<div class="doc"><span class="tag">'+esc(d.carpeta||'Otro')+'</span><div class="n"><b>'+esc(d.nombre)+'</b><small>'+esc(d.descripcion||'')+'</small></div><button class="btn sm" data-bajar="'+esc(d.path||'')+'">Ver</button>'+(ed?'<button class="btn sm" data-quitar="'+d.id+'">Quitar</button>':'')+'</div>'; }).join('') : '<div class="hint" style="margin:0">Sin adjuntos todavía.</div>')+
+      (ed&&L.id?'<div class="grid" style="margin-top:12px"><div class="fg"><label>Tipo</label><select id="a-tipo">'+TIPOS.map(function(t){ return '<option>'+t+'</option>'; }).join('')+'</select></div><div class="fg"><label>Archivo</label><input type="file" id="a-file"></div><div class="fg full"><label>Qué es <span class="req">*</span></label><input id="a-desc" placeholder="Ej.: Planta general de cámaras con cotas y ubicación de puertas"></div><div class="fg full" style="align-items:flex-start"><button class="btn" id="a-subir">Subir adjunto</button></div></div>':'')+
+    '</div>'+
+    '<div class="card"><h3>Contratistas sugeridos</h3><div class="hint">Propón a quién invitar. Gerencia confirma la lista al aprobar.</div><div id="sugs">'+pintarSugeridos()+'</div>'+(ed?'<button class="btn sm" id="add-sug" style="margin-top:8px">+ Sugerir contratistas</button>':'')+'</div>'+
+    (ed?'<div class="bar"><button class="btn" id="guardar">Guardar borrador</button><button class="btn ok" id="enviar"'+(L.id?'':' disabled title="Guarda primero"')+'>Enviar a Gerencia</button></div>':'');
+  bindEditor();
+}
+function campo(id,lab,v,type,full){ return '<div class="fg'+(full?' full':'')+'"><label>'+lab+'</label><input id="'+id+'" type="'+type+'" value="'+esc(v==null?'':v)+'"'+(S.cur.editable?'':' disabled')+'></div>'; }
+function area(id,lab,v){ return '<div class="fg full"><label>'+lab+'</label><textarea id="'+id+'"'+(S.cur.editable?'':' disabled')+'>'+esc(v||'')+'</textarea></div>'; }
+function pintarSugeridos(){
+  var inv=(S.cur.invitados||[]);
+  if(!inv.length) return '<div class="hint" style="margin:0">Sin sugeridos.</div>';
+  return inv.map(function(v,i){ return '<div class="doc"><div class="n"><b>'+esc(v.contratista||v.email)+'</b><small>'+esc(v.email)+' · '+esc(v.estado||'Sugerido')+'</small></div>'+(S.cur.editable&&(v.estado||'Sugerido')==='Sugerido'?'<button class="btn sm" data-qsug="'+i+'">Quitar</button>':'')+'</div>'; }).join('');
+}
+function leerForm(){
+  var L=S.cur; if(!L.editable) return;
+  L.nombre=$('#f-nombre').value.trim(); L.especialidad=$('#f-esp').value.trim(); L.fecha_limite=$('#f-flim').value; L.plazo_dias=$('#f-plazo').value;
+  L.alcance_desc=$('#f-alc').value.trim(); L.exclusiones=$('#f-exc').value.trim(); L.entregables=$('#f-ent').value.trim();
+  document.querySelectorAll('[data-esp]').forEach(function(t){ var k=t.getAttribute('data-esp'); if(S.sel[k]) S.sel[k].especificacion=t.value; });
+}
+function bindEditor(){
+  $('#volver').onclick=function(){ cargar(); };
+  document.querySelectorAll('[data-bajar]').forEach(function(b){ b.onclick=async function(){ var w=window.open('about:blank','_blank'); try{ var r=await api('descargar',{path:b.dataset.bajar}); if(w) w.location.href=r.url; else location.href=r.url; }catch(e){ if(w) w.close(); toast(e.message,true); } }; });
+  if(!S.cur.editable) return;
+  document.querySelectorAll('[data-it]').forEach(function(cb){ cb.onchange=function(){ leerForm(); var p=cb.dataset.it.split('-'); var it=S.rubros[p[0]].items[p[1]]; if(cb.checked) S.sel[it.key]=S.sel[it.key]||{especificacion:''}; else delete S.sel[it.key]; pintarEditor(); }; });
+  document.querySelectorAll('[data-rub]').forEach(function(cb){ cb.onchange=function(){ leerForm(); S.rubros[cb.dataset.rub].items.forEach(function(it){ if(it.en) return; if(cb.checked) S.sel[it.key]=S.sel[it.key]||{especificacion:''}; else delete S.sel[it.key]; }); pintarEditor(); }; });
+  document.querySelectorAll('[data-quitar]').forEach(function(b){ b.onclick=async function(){ if(!confirm('¿Quitar este adjunto?')) return; try{ await api('quitar_adjunto',{doc_id:b.dataset.quitar}); leerForm(); S.cur.adjuntos=S.cur.adjuntos.filter(function(d){ return d.id!==b.dataset.quitar; }); pintarEditor(); toast('Adjunto quitado'); }catch(e){ toast(e.message,true); } }; });
+  document.querySelectorAll('[data-qsug]').forEach(function(b){ b.onclick=function(){ leerForm(); S.cur.invitados.splice(Number(b.dataset.qsug),1); pintarEditor(); }; });
+  var as=$('#a-subir'); if(as) as.onclick=subirAdjunto;
+  var sg=$('#add-sug'); if(sg) sg.onclick=elegirSugeridos;
+  $('#guardar').onclick=function(){ guardar(false); };
+  $('#enviar').onclick=async function(){ if(!confirm('¿Enviar a Gerencia? Ya no podrás editarla, salvo que te la devuelvan con observaciones.')) return; var ok=await guardar(true); if(!ok) return; try{ await api('enviar',{id:S.cur.id}); toast('Enviada a Gerencia'); cargar(); }catch(e){ toast(e.message,true); } };
+}
+async function guardar(silencioso){
+  leerForm(); var L=S.cur;
+  if(!L.nombre){ toast('Ponle nombre a la licitación',true); return false; }
+  var todos=[]; S.rubros.forEach(function(R){ R.items.forEach(function(it){ todos.push(it); }); });
+  var partidas=todos.filter(function(it){ return S.sel[it.key]; }).map(function(it){ return { codigo:it.codigo, descripcion:it.descripcion, unidad:it.unidad, cantidad:Math.round(it.cantidad*1000)/1000, especificacion:(S.sel[it.key].especificacion||'').trim()||null, origen_presupuesto_ids:it.ids }; });
+  var btn=$('#guardar'); if(btn){ btn.disabled=true; btn.textContent='Guardando…'; }
+  try{
+    var r=await api('guardar',{ licitacion:{ id:L.id||undefined, cod_proyecto:S.cod, nombre:L.nombre, especialidad:L.especialidad||null, moneda:'USD', fecha_limite:L.fecha_limite||null, plazo_dias:L.plazo_dias?Number(L.plazo_dias):null, alcance_desc:L.alcance_desc||null, exclusiones:L.exclusiones||null, entregables:L.entregables||null },
+      partidas:partidas, sugeridos:(L.invitados||[]).filter(function(v){ return (v.estado||'Sugerido')==='Sugerido'; }).map(function(v){ return { email:v.email, contratista:v.contratista }; }) });
+    var id=r&&r.id; if(!silencioso) toast(r&&r.nuevo?'Borrador creado · '+(r.codigo||''):'Borrador guardado');
+    var lista=await api('listar',{cod_proyecto:S.cod}); S.lics=lista; var nuevo=lista.find(function(x){ return x.id===id; });
+    if(nuevo){ S.cur=JSON.parse(JSON.stringify(nuevo)); }
+    if(!silencioso) pintarEditor();
+    return true;
+  }catch(e){ toast(e.message,true); if(btn){ btn.disabled=false; btn.textContent='Guardar borrador'; } return false; }
+}
+async function subirAdjunto(){
+  leerForm();
+  var f=$('#a-file').files[0], desc=$('#a-desc').value.trim(), tipo=$('#a-tipo').value;
+  if(!f){ toast('Elige un archivo',true); return; } if(!desc){ toast('Escribe qué es el adjunto',true); return; }
+  if(f.size>100*1048576){ toast('El archivo supera 100 MB',true); return; }
+  var b=$('#a-subir'); b.disabled=true; b.textContent='Subiendo…';
+  var ticket=null;
+  try{
+    ticket=await api('subir',{ id:S.cur.id, nombre:f.name, tipo:tipo, descripcion:desc, bytes:f.size });
+    var up=await pmo.storage.from('lic-expediente').uploadToSignedUrl(ticket.path, ticket.token, f, { contentType:f.type||undefined });
+    if(up.error) throw up.error;
+    S.cur.adjuntos=(S.cur.adjuntos||[]).concat([{ id:ticket.doc_id, carpeta:tipo, nombre:f.name, descripcion:desc, path:ticket.path }]);
+    toast('Adjunto subido'); pintarEditor();
+  }catch(e){
+    if(ticket&&ticket.doc_id){ try{ await api('quitar_adjunto',{doc_id:ticket.doc_id}); }catch(x){} }
+    toast('No se pudo subir: '+(e.message||e),true); b.disabled=false; b.textContent='Subir adjunto';
+  }
+}
+async function elegirSugeridos(){
+  leerForm();
+  if(!S.cuentas){ try{ var r=await ct.rpc('contratistas_para_licitar'); S.cuentas=r.data||[]; }catch(e){ S.cuentas=[]; } }
+  var ya=(S.cur.invitados||[]).map(function(v){ return nn(v.email); });
+  var lista=S.cuentas.filter(function(c){ return ya.indexOf(nn(c.email))<0; });
+  var box=document.createElement('div');
+  box.style.cssText='position:fixed;inset:0;background:rgba(11,18,38,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px';
+  box.innerHTML='<div class="card" style="width:560px;max-width:100%;max-height:86vh;display:flex;flex-direction:column;margin:0"><h3>Sugerir contratistas</h3><div class="hint">Empresas con cuenta en el portal de contratistas.</div>'+
+    '<input id="sq" placeholder="Buscar empresa o correo" style="border:1px solid var(--bd);border-radius:9px;padding:9px 11px;font-family:inherit;margin-bottom:8px">'+
+    '<div id="sl" class="lista" style="flex:1;max-height:none"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn" id="sc">Cancelar</button><button class="btn pri" id="so">Agregar</button></div></div>';
+  document.body.appendChild(box);
+  var marc={};
+  function pinta(q){ q=nn(q); box.querySelector('#sl').innerHTML=lista.filter(function(c){ return !q || nn(c.empresa+' '+c.email).indexOf(q)>=0; }).map(function(c){ return '<label class="sug"><input type="checkbox" data-e="'+esc(c.email)+'"'+(marc[c.email]?' checked':'')+'><div style="flex:1"><b>'+esc(c.empresa)+'</b><div class="e">'+esc(c.email)+'</div></div><span class="pill '+(c.homologacion_estado==='Homologado'?'p-ok':'p-borr')+'">'+esc(c.homologacion_estado||'Pendiente')+'</span></label>'; }).join('')||'<div class="empty" style="border:0">Nadie coincide.</div>'; }
+  pinta('');
+  box.querySelector('#sl').addEventListener('change',function(e){ var cb=e.target.closest('[data-e]'); if(cb) marc[cb.dataset.e]=cb.checked; });
+  box.querySelector('#sq').oninput=function(){ pinta(this.value); };
+  box.querySelector('#sc').onclick=function(){ box.remove(); };
+  box.querySelector('#so').onclick=function(){ lista.forEach(function(c){ if(marc[c.email]) S.cur.invitados.push({ contratista:c.empresa, email:c.email, estado:'Sugerido' }); }); box.remove(); pintarEditor(); toast('Guarda el borrador para conservar los sugeridos'); };
+}
+
+boot();
+})();
+</script>
+</body>
+</html>
