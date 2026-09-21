@@ -123,6 +123,19 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   partidas y el cierre se valida en hora de Lima. Los adjuntos se suben con un
   link firmado a la carpeta `<licitacion_id>/ofertas/<correo>/` que decide el
   servidor; solo se pueden descargar los propios y el expediente.
+- **El supervisor arma la licitación por la función `lic-supervisor` (PMO).**
+  Desde el 21 de septiembre de 2026 el flujo es: el supervisor crea el borrador
+  desde app-sup (partidas del presupuesto, especificación, adjuntos y
+  contratistas sugeridos) y lo envía a Gerencia (`Por aprobar`); Gerencia
+  aprueba y publica, o lo devuelve (`Observada`). La función valida el token
+  de la instancia Supervisor contra su `/auth/v1/user` y el acceso a la obra en
+  `PMO.proyecto_accesos` (o los 4 administradores). Solo edita borradores
+  propios (`origen = 'supervisor'`, `Borrador`/`Observada`). El precio base
+  (`pu_base` = costo de mano de obra ÷ cantidad) y el código `LIC-AAAA-NNNN`
+  los pone el servidor con `lic_sup_guardar` (solo `service_role`). Los
+  sugeridos van a `lic_invitados` con estado `Sugerido` y el portal no los ve
+  hasta que Gerencia los invite. El código fuente de ambas funciones está en
+  `supabase/functions/`.
 - **La adjudicación guarda `email` y `licitacion_codigo`.** Sin eso el ganador
   no veía su contrato en «Mis contratos».
 - **El supervisor ve el estado de la licitación, no lo copia.** La pestaña de
