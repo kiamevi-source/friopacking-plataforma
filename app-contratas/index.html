@@ -1161,7 +1161,13 @@
 
   // Archivos de licitación: bucket privado de Gerencia, se abren con link firmado de 1 hora
   var LZ_BUCKET='lic-expediente';
-  var LZ_OCULTAS=['Borrador','Preparación'];          // aún no publicadas: el contratista no las ve
+  // Los 3 formatos obligatorios de la oferta (el servidor también los exige al guardar).
+  var LZ_FORMATOS=[
+    { tipo:'Garantía',    url:'/app-live/modulos/formatos/FP-LIC-F03-Garantias.xlsx' },
+    { tipo:'Presupuesto', url:'/app-live/modulos/formatos/FP-LIC-F01-Presupuesto.xlsx' },
+    { tipo:'Cronograma',  url:'/app-live/modulos/formatos/FP-LIC-F02-Cronograma-Histograma.xlsx' }
+  ];
+  var LZ_OCULTAS=['Borrador','Preparación','Por aprobar','Observada']; // aún no publicadas: el contratista no las ve
   var LZ_ABIERTAS=['Publicada','Invitaciones','Ofertas']; // se puede consultar y ofertar
   // Qué eventos del cockpit le cuentan al contratista (nunca el detalle de consultas ajenas ni ofertas de otros)
   var LZ_NOV={
@@ -1237,7 +1243,6 @@
           '<span><svg data-lucide="building-2"></svg>'+esc(L.proyecto||L.cliente||'—')+'</span>'+
           '<span><svg data-lucide="wrench"></svg>'+esc(L.especialidad||'—')+'</span>'+
           '<span><svg data-lucide="calendar-clock"></svg>'+(lzAbierta(L)?'Cierre: '+fmtDate(L.fecha_limite):esc(L.estado))+'</span>'+
-          '<span><svg data-lucide="wallet"></svg>Ref. '+lzMoney(L.presupuesto_base,L.moneda)+'</span>'+
         '</div>'+
         (novTxt?'<div class="lz-new"><svg data-lucide="bell" style="width:13px;height:13px"></svg>'+esc(novTxt)+'</div>':'')+
       '</div>';
@@ -1287,13 +1292,13 @@
     var enviada = !!(c.oferta && c.oferta.estado==='Enviada');
     var editable = abierta && !(c.invit && c.invit.estado==='No participa');
     var adjuntos = ((c.oferta&&c.oferta.adjuntos)||[]).filter(function(a){ return !c.quitar[a.path]; });
-    var puFor=function(pid){ var it=c.ofItems.find(function(x){return x.partida_id===pid;}); if(it) return it.pu; var p=c.partidas.find(function(x){return x.id===pid;}); return p?p.pu_base:0; };
+    var puFor=function(pid){ var it=c.ofItems.find(function(x){return x.partida_id===pid;}); if(it) return it.pu; return ''; };   // cotiza en blanco: no se precarga el precio base de FrioPacking
     // expediente por carpeta
     var byF={}, orden=[]; c.docs.forEach(function(d){ var f=d.carpeta||'Otros'; if(!byF[f]){ byF[f]=[]; orden.push(f); } byF[f].push(d); });
     var expediente = c.docs.length ? orden.map(function(f){
       return '<div class="lz-folder">'+esc(f)+'</div>'+byF[f].map(function(d){
         var acc = d.path ? lzDlBtn(d.path,'Descargar') : (d.url ? '<a class="lz-dl" href="'+esc(d.url)+'" target="_blank" rel="noopener">Abrir link</a>' : '<span style="font-size:12px;color:var(--muted)">Sin archivo</span>');
-        return '<div class="lz-file"><div class="nm"><b>'+esc(d.nombre)+'</b><small>'+[d.codigo,d.revision,lzSize(d.archivo_bytes)].filter(Boolean).map(esc).join(' · ')+'</small></div>'+acc+'</div>';
+        return '<div class="lz-file"><div class="nm"><b>'+esc(d.nombre)+'</b>'+(d.descripcion?'<small style="display:block">'+esc(d.descripcion)+'</small>':'')+'<small>'+[d.codigo,d.revision,lzSize(d.archivo_bytes)].filter(Boolean).map(esc).join(' · ')+'</small></div>'+acc+'</div>';
       }).join('');
     }).join('') : '<div style="font-size:12.5px;color:var(--muted)">Operaciones aún no ha cargado documentos.</div>';
     var planos = c.planos.map(function(p){
@@ -1339,15 +1344,19 @@
       // formato único / oferta
       '<div class="panel"><div class="panel-h"><h3>'+(c.oferta?'Tu oferta':'Enviar oferta — formato único')+'</h3>'+(enviada?'<span class="lz-badge b-env">Enviada '+lzWhen(c.oferta.enviada_at)+'</span>':'')+'</div>'+
         (c.partidas.length?'<table class="lz-tbl"><thead><tr><th>Partida</th><th class="n">Cant.</th><th class="n">Unid.</th><th class="n">P.U. ('+L.moneda+')</th><th class="n">Parcial</th></tr></thead><tbody id="lz-items">'+
-          c.partidas.map(function(p){ var pu=puFor(p.id); return '<tr data-pid="'+p.id+'" data-cant="'+(p.cantidad||0)+'"><td><b>'+esc(p.codigo)+'</b> · '+esc(p.descripcion)+'</td><td class="n">'+Number(p.cantidad||0)+'</td><td class="n">'+esc(p.unidad||'')+'</td><td class="n"><input class="lz-pu" type="number" min="0" step="any" value="'+pu+'"'+(editable?'':' disabled')+'></td><td class="n lz-parc">'+lzMoney(Number(pu||0)*Number(p.cantidad||0),L.moneda)+'</td></tr>'; }).join('')+
+          c.partidas.map(function(p){ var pu=puFor(p.id); return '<tr data-pid="'+p.id+'" data-cant="'+(p.cantidad||0)+'"><td><b>'+esc(p.codigo)+'</b> · '+esc(p.descripcion)+(p.especificacion?'<div style="font-size:11.5px;color:var(--muted);font-weight:500;margin-top:3px;white-space:pre-line">'+esc(p.especificacion)+'</div>':'')+'</td><td class="n">'+Number(p.cantidad||0)+'</td><td class="n">'+esc(p.unidad||'')+'</td><td class="n"><input class="lz-pu" type="number" min="0" step="any" value="'+pu+'"'+(editable?'':' disabled')+'></td><td class="n lz-parc">'+lzMoney(Number(pu||0)*Number(p.cantidad||0),L.moneda)+'</td></tr>'; }).join('')+
           '</tbody><tfoot><tr class="lz-tot"><td colspan="4" style="text-align:right">TOTAL OFERTA</td><td class="n" id="lz-total">'+lzMoney(0,L.moneda)+'</td></tr></tfoot></table>'+
           // adjuntos
           '<div style="margin-top:16px"><div style="font-size:12.5px;font-weight:800;color:var(--ink)">Documentos de tu oferta</div>'+
-            '<div style="font-size:12px;color:var(--muted);margin:2px 0 6px">Propuesta técnica, cronograma, garantías y lo que pidan las bases.</div>'+
+            '<div style="font-size:12px;color:var(--muted);margin:2px 0 6px">Obligatorios para enviar: <b>Garantía</b>, <b>Presupuesto</b> y <b>Cronograma con histograma de personal</b>, en los formatos de FrioPacking.</div>'+
+            '<div class="lz-formatos" style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px">'+LZ_FORMATOS.map(function(f){
+              var ok=adjuntos.some(function(a){ return a.tipo===f.tipo; }) || c.pend.some(function(x){ return x.tipo===f.tipo; });
+              return '<a class="lz-dl" href="'+f.url+'" download style="text-decoration:none">'+(ok?'✓ ':'')+'Formato '+esc(f.tipo)+'</a>';
+            }).join('')+'</div>'+
             (adjuntos.length||c.pend.length ? adjuntos.map(function(a){ return '<div class="lz-file"><div class="nm"><b>'+esc(a.nombre)+'</b><small>'+esc(a.tipo||'')+(a.bytes?' · '+lzSize(a.bytes):'')+'</small></div>'+lzDlBtn(a.path,'Ver')+(editable?' <button type="button" class="lz-dl" data-lzquitar="'+esc(a.path)+'">Quitar</button>':'')+'</div>'; }).join('')+
               c.pend.map(function(x,i){ return '<div class="lz-file"><div class="nm"><b>'+esc(x.file.name)+'</b><small>'+esc(x.tipo)+' · '+lzSize(x.file.size)+' · se sube al enviar</small></div><button type="button" class="lz-dl" data-lzpend="'+i+'">Quitar</button></div>'; }).join('')
               : '<div style="font-size:12.5px;color:var(--muted)">Sin documentos adjuntos.</div>')+
-            (editable?'<div class="lz-adj-add"><select id="lz-adj-tipo"><option>Propuesta técnica</option><option>Cronograma</option><option>Garantías</option><option>Análisis de precios unitarios</option><option>Otro</option></select><input type="file" id="lz-adj-file" multiple></div>':'')+
+            (editable?'<div class="lz-adj-add"><select id="lz-adj-tipo"><option>Garantía</option><option>Presupuesto</option><option>Cronograma</option><option>Otro</option></select><input type="file" id="lz-adj-file" multiple></div>':'')+
           '</div>'+
           '<div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap">'+
             '<label style="font-size:12.5px;font-weight:700;color:var(--muted)">Plazo ofertado (días): <input id="lz-plazo" type="number" min="0" value="'+(c.plazoTmp!=null?c.plazoTmp:(c.oferta&&c.oferta.plazo_dias||L.plazo_dias||''))+'" style="width:90px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-family:inherit"'+(editable?'':' disabled')+'></label>'+
@@ -1408,6 +1417,9 @@
     var items=[], total=0, sinPrecio=0;
     document.querySelectorAll('#lz-items tr').forEach(function(tr){ var pu=Number(tr.querySelector('.lz-pu').value||0); var cant=Number(tr.dataset.cant||0); if(!pu) sinPrecio++; items.push({ partida_id:tr.dataset.pid, pu:pu, cantidad:cant }); total+=pu*cant; });
     if(!total){ toast('Pon tus precios unitarios','La oferta no puede ir en cero'); return; }
+    var tiposListos=((c.oferta&&c.oferta.adjuntos)||[]).filter(function(a){ return !c.quitar[a.path]; }).map(function(a){ return a.tipo; }).concat(c.pend.map(function(x){ return x.tipo; }));
+    var faltan=LZ_FORMATOS.filter(function(f){ return tiposListos.indexOf(f.tipo)<0; }).map(function(f){ return f.tipo; });
+    if(faltan.length){ toast('Faltan formatos obligatorios','Adjunta: '+faltan.join(', ')); return; }
     if(sinPrecio && !confirm(sinPrecio+' partida(s) quedan sin precio. ¿Enviar igual?')) return;
     var plazo = $('#lz-plazo').value?Number($('#lz-plazo').value):null;
     var nombre=(c.invit&&c.invit.contratista)||USER_EMAIL;
