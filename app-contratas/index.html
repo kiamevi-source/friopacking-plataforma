@@ -1177,7 +1177,8 @@
     'Adenda emitida':function(e){ return 'Adenda '+(e.detalle||''); },
     'Consulta respondida':function(){ return 'Operaciones respondió una consulta'; },
     'Cambio de estado':function(e){ var to=String(e.detalle||'').split('→').pop().trim(); return to?'La licitación pasó a «'+to+'»':'Cambió el estado de la licitación'; },
-    'Adjudicación':function(){ return 'Se adjudicó la licitación'; }
+    'Adjudicación':function(){ return 'Se adjudicó la licitación'; },
+    'Negociación':function(){ return 'Gerencia te propone negociar tu oferta: revisa y responde'; }
   };
   function lzSafe(n){ return String(n||'archivo').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9._-]+/g,'_').slice(-120); }
   function lzWhen(iso){ if(!iso) return ''; var d=new Date(iso); if(isNaN(d)) return ''; var m=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']; return d.getDate()+' '+m[d.getMonth()]+' · '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
@@ -1260,7 +1261,7 @@
       if(d.oculta || !L || LZ_OCULTAS.indexOf(L.estado)>=0){ root.innerHTML='<div class="empty">Esta licitación aún no está publicada.</div>'; return; }
       var invit=d.invit, oferta=d.oferta;
       var nov = invit ? lzNovedades(invit, d.eventos||[]) : [];
-      LZ.cur={ L:L, partidas:d.partidas||[], planos:d.planos||[], planoVers:d.planoVers||[], adendas:d.adendas||[], consultas:d.consultas||[], invit:invit, oferta:oferta, ofItems:d.ofItems||[], docs:d.docs||[], adj:d.adj, nov:nov, pend:[], quitar:{} };
+      LZ.cur={ negs:d.negociaciones||[], L:L, partidas:d.partidas||[], planos:d.planos||[], planoVers:d.planoVers||[], adendas:d.adendas||[], consultas:d.consultas||[], invit:invit, oferta:oferta, ofItems:d.ofItems||[], docs:d.docs||[], adj:d.adj, nov:nov, pend:[], quitar:{} };
       renderLic();
       // marcar como vista (las novedades de arriba se quedan en pantalla hasta salir)
       if(invit){
@@ -1320,6 +1321,7 @@
       '</div>'+
       lzEstadoBanner(c)+
       novedades+
+      lzNegociacionHTML(c)+
       // participación
       (editable && !enviada ? '<div class="panel"><div class="panel-h"><h3>Tu participación</h3></div><div style="display:flex;gap:10px;flex-wrap:wrap">'+
         '<button class="btn" id="lz-confirm"><svg data-lucide="check"></svg>Confirmar participación</button>'+
@@ -1396,6 +1398,44 @@
     });
     var pl=$('#lz-plazo'); if(pl){ c.plazoTmp=pl.value; }
   }
+
+  // ── Negociación: Gerencia pide un monto/plazo sobre SU oferta y el contratista responde ──
+  function lzNegociacionHTML(c){
+    var negs=c.negs||[]; if(!negs.length) return '';
+    var mon=c.L.moneda;
+    return '<div class="panel" style="border-color:rgba(13,125,112,.35)"><div class="panel-h"><h3>Negociación de tu oferta</h3><span class="count">'+negs.length+'</span></div>'+
+      negs.map(function(n){
+        var pedido='<div style="font-size:13px;line-height:1.6"><b>Ronda '+esc(String(n.ronda||1))+'</b> · Gerencia propone '+(n.monto_pedido!=null?'<b>'+lzMoney(Number(n.monto_pedido),mon)+'</b>':'')+(n.plazo_pedido?' · plazo <b>'+esc(String(n.plazo_pedido))+' días</b>':'')+
+          (n.comentario?'<div style="color:var(--muted);white-space:pre-line">'+esc(n.comentario)+'</div>':'')+'</div>';
+        if(n.estado!=='Pendiente'){
+          return '<div style="border-top:1px solid var(--line);padding:10px 0">'+pedido+'<div style="font-size:12.5px;margin-top:4px">Tu respuesta: <b>'+esc(n.estado)+'</b>'+(n.monto_respuesta!=null?' · '+lzMoney(Number(n.monto_respuesta),mon):'')+(n.plazo_respuesta?' · '+esc(String(n.plazo_respuesta))+' días':'')+(n.respuesta?' — '+esc(n.respuesta):'')+'</div></div>';
+        }
+        return '<div style="border-top:1px solid var(--line);padding:10px 0">'+pedido+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center">'+
+            '<input id="ng-monto-'+n.id+'" type="number" min="0" step="any" placeholder="Monto de tu contraoferta" style="width:190px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-family:inherit">'+
+            '<input id="ng-plazo-'+n.id+'" type="number" min="0" placeholder="Plazo (días)" style="width:120px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-family:inherit">'+
+          '</div>'+
+          '<textarea id="ng-resp-'+n.id+'" rows="2" placeholder="Comentario (opcional)" style="width:100%;margin-top:8px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-family:inherit"></textarea>'+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
+            '<button class="btn" type="button" data-ngacc="Aceptada" data-ng="'+n.id+'"><svg data-lucide="check"></svg>Aceptar lo propuesto</button>'+
+            '<button class="btn ghost" type="button" data-ngacc="Contraoferta" data-ng="'+n.id+'">Enviar contraoferta</button>'+
+            '<button class="btn ghost" type="button" data-ngacc="Rechazada" data-ng="'+n.id+'">Rechazar</button>'+
+          '</div></div>';
+      }).join('')+'</div>';
+  }
+  document.addEventListener('click', async function(ev){
+    var b=ev.target.closest && ev.target.closest('[data-ngacc]'); if(!b) return;
+    ev.preventDefault();
+    var id=b.getAttribute('data-ng'), est=b.getAttribute('data-ngacc');
+    var monto=($('#ng-monto-'+id)||{}).value, plazo=($('#ng-plazo-'+id)||{}).value, resp=(($('#ng-resp-'+id)||{}).value||'').trim();
+    if(est==='Contraoferta' && !(Number(monto)>0)){ toast('Indica el monto','Tu contraoferta necesita un monto'); return; }
+    var txt={Aceptada:'¿Aceptas lo que propone Gerencia?',Contraoferta:'¿Enviar tu contraoferta?',Rechazada:'¿Rechazar la propuesta de Gerencia?'}[est];
+    if(!confirm(txt)) return;
+    b.disabled=true;
+    try{ await licApi('negociacion_responder', { id:id, estado:est, monto_respuesta:monto||null, plazo_respuesta:plazo||null, respuesta:resp||null });
+      toast('Respuesta enviada','Gerencia la verá en el comparativo'); openLic(LZ.cur.L.id);
+    }catch(e){ b.disabled=false; toast('No se envió',String(e.message||e)); }
+  });
 
   async function setInvEstado(est,msg){
     var c=LZ.cur; if(!c.invit){ toast('Sin invitación',''); return; }

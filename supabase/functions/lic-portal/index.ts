@@ -89,7 +89,13 @@ const acciones: Record<string, (email: string, b: any) => Promise<unknown>> = {
       .filter((L) => !OCULTAS.includes(L.estado));
     const eventos = sinError(await db.from("lic_eventos").select("licitacion_id,accion,detalle,usuario,created_at")
       .in("licitacion_id", ids).in("accion", NOV).order("created_at", { ascending: false }).limit(500)) as any[];
-    return { invit: invit.filter((v) => lics.some((L) => L.id === v.licitacion_id)), lics: lics.map(sinPrecioLic), eventos: eventosVisibles(eventos) };
+    // Negociación pendiente de SU oferta: se avisa como novedad (nunca la de otros)
+    const ofs = sinError(await db.from("lic_ofertas").select("id,licitacion_id").in("licitacion_id", ids).ilike("email", likeExacto(email))) as any[];
+    const negs = ofs.length ? (sinError(await db.from("lic_negociaciones").select("licitacion_id,created_at")
+      .in("oferta_id", ofs.map((o) => o.id)).eq("estado", "Pendiente")) as any[]) : [];
+    const evNeg = negs.map((n) => ({ licitacion_id: n.licitacion_id, accion: "Negociación", detalle: null, usuario: "gerencia", created_at: n.created_at }));
+    return { invit: invit.filter((v) => lics.some((L) => L.id === v.licitacion_id)), lics: lics.map(sinPrecioLic),
+      eventos: [...evNeg, ...eventosVisibles(eventos)] };
   },
 
   async contratos(email) {
@@ -132,6 +138,9 @@ const acciones: Record<string, (email: string, b: any) => Promise<unknown>> = {
     ].map((p) => p.then(sinError)));
     const pids = (planos as any[]).map((p) => p.id);
     const oferta = (ofertas as any[])[0] || null;
+    const negociaciones = oferta ? (sinError(await db.from("lic_negociaciones")
+      .select("id,ronda,monto_pedido,plazo_pedido,comentario,monto_respuesta,plazo_respuesta,respuesta,estado,created_at,respondida_at")
+      .eq("oferta_id", oferta.id).order("ronda")) as any[]) : [];
     const [planoVers, ofItems] = await Promise.all([
       pids.length ? db.from("lic_plano_versiones").select("*").in("plano_id", pids).order("created_at").then(sinError) : [],
       oferta ? db.from("lic_oferta_items").select("*").eq("oferta_id", oferta.id).then(sinError) : [],
@@ -143,8 +152,30 @@ const acciones: Record<string, (email: string, b: any) => Promise<unknown>> = {
     // Adjudicación: el detalle solo si ganó este contratista; si fue otra, solo que existe.
     const a = (adjs as any[])[0];
     const adj = !a ? null : String(a.email || "").toLowerCase() === email ? a : { licitacion_id: lic, otra: true, email: "" };
-    return { L: sinPrecioLic(L), partidas: (partidas as any[]).map(sinPrecioPartida), planos, planoVers, adendas, consultas: cons, invit: inv, oferta, ofItems, docs, adj,
+    return { L: sinPrecioLic(L), partidas: (partidas as any[]).map(sinPrecioPartida), planos, planoVers, adendas, consultas: cons, invit: inv, oferta, ofItems, docs, adj, negociaciones,
       eventos: eventosVisibles(eventos as any[]) };
+  },
+
+  // Respuesta del contratista a una ronda de negociación de SU oferta
+  async negociacion_responder(email, b) {
+    const est = b?.estado;
+    if (!["Aceptada", "Contraoferta", "Rechazada"].includes(est)) throw new Falla(400, "Respuesta no válida");
+    const n = sinError(await db.from("lic_negociaciones").select("*").eq("id", String(b?.id || "")).maybeSingle()) as any;
+    if (!n) throw new Falla(404, "No existe esa negociación");
+    const of = sinError(await db.from("lic_ofertas").select("id,email,contratista,licitacion_id,moneda").eq("id", n.oferta_id).maybeSingle()) as any;
+    if (!of || String(of.email || "").toLowerCase() !== email) throw new Falla(403, "Esa negociación no es tuya");
+    if (n.estado !== "Pendiente") throw new Falla(409, "Ya respondiste esta ronda");
+    const monto = est === "Contraoferta" ? Number(b?.monto_respuesta) : est === "Aceptada" ? Number(n.monto_pedido) : null;
+    if (est === "Contraoferta" && !(monto > 0)) throw new Falla(400, "Indica el monto de tu contraoferta");
+    const plazo = b?.plazo_respuesta == null || b.plazo_respuesta === "" ? (est === "Aceptada" ? n.plazo_pedido : null) : Math.round(Number(b.plazo_respuesta));
+    sinError(await db.from("lic_negociaciones").update({
+      estado: est, monto_respuesta: monto, plazo_respuesta: plazo,
+      respuesta: b?.respuesta ? String(b.respuesta).slice(0, 2000) : null, respondida_at: new Date().toISOString(),
+    }).eq("id", n.id).eq("estado", "Pendiente"));
+    const mon = of.moneda === "USD" ? "US$ " : "S/ ";
+    sinError(await db.from("lic_eventos").insert({ licitacion_id: of.licitacion_id, usuario: email, accion: "Respuesta de negociación",
+      detalle: (of.contratista || email) + ": " + est + (monto ? " · " + mon + monto.toLocaleString("es-PE") : "") + (plazo ? " · " + plazo + " días" : "") }));
+    return { ok: true };
   },
 
   async visto(email, b) {
