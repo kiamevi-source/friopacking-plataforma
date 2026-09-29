@@ -3598,11 +3598,6 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       <span>Riesgos</span>
       <span class="tab-badge hidden"></span>
     </button>
-    <button class="nav-tab" data-tab="costos" onclick="showTab('costos')">
-      <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
-      <span>Costos</span>
-      <span class="tab-badge hidden"></span>
-    </button>
     <!-- Tab "Imports" oculto: el importador de presupuesto se movió a Costos (embebido).
          Reactivar este botón cuando exista el importador de Nisira (multi-destino). -->
     <!--<button class="nav-tab" data-tab="imports" onclick="showTab('imports')">
@@ -4431,116 +4426,8 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       <iframe id="lic-sup-frame" title="Licitaciones" style="width:100%;min-height:calc(100vh - 170px);border:0;background:transparent"></iframe>
     </div>
 
-    <div class="tab-content" id="tab-costos">
-
-      <!-- Importador de presupuesto embebido (movido acá desde el ex-tab Imports).
-           El #imp-pres-card se inyecta en #costos-import-host en runtime. -->
-      <details id="costos-import-wrap" style="margin-bottom:14px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);overflow:hidden">
-        <summary style="cursor:pointer;padding:12px 16px;font-size:13px;font-weight:600;color:var(--text);list-style:none;display:flex;align-items:center;gap:8px;user-select:none">
-          <svg style="width:16px;height:16px;color:var(--teal-600)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Importar / actualizar presupuesto
-        </summary>
-        <div id="costos-import-host" style="padding:0 4px 4px"></div>
-      </details>
-
-      <!-- Estado vacío (sin proyecto / sin datos) -->
-      <div id="costos-noproj" class="hidden">
-        <div class="sec-card">
-          <div class="sec-body" style="text-align:center;padding:40px 20px;color:var(--text-2)">
-            <svg style="width:48px;height:48px;color:var(--text-3);margin-bottom:12px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Seleccioná un proyecto</div>
-            <div style="font-size:12px">Andá al selector arriba y elegí un proyecto para ver sus costos y márgenes.</div>
-          </div>
-        </div>
-      </div>
-
-      <div id="costos-empty" class="hidden">
-        <div class="sec-card">
-          <div class="sec-body" style="text-align:center;padding:40px 20px;color:var(--text-2)">
-            <svg style="width:48px;height:48px;color:var(--text-3);margin-bottom:12px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No hay presupuesto cargado para este proyecto</div>
-            <div style="font-size:12px;margin-bottom:14px">Importá el Excel de la propuesta económica aquí mismo.</div>
-            <button class="btn btn-primary btn-sm" onclick="abrirImportPresupuesto()">⬆ Importar presupuesto</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Loading -->
-      <div id="costos-loading" class="hidden">
-        <div class="sec-card">
-          <div class="sec-body" style="text-align:center;padding:30px;color:var(--text-2)">
-            <div class="spinner" style="display:inline-block;width:24px;height:24px;border:3px solid var(--surface-2);border-top-color:var(--teal-500);border-radius:50%;animation:spin .8s linear infinite"></div>
-            <div style="margin-top:10px;font-size:12px">Cargando presupuesto…</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Vista principal (KPIs + chart + tabla) -->
-      <div id="costos-view" class="hidden">
-
-        <!-- KPIs principales -->
-        <div class="kpi-grid" id="costos-kpis" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px"></div>
-
-        <!-- Distribución por categoría -->
-        <div class="sec-card" style="margin-bottom:14px">
-          <div class="sec-head">
-            <span class="sec-title">
-              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--violet-500);margin-right:8px;vertical-align:middle"></span>
-              Distribución por categoría
-            </span>
-            <span style="font-size:11px;color:var(--text-2)" id="costos-cat-count"></span>
-          </div>
-          <div class="sec-body">
-            <div id="costos-cat-list"></div>
-          </div>
-        </div>
-
-        <!-- Detalle de partidas -->
-        <div class="sec-card">
-          <div class="sec-head">
-            <span class="sec-title">
-              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--brand-500);margin-right:8px;vertical-align:middle"></span>
-              Detalle de partidas
-            </span>
-            <div style="display:flex;gap:8px;align-items:center">
-              <input type="text" id="costos-filter" placeholder="Filtrar descripción…" oninput="renderCostos()"
-                     style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);font-family:inherit;min-width:180px">
-              <select id="costos-cat-filter" onchange="renderCostos()"
-                      style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);font-family:inherit">
-                <option value="">Todas las categorías</option>
-              </select>
-              <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);cursor:pointer;user-select:none" title="Solo partidas de instalación / mano de obra">
-                <input type="checkbox" id="costos-solo-lic" onchange="renderCostos()" style="width:14px;height:14px;accent-color:#d97706;cursor:pointer">
-                🔨 Solo licitables
-              </label>
-              <button class="btn btn-outline btn-sm" onclick="toggleCostoExpandAll()" title="Expandir/colapsar todas las partidas">⇕ Expandir todo</button>
-              <button class="btn btn-outline btn-sm" onclick="loadCostos(true)" title="Refrescar desde Supabase">⟳</button>
-            </div>
-          </div>
-          <div class="sec-body" style="padding:0">
-            <div style="overflow:auto;max-height:60vh">
-              <table id="costos-table" style="width:100%;border-collapse:collapse;font-size:12px">
-                <thead style="background:var(--surface-2);position:sticky;top:0;z-index:5">
-                  <tr style="text-align:left">
-                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700">Ítem</th>
-                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700">Descripción</th>
-                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700">Categoría</th>
-                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700;text-align:right">Cant.</th>
-                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700;text-align:right">Costo</th>
-                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700;text-align:right">Margen</th>
-                    <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);font-weight:700;text-align:right">Venta</th>
-                  </tr>
-                </thead>
-                <tbody id="costos-tbody"></tbody>
-              </table>
-            </div>
-            <div id="costos-foot" style="padding:8px 14px;font-size:11px;color:var(--text-3);border-top:1px solid var(--border);background:var(--surface-2)"></div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
+    <!-- El módulo «Costos» (importador del presupuesto en Excel) se retiró el 29-sep-2026:
+         el presupuesto entra desde la Orden de Proyectos de NISIRA. Los datos de `presupuestos` siguen ahí. -->
     <!-- ══ IMPORTS · Fase 2.2 ══ -->
     <div class="tab-content" id="tab-imports">
 
@@ -17612,7 +17499,6 @@ let _dashSources = null;
   const _origShowTab_imp = window.showTab;
   window.showTab = function(tab){
     if(typeof _origShowTab_imp === 'function') _origShowTab_imp(tab);
-    if(tab === 'costos') refreshProjectIndicator();
   };
   const _origCargarProyecto = window.cargarProyecto;
   window.cargarProyecto = function(...args){

@@ -145,7 +145,7 @@
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    DATOS DEL FLUJO — esto es lo único que se edita cuando algo cambia.
-   Revisado: 21 de septiembre de 2026
+   Revisado: 29 de septiembre de 2026
    ═══════════════════════════════════════════════════════════════════ */
 const MAPA = {
   nodes:[
@@ -157,7 +157,6 @@ const MAPA = {
     /* ── entradas de información ── */
     {id:'x-val',    tipo:'ext', x:40,  y:196, titulo:'Excel de valorización', sub:'hojas Data y Pendientes'},
     {id:'x-eq',     tipo:'ext', x:40,  y:296, titulo:'Excel de importaciones', sub:'equipos por obra'},
-    {id:'x-costos', tipo:'ext', x:40,  y:626, titulo:'Cuadros de costo', sub:'presupuestos por partida'},
     {id:'x-gantt',  tipo:'ext', x:40,  y:726, titulo:'Gantt en PDF', sub:'cronograma de obra'},
     {id:'x-obs',    tipo:'ext', x:40,  y:826, titulo:'Excel de observaciones', sub:'punch list y restricciones'},
     {id:'x-voz',    tipo:'ext', x:40,  y:906, titulo:'Recorrido y QR de zona', sub:'dictado por voz · QR pegado en obra'},
@@ -187,7 +186,6 @@ const MAPA = {
       {id:'personal', t:'Histograma y personal'},
       {id:'planos', t:'Planos'},
       {id:'riesgos', t:'Levantamiento de observaciones', key:true},
-      {id:'costos', t:'Costos y presupuestos', key:true},
       {id:'licitaciones', t:'Licitaciones · arma y envía', key:true},
       {id:'facturas', t:'Facturas'},
       {id:'contratas', t:'Contratas en obra'},
@@ -278,7 +276,6 @@ const MAPA = {
     /* entradas de información */
     {from:'x-val', to:'a-ger:valorizacion', tipo:'entrada'},
     {from:'x-eq', to:'a-ger:equipos', tipo:'entrada'},
-    {from:'x-costos', to:'a-sup:costos', tipo:'entrada'},
     {from:'x-gantt', to:'a-sup:gantt', tipo:'entrada'},
     {from:'x-obs', to:'a-sup:riesgos', tipo:'entrada', label:'importador'},
     {from:'x-voz', to:'a-sup:riesgos', tipo:'entrada', label:'recorrido · QR por zona'},

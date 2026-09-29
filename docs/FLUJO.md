@@ -5,7 +5,7 @@ fuente de verdad: los datos del mapa viven en el bloque `const MAPA` que está a
 inicio del `<script>`. Si cambia el flujo, se edita ahí, en el **mismo commit**
 que el código. Este documento es la letra chica que no cabe en el dibujo.
 
-Última revisión: **21 de septiembre de 2026**
+Última revisión: **29 de septiembre de 2026**
 
 ---
 
@@ -142,10 +142,13 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   `supabase/functions/`.
 - **La adjudicación guarda `email` y `licitacion_codigo`.** Sin eso el ganador
   no veía su contrato en «Mis contratos».
-- **El supervisor ve el estado de la licitación, no lo copia.** La pestaña de
-  costos de la app de campo consulta `lic_partidas` y `lic_licitaciones` de PMO,
-  enlazadas por `lic_partidas.origen_presupuesto_id` = `presupuestos.id`. Es solo
-  lectura, a propósito: una copia sincronizada podría contradecir a Gerencia.
+- **El módulo «Costos» del Supervisor se retiró (29 de septiembre de 2026).** Era
+  la pantalla donde se importaba el presupuesto desde un Excel de propuesta
+  económica. El presupuesto entra ahora desde la Orden de Proyectos de NISIRA.
+  La tabla `presupuestos` no se tocó: la sigue leyendo Licitaciones por
+  `v_partidas_licitables`, y con ella el estado de licitación por partida
+  (acción `estados` de `lic-supervisor`), que queda disponible para la pantalla
+  que lo necesite.
 - **Levantamiento de observaciones: cinco estados y bitácora.** Restricciones,
   punch list y observaciones viven en `pendientes` de la instancia Supervisor.
   **Todo es una observación**: ya no hay tres tipos. Las que impiden avanzar se
