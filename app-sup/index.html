@@ -10199,8 +10199,18 @@ function renderContratas() {
 
 // ── ③ Avance por hito del Gantt ──
 async function cargarHitosReporte() {
-  const cod = currentProyecto?.cod || currentProyecto?.nombre;
   rdHitos = [];
+  const codRep = rdCodReporte();
+  // Un adicional (o una orden agrupada en la misma ficha) NO tiene cronograma propio:
+  // `tareas_gantt` solo existe para la obra. Sus tareas son las que trajo NISIRA en la
+  // pestaña "Tareas del Proyectos", que viven en `presupuestos` con su cod_proyecto.
+  // Antes se listaba el Gantt de la obra madre, que no es lo que se está reportando.
+  if (currentProyecto && codRep && codRep !== currentProyecto.cod) {
+    await cargarTareasDelCodigo(codRep);
+    renderHitos();
+    return;
+  }
+  const cod = currentProyecto?.cod || currentProyecto?.nombre;
   if (cod) {
     try {
       // Trae las TAREAS del cronograma (no solo milestones): hitos primero, luego actividades, ordenadas por fecha
@@ -15170,7 +15180,7 @@ function _collectReportePayload(esDraft, firmaUrl){
     personal_total: personalTotal,
     especialidades,
     avance_especialidades: avanceEsp,
-    hitos_dia: rdHitos.map(h=>({ id:h.id||null, nombre:h.nombre, pct:h.pct_nuevo, pct_actual:h.pct_actual,
+    hitos_dia: rdHitos.map(h=>({ id:h.id||null, item:h.item||null, nombre:h.nombre, pct:h.pct_nuevo, pct_actual:h.pct_actual,
                                 hoy:!!h.hoy, manana:!!h.manana, manual:!!h.manual })),
     actividad: actividadAuto,
     actividad_auto: true,
@@ -15449,6 +15459,34 @@ document.addEventListener('change', (e)=>{ if (e.target.closest && e.target.clos
 // el % de avance de las tareas del Gantt y las restricciones estructuradas.
 // Trabaja SOBRE EL PAYLOAD (no sobre el formulario en pantalla) para que la
 // cola offline pueda ejecutarlos igual al reconectar, aunque sean de otro día.
+// Tareas de un código hijo (adicional PRD/VSR u otra orden de la misma obra).
+// `presupuestos` no tiene columna de avance, así que el % de partida se arrastra del
+// último reporte cerrado de ese mismo código; si no hay, arranca en 0.
+async function cargarTareasDelCodigo(cod){
+  let filas = [];
+  try {
+    filas = await sbFetch('/rest/v1/presupuestos?select=id,item,descripcion,unidad'
+      + '&payload->>cod_proyecto=eq.' + encodeURIComponent(cod)
+      + '&unidad=not.is.null&order=item.asc&limit=400') || [];
+  } catch(e){ console.warn('tareas del código', e); return; }
+
+  const previo = {};
+  try {
+    const ult = await sbFetch('/rest/v1/v_reportes?cod_proyecto=eq.' + encodeURIComponent(cod)
+      + '&es_draft=is.false&order=fecha_reporte.desc&limit=1&select=hitos_dia');
+    ((ult && ult[0] && ult[0].hitos_dia) || []).forEach(h => {
+      if (h && h.item != null) previo[h.item] = Number(h.pct != null ? h.pct : h.pct_actual) || 0;
+    });
+  } catch(e){ /* sin reportes previos */ }
+
+  filas.forEach(r => {
+    const pct = previo[r.item] || 0;
+    rdHitos.push({ id:null, item:r.item, nombre:(r.item + ' · ' + (r.descripcion || '')),
+      pct_actual:pct, pct_nuevo:pct, manual:false, es_hito:false,
+      nivel:3, dur:0, hoy:false, manana:false });
+  });
+}
+
 async function _persistirExtras(payload){
   if (!payload) return;
 
@@ -15470,9 +15508,13 @@ async function _persistirExtras(payload){
   // Decisión de Kiara (18-ago-2026): que mueva el indicador de Gerencia, no
   // que se quede solo dentro del reporte.
   const _rp = payload.reprogramacion;
-  if (_rp && _rp.fecha_nueva && payload.cod_proyecto){
+  // OJO: siempre contra el código de la OBRA. El reporte puede venir estampado con un
+  // adicional (PRD/VSR), y ese código no es una fila de `proyectos`: el PATCH no
+  // encontraría nada y la reprogramación se perdería sin avisar.
+  const _codObra = (currentProyecto && currentProyecto.cod) || payload.cod_proyecto;
+  if (_rp && _rp.fecha_nueva && _codObra){
     try{
-      await pmoDbFetch2('/rest/v1/proyectos?cod_proyecto=eq.' + encodeURIComponent(payload.cod_proyecto), {
+      await pmoDbFetch2('/rest/v1/proyectos?cod_proyecto=eq.' + encodeURIComponent(_codObra), {
         method:'PATCH', headers:{'Prefer':'return=minimal'},
         body: JSON.stringify({ fecha_fin_real: _rp.fecha_nueva })
       });
