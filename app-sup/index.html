@@ -5159,8 +5159,17 @@ async function cambiarCodigo(){
   const sel = document.getElementById('sel-codigo');
   codigoReporte = (sel && sel.value) || (currentProyecto && currentProyecto.cod) || null;
   rdCodAviso();
-  // El reporte que se está editando es otro: hay que traer el del código elegido.
-  try { await cargarReporteDiario(); } catch(e){ console.warn('cambiar código', e); }
+  // El reporte que se está editando es otro. Mientras llega el del código elegido
+  // se marca "cargando": si no, quedan en pantalla los datos del código anterior y
+  // parece que no hubiera pasado nada.
+  setSyncStatus('syncing','Cargando el código…');
+  try {
+    await cargarReporteDiario();
+    setSyncStatus('ok','Listo ✓');
+  } catch(e){
+    console.warn('cambiar código', e);
+    setSyncStatus('error','No se pudo cargar');
+  }
 }
 
 async function cargarProyecto() {
@@ -5199,22 +5208,51 @@ async function cargarProyecto() {
   badgeEst.className = 'proj-badge ' + (est==='pausado'?'estado-pausado':est==='cerrado'?'estado-cerrado':'estado-activo');
   badgeEst.classList.remove('hidden');
   setProjectHealth('idle','Cargando…');
+  setSyncStatus('syncing','Cargando la obra…');
+  // El desplegable se bloquea mientras carga: si no, se puede cambiar otra vez a mitad
+  // de camino y las dos cargas se pisan (gana la que responda última, no la elegida).
+  sel.disabled = true;
 
-  // Cargar todo
-  await Promise.all([
-    cargarDashboard(),
-    cargarGantt(),
-    cargarHistograma(),
-    cargarPersonalHist(),
-    cargarContratast(),
-    cargarRiesgos()
-  ]);
-  // Refrescar paneles de Equipos PMO con el proyecto recién seleccionado
-  renderAllEquipos();
-  // Cargar Productividad Analytics
-  cargarProductividad();
-  // Cargar el nuevo reporte diario
-  cargarReporteDiario();
+  // Cargar todo. El try/finally es lo que garantiza que el desplegable se vuelva a
+  // habilitar aunque una de las consultas falle: si no, una obra sin Gantt (o un corte
+  // de señal) dejaría al supervisor sin poder cambiar de proyecto hasta recargar.
+  try {
+    await Promise.all([
+      cargarDashboard(),
+      cargarGantt(),
+      cargarHistograma(),
+      cargarPersonalHist(),
+      cargarContratast(),
+      cargarRiesgos()
+    ]);
+    // Refrescar paneles de Equipos PMO con el proyecto recién seleccionado
+    renderAllEquipos();
+    // Cargar Productividad Analytics
+    cargarProductividad();
+    // Cargar el nuevo reporte diario
+    cargarReporteDiario();
+    // Y lo que el usuario tenga delante en ese momento.
+    refrescarTabActivo();
+    setSyncStatus('ok','Listo ✓');
+  } catch(e) {
+    console.warn('cargarProyecto', e);
+    setSyncStatus('error','Error al cargar la obra');
+  } finally {
+    sel.disabled = false;
+  }
+}
+
+// Las pestañas que solo se cargaban al ENTRAR (showTab) se quedaban con la obra anterior
+// si ya estabas parada en ellas al cambiar de proyecto. Esto las vuelve a pedir.
+function refrescarTabActivo(){
+  const activo = document.querySelector('.nav-tab.active');
+  const tab = activo && activo.dataset ? activo.dataset.tab : null;
+  if (!tab || !currentProyecto) return;
+  try {
+    if (tab === 'preparacion')  cargarChecklist();
+    if (tab === 'licitaciones') abrirLicitacionesSup();
+    if (tab === 'diario' && document.getElementById('rd-tipo-obs')?.classList.contains('on')) rdPendLoad();
+  } catch(e){ console.warn('refrescarTabActivo', e); }
 }
 
 // ═══════════════════════════════════════════════
