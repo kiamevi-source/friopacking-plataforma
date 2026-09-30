@@ -308,6 +308,8 @@ body{
   cursor:pointer;outline:none;transition:all var(--d) var(--ease);box-shadow:var(--sh-1);
 }
 #proyecto-selector select:focus{border-color:var(--teal-500);box-shadow:0 0 0 3px rgba(6,182,212,.18);}
+#proyecto-selector .cod-aviso{font-size:11px;font-weight:700;color:#b45309;
+  background:#fef3c7;border:1px solid #fcd34d;padding:3px 9px;border-radius:999px;}
 .proj-badge{
   display:inline-flex;align-items:center;gap:6px;
   height:26px;padding:0 12px;
@@ -3543,7 +3545,10 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
     <select id="sel-proyecto" onchange="cargarProyecto()">
       <option value="">— Selecciona —</option>
     </select>
+    <label id="lbl-codigo" class="hidden">Código</label>
+    <select id="sel-codigo" class="hidden" onchange="cambiarCodigo()"></select>
     <span class="proj-badge hidden" id="badge-cod"></span>
+    <span id="rd-cod-aviso" class="hidden cod-aviso"></span>
     <span class="proj-badge estado-activo hidden" id="badge-estado"></span>
   </div>
 
@@ -5007,7 +5012,7 @@ const ADMIN_EMAILS = ['dfuentes@friopacking.pe','ccalderon@friopacking.pe','gpar
 async function cargarProyectos() {
   try {
     const esAdmin = currentUser && ADMIN_EMAILS.includes((currentUser.email||'').toLowerCase());
-    let url = '/rest/v1/proyectos?select=id,nombre,supervisor,supervisor_email,cod_proyecto,estado,fecha_ini_contractual,fecha_fin_contractual,fecha_ini_real,fecha_fin_real,zona&activo=eq.true&order=nombre';
+    let url = '/rest/v1/proyectos?select=id,nombre,supervisor,supervisor_email,cod_proyecto,codigos,estado,fecha_ini_contractual,fecha_fin_contractual,fecha_ini_real,fecha_fin_real,zona&activo=eq.true&order=nombre';
 
     // ¿A qué obras entra esta persona? Sale de proyecto_accesos (instancia
     // Supervisor), que soporta supervisor Y asistente en la misma obra y está
@@ -5052,12 +5057,110 @@ async function cargarProyectos() {
       opt.dataset.iniReal = p.fecha_ini_real || '';
       opt.dataset.finReal = p.fecha_fin_real || '';
       opt.dataset.zona = p.zona || '';
+      // Los adicionales (PRD/VSR) de la obra: no son proyectos, son códigos de ESTA obra.
+      opt.dataset.codigos = JSON.stringify(Array.isArray(p.codigos) ? p.codigos : []);
       opt.textContent = p.nombre + (p.supervisor ? ' — ' + p.supervisor : '');
       sel.appendChild(opt);
     });
   } catch(e) {
     showToast('Error cargando proyectos');
   }
+}
+
+// ── Código del reporte ─────────────────────────────────────────────────────────
+// Una obra puede tener adicionales (PRD/VSR). No son proyectos: son códigos de la
+// misma obra, y cada uno se reporta por separado (`reportes` es único por
+// cod_proyecto + fecha). Ojo: SOLO el reporte diario viaja con el código elegido.
+// Gantt, presupuesto, especialidades y valorizaciones siguen colgados del código
+// de la obra, que es la llave con la que están guardados en esas tablas.
+let codigoReporte = null;
+
+function rdCodigosObra(){
+  const p = currentProyecto;
+  if (!p) return [];
+  const base = p.cod ? [{ codigo: p.cod, venta: null, principal: true }] : [];
+  // TODOS los códigos de la obra, no solo los PRD/VSR: hay obras que agrupan varias
+  // órdenes PRY en la misma ficha (QPack, Virú) y también se reportan.
+  const extra = (Array.isArray(p.codigos) ? p.codigos : [])
+    .filter(c => c && c.codigo && String(c.codigo).trim() && String(c.codigo).trim() !== p.cod)
+    .map(c => ({ codigo: String(c.codigo).trim(), venta: c.venta, principal: false }));
+  return base.concat(extra);
+}
+
+function rdPoblarCodigos(){
+  const sel = document.getElementById('sel-codigo');
+  const lbl = document.getElementById('lbl-codigo');
+  if (!sel) return;
+  const cods = rdCodigosObra();
+  sel.innerHTML = '';
+  cods.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.codigo;
+    const monto = (c.venta != null && c.venta !== '')
+      ? ' · $ ' + Number(c.venta).toLocaleString('en-US', { maximumFractionDigits: 0 }) : '';
+    o.textContent = c.principal
+      ? ('Obra principal · ' + c.codigo)
+      : (rdEsAdicional(c.codigo) ? 'Adicional · ' : 'Orden · ') + c.codigo + monto;
+    sel.appendChild(o);
+  });
+  codigoReporte = cods.length ? cods[0].codigo : (currentProyecto && currentProyecto.cod) || null;
+  sel.value = codigoReporte || '';
+  // Con un solo código no hay nada que elegir: el selector estorba.
+  const hay = cods.length > 1;
+  sel.classList.toggle('hidden', !hay);
+  if (lbl) lbl.classList.toggle('hidden', !hay);
+  rdCodAviso();
+}
+
+// El código con el que se estampa el reporte diario.
+function rdCodReporte(){
+  return codigoReporte || (currentProyecto && (currentProyecto.cod || currentProyecto.nombre)) || null;
+}
+
+// PRD/VSR son adicionales; un PRY dentro de la obra es otra orden agrupada en la misma ficha.
+function rdEsAdicional(cod){ return /^\s*(PRD|VSR)\b/i.test(String(cod || '')); }
+
+// ¿Se está reportando algo distinto de la orden principal de la obra?
+function rdEnCodigoHijo(){
+  return !!(currentProyecto && codigoReporte && codigoReporte !== currentProyecto.cod);
+}
+
+// Nombre para las cabeceras: la obra madre siempre, y el código colgado de ella.
+// Así el supervisor nunca pierde de vista de qué obra es el adicional que reporta.
+function rdEtiquetaObra(){
+  const nom = (currentProyecto && currentProyecto.nombre) || 'Proyecto';
+  if (!rdEnCodigoHijo()) return nom;
+  return nom + ' · ' + (rdEsAdicional(codigoReporte) ? 'adicional ' : 'orden ') + codigoReporte;
+}
+
+// Repinta las cabeceras que llevan el nombre de la obra.
+function rdRefrescarTitulos(){
+  const h = document.getElementById('header-project-name');
+  if (h) h.textContent = rdEtiquetaObra();
+  const hp = document.getElementById('rd-hero-proj');
+  if (hp) hp.textContent = rdEtiquetaObra();
+}
+
+function rdCodAviso(){
+  const av = document.getElementById('rd-cod-aviso');
+  if (!av) return;
+  const esAdicional = !!(codigoReporte && currentProyecto && codigoReporte !== currentProyecto.cod);
+  // No todos los códigos son adicionales: algunos son otras órdenes PRY de la misma obra.
+  // El aviso nombra las dos cosas: el código que se reporta y la obra de la que cuelga.
+  av.textContent = esAdicional
+    ? (rdEsAdicional(codigoReporte) ? 'Adicional ' : 'Orden ') + codigoReporte
+      + ' · de la obra ' + (currentProyecto && currentProyecto.cod || '')
+    : '';
+  av.classList.toggle('hidden', !esAdicional);
+  rdRefrescarTitulos();
+}
+
+async function cambiarCodigo(){
+  const sel = document.getElementById('sel-codigo');
+  codigoReporte = (sel && sel.value) || (currentProyecto && currentProyecto.cod) || null;
+  rdCodAviso();
+  // El reporte que se está editando es otro: hay que traer el del código elegido.
+  try { await cargarReporteDiario(); } catch(e){ console.warn('cambiar código', e); }
 }
 
 async function cargarProyecto() {
@@ -5075,8 +5178,10 @@ async function cargarProyecto() {
     iniCont: opt.dataset.iniCont,
     iniReal: opt.dataset.iniReal,
     finReal: opt.dataset.finReal,
-    zona: opt.dataset.zona
+    zona: opt.dataset.zona,
+    codigos: (function(){ try{ return JSON.parse(opt.dataset.codigos||'[]'); }catch(e){ return []; } })()
   };
+  rdPoblarCodigos();
 
   // Si el usuario esta parado en Levantamiento de Observaciones, la lista es de
   // la obra anterior hasta que recargue: refrescarla con el proyecto nuevo.
@@ -5084,7 +5189,7 @@ async function cargarProyecto() {
     try { rdPendLoad(); } catch(e){}
   }
 
-  document.getElementById('header-project-name').textContent = currentProyecto.nombre;
+  document.getElementById('header-project-name').textContent = rdEtiquetaObra();
   const badgeCod = document.getElementById('badge-cod');
   const badgeEst = document.getElementById('badge-estado');
   badgeCod.textContent = currentProyecto.cod || 'Sin código';
@@ -9755,7 +9860,7 @@ async function cargarReporteDiario() {
   if (fEl && !fEl.value) fEl.value = new Date().toISOString().split('T')[0];
 
   // Hidratar hero
-  const hp = document.getElementById('rd-hero-proj'); if (hp) hp.textContent = currentProyecto.nombre || 'Proyecto';
+  const hp = document.getElementById('rd-hero-proj'); if (hp) hp.textContent = rdEtiquetaObra();
   const hs = document.getElementById('rd-hero-sup');  if (hs) hs.textContent = currentProyecto.supervisor || currentUser?.nombre || '—';
   rdRenderPlazos();
   rdReproUltLoad(currentProyecto.cod || currentProyecto.nombre);   // fin proyectado que ya reportó obra
@@ -14900,7 +15005,7 @@ async function cargarUltimoReporte() {
 
 // Multi-dispositivo: al abrir el proyecto, retoma el borrador/reporte de HOY si ya existe
 async function cargarReporteDeHoy() {
-  const cod = currentProyecto?.cod || currentProyecto?.nombre;
+  const cod = rdCodReporte();
   const fecha = document.getElementById('rd-fecha')?.value || new Date().toISOString().slice(0,10);
   if (!cod) return false;
   let serverRow = null, fetchFailed = false;
@@ -14935,7 +15040,7 @@ document.addEventListener('input', (e) => {
 
 // ── Guardar reporte ──
 async function guardarReporte(esDraft = false, silent = false) {
-  const cod = currentProyecto?.cod || currentProyecto?.nombre;
+  const cod = rdCodReporte();
   if (!cod) { if(!silent) showToast('Selecciona un proyecto'); return; }
   const fecha = document.getElementById('rd-fecha').value;
   if (!fecha) { if(!silent) showToast('Selecciona la fecha del reporte'); return; }
@@ -14990,7 +15095,7 @@ async function guardarReporte(esDraft = false, silent = false) {
 
 // ── Payload del reporte (extraído para reusar en el espejo local del modo offline) ──
 function _collectReportePayload(esDraft, firmaUrl){
-  const cod = currentProyecto?.cod || currentProyecto?.nombre;
+  const cod = rdCodReporte();
   const fecha = document.getElementById('rd-fecha')?.value;
   const plan  = parseFloat(document.getElementById('rd-plan').value)||0;
   const real  = +rdAvanceRealFuente().valor.toFixed(1);   // misma fuente que muestra la pantalla
