@@ -24,6 +24,19 @@ demás que toca es lectura o sincronización.
 La entrada es única: `index.html` muestra el selector, hace el login contra la
 instancia que corresponde y abre la app en un iframe.
 
+- **Valorización: formato único y fecha de corte.** La carga mensual sigue siendo
+  un Excel que sube Gerencia, pero ahora hay un **formato propio descargable**
+  (botón «Plantilla»: hojas `Valorización` y `Cobranza` con los encabezados que
+  el importador entiende) y el importador **valida antes de reemplazar**: los
+  montos que llegan como texto se muestran como error y **bloquean** la
+  importación (entrarían en blanco); las fechas en texto («Sin Factura»), los
+  códigos que no cruzan con una obra, los cobros repetidos y las filas de título
+  sin montos salen como aviso. Se sigue aceptando el libro «Estado de
+  Proyección» de siempre (hojas `Data` y `Proyectos Pendientes`). Al importar se
+  elige **periodo (AAAA-MM) y fecha de corte**, que se guardan en
+  `valorizacion_lineas.fecha_corte` y `valorizacion_cobros.fecha_corte` y se
+  muestran en la cabecera del módulo. Sigue siendo reemplazo total del periodo.
+
 ## 2. Sincronizaciones automáticas
 
 | Job | Dónde corre | Cada | Qué mueve |

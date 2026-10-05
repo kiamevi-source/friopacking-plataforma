@@ -16170,6 +16170,8 @@ function _render(){
   var L=VS.lineas,C=VS.cobros;
   var _perLabel=function(){ var cnt={}; L.forEach(function(x){ if(x.periodo)cnt[x.periodo]=(cnt[x.periodo]||0)+1; }); var top='',n=-1; for(var k in cnt){ if(cnt[k]>n){n=cnt[k];top=k;} } var m=/^(\d{4})-(\d{2})$/.exec(top); if(!m)return 'Agosto 2026'; var MS=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']; return (MS[+m[2]]||m[2])+' '+m[1]; };
   var perLabel=_perLabel();
+  /* corte del periodo cargado: dice hasta qué día están los datos */
+  var _corte=(function(){ var c=null; L.forEach(function(x){ if(x.fecha_corte&&(!c||x.fecha_corte>c))c=x.fecha_corte; }); return c?('corte al '+c.slice(8,10)+'/'+c.slice(5,7)):''; })();
   var byEst=function(e){return L.filter(function(x){return x.estado===e;});};
   var val=byEst('Valorizado'),pre=byEst('Presentado'),pen=byEst('Pendiente');
   var proy=function(a){return _sum(a,'valorizacion_proyectada');};
@@ -16242,7 +16244,7 @@ function _render(){
   var leg=function(c,l,n){return '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cfd8e6;margin:6px 0"><span style="width:9px;height:9px;border-radius:50%;background:'+c+'"></span><span style="flex:1">'+l+'</span><b style="color:#fff">'+n+' ('+(totP>0?Math.round(n/totP*100):0)+'%)</b></div>';};
   /* ── HTML ── */
   var h='<span data-v6 hidden></span>';
-  h+='<div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:16px"><div><div style="display:flex;align-items:baseline;gap:10px"><h1 style="margin:0;font-size:28px;color:'+IN+'">Valorización</h1><span style="font-size:18px;color:#3b5bdb;font-style:italic;font-weight:600">'+perLabel+'</span></div><div style="font-size:12px;color:'+MU+';margin-top:3px">'+L.length+' valorizaciones · '+activos.length+' proyectos activos</div></div><div style="display:flex;gap:6px"><button class="btn" onclick="W._valRefresh()">🔄 Actualizar</button><button class="btn primary" onclick="W._valImport()">📁 Importar Excel</button></div></div>';
+  h+='<div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:16px"><div><div style="display:flex;align-items:baseline;gap:10px"><h1 style="margin:0;font-size:28px;color:'+IN+'">Valorización</h1><span style="font-size:18px;color:#3b5bdb;font-style:italic;font-weight:600">'+perLabel+'</span></div><div style="font-size:12px;color:'+MU+';margin-top:3px">'+L.length+' valorizaciones · '+activos.length+' proyectos activos'+(_corte?' · '+_corte:'')+'</div></div><div style="display:flex;gap:6px"><button class="btn" onclick="W._valRefresh()">🔄 Actualizar</button><button class="btn" onclick="W._valPlantilla()">📄 Plantilla</button><button class="btn primary" onclick="W._valImport()">📁 Importar Excel</button></div></div>';
   h+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'+kcard('Meta del mes',_u(meta),L.length+' valorizaciones','#3b5bdb','🎯')+kcard('Avanzado',_u(avanzado),pctAv.toFixed(0)+'% del valorizado + presentado','#16a34a','📈')+kcard('Pendiente',_u(pendMonto),(100-pctAv).toFixed(0)+'% de la meta','#f59e0b','⏳')+kcard('Por cobrar',_u(saldoTot),venc.length+' vencidas (+90d)','#ef4444','⚠️')+'</div>';
   h+='<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">';
   /* izquierda: estado por proyecto */
@@ -16278,6 +16280,38 @@ function _ensureXLSX(cb){
   var srcs=['https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js','https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'];
   var i=0;(function next(){ if(i>=srcs.length)return cb('No se pudo cargar el lector (sin internet o bloqueado).'); var s=document.createElement('script'); s.src=srcs[i++]; s.onload=function(){cb(null);}; s.onerror=function(){next();}; document.head.appendChild(s); })();
 }
+/* ── Formato único de valorización ──────────────────────────────────────
+   La plantilla trae los mismos encabezados que entiende el importador, en dos
+   hojas (Valorización y Cobranza). El importador sigue aceptando el libro
+   «Estado de Proyección» de siempre (hojas Data y Proyectos Pendientes). ── */
+var VAL_COLS_L=['Proyecto','Cliente','Supervisor','Estado','Valorización proyectada','Valorización','Facturación','Presupuesto','Valorizado','% acumulado','Fecha de valorización'];
+var VAL_COLS_C=['Proyecto','Adicional','Cliente','Supervisor','Coordinador','Departamento','Tipo de V.','Presupuesto','Valorización facturada','Valorización real','Facturado','Por facturar','Pagado','Saldo pendiente','Última factura','Días','Forma de pago','Comentarios Operaciones - CC','Estado'];
+function _perActual(){ /* hasta el día 10 lo normal es estar cerrando el mes anterior */
+  var d=new Date(); if(d.getDate()<=10) d=new Date(d.getFullYear(), d.getMonth()-1, 1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function _finDeMes(per){ var a=+per.slice(0,4), m=+per.slice(5,7); var d=new Date(a, m, 0); return a+'-'+String(m).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+W._valPlantilla=function(){
+  _ensureXLSX(function(err){
+    if(err){ alert(err); return; }
+    var XU=W.XLSX.utils, wb=XU.book_new(), per=_perActual();
+    var ins=[['Formato único de valorización · Grupo FrioPacking'],[],
+      ['1. Hoja «Valorización»: una fila por valorización del periodo.'],
+      ['2. Hoja «Cobranza»: una fila por cobro pendiente (solo Tipo de V. = Proyecto).'],
+      ['3. No cambies los nombres de las columnas.'],
+      ['4. Los montos van como número, sin S/ ni $ ni comas.'],
+      ['5. Las fechas van como fecha (dd/mm/aaaa), no como texto.'],
+      ['6. «Proyecto» es el código de la obra, por ejemplo PRY 2026-0000030.'],
+      ['7. Al importar se reemplaza TODO el periodo: lo que subes es el mes completo.'],
+      [],['Periodo sugerido', per],['Fecha de corte','se elige al importar']];
+    var wsI=XU.aoa_to_sheet(ins); wsI['!cols']=[{wch:62},{wch:22}];
+    XU.book_append_sheet(wb, wsI, 'Instrucciones');
+    var wsL=XU.aoa_to_sheet([VAL_COLS_L]); wsL['!cols']=VAL_COLS_L.map(function(c){ return {wch:Math.max(14,c.length+2)}; });
+    XU.book_append_sheet(wb, wsL, 'Valorización');
+    var wsC=XU.aoa_to_sheet([VAL_COLS_C]); wsC['!cols']=VAL_COLS_C.map(function(c){ return {wch:Math.max(14,c.length+2)}; });
+    XU.book_append_sheet(wb, wsC, 'Cobranza');
+    W.XLSX.writeFile(wb, 'FP-VAL-F01-Valorizacion-'+per+'.xlsx');
+  });
+};
 W._valImport=function(){
   var inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xlsm'; inp.style.display='none';
   document.body.appendChild(inp);
@@ -16290,58 +16324,142 @@ function _readXlsx(f){
   rd.onerror=function(){ alert('No se pudo leer el archivo.'); };
   rd.readAsArrayBuffer(f);
 }
+function _hoja(wb,llaves){
+  var n=wb.SheetNames.filter(function(x){ var q=_norm(x); return llaves.some(function(k){ return q===k || q.indexOf(k)>=0; }); })[0];
+  return n?wb.Sheets[n]:null;
+}
+/* Códigos de obra que conoce Gerencia, para avisar si el Excel trae una que no existe. */
+function _codsConocidos(){
+  var set={}; try{ (W.PROJECTS||[]).forEach(function(p){ var c=p&&(p._cod||p.cod||p.cod_proyecto); if(c) set[_norm(c)]=1; }); }catch(e){}
+  return set;
+}
 function _parseWb(wb){
-  var XU=W.XLSX.utils;
-  var shD=wb.Sheets['Data']||wb.Sheets[(wb.SheetNames.filter(function(n){return _norm(n)==='data';})[0])];
-  if(!shD)return {err:'No encuentro la hoja "Data" en el Excel.'};
+  var XU=W.XLSX.utils, cods=_codsConocidos(), hayCods=Object.keys(cods).length>0;
+  /* Se agrupa por columna: una lista de 50 filas no se lee. Solo los montos que
+     entrarían en blanco bloquean la importación; las fechas en texto («Sin Factura»)
+     son normales y solo se avisan. */
+  var malNum={}, malFec={}, buf=[];
+  /* lo detectado en una fila se anota recién cuando se sabe que la fila entra:
+     así una fila de título descartada no ensucia los avisos */
+  var apunta=function(reg,col,fila,v){ buf.push({r:reg,c:col,f:fila,v:v}); };
+  var guarda=function(){ buf.forEach(function(x){ var reg=x.r[x.c]=x.r[x.c]||{n:0,filas:[],ej:String(x.v).slice(0,20)}; reg.n++; if(reg.filas.length<4)reg.filas.push(x.f); }); buf=[]; };
+  var olvida=function(){ buf=[]; };
+  var numV=function(v,fila,col){
+    if(v==null||v==='')return null;
+    if(typeof v==='number')return isNaN(v)?null:v;
+    var limpio=String(v).replace(/[^0-9.\-]/g,'');
+    apunta(malNum,col,fila,v);
+    if(limpio===''||limpio==='-'||limpio==='.')return null;   // «* Sin IGV» no es 0
+    var n=Number(limpio);
+    return isNaN(n)?null:n;
+  };
+  var fecV=function(v,fila,col){
+    if(v==null||v==='')return null;
+    if(v instanceof Date&&!isNaN(v)){ var z=new Date(v.getTime()-v.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); }
+    /* algunos libros traen la fecha como número de serie de Excel */
+    if(typeof v==='number'&&v>20000&&v<70000){ var d=new Date(Date.UTC(1899,11,30)+Math.round(v)*86400000); return isNaN(d)?null:d.toISOString().slice(0,10); }
+    apunta(malFec,col,fila,v);
+    return null;
+  };
+  /* Filas de título o nota («FACTURACIÓN SIN PROYECTO ASIGNADO:») no son datos:
+     se reconocen porque no traen ningún monto. */
+  var vacias=0;
+  var sinMontos=function(o,campos){ return campos.every(function(c){ return o[c]==null; }); };
+  var resumen=function(reg,plantilla){ return Object.keys(reg).map(function(c){ var r=reg[c]; return plantilla.replace('{col}',c).replace('{n}',r.n).replace('{filas}',r.filas.join(', ')+(r.n>r.filas.length?'…':'')).replace('{ej}',r.ej); }); };
+  var shD=_hoja(wb,['data','valorizacion']);
+  if(!shD)return {err:'No encuentro la hoja «Valorización» (ni «Data») en el Excel.'};
   var RD=XU.sheet_to_json(shD,{header:1,raw:true,cellDates:true,defval:null});
-  var hi=_findHdr(RD,['proyecto','cliente','estado']); if(hi<0)return {err:'No encuentro los encabezados (Proyecto/Cliente/Estado) en "Data".'};
-  var cm=_cmap(RD[hi]), lineas=[];
+  var hi=_findHdr(RD,['proyecto','cliente','estado']); if(hi<0)return {err:'No encuentro los encabezados (Proyecto / Cliente / Estado) en la hoja de valorización.'};
+  var cm=_cmap(RD[hi]), lineas=[], sinObra={};
   var g=function(r,k){ var ix=cm[k]; return ix==null?null:r[ix]; };
-  for(var i=hi+1;i<RD.length;i++){ var r=RD[i]; if(!r)continue; var cod=g(r,'proyecto'); if(cod==null||String(cod).trim()==='')continue; var raw=g(r,'estado');
-    lineas.push({ periodo:_period, proyeccion:(r[0]==null?null:String(r[0]).trim()||null), cod_proyecto:String(cod).trim(), cliente:g(r,'cliente')||null, supervisor:g(r,'supervisor')||null, estado:_estL(raw), estado_raw:(raw==null?null:String(raw).trim()), valorizacion_proyectada:_num(g(r,'valorizacion proyectada')), valorizacion:_num(g(r,'valorizacion')), facturacion:_num(g(r,'facturacion')), presupuesto:_num(g(r,'presupuesto')), valorizado:_num(g(r,'valorizado')), pct_acumulado:_num(g(r,'% acumulado')), fecha_valorizacion:_d(g(r,'fecha de valorizacion')), comentario:null }); }
-  var cobros=[], skipAdic=0;
-  var shC=wb.Sheets['Proyectos Pendientes (2)']||wb.Sheets[(wb.SheetNames.filter(function(n){return _norm(n).indexOf('pendientes')>=0;})[0])];
+  for(var i=hi+1;i<RD.length;i++){ var r=RD[i]; if(!r)continue; var cod=g(r,'proyecto'); if(cod==null||String(cod).trim()==='')continue; var raw=g(r,'estado'); var fila=i+1; var codT=String(cod).trim();
+    if(hayCods && !cods[_norm(codT)]) sinObra[codT]=1;
+    var L1={ periodo:_period, proyeccion:(cm['proyeccion']==null||r[cm['proyeccion']]==null?null:String(r[cm['proyeccion']]).trim()||null), cod_proyecto:codT, cliente:g(r,'cliente')||null, supervisor:g(r,'supervisor')||null, estado:_estL(raw), estado_raw:(raw==null?null:String(raw).trim()), valorizacion_proyectada:numV(g(r,'valorizacion proyectada'),fila,'Valorización proyectada'), valorizacion:numV(g(r,'valorizacion'),fila,'Valorización'), facturacion:numV(g(r,'facturacion'),fila,'Facturación'), presupuesto:numV(g(r,'presupuesto'),fila,'Presupuesto'), valorizado:numV(g(r,'valorizado'),fila,'Valorizado'), pct_acumulado:numV(g(r,'% acumulado'),fila,'% acumulado'), fecha_valorizacion:fecV(g(r,'fecha de valorizacion'),fila,'Fecha de valorización'), comentario:null };
+    if(sinMontos(L1,['valorizacion_proyectada','valorizacion','facturacion','presupuesto','valorizado','pct_acumulado'])){ vacias++; olvida(); continue; }
+    guarda(); lineas.push(L1); }
+  var cobros=[], skipAdic=0, vistos={}, repetidos=0;
+  var shC=_hoja(wb,['pendientes','cobranza','cobros']);
   if(shC){ var RC=XU.sheet_to_json(shC,{header:1,raw:true,cellDates:true,defval:null}); var hc=_findHdr(RC,['proyecto','cliente','saldo pendiente']);
     if(hc>=0){ var cc=_cmap(RC[hc]); var gc=function(r,k){ var ix=cc[k]; return ix==null?null:r[ix]; };
-      for(var j=hc+1;j<RC.length;j++){ var rc=RC[j]; if(!rc)continue; var cx=gc(rc,'proyecto'); if(cx==null||String(cx).trim()==='')continue; var tipo=gc(rc,'tipo de v.'); if(_norm(tipo)!=='proyecto'){ if(_norm(tipo)==='adicional')skipAdic++; continue; }
-        cobros.push({ periodo:_period, cod_proyecto:String(cx).trim(), adicional:(gc(rc,'adicional')==null?null:String(gc(rc,'adicional')).trim()), cliente:gc(rc,'cliente')||null, supervisor:gc(rc,'supervisor')||null, coordinador:gc(rc,'coordinador')||null, departamento:gc(rc,'departamento')||null, tipo_v:(tipo==null?null:String(tipo).trim()), presupuesto:_num(gc(rc,'presupuesto')), valorizacion_facturada:_num(gc(rc,'valorizacion facturada')), valorizacion_real:_num(gc(rc,'valorizacion real')), facturado:_num(gc(rc,'facturado')), por_facturar:_num(gc(rc,'por facturar')), pagado:_num(gc(rc,'pagado')), saldo_pendiente:_num(gc(rc,'saldo pendiente')), ultima_factura:_d(gc(rc,'ultima factura')), dias:_num(gc(rc,'dias')), forma_pago:gc(rc,'forma de pago')||null, comentario:gc(rc,'comentarios operaciones - cc')||null, estado:(gc(rc,'estado')==null?null:String(gc(rc,'estado')).trim()) }); } } }
-  if(!lineas.length)return {err:'No se encontraron líneas de valorización en "Data".'};
-  return {lineas:lineas, cobros:cobros, skipAdic:skipAdic};
+      for(var j2=hc+1;j2<RC.length;j2++){ var rc=RC[j2]; if(!rc)continue; var cx=gc(rc,'proyecto'); if(cx==null||String(cx).trim()==='')continue; var tipo=gc(rc,'tipo de v.'); if(tipo!=null&&_norm(tipo)!=='proyecto'){ if(_norm(tipo)==='adicional')skipAdic++; continue; }
+        var filaC=j2+1, codC=String(cx).trim(), adic=(gc(rc,'adicional')==null?null:String(gc(rc,'adicional')).trim());
+        var llave=_norm(codC)+'|'+_norm(adic||'');
+        if(vistos[llave]) repetidos++; else vistos[llave]=1;
+        if(hayCods && !cods[_norm(codC)]) sinObra[codC]=1;
+        var C1={ periodo:_period, cod_proyecto:codC, adicional:adic, cliente:gc(rc,'cliente')||null, supervisor:gc(rc,'supervisor')||null, coordinador:gc(rc,'coordinador')||null, departamento:gc(rc,'departamento')||null, tipo_v:(tipo==null?'Proyecto':String(tipo).trim()), presupuesto:numV(gc(rc,'presupuesto'),filaC,'Presupuesto'), valorizacion_facturada:numV(gc(rc,'valorizacion facturada'),filaC,'Valorización facturada'), valorizacion_real:numV(gc(rc,'valorizacion real'),filaC,'Valorización real'), facturado:numV(gc(rc,'facturado'),filaC,'Facturado'), por_facturar:numV(gc(rc,'por facturar'),filaC,'Por facturar'), pagado:numV(gc(rc,'pagado'),filaC,'Pagado'), saldo_pendiente:numV(gc(rc,'saldo pendiente'),filaC,'Saldo pendiente'), ultima_factura:fecV(gc(rc,'ultima factura'),filaC,'Última factura'), dias:numV(gc(rc,'dias'),filaC,'Días'), forma_pago:gc(rc,'forma de pago')||null, comentario:gc(rc,'comentarios operaciones - cc')||null, estado:(gc(rc,'estado')==null?null:String(gc(rc,'estado')).trim()) };
+        if(sinMontos(C1,['presupuesto','valorizacion_facturada','valorizacion_real','facturado','por_facturar','pagado','saldo_pendiente'])){ vacias++; olvida(); continue; }
+        guarda(); cobros.push(C1); } } }
+  if(!lineas.length)return {err:'No se encontraron filas de valorización en el Excel.'};
+  var errs=resumen(malNum,'«{col}»: {n} fila(s) con un monto que no es número (filas {filas}; ej. «{ej}»). Entrarían en blanco.');
+  var avisos=[];
+  if(!shC) avisos.push('El Excel no trae hoja de cobranza: se cargará solo la valorización.');
+  avisos=avisos.concat(resumen(malFec,'«{col}»: {n} fecha(s) en texto (ej. «{ej}»): quedan sin fecha.'));
+  var faltan=Object.keys(sinObra);
+  if(faltan.length) avisos.push(faltan.length+' código(s) no cruzan con una obra de Gerencia (se cargan igual): '+faltan.slice(0,4).join(', ')+(faltan.length>4?'…':''));
+  if(repetidos) avisos.push(repetidos+' cobro(s) repetidos (mismo proyecto y adicional).');
+  if(vacias) avisos.push(vacias+' fila(s) sin ningún monto se omitieron (títulos o notas del Excel).');
+  return {lineas:lineas, cobros:cobros, skipAdic:skipAdic, errs:errs, avisos:avisos};
 }
 function _confirmImport(res){
   var meta=0; res.lineas.forEach(function(l){meta+=(+l.valorizacion_proyectada||0);});
   var cobro=0; res.cobros.forEach(function(c){cobro+=(+c.saldo_pendiente||0);});
+  var errs=res.errs||[], avisos=res.avisos||[];
+  var per=_perActual(), corte=_finDeMes(per);
+  var lista=function(arr,color,titulo){
+    if(!arr.length)return '';
+    return '<div style="background:'+(color==='rojo'?'#fef2f2':'#fffbeb')+';border:1px solid '+(color==='rojo'?'#fecaca':'#fde68a')+';border-radius:10px;padding:10px 12px;margin-bottom:12px">'
+      +'<div style="font-size:12px;font-weight:800;color:'+(color==='rojo'?'#b91c1c':'#b45309')+';margin-bottom:4px">'+titulo+'</div>'
+      +'<ul style="margin:0;padding-left:16px;font-size:11.5px;color:#475569;line-height:1.6">'
+      + arr.slice(0,6).map(function(t){ return '<li>'+_esc(t)+'</li>'; }).join('')
+      + (arr.length>6?'<li>…y '+(arr.length-6)+' más</li>':'') + '</ul></div>';
+  };
   var ov=document.createElement('div'); ov.id='_valImpOv';
   ov.style.cssText='position:fixed;inset:0;background:rgba(8,24,64,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
-  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:460px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3);font-family:inherit">'
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:520px;width:100%;max-height:88vh;overflow:auto;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3);font-family:inherit">'
     +'<div style="font-size:18px;font-weight:800;color:#0d2436;margin-bottom:4px">Importar valorización</div>'
-    +'<div style="font-size:12px;color:#64748b;margin-bottom:16px">Reemplaza <b>todos</b> los datos actuales por lo que trae este Excel (el mes que subes es el mes completo, sin arrastre).</div>'
-    +'<div style="display:flex;gap:10px;margin-bottom:14px"><div style="flex:1;background:#f1f5fb;border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#64748b">Líneas</div><div style="font-size:20px;font-weight:800;color:#3b5bdb">'+res.lineas.length+'</div><div style="font-size:10px;color:#64748b">Meta '+_u(meta)+'</div></div>'
+    +'<div style="font-size:12px;color:#64748b;margin-bottom:16px">Reemplaza <b>todo</b> el periodo por lo que trae este Excel (lo que subes es el mes completo, sin arrastre).</div>'
+    +'<div style="display:flex;gap:10px;margin-bottom:14px"><div style="flex:1;background:#f1f5fb;border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#64748b">Valorizaciones</div><div style="font-size:20px;font-weight:800;color:#3b5bdb">'+res.lineas.length+'</div><div style="font-size:10px;color:#64748b">Meta '+_u(meta)+'</div></div>'
     +'<div style="flex:1;background:#f1f5fb;border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#64748b">Cobros (Proyecto)</div><div style="font-size:20px;font-weight:800;color:#ef4444">'+res.cobros.length+'</div><div style="font-size:10px;color:#64748b">Saldo '+_u(cobro)+'</div></div></div>'
-    +(res.skipAdic?'<div style="font-size:11px;color:#e67e22;margin-bottom:12px">⚠ Se omiten '+res.skipAdic+' cobros tipo <b>Adicional</b> (solo se cargan los de tipo Proyecto, igual que hoy).</div>':'')
-    +'<label style="font-size:12px;color:#0d2436;font-weight:600;display:block;margin-bottom:4px">Periodo (AAAA-MM)</label>'
-    +'<input id="_valImpPer" value="'+_period+'" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e0ee;border-radius:8px;font-size:14px;margin-bottom:18px">'
+    + lista(errs,'rojo','Hay que corregir el Excel antes de importar')
+    + lista(avisos,'ambar','Avisos (puedes importar igual)')
+    +(res.skipAdic?'<div style="font-size:11px;color:#e67e22;margin-bottom:12px">Se omiten '+res.skipAdic+' cobros tipo <b>Adicional</b> (solo entran los de tipo Proyecto).</div>':'')
+    +'<div style="display:flex;gap:10px;margin-bottom:16px">'
+      +'<div style="flex:1"><label style="font-size:12px;color:#0d2436;font-weight:600;display:block;margin-bottom:4px">Periodo (AAAA-MM)</label>'
+      +'<input id="_valImpPer" value="'+per+'" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e0ee;border-radius:8px;font-size:14px"></div>'
+      +'<div style="flex:1"><label style="font-size:12px;color:#0d2436;font-weight:600;display:block;margin-bottom:4px">Fecha de corte</label>'
+      +'<input id="_valImpCorte" type="date" value="'+corte+'" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d7e0ee;border-radius:8px;font-size:14px"></div>'
+    +'</div>'
     +'<div id="_valImpMsg" style="font-size:12px;color:#64748b;margin-bottom:12px;min-height:16px"></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end"><button id="_valImpCancel" class="btn" style="padding:8px 16px">Cancelar</button><button id="_valImpGo" class="btn primary" style="padding:8px 16px">Reemplazar datos</button></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end"><button id="_valImpCancel" class="btn" style="padding:8px 16px">Cancelar</button>'
+    +'<button id="_valImpGo" class="btn primary" style="padding:8px 16px"'+(errs.length?' disabled title="Corrige el Excel y vuelve a subirlo"':'')+'>Reemplazar datos</button></div>'
     +'</div>';
   document.body.appendChild(ov);
   var close=function(){ try{document.body.removeChild(ov);}catch(e){} };
   ov.addEventListener('click',function(e){ if(e.target===ov)close(); });
   document.getElementById('_valImpCancel').onclick=close;
-  document.getElementById('_valImpGo').onclick=function(){
-    var per=(document.getElementById('_valImpPer').value||'').trim(); if(!/^\d{4}-\d{2}$/.test(per)){ document.getElementById('_valImpMsg').innerHTML='<span style="color:#ef4444">Periodo inválido. Usa AAAA-MM (ej. 2026-08).</span>'; return; }
-    var go=document.getElementById('_valImpGo'); go.disabled=true; go.textContent='Subiendo…';
-    document.getElementById('_valImpMsg').textContent='Reemplazando datos en Supabase…';
-    _pushImport(res.lineas,res.cobros,per).then(function(){ close(); W._valFilter='all'; W._valRefresh(); alert('✓ Valorización actualizada: '+res.lineas.length+' líneas y '+res.cobros.length+' cobros ('+per+').'); })
+  /* al cambiar el periodo, la fecha de corte sigue al fin de ese mes */
+  document.getElementById('_valImpPer').addEventListener('change',function(){
+    var v=(this.value||'').trim(); if(/^\d{4}-\d{2}$/.test(v)) document.getElementById('_valImpCorte').value=_finDeMes(v);
+  });
+  if(errs.length) document.getElementById('_valImpMsg').innerHTML='<span style="color:#b91c1c">Corrige esas filas en el Excel y vuelve a subirlo: esos montos entrarían en blanco.</span>';
+  var go=document.getElementById('_valImpGo'); if(!go||errs.length)return;
+  go.onclick=function(){
+    var pv=(document.getElementById('_valImpPer').value||'').trim();
+    if(!/^\d{4}-\d{2}$/.test(pv)){ document.getElementById('_valImpMsg').innerHTML='<span style="color:#ef4444">Periodo inválido. Usa AAAA-MM (ej. 2026-09).</span>'; return; }
+    var cv=(document.getElementById('_valImpCorte').value||'').trim();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(cv)){ document.getElementById('_valImpMsg').innerHTML='<span style="color:#ef4444">Falta la fecha de corte.</span>'; return; }
+    if(cv.slice(0,7)!==pv){ document.getElementById('_valImpMsg').innerHTML='<span style="color:#ef4444">La fecha de corte tiene que ser del mismo mes que el periodo.</span>'; return; }
+    go.disabled=true; go.textContent='Subiendo…';
+    document.getElementById('_valImpMsg').textContent='Reemplazando datos…';
+    _pushImport(res.lineas,res.cobros,pv,cv).then(function(){ close(); W._valFilter='all'; W._valRefresh(); alert('Valorización actualizada: '+res.lineas.length+' valorizaciones y '+res.cobros.length+' cobros ('+pv+', corte '+cv.split('-').reverse().join('/')+').'); })
       .catch(function(e){ go.disabled=false; go.textContent='Reemplazar datos'; document.getElementById('_valImpMsg').innerHTML='<span style="color:#ef4444">Error: '+_esc(e&&e.message||String(e))+'</span>'; });
   };
 }
 async function _maxId(tbl){ var H={apikey:_VK,Authorization:'Bearer '+_VK}; try{ var r=await fetch(_VU+'/rest/v1/'+tbl+'?select=id&order=id.desc&limit=1',{headers:H}); if(!r.ok)return 0; var j=await r.json(); return (j[0]&&j[0].id)||0; }catch(e){ return 0; } }
 /* Estrategia segura: INSERTA primero, y sólo si el insert OK BORRA las filas viejas
    (id <= max previo). Si el insert falla, la data anterior queda intacta (sin ventana vacía). */
-async function _pushImport(lineas,cobros,per){
-  lineas.forEach(function(l){l.periodo=per;}); cobros.forEach(function(c){c.periodo=per;});
+async function _pushImport(lineas,cobros,per,corte){
+  lineas.forEach(function(l){l.periodo=per; l.fecha_corte=corte||null;}); cobros.forEach(function(c){c.periodo=per; c.fecha_corte=corte||null;});
   var H={apikey:_VK,Authorization:'Bearer '+_VK,'Content-Type':'application/json'};
   var Hmin={apikey:_VK,Authorization:'Bearer '+_VK,'Content-Type':'application/json',Prefer:'return=minimal'};
   var oldL=await _maxId('valorizacion_lineas'), oldC=await _maxId('valorizacion_cobros');
@@ -16379,6 +16497,9 @@ async function _valPersistFin(recs){
     }
   }catch(e){}
 }
+/* Para revisar un Excel sin tocar la base: W._valDebug.leer(wb) devuelve lo que
+   entraría, con sus errores y avisos; W._valDebug.confirmar(res) abre la ventana. */
+W._valDebug={leer:_parseWb, confirmar:_confirmImport};
 W._valRenderV6=_render;
 /* Registro SEGURO: sólo re-asigna el renderer en unos pocos setTimeout FINITOS
    (NO setInterval) para sobrevivir a los overrides tardíos del legacy. La carga
