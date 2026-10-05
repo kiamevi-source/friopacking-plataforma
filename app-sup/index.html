@@ -308,6 +308,18 @@ body{
   cursor:pointer;outline:none;transition:all var(--d) var(--ease);box-shadow:var(--sh-1);
 }
 #proyecto-selector select:focus{border-color:var(--teal-500);box-shadow:0 0 0 3px rgba(6,182,212,.18);}
+.gantt-board.adp-modo{display:block;}
+.adp-nota{font-size:12.5px;color:var(--text-2);background:var(--surface-2);
+  border:1px solid var(--border);border-radius:11px;padding:11px 13px;margin-bottom:12px;}
+.adp-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:11px;}
+.adp-tabla{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--surface);}
+.adp-tabla th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text-3);padding:9px 11px;border-bottom:1px solid var(--border-strong);
+  background:var(--surface-2);position:sticky;top:0;}
+.adp-tabla td{padding:8px 11px;border-bottom:1px solid var(--border);vertical-align:top;}
+.adp-tabla tr:last-child td{border-bottom:none;}
+.adp-tabla .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.adp-item{font-variant-numeric:tabular-nums;color:var(--text-3);white-space:nowrap;}
 #proyecto-selector .cod-aviso{font-size:11px;font-weight:700;color:#b45309;
   background:#fef3c7;border:1px solid #fcd34d;padding:3px 9px;border-radius:999px;}
 .proj-badge{
@@ -5164,7 +5176,7 @@ async function cambiarCodigo(){
   // parece que no hubiera pasado nada.
   setSyncStatus('syncing','Cargando el código…');
   try {
-    await cargarReporteDiario();
+    await Promise.all([ cargarReporteDiario(), cargarGantt() ]);
     setSyncStatus('ok','Listo ✓');
   } catch(e){
     console.warn('cambiar código', e);
@@ -5594,6 +5606,9 @@ function renderTablaReportes(reportes) {
 // ═══════════════════════════════════════════════
 async function cargarGantt() {
   if (!currentProyecto) return;
+  const codRep = (typeof rdCodReporte === 'function') ? rdCodReporte() : null;
+  if (codRep && codRep !== currentProyecto.cod) { await ganttDeCodigoHijo(codRep); return; }
+  ganttPartesDeObra(false);
   const cod = currentProyecto.cod || currentProyecto.nombre;
   const loadEl = document.getElementById('gantt-loading');
   const boardEl = document.getElementById('gantt-board');
@@ -15462,13 +15477,13 @@ document.addEventListener('change', (e)=>{ if (e.target.closest && e.target.clos
 // Tareas de un código hijo (adicional PRD/VSR u otra orden de la misma obra).
 // `presupuestos` no tiene columna de avance, así que el % de partida se arrastra del
 // último reporte cerrado de ese mismo código; si no hay, arranca en 0.
-async function cargarTareasDelCodigo(cod){
+async function tareasDelCodigo(cod){
   let filas = [];
   try {
-    filas = await sbFetch('/rest/v1/presupuestos?select=id,item,descripcion,unidad'
+    filas = await sbFetch('/rest/v1/presupuestos?select=id,item,descripcion,unidad,cantidad,venta_total'
       + '&payload->>cod_proyecto=eq.' + encodeURIComponent(cod)
       + '&unidad=not.is.null&order=item.asc&limit=400') || [];
-  } catch(e){ console.warn('tareas del código', e); return; }
+  } catch(e){ console.warn('tareas del código', e); return []; }
 
   const previo = {};
   try {
@@ -15479,12 +15494,77 @@ async function cargarTareasDelCodigo(cod){
     });
   } catch(e){ /* sin reportes previos */ }
 
-  filas.forEach(r => {
-    const pct = previo[r.item] || 0;
+  return filas.map(r => Object.assign({}, r, { pct: previo[r.item] || 0 }));
+}
+
+async function cargarTareasDelCodigo(cod){
+  (await tareasDelCodigo(cod)).forEach(r => {
     rdHitos.push({ id:null, item:r.item, nombre:(r.item + ' · ' + (r.descripcion || '')),
-      pct_actual:pct, pct_nuevo:pct, manual:false, es_hito:false,
+      pct_actual:r.pct, pct_nuevo:r.pct, manual:false, es_hito:false,
       nivel:3, dur:0, hoy:false, manana:false });
   });
+}
+
+// ── Pestaña Gantt cuando lo elegido es un adicional ──────────────────────────
+// Un PRD/VSR no tiene cronograma: en NISIRA sus tareas vienen sin fecha ni duración,
+// y `tareas_gantt` solo existe para la obra. Mostrar el Gantt de la obra madre era
+// engañoso, así que se listan las partidas del código con su avance.
+// Todo lo que solo tiene sentido con el cronograma de la OBRA delante. Ojo con los dos
+// botones de la cabecera: "Limpiar" borra el cronograma COMPLETO del proyecto actual, así
+// que dejarlo a la vista mientras miras un adicional es un accidente esperando a pasar.
+const _GANTT_SOLO_OBRA = ['gantt-cat-dash','gantt-subtabs','gantt-subsubtabs','gantt-layers',
+                          'gantt-alerts','gantt-drop','gantt-tabla','gantt-empty',
+                          'equipos-gantt-card','gx-insights','gx-hero'];
+const _GANTT_SOLO_OBRA_SEL = ['#tab-gantt .gantt-toolbar', '#tab-gantt .sec-head .btn'];
+
+function ganttPartesDeObra(ocultar){
+  _GANTT_SOLO_OBRA.forEach(id => {
+    const el = document.getElementById(id); if (el) el.classList.toggle('hidden', !!ocultar);
+  });
+  _GANTT_SOLO_OBRA_SEL.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => el.classList.toggle('hidden', !!ocultar));
+  });
+  const bd = document.getElementById('gantt-board');
+  if (bd) bd.classList.toggle('adp-modo', !!ocultar);
+  const tit = document.querySelector('#tab-gantt .sec-title');
+  if (tit) tit.textContent = ocultar ? 'Partidas del código' : 'Cronograma operativo';
+}
+
+async function ganttDeCodigoHijo(cod){
+  const loadEl = document.getElementById('gantt-loading');
+  const boardEl = document.getElementById('gantt-board');
+  if (loadEl) loadEl.classList.remove('hidden');
+  if (boardEl) boardEl.classList.add('hidden');
+  ganttPartesDeObra(true);
+  try { setBadgeFromData('gantt', 0); } catch(e){}
+  _ganttState.tasks = [];          // nada que editar: estas filas no son tareas del cronograma
+
+  const filas = await tareasDelCodigo(cod);
+  if (loadEl) loadEl.classList.add('hidden');
+  if (!boardEl) return;
+
+  const esc = v => String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const num = (v,d) => v==null ? '—' : Number(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+  const esAd = (typeof rdEsAdicional==='function' && rdEsAdicional(cod)) ? 'adicional' : 'código';
+
+  if (!filas.length){
+    boardEl.innerHTML = '<div class="adp-nota">El ' + esAd + ' <b>' + esc(cod) + '</b> no tiene partidas cargadas '
+      + 'en el presupuesto. Hay que traerlas de la Orden de Proyectos de NISIRA.</div>';
+    boardEl.classList.remove('hidden');
+    return;
+  }
+  boardEl.innerHTML =
+    '<div class="adp-nota">Este ' + esAd + ' no tiene cronograma propio: en NISIRA sus tareas vienen sin '
+    + 'fechas. Estas son sus <b>' + filas.length + ' partidas</b>; el avance se registra en <b>Reporte Diario</b>.</div>'
+    + '<div class="adp-wrap"><table class="adp-tabla"><thead><tr>'
+    + '<th>Partida</th><th>Descripción</th><th>U.M.</th><th class="r">Cantidad</th><th class="r">Venta</th><th class="r">Avance</th>'
+    + '</tr></thead><tbody>'
+    + filas.map(r => '<tr><td class="adp-item">' + esc(r.item) + '</td><td>' + esc(r.descripcion)
+        + '</td><td>' + esc(r.unidad) + '</td><td class="r">' + num(r.cantidad,2)
+        + '</td><td class="r">' + num(r.venta_total,2)
+        + '</td><td class="r"><b>' + Math.round(r.pct) + '%</b></td></tr>').join('')
+    + '</tbody></table></div>';
+  boardEl.classList.remove('hidden');
 }
 
 async function _persistirExtras(payload){
