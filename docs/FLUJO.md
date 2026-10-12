@@ -5,7 +5,7 @@ fuente de verdad: los datos del mapa viven en el bloque `const MAPA` que está a
 inicio del `<script>`. Si cambia el flujo, se edita ahí, en el **mismo commit**
 que el código. Este documento es la letra chica que no cabe en el dibujo.
 
-Última revisión: **29 de septiembre de 2026**
+Última revisión: **12 de octubre de 2026**
 
 ---
 
@@ -153,6 +153,18 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   sugeridos van a `lic_invitados` con estado `Sugerido` y el portal no los ve
   hasta que Gerencia los invite. El código fuente de ambas funciones está en
   `supabase/functions/`.
+- **Gerencia entra con sesión y licitaciones queda cerrada sin ella (12 de
+  octubre de 2026).** `app-live/js/auth.js` va en `index.html`, `index.legacy.html`
+  y los módulos: sin sesión manda al login del portal (`/#gerencia`) y en toda
+  llamada a PMO cambia la llave pública por el token de la persona. Las tablas
+  `lic_*`, la vista `v_lic_kpis` y los buckets `lic-expediente` y `lic-docs` ya
+  no aceptan la llave pública: solo personas de la lista blanca
+  `ger_usuarios` (función `es_gerencia()`). Supervisor y portal siguen entrando
+  por sus funciones `lic-supervisor` y `lic-portal`, que usan `service_role`.
+  Quien opera en el cockpit queda registrado con su nombre (eventos,
+  aprobación, negociación), ya no como «Carlos Vega». Para dar acceso a
+  alguien nuevo: crear la cuenta en PMO y agregar su correo a `ger_usuarios`.
+  Las presentaciones `presentacion_friopacking_*.html` siguen sin login.
 - **La adjudicación guarda `email` y `licitacion_codigo`.** Sin eso el ganador
   no veía su contrato en «Mis contratos».
 - **El módulo «Costos» del Supervisor se retiró (29 de septiembre de 2026).** Era

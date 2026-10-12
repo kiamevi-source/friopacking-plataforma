@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<script src="../js/auth.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Licitaciones — Centro de Control · Grupo Friopacking</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -434,7 +435,13 @@ var SB_URL = 'https://vsploxglutkbeokumunp.supabase.co';
 var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
 var sb = null;
 try { sb = window.supabase.createClient(SB_URL, SB_KEY); } catch(e){ console.warn('SB init', e); }
-var USER = 'Carlos Vega';   // responsable buyer-side (app-live)
+// Quien opera es la persona con sesión en Gerencia (auth.js); queda en eventos, aprobaciones y negociación.
+var USER = (function(){
+  var NOMBRES = { 'kmedina@friopacking.pe':'Kiara Medina', 'ccalderon@friopacking.pe':'Carlos Calderón', 'gparedes@friopacking.pe':'Pablo Paredes' };
+  var e = ''; try{ e = (window.FP_AUTH && FP_AUTH.email()) || ''; }catch(x){}
+  e = String(e).toLowerCase();
+  return NOMBRES[e] || e || 'Gerencia';
+})();
 
 // Cliente LECTOR de la instancia Contratas (facturas del contratista → ejecución del contrato)
 var CT_URL = 'https://uijuokwcsvnlzxoyvrcj.supabase.co';

@@ -334,7 +334,11 @@
             ? 'Correo o contraseña incorrectos.' : res.error.message);
           resetBtn(); return;
         }
-        try{ localStorage.setItem('fp_ger_token', res.data.session.access_token); }catch(e){}
+        try{
+          localStorage.setItem('fp_ger_token', res.data.session.access_token);
+          // el refresh sostiene la sesión más allá de 1 h (auth.js lo usa)
+          if(res.data.session.refresh_token) localStorage.setItem('fp_ger_refresh', res.data.session.refresh_token);
+        }catch(e){}
         authBox.classList.remove('on'); chooser.style.display = '';
         enter('app-live/index.html','ger');
       })
