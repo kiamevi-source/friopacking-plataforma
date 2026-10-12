@@ -175,6 +175,23 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   aprobación, negociación), ya no como «Carlos Vega». Para dar acceso a
   alguien nuevo: crear la cuenta en PMO y agregar su correo a `ger_usuarios`.
   Las presentaciones `presentacion_friopacking_*.html` siguen sin login.
+- **Licitaciones de Gerencia simplificada (12 de octubre de 2026).** Gerencia ya
+  no crea licitaciones: las arma el supervisor. `app-live/modulos/licitaciones.html`
+  es una bandeja por etapa (Por aprobar, Recibiendo ofertas, Por adjudicar, En
+  manos del supervisor, Cerradas) y un detalle en 4 pasos: Revisión (aprobar y
+  publicar con fecha límite, devolver, quitar partidas, invitar), Ofertas
+  (consultas, avisos, prórroga, cerrar recepción), Evaluación (ofertas ordenadas
+  por monto final, comparación por partida, pedir mejora, adjudicar, desierta) y
+  Adjudicada (contrato y facturas). Los valores de `lic_licitaciones.estado` no
+  cambiaron (los usan el portal, el supervisor y `v_lic_kpis`); la pantalla solo
+  los agrupa. Ya no se usan los pesos de evaluación ni los estados manuales
+  «Invitaciones»/«Ofertas»/«Contratada». La pantalla anterior queda en
+  `licitaciones-clasico.html` (enlace «Vista anterior»).
+- **Partidas licitables: una fila por partida (12 de octubre de 2026).** Una obra
+  puede tener varias órdenes de NISIRA (PRY + adicionales PRD/VSR) y cada una
+  numera desde 0001. `v_partidas_licitables` (Supervisor) busca el título de la
+  partida dentro de la misma orden (`import_batch`) y expone la columna `orden`.
+  Antes duplicaba filas y mezclaba nombres entre órdenes.
 - **La adjudicación guarda `email` y `licitacion_codigo`.** Sin eso el ganador
   no veía su contrato en «Mis contratos».
 - **El módulo «Costos» del Supervisor se retiró (29 de septiembre de 2026).** Era
