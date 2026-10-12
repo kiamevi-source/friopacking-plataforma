@@ -58,6 +58,16 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
 - **Hay dos caminos haciendo Gerencia hacia Supervisor.** El espejo
   `espejo_reportes_to_supervisor` y el jalador anterior `sync_reportes_from_pmo`,
   los dos cada 2 minutos. Vale consolidarlos en uno.
+- **Los planos viven en la app de Ingeniería, no en la plataforma.** La pestaña
+  «Planos» del Supervisor (`app-sup/planos-supervisor.html`, en un marco) lee en
+  vivo **Seguimiento de Planos** (repo `thaliab-dot/SEGUIMIENTO-DE-PLANOS`,
+  Supabase propio `qkgwvzxtdobgyjvwkhrk`, tabla única `documentos`) con su llave
+  pública, filtra por código de obra (`proyectos.pry` = `cod_proyecto`) y no
+  copia nada. «Requerir plano» abre su página con `?nueva=1&proyecto=&nombre=`.
+  Ese prellenado necesita el PR #1 en su repo; sin él la página abre igual, vacía.
+  Las tareas del Gantt se leen de `tareas_gantt` para avisar qué tarea arranca sin
+  plano aprobado (por palabras del nombre: es un estimado). El service worker ya
+  no guarda en caché ninguna instancia de Supabase (v37).
 - **Sin señal el reporte no se pierde.** La app de campo guarda en el navegador,
   con las fotos en IndexedDB, y reintenta al volver la conexión.
 - **Los equipos importados en Gerencia viajan a Supervisor.** El puente escribe

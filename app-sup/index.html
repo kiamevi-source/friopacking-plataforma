@@ -4585,55 +4585,9 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       <div id="chk-body"><div class="loading"><span class="spinner"></span>Selecciona un proyecto…</div></div>
     </div>
 
+    <!-- Planos: se leen en vivo de Seguimiento de Planos (app de Ingeniería). Nada se copia aquí. -->
     <div class="tab-content" id="tab-planos">
-
-      <div class="sec-card">
-        <div class="sec-head">
-          <span class="sec-title">
-            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--teal-500);box-shadow:var(--sh-glow-teal);margin-right:8px;vertical-align:middle"></span>
-            Planos del Proyecto
-          </span>
-          <span style="font-size:11px;color:var(--text-2)" id="pln-proj-label">—</span>
-        </div>
-        <div class="sec-body">
-
-          <!-- Selector de proyecto -->
-          <div class="pln-toolbar">
-            <div class="pln-field">
-              <label class="pln-lbl">Proyecto</label>
-              <select id="pln-proyecto" class="pln-select" onchange="cargarPlanos()"></select>
-            </div>
-            <label class="pln-upload-btn" for="pln-file-input" id="pln-upload-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <span>Subir plano</span>
-            </label>
-            <input type="file" id="pln-file-input" accept="application/pdf,image/png,image/jpeg,image/webp" style="display:none" onchange="subirPlano(this)">
-          </div>
-
-          <!-- Zona drag & drop -->
-          <div class="pln-drop" id="pln-drop">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:38px;height:38px;color:var(--teal-500);margin-bottom:10px"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-            <div style="font-weight:600;color:var(--text);font-size:14px;margin-bottom:4px">Arrastra un plano aquí o usa "Subir plano"</div>
-            <div style="font-size:12px;color:var(--text-2)">PDF, PNG, JPG o WEBP · se analiza automáticamente con IA</div>
-          </div>
-
-          <!-- Progreso de subida -->
-          <div id="pln-upload-progress" class="pln-progress hidden">
-            <div class="pln-spinner"></div>
-            <span id="pln-upload-msg">Subiendo…</span>
-          </div>
-
-          <!-- Grid de planos -->
-          <div id="pln-grid" class="pln-grid"></div>
-          <div id="pln-empty" class="pln-empty hidden">
-            <div style="font-size:42px;line-height:1;margin-bottom:12px">🗂️</div>
-            <div style="font-weight:600;color:var(--text);font-size:14px;margin-bottom:6px">Sin planos aún</div>
-            <div style="max-width:420px;margin:0 auto;font-size:12px">Sube el primer plano del proyecto. Se guardará y la IA extraerá ambientes, equipos y capacidad frigorífica.</div>
-          </div>
-
-        </div>
-      </div>
-
+      <iframe id="planos-sup-frame" title="Planos" style="width:100%;min-height:calc(100vh - 170px);border:0;background:transparent"></iframe>
     </div>
 
   </div><!-- /main-wrap -->
@@ -5263,6 +5217,7 @@ function refrescarTabActivo(){
   try {
     if (tab === 'preparacion')  cargarChecklist();
     if (tab === 'licitaciones') abrirLicitacionesSup();
+    if (tab === 'planos')       abrirPlanosSup();
     if (tab === 'diario' && document.getElementById('rd-tipo-obs')?.classList.contains('on')) rdPendLoad();
   } catch(e){ console.warn('refrescarTabActivo', e); }
 }
@@ -16174,6 +16129,16 @@ function showTab(tab) {
   if (tab === 'diario') { try { initFirmaCanvas(); } catch(e){} }
   if (tab === 'preparacion' && currentProyecto) { try { cargarChecklist(); } catch(e){} }
   if (tab === 'licitaciones') { try { abrirLicitacionesSup(); } catch(e){} }
+  if (tab === 'planos') { try { abrirPlanosSup(); } catch(e){} }
+}
+
+// Planos del supervisor: módulo en un marco que lee en vivo Seguimiento de Planos (Ingeniería); se recarga si cambia la obra.
+function abrirPlanosSup(){
+  const fr=document.getElementById('planos-sup-frame'); if(!fr) return;
+  const p=currentProyecto||{};
+  const q=new URLSearchParams({ v:'20261012a', cod:p.cod||'', nombre:p.nombre||'', quien:(currentUser&&currentUser.nombre)||p.supervisor||'', ini:p.iniCont||'', fin:p.finCont||'' });
+  const src='planos-supervisor.html?'+q.toString();
+  if(fr.dataset.src!==src){ fr.dataset.src=src; fr.src=src; }
 }
 
 // Licitaciones del supervisor: se abre en un marco con la obra elegida; se recarga si cambia la obra.

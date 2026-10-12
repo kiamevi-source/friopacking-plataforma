@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planos · Supervisor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--brand:#2E7DD1;--brand-d:#1d4ed8;--teal:#0ea5a4;--ing:#7c3aed;--ing-d:#6d28d9;--ink:#0b1226;--t2:#475569;--t3:#94a3b8;--bd:#e3e8f0;--bg:#f4f6fb;--card:#fff;
+  --ok:#12805c;--ok-s:#e3f6ee;--warn:#b45309;--warn-s:#fdf0dc;--bad:#b42318;--bad-s:#fde8e6;--info:#1f5fbf;--info-s:#e5eefd;--ing-s:#f1eafe}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding:18px 16px 60px;display:flex;flex-direction:column;gap:14px}
+button,a.btn{font-family:inherit;cursor:pointer}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.h1{font-size:21px;font-weight:800;letter-spacing:-.3px}
+.sub{font-size:13px;color:var(--t2);margin-top:2px}
+.live{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);margin-top:6px;flex-wrap:wrap}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--t3);display:inline-block}
+.live.on i{background:var(--ok);box-shadow:0 0 0 3px var(--ok-s)}
+.live b{color:var(--ing)}
+.btn{border:1px solid var(--bd);background:#fff;color:var(--ink);font-weight:700;font-size:13px;padding:9px 14px;border-radius:10px;display:inline-flex;align-items:center;gap:7px;text-decoration:none;white-space:nowrap}
+.btn:hover{border-color:#b9c7dd}
+.btn.ing{background:var(--ing);border-color:var(--ing);color:#fff}
+.btn.ing:hover{background:var(--ing-d)}
+.btn.sm{padding:5px 10px;font-size:12px;border-radius:8px}
+.btn:focus-visible,.chip:focus-visible,.kpi:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px}
+.ch{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px 10px}
+.ch h3{font-size:14.5px;font-weight:800}
+.ch .hint{font-size:12px;color:var(--t2)}
+.empty{padding:26px 16px;text-align:center;color:var(--t3);font-weight:600;font-size:13px}
+.note{background:var(--ing-s);border:1px solid #ddd0fb;color:#4c1d95;border-radius:12px;padding:12px 14px;font-size:13px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.err{background:var(--bad-s);border:1px solid #f6c5bf;color:var(--bad);border-radius:12px;padding:12px 14px;font-size:13px}
+
+/* avisos */
+.alerts{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.al{border-radius:12px;padding:11px 13px;display:flex;flex-direction:column;gap:5px;border:1px solid transparent}
+.al .t{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.al .m{font-weight:600;font-size:13px}
+.al .s{font-size:12px;color:var(--t2)}
+.al.ok{background:var(--ok-s);border-color:#bfe6d4}.al.ok .t{color:var(--ok)}
+.al.warn{background:var(--warn-s);border-color:#f3d7a8}.al.warn .t{color:var(--warn)}
+.al.bad{background:var(--bad-s);border-color:#f6c5bf}.al.bad .t{color:var(--bad)}
+.al.ing{background:var(--ing-s);border-color:#ddd0fb}.al.ing .t{color:var(--ing)}
+
+/* indicadores */
+.kpis{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+.kpi{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:11px 13px;display:flex;flex-direction:column;gap:1px;text-align:left;font:inherit;color:inherit}
+button.kpi{cursor:pointer}
+button.kpi:hover,button.kpi.on{border-color:var(--teal)}
+.kpi .l{font-size:11.5px;color:var(--t2);font-weight:700}
+.kpi .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15}
+.kpi .s{font-size:11px;color:var(--t3)}
+.kpi.bad .v{color:var(--bad)}.kpi.ok .v{color:var(--ok)}.kpi.info .v{color:var(--info)}.kpi.ing .v{color:var(--ing)}
+
+.cols{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px;align-items:start}
+.side{display:flex;flex-direction:column;gap:14px;min-width:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:inherit;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;border:1px solid var(--bd);background:#fff;color:var(--t2);cursor:pointer}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+
+/* solicitudes */
+.sr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;padding:12px 16px;border-top:1px solid var(--bd)}
+.sr .n{font-weight:700;font-size:13.5px}
+.sr .n small{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--teal);font-weight:700;margin-right:6px}
+.meta{font-size:12px;color:var(--t2);display:flex;flex-wrap:wrap;gap:3px 12px}
+.right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;text-align:right}
+.pill{font-size:11px;font-weight:800;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.e-Pendiente{background:#eef1f5;color:#475569}.e-Enproceso{background:var(--info-s);color:var(--info)}.e-Enrevisión{background:var(--ing-s);color:var(--ing)}
+.e-Rechazado{background:var(--bad-s);color:var(--bad)}.e-Completado{background:var(--warn-s);color:var(--warn)}.e-Aprobado{background:var(--ok-s);color:var(--ok)}.e-Anulado{background:#f1f5f9;color:var(--t3)}
+.steps{grid-column:1/-1;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.steps span{height:5px;border-radius:3px;background:var(--bd)}
+.steps span.d{background:var(--teal)}.steps span.x{background:var(--bad)}
+.steplab{grid-column:1/-1;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;font-size:10.5px;color:var(--t3)}
+.ult{grid-column:1/-1;font-size:12px;color:var(--t2)}
+.ult b{color:var(--ink);font-weight:600}
+.late{color:var(--bad);font-weight:700}
+.files{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+
+/* tablas */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);text-align:left;font-weight:800;padding:8px 16px;border-top:1px solid var(--bd);background:#f8fafc;white-space:nowrap}
+td{padding:9px 16px;border-top:1px solid var(--bd);vertical-align:middle}
+td.mono{font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.gi{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:10px 16px;border-top:1px solid var(--bd)}
+.gi b{font-size:13px;font-weight:700}
+.gi small{grid-column:1/-1;color:var(--t2);font-size:12px}
+.bar{height:6px;border-radius:3px;background:var(--bd);overflow:hidden;width:90px}
+.bar i{display:block;height:100%;background:var(--teal)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:#0b1226;color:#fff;padding:11px 16px;border-radius:11px;font-size:13px;font-weight:600;opacity:0;transition:.2s;z-index:50;max-width:90vw}
+.toast.on{opacity:1;transform:translateX(-50%)}
+@media(max-width:980px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.cols{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:560px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.h1{font-size:18px}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="empty">Cargando planos de Ingeniería…</div></div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+/* Planos del supervisor.
+   Los planos los pide y los entrega Ingeniería en su propia app (Seguimiento de Planos, de Thalia).
+   Aquí NO se copia nada: se lee su base en vivo, se filtra por el código de la obra y se cruza con el
+   cronograma de la obra. Para pedir un plano se abre su página con el nombre y la obra ya puestos. */
+var ING_APP='https://seguimientodeplanos.vercel.app/';
+var ING_URL='https://qkgwvzxtdobgyjvwkhrk.supabase.co';
+var ING_KEY='sb_publishable_yCAAlaw6viS6KEow5x4OdQ_SaMLDHQ1';
+var BUCKET='entregables';
+var FLOW=['Pendiente','En proceso','En revisión','Completado','Aprobado'];
+var FLOW_LAB=['Pedido','En elaboración','En revisión','Por aprobar','Aprobado'];
+var DONE=['Completado','Aprobado'], CLOSED=['Completado','Aprobado','Anulado'];
+var LAB={'Completado':'Por aprobar','Pendiente':'Sin asignar','Rechazado':'En corrección'};
+/* Especialidad del plano → palabras con que suele nombrarse la tarea del cronograma (estimado) */
+var ESP_KW={'ELECTRICIDAD':/el[eé]ctr|cable|tablero|ilumin|luminar/i,'REFRIGERACIÓN':/refriger|evapor|condens|compres|tuber|amon|nh3|co2|frigor/i,
+  'CIVIL':/civil|excav|concreto|losa|zapata|cimient|vereda|piso|drenaj/i,'ESTRUCTURAS':/estructur|met[aá]lic|viga|columna|techo|cobertura/i,
+  'ARQUITECTURA':/panel|arquitect|puerta|cerramiento|tabiquer/i,'AUTOMATIZACIÓN':/automat|plc|scada|sensor/i,'INFRAESTRUCTURA':/infraestr|agua|desag|sanitar/i};
+
+var qs=new URLSearchParams(location.search);
+var P={ cod:qs.get('cod')||'', nombre:qs.get('nombre')||'', quien:qs.get('quien')||'', ini:qs.get('ini')||'', fin:qs.get('fin')||'' };
+var S={ pry:null, sols:[], tareas:[], filtro:'todas', vivo:false, cargado:false, error:null };
+var sb=null; try{ sb=supabase.createClient(ING_URL,ING_KEY,{auth:{persistSession:false}}); }catch(e){}
+
+var $=function(s){ return document.querySelector(s); };
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+var tt; function toast(m){ var t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(function(){ t.classList.remove('on'); },4200); }
+function hoy(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fdate(s){ if(!s) return '—'; var d=new Date(String(s).length<=10?s+'T12:00:00':s); return isNaN(d)?'—':d.toLocaleDateString('es-PE',{day:'2-digit',month:'short'}); }
+function dias(a,b){ return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000); }
+/* "PRY 2026-0000055" y "PRY 2026-55" son la misma obra */
+function pryClave(t){ var m=String(t||'').toUpperCase().match(/(PRY|PRD|VSR)\s*(\d{4})\s*-\s*0*(\d+)/); return m?m[1]+m[2]+'-'+m[3]:''; }
+function ultimo(s){ var h=Array.isArray(s.historial)?s.historial:[]; return h.length?h[h.length-1]:null; }
+function cuandoAprobado(s){ var h=Array.isArray(s.historial)?s.historial:[]; for(var i=h.length-1;i>=0;i--){ if(/aprob/i.test(h[i].accion||'')) return String(h[i].t||'').slice(0,10); } return ''; }
+function atrasado(s){ var t=hoy(); if(CLOSED.indexOf(s.estado)>=0) return false; return !!((s.fechaFin&&s.fechaFin<t)||(s.fechaRequerida&&s.fechaRequerida<t)); }
+function archivos(s){ return Array.isArray(s.archivos)?s.archivos:[]; }
+
+function enlacePedir(){
+  var u=new URL(ING_APP); u.searchParams.set('nueva','1');
+  if(P.cod) u.searchParams.set('proyecto',P.cod);
+  if(P.quien) u.searchParams.set('nombre',P.quien);
+  if(P.nombre) u.searchParams.set('cliente',P.nombre);
+  if(P.ini) u.searchParams.set('inicio',P.ini);
+  if(P.fin) u.searchParams.set('fin',P.fin);
+  return u.toString();
+}
+
+async function cargar(){
+  if(!sb){ S.error='No se pudo conectar con Ingeniería.'; return pintar(); }
+  try{
+    var r=await Promise.all([
+      sb.from('documentos').select('id,data').eq('coleccion','proyectos'),
+      sb.from('documentos').select('id,data,actualizado').eq('coleccion','solicitudes')
+    ]);
+    if(r[0].error) throw r[0].error; if(r[1].error) throw r[1].error;
+    var k=pryClave(P.cod);
+    var pry=(r[0].data||[]).map(function(x){ return Object.assign({id:x.id},x.data); }).find(function(p){ return k && pryClave(p.pry)===k; })||null;
+    var antes=S.sols;
+    S.pry=pry;
+    S.sols=pry?(r[1].data||[]).map(function(x){ return Object.assign({id:x.id,_act:x.actualizado},x.data); }).filter(function(s){ return s.proyectoId===pry.id; }):[];
+    S.sols.sort(function(a,b){ return (b.n||0)-(a.n||0); });
+    if(S.cargado) avisarCambios(antes,S.sols);
+    S.error=null;
+  }catch(e){ S.error='No se pudo leer Seguimiento de Planos: '+(e.message||e); }
+  S.cargado=true; pintar(); badge();
+}
+async function cargarTareas(){
+  try{
+    if(!P.cod || !parent || typeof parent.sbFetch!=='function') return;
+    var rows=await parent.sbFetch('/rest/v1/tareas_gantt?cod_proyecto=eq.'+encodeURIComponent(P.cod)+'&select=nombre_tarea,categoria,es_hito,fecha_inicio_base,fecha_fin_base,pct_avance&order=orden');
+    var cat=typeof parent.autoDetectCategory==='function'?parent.autoDetectCategory:function(){ return ''; };
+    S.tareas=(rows||[]).map(function(t){ return Object.assign({},t,{categoria:t.categoria||cat(t.nombre_tarea,t.es_hito)}); });
+    pintar();
+  }catch(e){ console.warn('tareas', e); }
+}
+/* Cambios que llegan en vivo: se avisan con el nombre del plano */
+function avisarCambios(antes,ahora){
+  var m={}; antes.forEach(function(s){ m[s.id]=s.estado; });
+  ahora.forEach(function(s){
+    var prev=m[s.id];
+    if(prev===undefined) toast('Nueva solicitud registrada: '+(s.plano||''));
+    else if(prev!==s.estado){
+      if(s.estado==='Completado') toast('Ingeniería entregó «'+(s.plano||'')+'»: falta tu aprobación');
+      else if(s.estado==='Aprobado') toast('Plano aprobado: '+(s.plano||''));
+      else if(s.estado==='Rechazado') toast('«'+(s.plano||'')+'» volvió a corrección');
+      else toast((s.plano||'Plano')+': '+(LAB[s.estado]||s.estado));
+    }
+  });
+}
+function escuchar(){
+  if(!sb) return;
+  sb.channel('planos-sup-'+Date.now()).on('postgres_changes',{event:'*',schema:'public',table:'documentos'},function(p){
+    var c=(p.new&&p.new.coleccion)||(p.old&&p.old.coleccion);
+    if(c==='solicitudes'||c==='proyectos'||!c) cargar();
+  }).subscribe(function(st){ S.vivo=(st==='SUBSCRIBED'); var l=$('#live'); if(l) l.classList.toggle('on',S.vivo); });
+}
+/* Contador en la pestaña «Planos» del Centro de Control */
+function badge(){
+  try{
+    if(!parent || typeof parent.setBadgeFromData!=='function') return;
+    var porAprobar=S.sols.filter(function(s){ return s.estado==='Completado'; }).length, late=S.sols.filter(atrasado).length;
+    if(late) parent.setBadgeFromData('planos',late,'danger'); else if(porAprobar) parent.setBadgeFromData('planos',porAprobar,'warn'); else parent.setBadgeFromData('planos',0);
+  }catch(e){}
+}
+
+function kpis(){
+  var L=S.sols.filter(function(s){ return s.estado!=='Anulado'; });
+  var ent=L.filter(function(s){ return DONE.indexOf(s.estado)>=0 && s.fechaSolicitud && s.fechaEntrega; });
+  var prom=ent.length?Math.round(ent.reduce(function(a,s){ return a+Math.max(0,dias(s.fechaSolicitud,s.fechaEntrega)); },0)/ent.length*10)/10:null;
+  return { total:L.length, pend:L.filter(function(s){ return s.estado==='Pendiente'; }).length,
+    proc:L.filter(function(s){ return s.estado==='En proceso'||s.estado==='Rechazado'; }).length,
+    rev:L.filter(function(s){ return s.estado==='En revisión'; }).length,
+    porAprobar:L.filter(function(s){ return s.estado==='Completado'; }).length,
+    ok:L.filter(function(s){ return s.estado==='Aprobado'; }).length,
+    late:L.filter(atrasado).length, prom:prom };
+}
+function filtrar(f){
+  return S.sols.filter(function(s){
+    if(f==='todas') return true;
+    if(f==='late') return atrasado(s);
+    if(f==='pend') return s.estado==='Pendiente';
+    if(f==='proc') return s.estado==='En proceso'||s.estado==='Rechazado';
+    if(f==='rev') return s.estado==='En revisión';
+    if(f==='aprobar') return s.estado==='Completado';
+    if(f==='ok') return s.estado==='Aprobado';
+    return true;
+  });
+}
+/* Avisos agrupados por tipo: uno por tipo, con los planos que toca (si no, 6 planos sin asignar llenaban la pantalla) */
+function avisos(){
+  var t=hoy(), out=[];
+  function nombres(L,campo){ var n=L.map(function(x){ return '«'+(campo?campo(x):x.plano)+'»'; }); return n.length<=2?n.join(' y '):n.slice(0,2).join(', ')+' y '+(n.length-2)+' más'; }
+  function grupo(c,t1,tn,L,sub,f,accion,campo){ if(!L.length) return; out.push({c:c,t:L.length===1?t1:tn.replace('#',L.length),m:nombres(L,campo),s:sub(L),f:f,a:accion}); }
+  grupo('ing','Falta tu aprobación','# planos por aprobar',S.sols.filter(function(s){ return s.estado==='Completado'; }),
+    function(){ return 'Ingeniería ya los entregó: revísalos y apruébalos en Seguimiento de Planos'; },'aprobar',true);
+  grupo('bad','Atrasado','# planos atrasados',S.sols.filter(atrasado),
+    function(L){ var r=L.map(function(s){ return (s.fechaRequerida&&s.fechaRequerida<t)?s.fechaRequerida:s.fechaFin; }).sort()[0]; return 'El más antiguo se necesitaba el '+fdate(r); },'late');
+  grupo('ok','Listo para obra','# planos aprobados esta semana',S.sols.filter(function(s){ var d=cuandoAprobado(s); return s.estado==='Aprobado' && d && dias(d,t)<=7; }),
+    function(){ return 'Ya puedes usarlos en obra'; },'ok');
+  grupo('warn','En corrección','# planos en corrección',S.sols.filter(function(s){ return s.estado==='Rechazado'; }),
+    function(L){ return L.length===1&&L[0].motivoObs?('Motivo: '+L[0].motivoObs):'La Gerente de Ingeniería pidió cambios'; },'proc');
+  grupo('warn','Sin responsable','# planos sin responsable',S.sols.filter(function(s){ return s.estado==='Pendiente' && s.fechaSolicitud && dias(s.fechaSolicitud,t)>=3; }),
+    function(L){ var m=Math.max.apply(null,L.map(function(s){ return dias(s.fechaSolicitud,t); })); return 'Ingeniería aún no los asigna · el más antiguo, hace '+m+' días'; },'pend');
+  var SP=sinPlano();
+  grupo('warn','Frena el cronograma','# tareas sin plano aprobado',SP,
+    function(L){ return 'La primera empieza el '+fdate(L[0].tarea.fecha_inicio_base)+' · '+L.map(function(x){ return x.esp.toLowerCase(); }).filter(function(v,i,a){ return a.indexOf(v)===i; }).join(', '); },null,false,function(x){ return x.tarea.nombre_tarea; });
+  return out;
+}
+/* Tareas que arrancan en 21 días y cuya especialidad no tiene ningún plano aprobado (estimado por el nombre) */
+function sinPlano(){
+  var t=hoy(), out=[];
+  var okEsp={}; S.sols.forEach(function(s){ if(DONE.indexOf(s.estado)>=0) okEsp[s.especialidad]=true; });
+  S.tareas.forEach(function(x){
+    if(!x.fecha_inicio_base || x.categoria==='PLANOS' || x.es_hito) return;
+    if(parseFloat(x.pct_avance||0)>0) return;
+    var d=dias(t,x.fecha_inicio_base); if(d<0||d>21) return;
+    Object.keys(ESP_KW).some(function(e){ if(ESP_KW[e].test(x.nombre_tarea||'') && !okEsp[e]){ out.push({tarea:x,esp:e}); return true; } return false; });
+  });
+  return out.sort(function(a,b){ return a.tarea.fecha_inicio_base<b.tarea.fecha_inicio_base?-1:1; });
+}
+
+function pintar(){
+  var app=$('#app');
+  var cab='<div class="head"><div><div class="h1">Planos · '+esc(P.nombre||P.cod||'Obra')+'</div>'+
+      '<div class="sub">Lo que pediste a Ingeniería, en qué va y lo que ya está aprobado para obra.</div>'+
+      '<div class="live'+(S.vivo?' on':'')+'" id="live"><i></i>En vivo desde <b>Seguimiento de Planos</b> (Ingeniería)</div></div>'+
+      '<a class="btn ing" href="'+esc(enlacePedir())+'" target="_blank" rel="noopener">Requerir plano ↗</a></div>';
+  if(!P.cod){ app.innerHTML=cab+'<div class="card empty">Elige una obra arriba para ver sus planos.</div>'; return; }
+  if(!S.cargado){ app.innerHTML=cab+'<div class="card empty">Cargando planos de Ingeniería…</div>'; return; }
+  if(S.error){ app.innerHTML=cab+'<div class="err">'+esc(S.error)+'</div>'; return; }
+  if(!S.pry){
+    app.innerHTML=cab+'<div class="note"><span><b>Esta obra aún no está registrada en Ingeniería.</b> Al pedir el primer plano se registra con el código '+esc(P.cod)+' y desde ahí verás aquí su avance.</span>'+
+      '<a class="btn ing sm" href="'+esc(enlacePedir())+'" target="_blank" rel="noopener">Pedir el primer plano ↗</a></div>'+pintarCrono();
+    return;
+  }
+  var K=kpis(), A=avisos();
+  app.innerHTML=cab+
+    (A.length?'<div class="alerts">'+A.map(function(a){ return '<div class="al '+a.c+'"><div class="t">'+esc(a.t)+'</div><div class="m">'+esc(a.m)+'</div><div class="s">'+esc(a.s)+'</div>'+
+      ((a.a||a.f)?'<div style="display:flex;gap:6px;flex-wrap:wrap">'+(a.f?'<button class="btn sm" data-f="'+a.f+'">Ver en la lista</button>':'')+(a.a?'<a class="btn sm" href="'+esc(ING_APP)+'" target="_blank" rel="noopener">Abrir Ingeniería ↗</a>':'')+'</div>':'')+'</div>'; }).join('')+'</div>':'')+
+    '<div class="kpis">'+
+      kpi('todas','Pedidos',K.total,'en esta obra','')+kpi('pend','Sin asignar',K.pend,'esperan responsable','')+
+      kpi('proc','En elaboración',K.proc,'con responsable','info')+kpi('rev','En revisión',K.rev,'con la Gerente','ing')+
+      kpi('aprobar','Por aprobar',K.porAprobar,'te toca a ti','ing')+kpi('ok','Aprobados',K.ok,'listos para obra','ok')+
+      kpi('late','Atrasados',K.late,K.prom!=null?('entrega prom. '+String(K.prom).replace('.',',')+' d'):'pasó la fecha','bad')+
+    '</div>'+
+    '<div class="cols"><div class="card"><div class="ch"><h3>Mis solicitudes</h3><div class="chips" id="chips">'+
+      [['todas','Todas'],['late','Atrasadas'],['pend','Sin asignar'],['aprobar','Por aprobar'],['proc','En elaboración'],['ok','Aprobadas']].map(function(c){ return '<button class="chip'+(S.filtro===c[0]?' on':'')+'" data-f="'+c[0]+'">'+c[1]+'</button>'; }).join('')+
+      '</div></div>'+pintarSols()+'</div>'+
+      '<div class="side">'+pintarCrono()+pintarAprobados()+'</div></div>';
+  bind();
+}
+function kpi(f,l,v,s,c){ return '<button class="kpi '+c+(S.filtro===f?' on':'')+'" data-f="'+f+'"><span class="l">'+l+'</span><span class="v">'+v+'</span><span class="s">'+esc(s)+'</span></button>'; }
+function pintarSols(){
+  var L=filtrar(S.filtro);
+  if(!L.length) return '<div class="empty">'+(S.sols.length?'No hay solicitudes en este estado.':'Aún no hay planos pedidos para esta obra. Usa «Requerir plano».')+'</div>';
+  return L.map(function(s){
+    var idx=FLOW.indexOf(s.estado==='Rechazado'?'En proceso':s.estado), late=atrasado(s), u=ultimo(s), fs=archivos(s);
+    var st=''; for(var i=0;i<5;i++) st+='<span class="'+(i<=idx?(s.estado==='Rechazado'&&i===1?'x':'d'):'')+'"></span>';
+    return '<div class="sr"><div style="min-width:0"><div class="n">'+(s.codPlano?'<small>'+esc(s.codPlano)+'</small>':'')+esc(s.plano||'Plano')+'</div>'+
+        '<div class="meta"><span>'+esc(s.especialidad||'')+'</span><span>Responsable: '+esc(s.responsable||'sin asignar')+'</span>'+
+        (s.estado==='En proceso'?'<span>Avance '+(Number(s.avance)||0)+'%</span>':'')+'</div></div>'+
+      '<div class="right"><span class="pill e-'+esc(String(s.estado||'').replace(/\s/g,''))+'">'+esc(LAB[s.estado]||s.estado||'')+'</span>'+
+        '<span class="meta'+(late?' late':'')+'">'+(s.fechaRequerida?'Para el '+fdate(s.fechaRequerida):(s.fechaFin?'Ingeniería: '+fdate(s.fechaFin):'Sin fecha'))+'</span></div>'+
+      (s.estado==='Anulado'?'':'<div class="steps">'+st+'</div><div class="steplab">'+FLOW_LAB.map(function(x){ return '<span>'+x+'</span>'; }).join('')+'</div>')+
+      (u?'<div class="ult">Última novedad: <b>'+esc(u.accion||'')+'</b> · '+esc(u.por||'')+' · '+fdate(u.t)+'</div>':'')+
+      (fs.length?'<div class="files">'+fs.map(function(f,i){ return '<button class="btn sm" data-dl="'+esc(f.path||'')+'">⬇ '+esc(f.nombre||('Archivo '+(i+1)))+'</button>'; }).join('')+'</div>':'')+
+    '</div>';
+  }).join('');
+}
+function pintarAprobados(){
+  var L=S.sols.filter(function(s){ return s.estado==='Aprobado'; });
+  return '<div class="card"><div class="ch"><h3>Aprobados para obra</h3><span class="hint">'+L.length+' plano'+(L.length===1?'':'s')+'</span></div>'+
+    (L.length?'<div class="tw"><table><thead><tr><th>Código</th><th>Plano</th><th>Aprobado</th><th></th></tr></thead><tbody>'+L.map(function(s){
+      var f=archivos(s), d=cuandoAprobado(s);
+      return '<tr><td class="mono">'+esc(s.codPlano||'—')+'</td><td>'+esc(s.plano||'')+'<div style="font-size:11.5px;color:var(--t2)">'+esc(s.especialidad||'')+'</div></td><td>'+fdate(d||s.fechaEntrega)+'</td>'+
+        '<td>'+(f.length?'<button class="btn sm" data-dl="'+esc(f[f.length-1].path||'')+'">Ver</button>':'<span style="font-size:11.5px;color:var(--t3)">sin archivo</span>')+'</td></tr>';
+    }).join('')+'</tbody></table></div>':'<div class="empty">Todavía no hay planos aprobados.</div>')+'</div>';
+}
+function pintarCrono(){
+  var t=hoy(), PL=S.tareas.filter(function(x){ return x.categoria==='PLANOS'; }), SP=sinPlano();
+  if(!S.tareas.length) return '<div class="card"><div class="ch"><h3>Cronograma de planos</h3><span class="hint">desde el Gantt de la obra</span></div><div class="empty">Esta obra no tiene cronograma cargado.</div></div>';
+  return '<div class="card"><div class="ch"><h3>Cronograma de planos</h3><span class="hint">desde el Gantt de la obra</span></div>'+
+    (PL.length?PL.map(function(x){ var p=Math.round(parseFloat(x.pct_avance||0)), late=p<100&&x.fecha_fin_base&&x.fecha_fin_base<t;
+      return '<div class="gi"><b>'+esc(x.nombre_tarea)+'</b><span class="pill '+(p>=100?'e-Aprobado':late?'e-Rechazado':'e-Enproceso')+'">'+(p>=100?'Completa':late?'Atrasada':p+'%')+'</span>'+
+        '<small>'+fdate(x.fecha_inicio_base)+' → '+fdate(x.fecha_fin_base)+'</small></div>'; }).join(''):'<div class="empty" style="padding:14px">El cronograma no tiene tareas de planos.</div>')+
+    (SP.length?'<div class="ch" style="padding-top:12px"><h3 style="font-size:13.5px">Tareas próximas sin plano aprobado</h3><span class="hint">estimado por el nombre de la tarea</span></div>'+
+      SP.slice(0,6).map(function(x){ return '<div class="gi"><b>'+esc(x.tarea.nombre_tarea)+'</b><span class="pill e-Completado">'+esc(x.esp.charAt(0)+x.esp.slice(1).toLowerCase())+'</span><small>Empieza el '+fdate(x.tarea.fecha_inicio_base)+'</small></div>'; }).join(''):'')+
+  '</div>';
+}
+function bind(){
+  document.querySelectorAll('[data-f]').forEach(function(b){ b.onclick=function(){ S.filtro=b.dataset.f; pintar(); var c=$('#chips'); if(c && !b.classList.contains('chip')) c.scrollIntoView({behavior:'smooth',block:'nearest'}); }; });
+  document.querySelectorAll('[data-dl]').forEach(function(b){ b.onclick=async function(){
+    var path=b.dataset.dl; if(!path){ toast('Este archivo no tiene enlace'); return; }
+    var w=window.open('about:blank','_blank');
+    try{ var r=await sb.storage.from(BUCKET).createSignedUrl(path,3600); if(r.error) throw r.error; if(w) w.location.href=r.data.signedUrl; else location.href=r.data.signedUrl; }
+    catch(e){ if(w) w.close(); toast('No se pudo abrir el archivo: '+(e.message||e)); }
+  }; });
+}
+
+pintar(); cargar(); cargarTareas(); escuchar();
+})();
+</script>
+</body>
+</html>

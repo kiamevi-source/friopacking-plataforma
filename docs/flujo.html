@@ -162,6 +162,7 @@ const MAPA = {
     {id:'x-voz',    tipo:'ext', x:40,  y:906, titulo:'Recorrido y QR de zona', sub:'dictado por voz · QR pegado en obra'},
     {id:'x-netlify',tipo:'ext', x:1352,y:60,  titulo:'Netlify viejo', sub:'donde reportan hoy'},
     {id:'x-nisira', tipo:'ext', x:1352,y:170, titulo:'NISIRA', sub:'Orden de Proyectos · copia manual'},
+    {id:'x-ing',    tipo:'ext', x:1352,y:440, titulo:'Seguimiento de Planos', sub:'app de Ingeniería · Supabase propio'},
 
     /* ── las tres apps ── */
     {id:'a-ger', tipo:'app', x:338, y:40, color:'#14275C', titulo:'Gerencia · PMO', sub:'app-live', filas:[
@@ -184,7 +185,7 @@ const MAPA = {
       {id:'diario', t:'Reporte diario', key:true},
       {id:'gantt', t:'Gantt y avance', key:true},
       {id:'personal', t:'Histograma y personal'},
-      {id:'planos', t:'Planos'},
+      {id:'planos', t:'Planos · desde Ingeniería', key:true},
       {id:'riesgos', t:'Levantamiento de observaciones', key:true},
       {id:'licitaciones', t:'Licitaciones · arma y envía', key:true},
       {id:'facturas', t:'Facturas'},
@@ -281,7 +282,8 @@ const MAPA = {
     {from:'x-voz', to:'a-sup:riesgos', tipo:'entrada', label:'recorrido · QR por zona'},
     {from:'a-sup:riesgos', to:'d-pmo:portafolio', tipo:'lee', label:'contratistas para asignar'},
     {from:'x-netlify', to:'d-pmo:reportes', tipo:'entrada', label:'escribe directo'},
-    {from:'x-nisira', to:'d-pmo:proyectos', tipo:'entrada', label:'copia manual · obras nuevas'}
+    {from:'x-nisira', to:'d-pmo:proyectos', tipo:'entrada', label:'copia manual · obras nuevas'},
+    {from:'a-sup:planos', to:'x-ing', tipo:'lee', label:'lee en vivo · «Requerir plano» abre su página'}
   ]
 };
 

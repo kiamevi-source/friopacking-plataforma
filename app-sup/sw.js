@@ -5,7 +5,7 @@
    red (el offline de datos ya lo maneja la cola local `fp_rd_*` de la app).
    Subir la versión (v1 → v2…) al cambiar este archivo para forzar refresco.
    ════════════════════════════════════════════════════════════════ */
-const VERSION   = 'fp-sup-v36';   // subir en cada cambio del shell: fuerza refresco del SW
+const VERSION   = 'fp-sup-v37';   // subir en cada cambio del shell: fuerza refresco del SW
 const APP_SHELL = VERSION + '-shell';
 const RUNTIME   = VERSION + '-runtime';
 
@@ -55,8 +55,9 @@ self.addEventListener('fetch', (event) => {
   let url;
   try { url = new URL(req.url); } catch (e) { return; }
 
-  // 1) Supabase (REST + Storage): siempre red, sin tocar caché.
-  if (url.hostname === SUPABASE_HOST) return;
+  // 1) Supabase (REST + Storage): siempre red, sin tocar caché. Incluye las otras instancias
+  //    (PMO e Ingeniería · Seguimiento de Planos), que antes caían en la regla de CDN y se servían viejas.
+  if (url.hostname === SUPABASE_HOST || url.hostname.endsWith('.supabase.co')) return;
 
   // 2) Navegación (el HTML de la app): red primero → cae a caché sin señal.
   //    Ignora el query `?v=timestamp` que el shell agrega al iframe.
