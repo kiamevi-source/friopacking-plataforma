@@ -473,8 +473,8 @@ var OPEN_STATES = ['Publicada','Invitaciones','Ofertas'];
 var $ = function(s,r){ return (r||document).querySelector(s); };
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function icons(){ if(window.lucide) lucide.createIcons(); }
-function money(n,cur){ n=Number(n||0); var sym = cur==='USD'?'$':'S/ '; return sym + n.toLocaleString('es-PE',{maximumFractionDigits:0}); }
-function moneyK(n,cur){ n=Number(n||0); var sym=cur==='USD'?'$':'S/ '; if(Math.abs(n)>=1000) return sym+(n/1000).toLocaleString('es-PE',{maximumFractionDigits:0})+'k'; return sym+n; }
+function money(n,cur){ n=Number(n||0); var sym = cur==='PEN'?'S/ ':'$'; return sym + n.toLocaleString('es-PE',{maximumFractionDigits:0}); }
+function moneyK(n,cur){ n=Number(n||0); var sym=cur==='PEN'?'S/ ':'$'; if(Math.abs(n)>=1000) return sym+(n/1000).toLocaleString('es-PE',{maximumFractionDigits:0})+'k'; return sym+n; }
 function fmtDate(iso){ if(!iso) return '—'; try{ var d=new Date(iso); return d.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'}); }catch(e){ return '—'; } }
 function daysTo(iso){ if(!iso) return null; var t=new Date(); t.setHours(0,0,0,0); var d=new Date(iso); d.setHours(0,0,0,0); return Math.round((d-t)/86400000); }
 function estClass(e){ return EST_CLASS[e]||'est-borrador'; }
@@ -601,7 +601,7 @@ function sortLics(arr){
   else { a.sort(function(x,y){ var dx=daysTo(x.fecha_limite), dy=daysTo(y.fecha_limite); if(dx===null&&dy===null) return 0; if(dx===null) return 1; if(dy===null) return -1; return dx-dy; }); }
   return a;
 }
-function moneyExec(n,cur){ n=Number(n||0); var s=cur==='USD'?'$':'S/ '; var a=Math.abs(n); var sign=n<0?'−':''; if(a>=1e6) return sign+s+(a/1e6).toFixed(2)+' M'; if(a>=1e3) return sign+s+Math.round(a/1e3)+' K'; return sign+s+a.toLocaleString('es-PE'); }
+function moneyExec(n,cur){ n=Number(n||0); var s=cur==='PEN'?'S/ ':'$'; var a=Math.abs(n); var sign=n<0?'−':''; if(a>=1e6) return sign+s+(a/1e6).toFixed(2)+' M'; if(a>=1e3) return sign+s+Math.round(a/1e3)+' K'; return sign+s+a.toLocaleString('es-PE'); }
 function execItem(g,n,label,active){
   return '<div class="exec-item'+(active===g?' on':'')+'" data-group="'+g+'">'+
     '<div class="exec-n">'+String(n).padStart(2,'0')+'</div>'+
@@ -678,9 +678,9 @@ function renderList(){
       execItem('adjudicadas', cnt.adjudicadas, 'Adjudicadas', f.group)+
     '</div>'+
     '<div class="exec-money">'+
-      '<span><b>'+moneyExec(k.montoProceso,'PEN')+'</b> en procesos</span>'+
+      '<span><b>'+moneyExec(k.montoProceso,'USD')+'</b> en procesos</span>'+
       '<span class="sep">·</span>'+
-      '<span><b>'+moneyExec(k.montoAdj,'PEN')+'</b> adjudicado</span>'+
+      '<span><b>'+moneyExec(k.montoAdj,'USD')+'</b> adjudicado</span>'+
     '</div>'+
     '<div class="alertbar">'+alertbar+'</div>'+
     '<div class="toolbar">'+
@@ -894,7 +894,7 @@ function renderHome(){
       '</div>'+
       '<div class="lh-card"><div class="lh-ch"><div class="lh-ct">Valor por etapa</div>'+ySel('y-bars',H.yBars,'Todos los años')+'</div>'+
         '<div class="lh-bars"><div class="lh-yax">'+ticks.map(function(t){ return '<div><span>'+mM(t).replace(' K','K').replace(' M',' M')+'</span></div>'; }).join('')+'</div><div></div>'+
-        barras.map(function(b){ var pot=b[3]==='pot'; var h=pot?(b[1]>0?45:2):Math.max(2,Math.round(b[1]/tope*100)); return '<div class="lh-bar '+b[3]+'" title="'+esc(b[0])+': '+(pot?money(b[1],'USD')+' · mano de obra del presupuesto aún sin licitar. Está en dólares (NISIRA): su altura no se compara con las barras en soles':money(b[1],'PEN'))+'"><b>'+mM(b[1],pot?'USD':'PEN')+'</b><i style="height:'+h+'%;background:'+(b[2]||'')+'"></i><small>'+esc(b[0])+'</small></div>'; }).join('')+
+        barras.map(function(b){ var pot=b[3]==='pot'; var h=pot?(b[1]>0?45:2):Math.max(2,Math.round(b[1]/tope*100)); return '<div class="lh-bar '+b[3]+'" title="'+esc(b[0])+': '+(pot?money(b[1],'USD')+' · mano de obra del presupuesto aún sin licitar':money(b[1],'USD'))+'"><b>'+mM(b[1],'USD')+'</b><i style="height:'+h+'%;background:'+(b[2]||'')+'"></i><small>'+esc(b[0])+'</small></div>'; }).join('')+
         '</div>'+
       '</div>'+
       '<div class="lh-card"><div class="lh-ch"><div class="lh-ct">Tiempo promedio por etapa</div><select class="lh-sel" id="y-times"><option value="">Todos</option><option value="'+anio+'"'+(H.yTimes===String(anio)?' selected':'')+'>Este año</option></select></div>'+
@@ -990,7 +990,7 @@ function demoData(){
   var lics=[], adj={}, ofertas={}, invCount={}, invNames={}, cambios=[];
   spec.forEach(function(x){
     var id='demo-'+x[0], ob=OBRAS[x[2]], tr=TRAB[x[3]], creado=dia(x[5]);
-    var l={ id:id, codigo:'LIC-'+hoy.getFullYear()+'-'+String(x[0]).padStart(3,'0'), nombre:tr+' – '+ob[0].replace('Expansión ','').replace('Planta ','Planta '), proyecto:ob[0], cliente:ob[2], zona:ob[1], especialidad:ESP[tr], estado:x[1], moneda:'PEN', presupuesto_base:x[4], fecha_creacion:iso(creado), created_at:creado.toISOString(), fecha_limite:iso(dia(x[6])), responsable:'Carlos Vega' };
+    var l={ id:id, codigo:'LIC-'+hoy.getFullYear()+'-'+String(x[0]).padStart(3,'0'), nombre:tr+' – '+ob[0].replace('Expansión ','').replace('Planta ','Planta '), proyecto:ob[0], cliente:ob[2], zona:ob[1], especialidad:ESP[tr], estado:x[1], moneda:'USD', presupuesto_base:x[4], fecha_creacion:iso(creado), created_at:creado.toISOString(), fecha_limite:iso(dia(x[6])), responsable:'Carlos Vega' };
     lics.push(l);
     var nInv=2+Math.floor(rnd()*4); var nombres=[]; for(var i=0;i<nInv;i++){ nombres.push(EMP[(x[0]*3+i*2)%EMP.length]); }
     nombres=uniq(nombres); invNames[id]=['Borrador','Preparación'].indexOf(x[1])>=0?[]:nombres; invCount[id]=invNames[id].length;
@@ -1007,7 +1007,7 @@ function demoData(){
   // año anterior, para que los indicadores muestren la comparación
   for(var j=1;j<=14;j++){
     var id='demo-p'+j, c=new Date(hoy.getFullYear()-1, (j*5)%12, 5+j), gana=j%2===0, monto=700000+((j*337)%9)*150000;
-    lics.push({ id:id, codigo:'LIC-'+(hoy.getFullYear()-1)+'-'+String(40-j).padStart(3,'0'), nombre:TRAB[j%TRAB.length]+' – '+OBRAS[j%OBRAS.length][0], proyecto:OBRAS[j%OBRAS.length][0], cliente:OBRAS[j%OBRAS.length][2], zona:OBRAS[j%OBRAS.length][1], especialidad:ESP[TRAB[j%TRAB.length]], estado:j%5===0?'Evaluación':(gana?'Contratada':'Desierta'), moneda:'PEN', presupuesto_base:monto, fecha_creacion:iso(c), created_at:c.toISOString(), fecha_limite:iso(new Date(c.getTime()+30*86400000)), responsable:'Carlos Vega' });
+    lics.push({ id:id, codigo:'LIC-'+(hoy.getFullYear()-1)+'-'+String(40-j).padStart(3,'0'), nombre:TRAB[j%TRAB.length]+' – '+OBRAS[j%OBRAS.length][0], proyecto:OBRAS[j%OBRAS.length][0], cliente:OBRAS[j%OBRAS.length][2], zona:OBRAS[j%OBRAS.length][1], especialidad:ESP[TRAB[j%TRAB.length]], estado:j%5===0?'Evaluación':(gana?'Contratada':'Desierta'), moneda:'USD', presupuesto_base:monto, fecha_creacion:iso(c), created_at:c.toISOString(), fecha_limite:iso(new Date(c.getTime()+30*86400000)), responsable:'Carlos Vega' });
     invNames[id]=[EMP[j%EMP.length],EMP[(j+4)%EMP.length]]; invCount[id]=2; ofertas[id]=2;
     if(gana && j%5!==0) adj[id]={ licitacion_id:id, contratista:EMP[j%EMP.length], monto_adjudicado:Math.round(monto*0.93) };
   }
@@ -1078,7 +1078,7 @@ async function openCreate(prefill){
         fInput('nc-flim','Fecha límite de presentación','','date')+
         fInput('nc-fini','Fecha requerida de inicio','','date')+
         fInput('nc-plazo','Plazo esperado (días)','','number')+
-        fSelect('nc-moneda','Moneda',['USD','PEN'],'USD')+
+        fSelect('nc-moneda','Moneda',['USD'],'USD')+
         fInput('nc-pres','Presupuesto base (suma de lo seleccionado)','','number',false,true)+
       '</div></div>'+
       '<div class="fsec"><div class="fsec-t"><i data-lucide="clipboard-list"></i>Alcance</div><div class="fgrid">'+
@@ -1092,7 +1092,7 @@ async function openCreate(prefill){
       function row(k,v){ return v!=null&&v!==''?('<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:12px"><span style="color:#94a3b8;font-weight:600">'+esc(k)+'</span><span style="color:#0f1e35;font-weight:700;text-align:right">'+esc(v)+'</span></div>'):''; }
       function proyInfoHtml(p,ubic,mo){
         var moBlock = mo
-          ? '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:2px 0 9px;border-bottom:1px solid rgba(13,148,136,.18);margin-bottom:7px"><span style="font-size:12px;color:#0d9488;font-weight:800">Mano de obra a licitar</span><span style="font-size:17px;font-weight:800;color:#0f1e35">'+money(mo.costo,"PEN")+' <span style="font-size:10.5px;color:#94a3b8;font-weight:700">· '+mo.partidas+' partidas</span></span></div>'
+          ? '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:2px 0 9px;border-bottom:1px solid rgba(13,148,136,.18);margin-bottom:7px"><span style="font-size:12px;color:#0d9488;font-weight:800">Mano de obra a licitar</span><span style="font-size:17px;font-weight:800;color:#0f1e35">'+money(mo.costo,"USD")+' <span style="font-size:10.5px;color:#94a3b8;font-weight:700">· '+mo.partidas+' partidas</span></span></div>'
           : '<div style="font-size:11.5px;color:#b45309;font-weight:700;padding:2px 0 8px">Sin presupuesto con mano de obra cargado en el módulo Supervisor.</div>';
         return '<div style="background:#f0fbf9;border:1px solid rgba(62,203,176,.3);border-radius:12px;padding:12px 14px;margin-top:2px">'+
           '<div style="font-size:11px;font-weight:800;color:#0d9488;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;align-items:center;gap:6px"><i data-lucide="link-2" style="width:13px;height:13px"></i>Datos del proyecto vinculado</div>'+
@@ -2232,7 +2232,7 @@ function openAdjudicar(oid){
     okText:'Confirmar adjudicación', ok: async function(){
       var just=$('#aj-just').value.trim(); if(!just){ toast('Justificación obligatoria',true); return false; }
       try{
-        var aj=await sb.from('lic_adjudicaciones').insert({ licitacion_id:L.id, licitacion_codigo:L.codigo, email:o.email||null, oferta_id:oid, contratista:o.contratista, monto_adjudicado:Number($('#aj-monto').value||0), contrato_codigo:$('#aj-contrato').value.trim()||null, responsable:$('#aj-resp').value.trim(), aprobador:$('#aj-aprob').value.trim(), justificacion:just });
+        var aj=await sb.from('lic_adjudicaciones').insert({ licitacion_id:L.id, licitacion_codigo:L.codigo, email:o.email||null, oferta_id:oid, contratista:o.contratista, monto_adjudicado:Number($('#aj-monto').value||0), moneda:L.moneda||'USD', contrato_codigo:$('#aj-contrato').value.trim()||null, responsable:$('#aj-resp').value.trim(), aprobador:$('#aj-aprob').value.trim(), justificacion:just });
         if(aj.error) throw aj.error;
         await sb.from('lic_ofertas').update({estado:'Adjudicada'}).eq('id',oid);
         await sb.from('lic_licitaciones').update({estado:'Adjudicación'}).eq('id',L.id);
