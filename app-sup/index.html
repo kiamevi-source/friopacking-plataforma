@@ -5562,9 +5562,15 @@ function renderTablaReportes(reportes) {
 async function cargarGantt() {
   if (!currentProyecto) return;
   const codRep = (typeof rdCodReporte === 'function') ? rdCodReporte() : null;
-  if (codRep && codRep !== currentProyecto.cod) { await ganttDeCodigoHijo(codRep); return; }
+  let cod = currentProyecto.cod || currentProyecto.nombre;
+  if (codRep && codRep !== currentProyecto.cod) {
+    // El adicional con cronograma propio se ve y se edita como cualquier obra;
+    // sin cronograma, se listan sus partidas como antes.
+    if (!(await codTieneCronograma(codRep))) { _ganttState.cod = null; await ganttDeCodigoHijo(codRep); return; }
+    cod = codRep;
+  }
+  _ganttState.cod = cod;
   ganttPartesDeObra(false);
-  const cod = currentProyecto.cod || currentProyecto.nombre;
   const loadEl = document.getElementById('gantt-loading');
   const boardEl = document.getElementById('gantt-board');
   if (loadEl) loadEl.classList.remove('hidden');
@@ -5607,7 +5613,7 @@ function mostrarFormGantt() {
 }
 
 async function guardarTareaGantt() {
-  const cod = currentProyecto?.cod || currentProyecto?.nombre;
+  const cod = ganttCod();
   if (!cod) { showToast('Selecciona un proyecto'); return; }
   const nombre = document.getElementById('fg-nombre').value.trim();
   if (!nombre) { showToast('Ingresa el nombre de la tarea'); return; }
@@ -5673,7 +5679,7 @@ async function setTaskPctInline(id, val){
         method:'POST', headers:{'Prefer':'return=minimal'},
         body: JSON.stringify({
           tarea_id: id,
-          cod_proyecto: currentProyecto?.cod || currentProyecto?.nombre,
+          cod_proyecto: ganttCod(),
           fecha: nowIso.slice(0,10),
           estado_cumplimiento: done,
           pct_resultante: pct,
@@ -5708,7 +5714,7 @@ async function toggleCumplimiento(id, nuevoValor) {
       method:'POST', headers:{'Prefer':'return=minimal'},
       body: JSON.stringify({
         tarea_id: id,
-        cod_proyecto: currentProyecto?.cod || currentProyecto?.nombre,
+        cod_proyecto: ganttCod(),
         fecha: new Date().toISOString().slice(0,10),
         estado_cumplimiento: !!nuevoValor,
         pct_resultante: nuevoValor ? 100 : 0,
@@ -7815,7 +7821,7 @@ function mpApplyBulk() {
 }
 
 async function commitImportPreview() {
-  const cod = currentProyecto?.cod || currentProyecto?.nombre;
+  const cod = ganttCod();
   if (!cod) { showToast('Selecciona un proyecto', 3000, 'warn'); return; }
   const selected = _mpState.rows.filter(r => r.isChecked && !r.isInvalid);
   if (selected.length === 0) { showToast('Selecciona al menos una tarea', 3000, 'warn'); return; }
@@ -7878,7 +7884,7 @@ async function commitImportPreview() {
 
 // Limpiar todo el cronograma del proyecto
 async function confirmarLimpiarGantt() {
-  const cod = currentProyecto?.cod || currentProyecto?.nombre;
+  const cod = ganttCod();
   if (!cod) { showToast('Selecciona un proyecto', 3000, 'warn'); return; }
   const total = (_ganttState.tasks||[]).length;
   if (total === 0) { showToast('El cronograma ya está vacío', 2400, 'warn'); return; }
@@ -7906,7 +7912,7 @@ async function importarGantt(input) {
 }
 
 async function importarGanttSmart(file) {
-  const cod = currentProyecto?.cod || currentProyecto?.nombre;
+  const cod = ganttCod();
   if (!cod) { showToast('Selecciona un proyecto primero', 3000, 'warn'); return; }
 
   const ext = (file.name||'').toLowerCase().split('.').pop();
@@ -7988,8 +7994,27 @@ const _ganttState = {
   scale: 'month',
   filter: 'all',
   layers: { health:true, plan:false, forecast:false, critica:false, sinmov:false, deps:false },
-  selectedId: null
+  selectedId: null,
+  cod: null          // código cuyo cronograma está cargado (la obra o un adicional con cronograma propio)
 };
+
+// Código contra el que leen y escriben el Gantt y su avance_log. Es el adicional elegido
+// cuando tiene cronograma propio; si no, la obra. Se valida contra la obra y el código
+// elegido actuales para que un estado viejo nunca haga "Limpiar" sobre otro proyecto.
+function ganttCod(){
+  const obra = currentProyecto && (currentProyecto.cod || currentProyecto.nombre);
+  const c = _ganttState.cod;
+  const rep = (typeof rdCodReporte === 'function') ? rdCodReporte() : null;
+  return (c && (c === obra || c === rep)) ? c : (obra || null);
+}
+
+// ¿El código hijo (PRD/VSR u otra orden) tiene cronograma propio en tareas_gantt?
+async function codTieneCronograma(cod){
+  try {
+    const r = await sbFetch(`/rest/v1/tareas_gantt?cod_proyecto=eq.${encodeURIComponent(cod)}&select=id&limit=1`);
+    return !!(r && r.length);
+  } catch(e){ return false; }
+}
 
 // ── ANALIZADOR DE TAREA (núcleo del motor) ──
 // Devuelve metadata enriquecida: salud, status, desviación, forecast, sin_movimiento, prob_atraso
@@ -9100,7 +9125,7 @@ async function qaSubmit() {
     let payloadTarea = { updated_at: new Date().toISOString() };
     let payloadLog = {
       tarea_id: t.id || null,
-      cod_proyecto: currentProyecto?.cod || currentProyecto?.nombre,
+      cod_proyecto: ganttCod(),
       fecha: new Date().toISOString().slice(0,10),
       nota: nota || null,
       foto_url: fotoUrl,
@@ -9199,7 +9224,7 @@ async function qaQuickCumpl(val) {
       method:'POST', headers:{'Prefer':'return=minimal'},
       body: JSON.stringify({
         tarea_id: t.id,
-        cod_proyecto: currentProyecto?.cod || currentProyecto?.nombre,
+        cod_proyecto: ganttCod(),
         fecha: new Date().toISOString().slice(0,10),
         estado_cumplimiento: !!val,
         pct_resultante: val ? 100 : 0,
@@ -10171,16 +10196,19 @@ function renderContratas() {
 async function cargarHitosReporte() {
   rdHitos = [];
   const codRep = rdCodReporte();
-  // Un adicional (o una orden agrupada en la misma ficha) NO tiene cronograma propio:
-  // `tareas_gantt` solo existe para la obra. Sus tareas son las que trajo NISIRA en la
-  // pestaña "Tareas del Proyectos", que viven en `presupuestos` con su cod_proyecto.
-  // Antes se listaba el Gantt de la obra madre, que no es lo que se está reportando.
+  // Un adicional (o una orden agrupada en la misma ficha) usa SU cronograma en
+  // `tareas_gantt` (cargado desde NISIRA el 19-oct-2026). Si todavía no tiene uno,
+  // se listan sus partidas de `presupuestos`. Nunca el Gantt de la obra madre:
+  // no es lo que se está reportando.
+  let cod = currentProyecto?.cod || currentProyecto?.nombre;
   if (currentProyecto && codRep && codRep !== currentProyecto.cod) {
-    await cargarTareasDelCodigo(codRep);
-    renderHitos();
-    return;
+    if (!(await codTieneCronograma(codRep))) {
+      await cargarTareasDelCodigo(codRep);
+      renderHitos();
+      return;
+    }
+    cod = codRep;
   }
-  const cod = currentProyecto?.cod || currentProyecto?.nombre;
   if (cod) {
     try {
       // Trae las TAREAS del cronograma (no solo milestones): hitos primero, luego actividades, ordenadas por fecha
