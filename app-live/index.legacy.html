@@ -9411,8 +9411,18 @@ function renderEquiposPremium(){
             const viejo=dias!=null&&dias>10;
             const cls=viejo?'dot warn':'';
             const extra=viejo?` · hace ${dias} d`:'';
-            const tip=viejo?`Sin importar hace ${dias} días. La actualización es semanal: subí el Excel de importaciones.`:'Origen de los datos que estás viendo';
+            const tip=viejo?(W._eqSp?`El Excel de SharePoint no trae cambios hace ${dias} días.`:`Sin importar hace ${dias} días. La actualización es semanal: subí el Excel de importaciones.`):'Origen de los datos que estás viendo';
             return `<span class="eqv2-cmd-chip ${cls}" title="${tip}">${viejo?'⚠ ':''}${et}${cuando}${viejo?' · '+dias+'d':''}</span>`;})()}
+          ${(()=>{const sp=W._eqSp;if(!sp)return '';
+            /* Estado de la sincronización automática con SharePoint (equipos_sync_log). */
+            const f=t=>t?new Date(t).toLocaleString('es-PE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+            const esc=t=>String(t||'').replace(/"/g,'&quot;');
+            if(sp.estado==='ok'){
+              const tip=`Se actualiza solo desde SharePoint (se revisa cada 15 min).&#10;Archivo: ${esc(sp.archivo)}&#10;Editado: ${f(sp.modificado_en)}${sp.modificado_por?' por '+esc(sp.modificado_por):''}&#10;Última carga: ${f(sp.ts)} · ${sp.cambios||0} cambios`;
+              return `<span class="eqv2-cmd-chip ok" title="${tip}">🔗 SharePoint · ${f(sp.ts)}</span>`;
+            }
+            const tip=`La última lectura de SharePoint (${f(sp.ts)}) no se aplicó:&#10;${esc(sp.mensaje)}&#10;Los supervisores siguen viendo la carga anterior.`;
+            return `<span class="eqv2-cmd-chip dot warn" title="${tip}">⚠ SharePoint ${sp.estado==='bloqueado'?'bloqueado':'con error'}</span>`;})()}
           ${vencidos>0?`<span class="eqv2-cmd-chip" title="Suma de días de atraso de los equipos vencidos · promedio ${atrasoProm} d por equipo">⏱ ${diasAtrasoTotal} d atraso acum.</span>`:''}
           <span class="eqv2-cmd-chip">🏗 ${activeProjList.length} proyectos activos</span>
           ${corregidos.length?`<span class="eqv2-cmd-chip" title="Equipos con el año mal tipeado en el Excel, corregido automáticamente:&#10;${corregidos.slice(0,15).map(r=>(r.doc||'?')+' ('+r._fixes.map(f=>f.c).join(', ')+')').join('&#10;')}">✎ ${corregidos.length} con año corregido</span>`:''}
@@ -9427,6 +9437,7 @@ function renderEquiposPremium(){
       </div>
       <input type="file" id="eq-import-input" accept=".csv,.xlsx,.xls,.pdf,application/pdf" style="display:none" onchange="W.onEquiposImport&&W.onEquiposImport(event)">
       <button class="eqv2-btn primary" onclick="document.getElementById('eq-import-input').click()">📂 Importar</button>
+      <button class="eqv2-btn" onclick="W._eqTraerSharePoint&&W._eqTraerSharePoint(this)" title="Leer ahora el Excel de importaciones de SharePoint (también se hace solo cada 15 min)">🔗 Traer de SharePoint</button>
       <button class="eqv2-btn" onclick="W.eqSyncNow&&W.eqSyncNow()" title="Subir a supervisores los equipos que estás viendo, sin volver a cargar el Excel">☁️ Sincronizar</button>
       <button class="eqv2-btn" onclick="W.openEquiposHistorial&&W.openEquiposHistorial()" title="Historial de cambios">🕑 Historial</button>
       <button class="eqv2-btn icon-only" onclick="W.renderEquipos&&W.renderEquipos()" title="Refrescar">🔄</button>
@@ -10660,6 +10671,13 @@ function _eqParseRows(raw){
       }
     }catch(e){console.warn('[Equipos] no se pudo leer equipos_pmo:',e);}
 
+    // Última lectura de SharePoint (la escribe la función sync-equipos-sharepoint)
+    try{
+      const r=await fetch(SB_URL+'/rest/v1/equipos_sync_log?select=ts,estado,archivo,modificado_en,modificado_por,cambios,mensaje&order=ts.desc&limit=1',
+        {headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+      if(r.ok){const a=await r.json();W._eqSp=a&&a[0]||null;}
+    }catch(e){console.warn('[Equipos] no se pudo leer el estado de SharePoint:',e);}
+
     let data=SNAPSHOT,src={tipo:'snapshot',n:SNAPSHOT.length};
     if(remote){
       data=_merge(SNAPSHOT,remote);
@@ -10687,6 +10705,34 @@ function _eqParseRows(raw){
       if(listos||intentos>20){clearInterval(esperar);pintar();}
     },400);
   }
+
+  /* Equipos ← SharePoint. La función del servidor lee el Excel de importaciones con la
+     app de Microsoft registrada por Sistemas y escribe equipos_pmo; aquí sólo se dispara
+     y se recargan los datos. Sin «Importar» de por medio. */
+  W._eqReloadDatos=bootstrap;
+  W._eqTraerSharePoint=async function(btn){
+    const toast=(m,t,ms)=>{if(typeof showToast==='function')showToast(m,t,ms);};
+    if(btn){btn.disabled=true;btn.dataset.txt=btn.textContent;btn.textContent='⏳ Leyendo SharePoint…';}
+    try{
+      const res=await fetch(SB_URL+'/functions/v1/sync-equipos-sharepoint',{method:'POST',
+        headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({forzar:true})});
+      const r=await res.json().catch(()=>({}));
+      if(r.estado==='ok'){
+        toast(`✅ SharePoint: ${r.filas} equipos · ${r.cambios} cambios (${r.nuevos} nuevos, ${r.modificados} modif.)`,'success',6500);
+        localStorage.removeItem(EQ_LS_KEY); // la importación manual vieja ya no debe tapar a SharePoint
+        await bootstrap();
+      }else if(r.estado==='sin_credenciales'){
+        toast('⚠️ Falta conectar la app de Microsoft (Sistemas). Mientras tanto, usa 📂 Importar.','warn',7000);
+      }else if(r.estado==='bloqueado'){
+        toast('⚠️ El Excel de SharePoint no pasó la revisión: '+((r.problemas||[])[0]||''),'alert',8000);
+        await bootstrap();
+      }else{
+        toast('⚠️ No se pudo leer SharePoint: '+(r.mensaje||('HTTP '+res.status)),'alert',8000);
+        await bootstrap();
+      }
+    }catch(e){toast('⚠️ No se pudo leer SharePoint: '+(e.message||e),'alert',6000);}
+    finally{if(btn){btn.disabled=false;btn.textContent=btn.dataset.txt||'🔗 Traer de SharePoint';}}
+  };
 
   // Arrancar sin bloquear la carga de la página
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(bootstrap,800));

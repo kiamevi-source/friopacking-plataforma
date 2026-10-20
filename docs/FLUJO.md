@@ -5,7 +5,7 @@ fuente de verdad: los datos del mapa viven en el bloque `const MAPA` que está a
 inicio del `<script>`. Si cambia el flujo, se edita ahí, en el **mismo commit**
 que el código. Este documento es la letra chica que no cabe en el dibujo.
 
-Última revisión: **12 de octubre de 2026**
+Última revisión: **20 de octubre de 2026**
 
 ---
 
@@ -45,6 +45,7 @@ instancia que corresponde y abre la app en un iframe.
 | `espejo_reportes_to_supervisor` | PMO | 2 min | Reportes que entran por el netlify viejo hacia Supervisor |
 | `push_accesos_to_supervisor` | PMO | 5 min | Quién puede reportar en cada obra |
 | `sync_reportes_from_pmo` | Supervisor | 2 min | Jalador anterior de reportes desde PMO |
+| `sync_equipos_sharepoint` | Supervisor | 15 min | Llama a la función `sync-equipos-sharepoint`: lee el Excel de importaciones de SharePoint y actualiza `equipos_pmo` |
 | `cleanup_http_responses` | PMO y Supervisor | 30 min | Limpia respuestas HTTP acumuladas |
 
 La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
@@ -70,8 +71,22 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   no guarda en caché ninguna instancia de Supabase (v37).
 - **Sin señal el reporte no se pierde.** La app de campo guarda en el navegador,
   con las fotos en IndexedDB, y reintenta al volver la conexión.
-- **Los equipos importados en Gerencia viajan a Supervisor.** El puente escribe
-  en `equipos_pmo` de la instancia Supervisor después de cada importación.
+- **Los equipos se leen solos desde SharePoint (desde el 20 de octubre de 2026).**
+  El Excel `IMPORTACION-X1-MLUJAN-2026.xlsx` (hoja «NISIRA FP», OneDrive de
+  sistemas@friopacking.pe, carpeta Importaciones/IMPORTACIONES/DASHBOARD 2026) lo
+  lee la función `sync-equipos-sharepoint` de la instancia Supervisor cada 15 min
+  (`pg_cron`). Si el archivo no cambió (mismo eTag) no descarga nada. Usa las
+  mismas reglas del importador de Gerencia (`parse.js` es copia de
+  `_eqParseRows`/`_eqValidarImport`: si cambias una, cambia la otra), guarda las
+  fechas como dd/mm/yyyy, registra el historial en `equipos_cambios` con origen
+  `sharepoint`, no borra órdenes que salen del archivo y deja el resultado en
+  `equipos_sync_log` (lo muestra el chip «🔗 SharePoint» del módulo Equipos).
+  Necesita una app de Microsoft Entra con permiso de solo lectura al archivo:
+  secretos `MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET` en la función. Sin
+  ellos responde «sin_credenciales» y no toca nada. Si el archivo se mueve,
+  cambian `SP_DRIVE_ID`/`SP_ITEM_ID`.
+- **Importar a mano sigue funcionando como respaldo.** El puente de Gerencia
+  escribe en `equipos_pmo` después de cada importación.
 - **Las obras nuevas entran desde NISIRA, por ahora a mano.** Desde el 15 de
   septiembre de 2026, Claude lee la Orden de Proyectos de NISIRA (la lista
   `lst_orden_proyectos` y la cabecera «Datos Generales» de `edt_orden_proyectos`)
