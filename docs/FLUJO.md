@@ -206,7 +206,11 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   `PMO.portafolio_servicios` («Contratado») un contrato de su obra y
   especialidad: «Contratada · X» o «Contratada en parte» (lotes 1/2). Las
   obras civiles se separan por tipo (tierras, zapatas, muro de contención,
-  sanitarios, losa). Solo lectura: no copia nada a `lic_*`.
+  sanitarios, losa). Solo lectura: no copia nada a `lic_*`. Regla (igual al
+  cruce revisado con Kiara): «EEMM» = montaje de equipos y «Mecánica» =
+  tuberías y puesta en marcha (Mecánica cubre equipos solo si no hay EEMM);
+  «Instalación electromecánica» = mecánica + eléctrico (+ equipos/aislamiento
+  si no se contrataron aparte). Auditado en todas las obras el 20-oct.
 - **Adjudicar crea la contrata en Servicios (20 de octubre de 2026).** Trigger
   `trg_lic_adjudicacion_a_servicios` en `PMO.lic_adjudicaciones` (AFTER INSERT):
   completa la fila de `portafolio_servicios` de esa obra + especialidad que no

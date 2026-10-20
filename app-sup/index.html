@@ -10435,40 +10435,76 @@ function rdTogglePartida(on){ rdModoPartida = !!on; renderHitos(); if(typeof sch
 function rdEsServicio(h){ return !!h.lic && !h.es_hito && !h.manual; }
 // ── Contratos de Servicios (portafolio_servicios, PMO) ↔ partidas (Kiara, 20-oct-2026) ──
 // Servicios guarda los contratos por obra + especialidad, no por partida. Si una partida no tiene
-// licitación, se busca ahí un contrato de su especialidad. Las obras civiles se separan por tipo
-// (movimiento de tierras, zapatas, muro, sanitarios, losa) porque se contratan por separado.
-var SV_ESP_RX={'Mecánica':/mec|electromec|eemm/,'Eléctrico':/electr/,'Montaje de equipos (EEMM)':/eemm|electromec|montaje/,'Aislamiento':/aisla/,
-  'Paneles y puertas':/panel|puerta/,'Lonas':/lona/,'Obras civiles':/oocc|civil|tierra|zapata|muro|losa|sanitar/,'Estructura metálica':/estructur/,
-  'HVAC':/hvac/,'Gasificado':/gasific/,'Rack':/rack/};
-function svSinTilde(t){ return String(t==null?'':t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(); }
+// licitación, se busca ahí el contrato que la cubre. Misma regla del cruce revisado con Kiara:
+// la especialidad de la partida sale de NISIRA (capítulo > rubro > partida); «EEMM» = montaje de
+// equipos y «Mecánica» = tuberías y puesta en marcha (si la obra no tiene EEMM aparte, Mecánica
+// cubre también los equipos); «Instalación electromecánica» = mecánica + eléctrico (+ equipos y
+// aislamiento si no se contrataron aparte); obras civiles por tipo; lotes «1/2» = mismo contrato partido.
+function svSinTilde(t){ return String(t==null?'':t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim(); }
 function svSubCivil(t){ t=svSinTilde(t);
-  if(/tierra|excav|relleno|afirmado/.test(t)) return 'tierras'; if(/zapata|cimiento/.test(t)) return 'zapatas';
-  if(/contencion/.test(t)) return 'muro'; if(/zocalo/.test(t)) return null;
-  if(/sanitar|agua|desag|inodoro|grifer|lavaman|urinario|drenaje|sumidero/.test(t)) return 'sanitarios'; if(/losa|loza/.test(t)) return 'losa'; return null; }
-function svEspDeFila(f){
+  if(/tierra|excav|relleno|afirmado|subrasante|sub rasante|subbase|sub base/.test(t)) return 'tierras';
+  if(/zapata|cimiento/.test(t)) return 'zapatas';
+  if(/contencion/.test(t)) return 'muro';
+  if(/zocalo/.test(t)) return null;
+  if(/sanitar|agua|desag|inodoro|grifer|lavaman|urinario|drenaje|sumidero/.test(t)) return 'sanitarios';
+  if(/losa|loza/.test(t)) return 'losa';
+  return null; }
+// Clave de especialidad de una partida: f = { descripcion, rubro, partida, capitulo }
+function svKey(f){
   var d=svSinTilde(f.descripcion), c=svSinTilde(f.capitulo), r=svSinTilde(f.rubro), p=svSinTilde(f.partida);
-  if(c.indexOf('hvac')>=0) return 'HVAC';
-  if(/gasificad/.test(c+' '+p+' '+d)) return 'Gasificado';
-  if(/rack/.test(d)||/rack pallet/.test(c)) return 'Rack';
-  if(/lona/.test(d)) return 'Lonas';
-  if(/aislamiento/.test(p)) return 'Aislamiento';
-  if(r.indexOf('obras civiles')===0) return 'Obras civiles';
-  if(r.indexOf('montaje de camaras')===0) return 'Paneles y puertas';
-  if(r.indexOf('instalacion electrica')===0) return 'Eléctrico';
-  if(r.indexOf('instalacion mecanica')===0) return p.indexOf('instalacion de equipo')===0?'Montaje de equipos (EEMM)':'Mecánica';
-  if(r.indexOf('estructuras metalicas')===0) return 'Estructura metálica';
+  if(c.indexOf('hvac')>=0) return 'hvac';
+  var civil=/movimiento de tierra|afirmado|concreto|losa|loza|resane|demolici|zapata|muro de contencion/.test(d);
+  if(r.indexOf('obras civiles')===0 || (civil && r.indexOf('instalacion electrica')!==0 && r.indexOf('instalacion mecanica')!==0)){
+    var sub=svSubCivil(p)||svSubCivil(d); return sub?'oocc_'+sub:'oocc'; }
+  if(/gasificad/.test(c+' '+p+' '+d)) return 'gasificado';
+  if(/rack/.test(d) || /rack pallet/.test(c)) return 'rack';
+  if(/lona/.test(d)) return 'lonas';
+  if(/seccionamiento/.test(d)) return 'seccionamiento';
+  if(/reubic/.test(d)) return 'reubicacion';
+  if(/aislamiento/.test(p)) return /piso/.test(d)?'aislamiento_piso':'aislamiento';
+  if(/piso/.test(d) && /aislam/.test(d)) return 'aislamiento_piso';
+  if(r.indexOf('montaje de camaras')===0) return 'paneles';
+  if(r.indexOf('instalacion electrica')===0) return 'electrico';
+  if(r.indexOf('instalacion mecanica')===0) return p.indexOf('instalacion de equipo')===0?'equipos':'mecanica';
+  if(r.indexOf('estructuras metalicas')===0) return 'estructura';
   return null;
 }
-// filas: lo que hay en Servicios para la obra · f: partida (descripcion, rubro, partida, capitulo)
+function svEspNorm(e){ return svSinTilde(e).replace(/\s+\d+$/,''); }
+// Qué claves cubre un contrato de Servicios, sabiendo qué más se contrató aparte en la obra
+function svCubre(esp, pres){
+  var e=svEspNorm(esp), s={};
+  function add(){ for(var i=0;i<arguments.length;i++) s[arguments[i]]=1; }
+  if(e==='aislamiento') add('aislamiento');
+  else if(e==='aislamiento de piso') add('aislamiento_piso');
+  else if(e==='lonas'||e==='lona') add('lonas');
+  else if(e==='paneles') add('paneles');
+  else if(e==='electrico') add('electrico');
+  else if(e==='mecanica'||e==='mecanico'){ add('mecanica'); if(!pres.eemm) add('equipos'); }
+  else if(e==='eemm'||e==='montaje de eemm') add('equipos');
+  else if(e.indexOf('electromecanica')>=0 || e==='mecanica y electrico'){ add('mecanica','electrico'); if(!pres.eemm) add('equipos'); if(!pres.aisl) add('aislamiento'); }
+  else if(e==='hvac') add('hvac');
+  else if(e.indexOf('gasificado')>=0) add('gasificado');
+  else if(e.indexOf('rack')>=0) add('rack');
+  else if(e.indexOf('reubicacion')>=0) add('reubicacion');
+  else if(e==='seccionamiento') add('seccionamiento');
+  else if(e==='oocc'||e==='obras civiles') add('oocc','oocc_tierras','oocc_zapatas','oocc_muro','oocc_sanitarios','oocc_losa');
+  else if(e==='movimiento de tierras') add('oocc_tierras');
+  else if(e==='zapatas') add('oocc_zapatas');
+  else if(e==='muro de contencion') add('oocc_muro');
+  else if(e==='sanitarios') add('oocc_sanitarios');
+  else if(e==='losa') add('oocc_losa');
+  return s;
+}
+function svPresentes(filas){
+  var es=(filas||[]).map(function(r){ return svEspNorm(r.especialidad); });
+  return { eemm: es.some(function(e){ return e==='eemm'||e==='montaje de eemm'; }), aisl: es.indexOf('aislamiento')>=0 };
+}
+// filas: contratos de Servicios de la obra · f: partida → { parcial, contratista } o null
 function svContratoDe(f, filas){
-  var esp=svEspDeFila(f); if(!esp || !filas || !filas.length) return null;
-  var sub = esp==='Obras civiles' ? (svSubCivil(f.partida)||svSubCivil(f.descripcion)) : null;
-  var hits=filas.filter(function(r){ var e=svSinTilde(r.especialidad);
-    if(!SV_ESP_RX[esp].test(e)) return false;
-    // civil: mismo tipo, o un contrato general de obras civiles; una tarea civil sin tipo solo toma el general
-    if(esp==='Obras civiles'){ var rs=svSubCivil(e); return !rs || (!!sub && rs===sub); }
-    return true; });
-  if(!hits.length) return null;
+  if(!filas || !filas.length) return null;
+  var k=svKey(f); if(!k) return null;
+  var pres=svPresentes(filas);
+  var hits=filas.filter(function(r){ return svCubre(r.especialidad, pres)[k]; });
   var ok=hits.filter(function(r){ return svSinTilde(r.situacion)==='contratado'; });
   if(!ok.length) return null;
   var quien=ok.map(function(r){ return r.contratista; }).filter(Boolean).filter(function(x,i,a){ return a.indexOf(x)===i; }).join(', ');
