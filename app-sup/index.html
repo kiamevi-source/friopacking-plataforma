@@ -10357,7 +10357,10 @@ function renderHitos() {
       const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
       const tag = esTitulo ? `<span class="rd-hito-tag gris">${h.costo>0?'Título':'Sin costo'} · no suma</span>` : '';
       const LIC_TXT = { pendiente:'Por licitar', en_licitacion:'En licitación', adjudicado:'Adjudicado', contratado:'Contratado', cancelado:'Licitación cancelada' };
-      const lic = h.lic ? `<span class="rd-hito-tag lic${h.adjudicado?' ok':''}">Servicio · ${LIC_TXT[h.lic_estado] || 'Por licitar'}</span>` : '';
+      const licTxt = h.ct ? ((h.ct.parcial ? 'Contratado en parte' : 'Contratado') + (h.ct.contratista ? ' · ' + esc(h.ct.contratista) : ''))
+                          : (LIC_TXT[h.lic_estado] || 'Por licitar');
+      const lic = h.lic ? `<span class="rd-hito-tag lic${(h.adjudicado||h.ct)?' ok':''}">Servicio · ${licTxt}</span>`
+                : (h.ct && h.ct.contratista ? `<span class="rd-hito-tag lic ok">Contrata · ${esc(h.ct.contratista)}</span>` : '');
       const precio = h.cu > 0 ? ` · <span class="rd-u-precio">${rdMoney(h.cu,2)}/${esc(h.unidad)}</span>` : '';
       const peso = (!esTitulo && h.costo > 0) ? ` · pesa ${rdMoney(h.costo)}` : '';
       return `<div class="rd-prog-card unid${esTitulo?' titulo':''}">
@@ -10430,16 +10433,81 @@ function rdHitoInput(i, val){
 let rdModoPartida = false, rdPartidaDisponible = false;
 function rdTogglePartida(on){ rdModoPartida = !!on; renderHitos(); if(typeof scheduleAutosave==='function') scheduleAutosave(); }
 function rdEsServicio(h){ return !!h.lic && !h.es_hito && !h.manual; }
+// ── Contratos de Servicios (portafolio_servicios, PMO) ↔ partidas (Kiara, 20-oct-2026) ──
+// Servicios guarda los contratos por obra + especialidad, no por partida. Si una partida no tiene
+// licitación, se busca ahí un contrato de su especialidad. Las obras civiles se separan por tipo
+// (movimiento de tierras, zapatas, muro, sanitarios, losa) porque se contratan por separado.
+var SV_ESP_RX={'Mecánica':/mec|electromec|eemm/,'Eléctrico':/electr/,'Montaje de equipos (EEMM)':/eemm|electromec|montaje/,'Aislamiento':/aisla/,
+  'Paneles y puertas':/panel|puerta/,'Lonas':/lona/,'Obras civiles':/oocc|civil|tierra|zapata|muro|losa|sanitar/,'Estructura metálica':/estructur/,
+  'HVAC':/hvac/,'Gasificado':/gasific/,'Rack':/rack/};
+function svSinTilde(t){ return String(t==null?'':t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(); }
+function svSubCivil(t){ t=svSinTilde(t);
+  if(/tierra|excav|relleno|afirmado/.test(t)) return 'tierras'; if(/zapata|cimiento/.test(t)) return 'zapatas';
+  if(/contencion/.test(t)) return 'muro'; if(/zocalo/.test(t)) return null;
+  if(/sanitar|agua|desag|inodoro|grifer|lavaman|urinario|drenaje|sumidero/.test(t)) return 'sanitarios'; if(/losa|loza/.test(t)) return 'losa'; return null; }
+function svEspDeFila(f){
+  var d=svSinTilde(f.descripcion), c=svSinTilde(f.capitulo), r=svSinTilde(f.rubro), p=svSinTilde(f.partida);
+  if(c.indexOf('hvac')>=0) return 'HVAC';
+  if(/gasificad/.test(c+' '+p+' '+d)) return 'Gasificado';
+  if(/rack/.test(d)||/rack pallet/.test(c)) return 'Rack';
+  if(/lona/.test(d)) return 'Lonas';
+  if(/aislamiento/.test(p)) return 'Aislamiento';
+  if(r.indexOf('obras civiles')===0) return 'Obras civiles';
+  if(r.indexOf('montaje de camaras')===0) return 'Paneles y puertas';
+  if(r.indexOf('instalacion electrica')===0) return 'Eléctrico';
+  if(r.indexOf('instalacion mecanica')===0) return p.indexOf('instalacion de equipo')===0?'Montaje de equipos (EEMM)':'Mecánica';
+  if(r.indexOf('estructuras metalicas')===0) return 'Estructura metálica';
+  return null;
+}
+// filas: lo que hay en Servicios para la obra · f: partida (descripcion, rubro, partida, capitulo)
+function svContratoDe(f, filas){
+  var esp=svEspDeFila(f); if(!esp || !filas || !filas.length) return null;
+  var sub = esp==='Obras civiles' ? (svSubCivil(f.partida)||svSubCivil(f.descripcion)) : null;
+  var hits=filas.filter(function(r){ var e=svSinTilde(r.especialidad);
+    if(!SV_ESP_RX[esp].test(e)) return false;
+    // civil: mismo tipo, o un contrato general de obras civiles; una tarea civil sin tipo solo toma el general
+    if(esp==='Obras civiles'){ var rs=svSubCivil(e); return !rs || (!!sub && rs===sub); }
+    return true; });
+  if(!hits.length) return null;
+  var ok=hits.filter(function(r){ return svSinTilde(r.situacion)==='contratado'; });
+  if(!ok.length) return null;
+  var quien=ok.map(function(r){ return r.contratista; }).filter(Boolean).filter(function(x,i,a){ return a.indexOf(x)===i; }).join(', ');
+  return { parcial: ok.length<hits.length, contratista: quien };
+}
+
 async function rdMarcarServiciosAdjudicados(){
   const serv = rdHitos.filter(h => rdEsServicio(h) && h.presupuesto_id);
-  if (!serv.length || typeof window._licEstadosDesdeGerencia !== 'function') return;
   let est = {};
-  try { est = await window._licEstadosDesdeGerencia(serv.map(h => h.presupuesto_id)) || {}; } catch(e){}
+  if (serv.length && typeof window._licEstadosDesdeGerencia === 'function'){
+    try { est = await window._licEstadosDesdeGerencia(serv.map(h => h.presupuesto_id)) || {}; } catch(e){}
+  }
   serv.forEach(h => {
     const g = est[h.presupuesto_id];
     h.lic_estado = g ? g.estado : null;
     h.adjudicado = !!g && (g.estado === 'adjudicado' || g.estado === 'contratado');
   });
+  // Sin licitación en el sistema: se busca el contrato en Servicios por la especialidad de la partida.
+  // Vale para servicios Y para tareas medidas por metrado que igual se contrataron (p. ej. movimiento de tierras).
+  const sinLic = rdHitos.filter(h => h.presupuesto_id && !h.lic_estado && !h.es_hito);
+  if (!sinLic.length || !currentProyecto) return;
+  try {
+    const cod = currentProyecto.cod || '';
+    const ids = sinLic.map(h => h.presupuesto_id).join(',');
+    const [filas, lic, pres] = await Promise.all([
+      pmoDbFetch('/rest/v1/portafolio_servicios?select=especialidad,situacion,contratista&cod_proyecto=eq.' + encodeURIComponent(cod)),
+      sbFetch('/rest/v1/v_partidas_licitables?select=presupuesto_id,descripcion,rubro,partida,capitulo&presupuesto_id=in.(' + ids + ')').catch(() => []),
+      sbFetch('/rest/v1/presupuestos?select=id,descripcion,subcategoria&id=in.(' + ids + ')').catch(() => [])
+    ]);
+    if (!(filas||[]).length) return;
+    const byId = {};
+    (pres||[]).forEach(f => { byId[f.id] = { descripcion: f.descripcion, rubro: f.subcategoria }; });
+    (lic||[]).forEach(f => { byId[f.presupuesto_id] = f; });   // la vista trae partida y capítulo: más precisa
+    sinLic.forEach(h => {
+      const f = byId[h.presupuesto_id]; if (!f) return;
+      const c = svContratoDe(f, filas);
+      if (c){ h.ct = c; if (rdEsServicio(h)) h.adjudicado = !c.parcial; }
+    });
+  } catch(e) { /* sin Servicios: queda «Por licitar» */ }
 }
 // % con el que la tarea entra al cálculo: el servicio, por adjudicación; el resto, por lo reportado.
 function rdPctCalc(h, campo){ return Math.min(100, h[campo]||0); }

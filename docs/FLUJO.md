@@ -200,6 +200,13 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   archivo al expediente (`lic-expediente`) con la acción `subir` de siempre; y
   avisa las partidas por licitar que empiezan en el cronograma en ≤ 15 días
   (`v_gantt_supervisor`).
+- **Servicios como fuente de contratos ya firmados (20 de octubre de 2026).**
+  Si una partida no tiene licitación en el sistema, app-sup (pestaña
+  Licitaciones y etiquetas del reporte diario) busca en
+  `PMO.portafolio_servicios` («Contratado») un contrato de su obra y
+  especialidad: «Contratada · X» o «Contratada en parte» (lotes 1/2). Las
+  obras civiles se separan por tipo (tierras, zapatas, muro de contención,
+  sanitarios, losa). Solo lectura: no copia nada a `lic_*`.
 - **Adjudicar crea la contrata en Servicios (20 de octubre de 2026).** Trigger
   `trg_lic_adjudicacion_a_servicios` en `PMO.lic_adjudicaciones` (AFTER INSERT):
   completa la fila de `portafolio_servicios` de esa obra + especialidad que no

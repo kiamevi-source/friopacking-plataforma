@@ -142,6 +142,7 @@ async function cargar(){
   $('#app').innerHTML='<div class="empty">Cargando licitaciones de '+esc(S.nombre||S.cod)+'…</div>';
   var r=await Promise.all([api('listar',{cod_proyecto:S.cod}), api('partidas_licitables',{cod_proyecto:S.cod})]);
   S.lics=r[0]; S.filas=r[1]; S.marc={};
+  S.serv=[]; try{ var sv=await pmo.from('portafolio_servicios').select('especialidad,situacion,contratista').eq('cod_proyecto',S.cod); S.serv=sv.data||[]; }catch(e){}
   // fechas de inicio del cronograma por partida, para avisar qué hay que licitar ya
   S.ini={};
   try{ if(parent && parent.sbFetch){
@@ -154,16 +155,19 @@ function pintarLista(){
   var app=$('#app');
   S.rubrosE=agrupar(S.filas||[], null);
   var marcadas=[]; S.rubrosE.forEach(function(R){ R.items.forEach(function(it){ if(S.marc[it.key]) marcadas.push(it); }); });
-  var cnt={}, urg=[]; S.rubrosE.forEach(function(R){ R.items.forEach(function(it){ var t=estadoPartida(it.en).t; cnt[t]=(cnt[t]||0)+1; var d=diasInicio(it); it._dias=d; if(!it.en && d!==null && d<=URGENTE) urg.push(it); }); });
+  var cnt={}, urg=[]; S.rubrosE.forEach(function(R){ R.items.forEach(function(it){
+    it._ct = it.en ? null : svContratoDe(it.f, S.serv);          // contrato ya registrado en Servicios
+    it._bloq = !!it.en || !!(it._ct && !it._ct.parcial);
+    var t=estadoPartida(it.en, it).t; cnt[t]=(cnt[t]||0)+1; var d=diasInicio(it); it._dias=d; if(!it._bloq && d!==null && d<=URGENTE) urg.push(it); }); });
   app.innerHTML='<div class="head"><div><div class="h1">Licitaciones · '+esc(S.nombre||S.cod)+'</div><div class="sub">Marca las partidas y presiona «Licitar». Cada partida muestra en qué va su licitación.</div></div>'+
       '<div style="display:flex;gap:8px">'+(S.obras.length>1?'<button class="btn" id="otra">Cambiar obra</button>':'')+'</div></div>'+
     (urg.length?'<div class="urg"><span><b>'+urg.length+' partida'+(urg.length===1?'':'s')+' por licitar</b> empieza'+(urg.length===1?'':'n')+' en el cronograma en menos de '+URGENTE+' días.</span><button class="btn sm" id="marcar-urg">Marcarlas</button></div>':'')+
     '<div class="card"><h3>Partidas</h3><div class="hint">'+Object.keys(cnt).map(function(k){ return cnt[k]+' '+k.toLowerCase(); }).join(' · ')+'</div>'+
     (S.rubrosE.length? '<div class="lista alta">'+S.rubrosE.map(function(R,ri){
-        var libres=R.items.filter(function(it){ return !it.en; });
+        var libres=R.items.filter(function(it){ return !it._bloq; });
         return '<div class="rubro"><input type="checkbox" data-erub="'+ri+'"'+(libres.length&&libres.every(function(it){ return S.marc[it.key]; })?' checked':'')+(libres.length?'':' disabled')+'><span class="t">'+esc(R.nombre)+'</span><small>'+R.items.length+' líneas</small></div>'+
-          R.items.map(function(it,ii){ var st=estadoPartida(it.en);
-            return '<label class="it'+(it.en?' lnk':'')+'"'+(it.en?' data-ver="'+esc(it.en.id)+'"':'')+'><input type="checkbox" data-eit="'+ri+'-'+ii+'"'+(S.marc[it.key]?' checked':'')+(it.en?' disabled':'')+'><span class="c">'+esc(it.codigo)+'</span><span class="d">'+esc(it.descripcion)+(it.ids.length>1?' <span class="tag">'+it.ids.length+' ítems</span>':'')+'</span><span class="q">'+Number(Math.round(it.cantidad*100)/100).toLocaleString('es-PE')+' '+esc(it.unidad||'')+'</span>'+(!it.en && it._dias!==null && it._dias<=URGENTE?'<span class="pill p-urg st">'+(it._dias<0?'Debió empezar hace '+(-it._dias)+' d':'Empieza en '+it._dias+' d')+'</span>':'')+'<span class="pill '+st.c+' st">'+esc(st.t)+(it.en?' · '+esc(it.en.codigo):'')+'</span></label>'; }).join('');
+          R.items.map(function(it,ii){ var st=estadoPartida(it.en, it);
+            return '<label class="it'+(it.en?' lnk':'')+'"'+(it.en?' data-ver="'+esc(it.en.id)+'"':'')+'><input type="checkbox" data-eit="'+ri+'-'+ii+'"'+(S.marc[it.key]?' checked':'')+(it._bloq?' disabled':'')+'><span class="c">'+esc(it.codigo)+'</span><span class="d">'+esc(it.descripcion)+(it.ids.length>1?' <span class="tag">'+it.ids.length+' ítems</span>':'')+'</span><span class="q">'+Number(Math.round(it.cantidad*100)/100).toLocaleString('es-PE')+' '+esc(it.unidad||'')+'</span>'+(!it._bloq && it._dias!==null && it._dias<=URGENTE?'<span class="pill p-urg st">'+(it._dias<0?'Debió empezar hace '+(-it._dias)+' d':'Empieza en '+it._dias+' d')+'</span>':'')+'<span class="pill '+st.c+' st">'+esc(st.t)+(it.en?' · '+esc(it.en.codigo):(it._ct&&it._ct.contratista?' · '+esc(it._ct.contratista):''))+'</span></label>'; }).join('');
       }).join('')+'</div>' : '<div class="empty" style="border:0">Esta obra no tiene partidas licitables en el presupuesto.</div>')+
     '</div>'+
     (marcadas.length?'<div class="bar"><span style="align-self:center;font-size:13px;color:var(--t2)">'+marcadas.length+' partida'+(marcadas.length===1?'':'s')+' marcada'+(marcadas.length===1?'':'s')+'</span><button class="btn pri" id="licitar">Licitar</button></div>':'')+
@@ -175,12 +179,54 @@ function pintarLista(){
         '</div>'+pill(L.estado)+'</div>';
     }).join('') : '<div class="empty">Aún no hay licitaciones en esta obra. Marca partidas arriba y presiona «Licitar».</div>');
   document.querySelectorAll('[data-eit]').forEach(function(cb){ cb.onchange=function(){ var p=cb.dataset.eit.split('-'); var it=S.rubrosE[p[0]].items[p[1]]; if(cb.checked) S.marc[it.key]=true; else delete S.marc[it.key]; pintarLista(); }; });
-  document.querySelectorAll('[data-erub]').forEach(function(cb){ cb.onchange=function(){ S.rubrosE[cb.dataset.erub].items.forEach(function(it){ if(it.en) return; if(cb.checked) S.marc[it.key]=true; else delete S.marc[it.key]; }); pintarLista(); }; });
+  document.querySelectorAll('[data-erub]').forEach(function(cb){ cb.onchange=function(){ S.rubrosE[cb.dataset.erub].items.forEach(function(it){ if(it._bloq) return; if(cb.checked) S.marc[it.key]=true; else delete S.marc[it.key]; }); pintarLista(); }; });
   document.querySelectorAll('[data-ver]').forEach(function(el){ el.onclick=function(e){ e.preventDefault(); var L=S.lics.find(function(x){ return x.id===el.dataset.ver; }); if(L) abrir(L); }; });
   var lb=$('#licitar'); if(lb) lb.onclick=function(){ abrir(null, Object.keys(S.marc)); };
   var mu=$('#marcar-urg'); if(mu) mu.onclick=function(){ urg.forEach(function(it){ S.marc[it.key]=true; }); pintarLista(); };
   var o=$('#otra'); if(o) o.onclick=function(){ S.cod=''; boot(); };
   document.querySelectorAll('[data-lic]').forEach(function(el){ el.onclick=function(){ abrir(S.lics.find(function(x){ return x.id===el.dataset.lic; })); }; });
+}
+
+// ── Contratos de Servicios (portafolio_servicios, PMO) ↔ partidas (Kiara, 20-oct-2026) ──
+// Servicios guarda los contratos por obra + especialidad, no por partida. Si una partida no tiene
+// licitación, se busca ahí un contrato de su especialidad. Las obras civiles se separan por tipo
+// (movimiento de tierras, zapatas, muro, sanitarios, losa) porque se contratan por separado.
+var SV_ESP_RX={'Mecánica':/mec|electromec|eemm/,'Eléctrico':/electr/,'Montaje de equipos (EEMM)':/eemm|electromec|montaje/,'Aislamiento':/aisla/,
+  'Paneles y puertas':/panel|puerta/,'Lonas':/lona/,'Obras civiles':/oocc|civil|tierra|zapata|muro|losa|sanitar/,'Estructura metálica':/estructur/,
+  'HVAC':/hvac/,'Gasificado':/gasific/,'Rack':/rack/};
+function svSinTilde(t){ return String(t==null?'':t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(); }
+function svSubCivil(t){ t=svSinTilde(t);
+  if(/tierra|excav|relleno|afirmado/.test(t)) return 'tierras'; if(/zapata|cimiento/.test(t)) return 'zapatas';
+  if(/contencion/.test(t)) return 'muro'; if(/zocalo/.test(t)) return null;
+  if(/sanitar|agua|desag|inodoro|grifer|lavaman|urinario|drenaje|sumidero/.test(t)) return 'sanitarios'; if(/losa|loza/.test(t)) return 'losa'; return null; }
+function svEspDeFila(f){
+  var d=svSinTilde(f.descripcion), c=svSinTilde(f.capitulo), r=svSinTilde(f.rubro), p=svSinTilde(f.partida);
+  if(c.indexOf('hvac')>=0) return 'HVAC';
+  if(/gasificad/.test(c+' '+p+' '+d)) return 'Gasificado';
+  if(/rack/.test(d)||/rack pallet/.test(c)) return 'Rack';
+  if(/lona/.test(d)) return 'Lonas';
+  if(/aislamiento/.test(p)) return 'Aislamiento';
+  if(r.indexOf('obras civiles')===0) return 'Obras civiles';
+  if(r.indexOf('montaje de camaras')===0) return 'Paneles y puertas';
+  if(r.indexOf('instalacion electrica')===0) return 'Eléctrico';
+  if(r.indexOf('instalacion mecanica')===0) return p.indexOf('instalacion de equipo')===0?'Montaje de equipos (EEMM)':'Mecánica';
+  if(r.indexOf('estructuras metalicas')===0) return 'Estructura metálica';
+  return null;
+}
+// filas: lo que hay en Servicios para la obra · f: partida (descripcion, rubro, partida, capitulo)
+function svContratoDe(f, filas){
+  var esp=svEspDeFila(f); if(!esp || !filas || !filas.length) return null;
+  var sub = esp==='Obras civiles' ? (svSubCivil(f.partida)||svSubCivil(f.descripcion)) : null;
+  var hits=filas.filter(function(r){ var e=svSinTilde(r.especialidad);
+    if(!SV_ESP_RX[esp].test(e)) return false;
+    // civil: mismo tipo, o un contrato general de obras civiles; una tarea civil sin tipo solo toma el general
+    if(esp==='Obras civiles'){ var rs=svSubCivil(e); return !rs || (!!sub && rs===sub); }
+    return true; });
+  if(!hits.length) return null;
+  var ok=hits.filter(function(r){ return svSinTilde(r.situacion)==='contratado'; });
+  if(!ok.length) return null;
+  var quien=ok.map(function(r){ return r.contratista; }).filter(Boolean).filter(function(x,i,a){ return a.indexOf(x)===i; }).join(', ');
+  return { parcial: ok.length<hits.length, contratista: quien };
 }
 
 var ESPS=['Mecánica','Eléctrico','Montaje de equipos (EEMM)','Aislamiento','Paneles y puertas','Lonas','Obras civiles','Estructura metálica','HVAC','Gasificado','Rack'];
@@ -205,7 +251,7 @@ function agrupar(filas, curId){
   filas.forEach(function(f){
     var r=f.rubro||'Sin rubro'; if(!byR[r]){ byR[r]={ g:{}, k:[] }; rubros.push(r); }
     var k=nn(f.descripcion)+'|'+nn(f.unidad); var g=byR[r].g[k];
-    if(!g){ g=byR[r].g[k]={ key:r+'||'+k, rubro:r, esp:espDeFila(f), codigo:f.item, descripcion:f.descripcion, unidad:f.unidad, cantidad:0, costo:0, ids:[], en:null }; byR[r].k.push(k); }
+    if(!g){ g=byR[r].g[k]={ key:r+'||'+k, rubro:r, esp:espDeFila(f), codigo:f.item, descripcion:f.descripcion, unidad:f.unidad, cantidad:0, costo:0, ids:[], en:null, f:f }; byR[r].k.push(k); }
     g.cantidad+=Number(f.cantidad||1)||1; g.costo+=Number(f.mano_obra_costo||0); g.ids.push(Number(f.presupuesto_id));
     if(f.licitacion && f.licitacion.id!==curId) g.en=f.licitacion;
   });
@@ -220,8 +266,8 @@ function diasInicio(it){
   return Math.round((new Date(f+'T12:00:00')-h)/86400000);
 }
 var URGENTE=15;
-function estadoPartida(en){
-  if(!en) return { t:'Por licitar', c:'p-borr' };
+function estadoPartida(en, it){
+  if(!en){ if(it && it._ct) return { t: it._ct.parcial?'Contratada en parte':'Contratada', c:'p-ok' }; return { t:'Por licitar', c:'p-borr' }; }
   var L=(S.lics||[]).find(function(x){ return x.id===en.id; });
   var inv=L&&(L.invitados||[]).some(function(v){ return v.estado && v.estado!=='Sugerido'; });
   var e=en.estado;
