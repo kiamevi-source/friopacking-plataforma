@@ -19726,6 +19726,7 @@ function _ensureTabsBar(){
     {mv:'lecciones',label:'Lecciones',     ic:'◓'},
     {mv:'equipos',  label:'Equipos',       ic:'◧'},
     {mv:'contratas',label:'Contratas',     ic:'◑'},
+    {mv:'partidas', label:'Partidas',      ic:'▤'},
     {mv:'comments', label:'Comentarios',   ic:'◌'},
   ];
 
@@ -19764,6 +19765,168 @@ function _resolveProject(){
   return p || null;
 }
 
+/* ─── Partidas · lo mismo que ve el supervisor (Kiara, 20-oct-2026) ───
+   Cronograma de NISIRA de la obra (Supervisor.v_gantt_supervisor): unidad, ejecutado, costo de cada
+   partida y el avance ponderado por costo; y la contrata de cada partida: asignada por el supervisor
+   (v_partida_contratista), en licitación (lic_*), o sugerida por Servicios (portafolio_servicios). */
+(function(){
+// ── Contratos de Servicios (portafolio_servicios, PMO) ↔ partidas (Kiara, 20-oct-2026) ──
+// Servicios guarda los contratos por obra + especialidad, no por partida. Si una partida no tiene
+// licitación, se busca ahí el contrato que la cubre. Misma regla del cruce revisado con Kiara:
+// la especialidad de la partida sale de NISIRA (capítulo > rubro > partida); «EEMM» = montaje de
+// equipos y «Mecánica» = tuberías y puesta en marcha (si la obra no tiene EEMM aparte, Mecánica
+// cubre también los equipos); «Instalación electromecánica» = mecánica + eléctrico (+ equipos y
+// aislamiento si no se contrataron aparte); obras civiles por tipo; lotes «1/2» = mismo contrato partido.
+function svSinTilde(t){ return String(t==null?'':t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim(); }
+function svSubCivil(t){ t=svSinTilde(t);
+  if(/tierra|excav|relleno|afirmado|subrasante|sub rasante|subbase|sub base/.test(t)) return 'tierras';
+  if(/zapata|cimiento/.test(t)) return 'zapatas';
+  if(/contencion/.test(t)) return 'muro';
+  if(/zocalo/.test(t)) return null;
+  if(/sanitar|agua|desag|inodoro|grifer|lavaman|urinario|drenaje|sumidero/.test(t)) return 'sanitarios';
+  if(/losa|loza/.test(t)) return 'losa';
+  return null; }
+// Clave de especialidad de una partida: f = { descripcion, rubro, partida, capitulo }
+function svKey(f){
+  var d=svSinTilde(f.descripcion), c=svSinTilde(f.capitulo), r=svSinTilde(f.rubro), p=svSinTilde(f.partida);
+  if(c.indexOf('hvac')>=0) return 'hvac';
+  var civil=/movimiento de tierra|afirmado|concreto|losa|loza|resane|demolici|zapata|muro de contencion/.test(d);
+  if(r.indexOf('obras civiles')===0 || (civil && r.indexOf('instalacion electrica')!==0 && r.indexOf('instalacion mecanica')!==0)){
+    var sub=svSubCivil(p)||svSubCivil(d); return sub?'oocc_'+sub:'oocc'; }
+  if(/gasificad/.test(c+' '+p+' '+d)) return 'gasificado';
+  if(/rack/.test(d) || /rack pallet/.test(c)) return 'rack';
+  if(/lona/.test(d)) return 'lonas';
+  if(/seccionamiento/.test(d)) return 'seccionamiento';
+  if(/reubic/.test(d)) return 'reubicacion';
+  if(/aislamiento/.test(p)) return /piso/.test(d)?'aislamiento_piso':'aislamiento';
+  if(/piso/.test(d) && /aislam/.test(d)) return 'aislamiento_piso';
+  if(r.indexOf('montaje de camaras')===0) return 'paneles';
+  if(r.indexOf('instalacion electrica')===0) return 'electrico';
+  if(r.indexOf('instalacion mecanica')===0) return p.indexOf('instalacion de equipo')===0?'equipos':'mecanica';
+  if(r.indexOf('estructuras metalicas')===0) return 'estructura';
+  return null;
+}
+function svEspNorm(e){ return svSinTilde(e).replace(/\s+\d+$/,''); }
+// Qué claves cubre un contrato de Servicios, sabiendo qué más se contrató aparte en la obra
+function svCubre(esp, pres){
+  var e=svEspNorm(esp), s={};
+  function add(){ for(var i=0;i<arguments.length;i++) s[arguments[i]]=1; }
+  if(e==='aislamiento') add('aislamiento');
+  else if(e==='aislamiento de piso') add('aislamiento_piso');
+  else if(e==='lonas'||e==='lona') add('lonas');
+  else if(e==='paneles') add('paneles');
+  else if(e==='electrico') add('electrico');
+  else if(e==='mecanica'||e==='mecanico'){ add('mecanica'); if(!pres.eemm) add('equipos'); }
+  else if(e==='eemm'||e==='montaje de eemm') add('equipos');
+  else if(e.indexOf('electromecanica')>=0 || e==='mecanica y electrico'){ add('mecanica','electrico'); if(!pres.eemm) add('equipos'); if(!pres.aisl) add('aislamiento'); }
+  else if(e==='hvac') add('hvac');
+  else if(e.indexOf('gasificado')>=0) add('gasificado');
+  else if(e.indexOf('rack')>=0) add('rack');
+  else if(e.indexOf('reubicacion')>=0) add('reubicacion');
+  else if(e==='seccionamiento') add('seccionamiento');
+  else if(e==='oocc'||e==='obras civiles') add('oocc','oocc_tierras','oocc_zapatas','oocc_muro','oocc_sanitarios','oocc_losa');
+  else if(e==='movimiento de tierras') add('oocc_tierras');
+  else if(e==='zapatas') add('oocc_zapatas');
+  else if(e==='muro de contencion') add('oocc_muro');
+  else if(e==='sanitarios') add('oocc_sanitarios');
+  else if(e==='losa') add('oocc_losa');
+  return s;
+}
+function svPresentes(filas){
+  var es=(filas||[]).map(function(r){ return svEspNorm(r.especialidad); });
+  return { eemm: es.some(function(e){ return e==='eemm'||e==='montaje de eemm'; }), aisl: es.indexOf('aislamiento')>=0 };
+}
+// filas: contratos de Servicios de la obra · f: partida → { parcial, contratista } o null
+function svContratoDe(f, filas){
+  if(!filas || !filas.length) return null;
+  var k=svKey(f); if(!k) return null;
+  var pres=svPresentes(filas);
+  var hits=filas.filter(function(r){ return svCubre(r.especialidad, pres)[k]; });
+  var ok=hits.filter(function(r){ return svSinTilde(r.situacion)==='contratado'; });
+  if(!ok.length) return null;
+  var quien=ok.map(function(r){ return r.contratista; }).filter(Boolean).filter(function(x,i,a){ return a.indexOf(x)===i; }).join(', ');
+  return { parcial: ok.length<hits.length, contratista: quien };
+}
+
+  var SUPU='https://iiceeajjmugtuzcfqggs.supabase.co', SUPK=_PREP_SUP_KEY;
+  function supGet(q){ return fetch(SUPU+'/rest/v1/'+q,{headers:{apikey:SUPK,Authorization:'Bearer '+SUPK}}).then(function(r){ return r.ok?r.json():[]; }).catch(function(){ return []; }); }
+  function pmoGet(q){ return fetch(_SB_URL+'/rest/v1/'+q,{headers:{apikey:_SB_KEY,Authorization:'Bearer '+_SB_KEY}}).then(function(r){ return r.ok?r.json():[]; }).catch(function(){ return []; }); }
+  function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function usd(v,d){ return '$'+Number(v||0).toLocaleString('en-US',{minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
+  function num(v){ return Number(v||0).toLocaleString('en-US',{maximumFractionDigits:2}); }
+  var LIC={'Borrador':'En borrador','Observada':'En borrador','Por aprobar':'Enviada','Preparación':'Enviada','Publicada':'Invitadas','Invitaciones':'Invitadas','Ofertas':'En evaluación','Evaluación':'En evaluación','Negociación':'En evaluación','Adjudicación':'Adjudicada','Contratada':'Adjudicada','Cerrada':'Adjudicada'};
+  W.renderModalPartidas = async function(p){
+    var body=document.getElementById('modal-body'); if(!body) return;
+    var cod=p._cod||'';
+    if(!cod){ body.innerHTML='<div style="padding:28px;color:#64748b">Esta obra no tiene código NISIRA.</div>'; return; }
+    body.innerHTML='<div style="padding:28px;color:#64748b">Cargando partidas…</div>';
+    var pr=await pmoGet('proyectos?cod_proyecto=eq.'+encodeURIComponent(cod)+'&select=codigos&limit=1');
+    var cods=[cod]; ((pr[0]&&pr[0].codigos)||[]).forEach(function(c){ if(c&&c.codigo&&cods.indexOf(c.codigo)<0) cods.push(c.codigo); });
+    var inCods='in.('+cods.map(function(c){ return '"'+c+'"'; }).join(',')+')';
+    var r=await Promise.all([
+      supGet('v_gantt_supervisor?cod_proyecto='+encodeURIComponent(inCods)+'&presupuesto_id=not.is.null&select=cod_proyecto,partida_item,nombre_tarea,unidad,cantidad_total,cantidad_ejecutada,pct_avance,costo_total,costo_unit,es_licitacion,es_hito,presupuesto_id&order=cod_proyecto,orden'),
+      supGet('v_partida_contratista?cod_proyecto='+encodeURIComponent(inCods)+'&select=presupuesto_id,contratista'),
+      pmoGet('portafolio_servicios?cod_proyecto='+encodeURIComponent(inCods)+'&select=cod_proyecto,especialidad,situacion,contratista')
+    ]);
+    var tareas=(r[0]||[]).filter(function(t){ return !t.es_hito && Number(t.costo_total)>0; });
+    if(!tareas.length){ body.innerHTML='<div style="padding:28px;color:#64748b">Esta obra no tiene cronograma con costos de NISIRA.</div>'; return; }
+    var asig={}; (r[1]||[]).forEach(function(x){ asig[Number(x.presupuesto_id)]=x.contratista; });
+    var ids=tareas.map(function(t){ return t.presupuesto_id; }).join(',');
+    var r2=await Promise.all([
+      supGet('v_partidas_licitables?presupuesto_id=in.('+ids+')&select=presupuesto_id,descripcion,rubro,partida,capitulo'),
+      supGet('presupuestos?id=in.('+ids+')&select=id,descripcion,subcategoria'),
+      pmoGet('lic_partidas?select=licitacion_id,origen_presupuesto_id,origen_presupuesto_ids&or=(origen_presupuesto_id.in.('+ids+'),origen_presupuesto_ids.ov.{'+ids+'})')
+    ]);
+    var meta={}; (r2[1]||[]).forEach(function(f){ meta[f.id]={ descripcion:f.descripcion, rubro:f.subcategoria }; }); (r2[0]||[]).forEach(function(f){ meta[f.presupuesto_id]=f; });
+    var licPor={}, licIds=[]; (r2[2]||[]).forEach(function(x){ [x.origen_presupuesto_id].concat(x.origen_presupuesto_ids||[]).forEach(function(id){ if(id){ licPor[Number(id)]=x.licitacion_id; } }); if(licIds.indexOf(x.licitacion_id)<0) licIds.push(x.licitacion_id); });
+    var lics={}; if(licIds.length){ (await pmoGet('lic_licitaciones?id=in.('+licIds.join(',')+')&select=id,codigo,estado')).forEach(function(L){ lics[L.id]=L; }); }
+    var servPor={}; (r[2]||[]).forEach(function(x){ (servPor[x.cod_proyecto]=servPor[x.cod_proyecto]||[]).push(x); });
+    var filasTodas=tareas.map(function(t){
+      var c=Number(t.costo_total)||0, T=Number(t.cantidad_total)||0, q=Number(t.cantidad_ejecutada)||0, pc=Number(t.pct_avance)||0;
+      var enU=!!t.unidad && T>0, ej=enU?((q>0||pc<=0)?q:T*pc/100):null;
+      var pct=Math.min(100, enU?(ej/T*100):pc);
+      var est, cls, quien='';
+      var a=asig[Number(t.presupuesto_id)], L=lics[licPor[Number(t.presupuesto_id)]];
+      if(L && L.estado!=='Desierta' && L.estado!=='Cancelada'){ est=(LIC[L.estado]||L.estado)+' · '+L.codigo; cls=/Adjudicada/.test(est)?'ok':'cur'; }
+      else if(a && a!=='(ninguna)'){ est='Contratada'; quien=a; cls='ok'; }
+      else { var sg=(a==='(ninguna)')?null:svContratoDe(meta[t.presupuesto_id]||{descripcion:t.nombre_tarea}, servPor[t.cod_proyecto]||[]);
+        if(sg){ est=sg.parcial?'Sugerida en parte':'Sugerida'; quien=sg.contratista; cls='sug'; }
+        else if(t.es_licitacion){ est='Por licitar'; cls='no'; } else { est='—'; cls='none'; } }
+      return { t:t, c:c, pct:pct, ej:ej, T:T, est:est, cls:cls, quien:quien };
+    });
+    // Cada código (obra y adicionales) se reporta por separado en el diario: se ve uno a la vez.
+    var codsCon=cods.filter(function(c){ return filasTodas.some(function(f){ return f.t.cod_proyecto===c; }); });
+    var curCod=(W._partidasCod && codsCon.indexOf(W._partidasCod)>=0) ? W._partidasCod : codsCon[0];
+    var filas=filasTodas.filter(function(f){ return f.t.cod_proyecto===curCod; });
+    var tot=0, av=0, cnt={c:0,s:0,l:0,p:0};
+    filas.forEach(function(f){ tot+=f.c; av+=f.c*f.pct/100;
+      if(f.cls==='ok') cnt.c++; else if(f.cls==='cur') cnt.l++; else if(f.cls==='sug') cnt.s++; else if(f.cls==='no') cnt.p++; });
+    var pctObra=tot>0?av/tot*100:0;
+    var CL={ok:'background:#dcfce7;color:#166534',cur:'background:#dbeafe;color:#1d4ed8',sug:'background:#fef3c7;color:#92400e',no:'background:#f1f5f9;color:#475569',none:'color:#94a3b8'};
+    var k=function(l,v,s){ return '<div style="flex:1;min-width:150px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px"><div style="font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#64748b">'+l+'</div><div style="font-size:21px;font-weight:900;color:#081860;margin-top:3px">'+v+'</div>'+(s?'<div style="font-size:11.5px;color:#64748b">'+s+'</div>':'')+'</div>'; };
+    body.innerHTML='<div style="padding:18px 20px">'+
+      '<div style="font-size:12.5px;color:#475569;margin-bottom:12px">Lo mismo que ve el supervisor: cada partida pesa lo que cuesta en NISIRA. La contrata es la que asignó el supervisor; «Sugerida» sale de Servicios y falta confirmarla.</div>'+
+      (codsCon.length>1?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'+codsCon.map(function(c){ return '<button data-pcod="'+esc(c)+'" style="border:1px solid '+(c===curCod?'#081860':'#cbd5e1')+';background:'+(c===curCod?'#081860':'#fff')+';color:'+(c===curCod?'#fff':'#334155')+';border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">'+esc(c)+(c===cod?' · obra':' · adicional')+'</button>'; }).join('')+'</div>':'')+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">'+
+        k('Avance por costo', pctObra.toFixed(1)+'%', 'según lo reportado en obra')+
+        k('Avanzado', usd(av), 'de '+usd(tot))+
+        k('Por avanzar', usd(tot-av), '')+
+        k('Contratas', cnt.c+' contratadas', cnt.s+' sugeridas · '+cnt.l+' en licitación · '+cnt.p+' por licitar')+
+      '</div>'+
+      '<div style="overflow:auto;border:1px solid #e2e8f0;border-radius:12px"><table style="width:100%;border-collapse:collapse;font-size:12.5px">'+
+      '<thead><tr style="background:#081860;color:#fff;text-align:left"><th style="padding:8px 10px">Partida</th><th style="padding:8px 10px;text-align:right">Ejecutado / total</th><th style="padding:8px 10px;text-align:right">Avance</th><th style="padding:8px 10px;text-align:right">Costo</th><th style="padding:8px 10px">Contrata</th></tr></thead><tbody>'+
+      filas.map(function(f){ var t=f.t;
+        return '<tr style="border-top:1px solid #f1f5f9">'+
+          '<td style="padding:7px 10px"><div style="font-weight:700;color:#0f172a">'+esc(t.nombre_tarea)+'</div><div style="font-size:11px;color:#94a3b8">'+esc(t.partida_item||'')+(t.costo_unit?' · '+usd(t.costo_unit,2)+'/'+esc(t.unidad||''):'')+'</div></td>'+
+          '<td style="padding:7px 10px;text-align:right;white-space:nowrap">'+(f.ej!=null?num(f.ej)+' / '+num(f.T)+' '+esc(t.unidad||''):'—')+'</td>'+
+          '<td style="padding:7px 10px;text-align:right;font-weight:800">'+f.pct.toFixed(0)+'%</td>'+
+          '<td style="padding:7px 10px;text-align:right;white-space:nowrap">'+usd(f.c)+'</td>'+
+          '<td style="padding:7px 10px"><span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;'+CL[f.cls]+'">'+esc(f.est)+(f.quien?' · '+esc(f.quien):'')+'</span></td></tr>'; }).join('')+
+      '</tbody></table></div></div>';
+    body.querySelectorAll('[data-pcod]').forEach(function(b){ b.onclick=function(){ W._partidasCod=b.dataset.pcod; W.renderModalPartidas(p); }; });
+  };
+})();
+
 /* ─── 2. Tab dispatcher (handles new tabs + fallback to legacy) ─── */
 W.renderModalView = function(){
   _ensureTabsBar();
@@ -19784,6 +19947,7 @@ W.renderModalView = function(){
     if(mv === 'fin')     return renderFin(p);
     if(mv === 'equipos' && typeof W.renderModalEquipos === 'function') return W.renderModalEquipos(p);
     if(mv === 'contratas') return _renderContratas(p);
+    if(mv === 'partidas') return W.renderModalPartidas(p);
     // Fallback for legacy tabs (vault, lecciones, comments): render placeholder
     _renderPlaceholder(p, mv);
   } catch(err){

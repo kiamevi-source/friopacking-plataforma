@@ -218,6 +218,13 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   puede hacer varias especialidades. `contratista = '(ninguna)'` = «no está
   contratada» (quita la sugerencia y deja la partida por licitar). Las
   sugerencias se muestran como «Sugerida» y no cuentan como adjudicadas.
+- **Gerencia ve lo mismo que el supervisor: pestaña «Partidas» (20 de octubre de 2026).**
+  En la ficha de la obra (`index.legacy.html`, `W.renderModalPartidas`) se lee de
+  Supervisor con llave pública `v_gantt_supervisor` (unidad, ejecutado, costo),
+  `v_partida_contratista` (vista de solo lectura de la asignación) y
+  `v_partidas_licitables`/`presupuestos`; de PMO `portafolio_servicios` y `lic_*`.
+  Avance ponderado por costo y contrata por partida (Contratada / en licitación /
+  Sugerida / Por licitar), un código a la vez (obra y adicionales por separado).
 - **Adjudicar crea la contrata en Servicios (20 de octubre de 2026).** Trigger
   `trg_lic_adjudicacion_a_servicios` en `PMO.lic_adjudicaciones` (AFTER INSERT):
   completa la fila de `portafolio_servicios` de esa obra + especialidad que no
