@@ -3309,6 +3309,26 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 .rd-prog-pct{display:flex;align-items:center;justify-content:flex-end;gap:4px;}
 .rd-prog-inp{width:56px;padding:6px;border:1px solid var(--border-strong);border-radius:8px;font-size:13px;font-weight:800;
   text-align:center;color:var(--navy-800);}
+/* Avance en unidades + $ avanzados (regla por costo, 20-oct-2026) */
+.rd-prog-card.unid{grid-template-columns:1fr 130px 150px;}
+.rd-u-in{gap:6px;}
+.rd-u-in label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);}
+.rd-u-in .rd-prog-inp{width:72px;}
+.rd-u-in span{font-size:11px;font-weight:700;color:var(--text-3);min-width:24px;}
+.rd-u-precio{font-size:10px;color:var(--text-3);font-weight:600;}
+.rd-hito-tag.lic{background:#fef3c7;color:#92400e;}
+.rd-hito-tag.lic.ok{background:#dcfce7;color:#166534;}
+@media(max-width:640px){.rd-prog-card.unid{grid-template-columns:1fr;}.rd-u-in{justify-content:flex-start;}}
+.rd-partida{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;margin-bottom:12px;border:1px solid #fcd34d;background:#fffbeb;border-radius:10px;font-size:12px;color:#78350f;cursor:pointer;}
+.rd-partida input{margin-top:2px;}
+.rd-monto{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 14px;padding:12px 14px;margin-bottom:14px;
+  background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);}
+.rd-monto-k span{display:block;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:3px;}
+.rd-monto-k b{font-size:17px;font-weight:900;color:var(--navy-800);font-variant-numeric:tabular-nums;}
+.rd-monto-track{grid-column:1/-1;height:8px;border-radius:6px;background:#e5ecf7;overflow:hidden;}
+.rd-monto-track i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--teal-500),var(--brand-500));transition:width .6s var(--ease-out);}
+.rd-monto p{grid-column:1/-1;margin:0;font-size:11px;color:var(--text-3);}
+@media(max-width:640px){.rd-monto{grid-template-columns:1fr 1fr;}}
 .rd-plan{display:grid;grid-template-columns:1fr 1fr auto;gap:16px;align-items:center;margin-bottom:14px;}
 @media(max-width:640px){.rd-plan{grid-template-columns:1fr;}}
 .rd-plan-block .lbl{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:6px;}
@@ -4113,7 +4133,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
           <div class="rd-head">
             <div class="rd-head-ic"><i data-lucide="trending-up" class="ri"></i></div>
             <div class="rd-head-tt"><h4>Avance del día</h4><p>Cuánto deberías ir según el cronograma, cuánto vas de verdad, y qué tareas tocaste hoy</p></div>
-            <div class="rd-head-badge">Global · <strong id="rd-avance-global" style="color:var(--teal-700);">0%</strong></div>
+            <div class="rd-head-badge">Global · <strong id="rd-avance-global" style="color:var(--teal-700);">0%</strong><strong id="rd-avance-monto" style="color:var(--teal-700);"></strong></div>
           </div>
           <div class="rd-body">
             <div class="rd-plan">
@@ -4127,7 +4147,18 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
               </div>
               <div class="rd-diff pos" id="rd-diff"><b>0</b><span>Atraso / adelanto</span></div>
             </div>
+            <div id="rd-monto" class="rd-monto hidden">
+              <div class="rd-monto-k"><span>Avanzado</span><b id="rd-monto-av">$0</b></div>
+              <div class="rd-monto-k"><span>Hoy</span><b id="rd-monto-hoy">+$0</b></div>
+              <div class="rd-monto-k"><span>Por avanzar</span><b id="rd-monto-pend">$0</b></div>
+              <div class="rd-monto-k"><span>Costo total de las tareas</span><b id="rd-monto-tot">$0</b></div>
+              <div class="rd-monto-track"><i id="rd-monto-bar" style="width:0%"></i></div>
+              <p>Cada tarea pesa lo que cuesta su partida (costo de NISIRA). Escribe en cada tarea cuánto se hizo hoy, en su unidad.</p>
+              <p id="rd-monto-serv" style="display:none"></p>
+            </div>
             <div id="alerta-diferencia" class="hidden" style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#991b1b;font-weight:600;">⚠ Diferencia detectada entre avance supervisor y contrata. Revisar.</div>
+            <label id="rd-partida-box" class="rd-partida hidden"><input type="checkbox" id="rd-partida-chk" onchange="rdTogglePartida(this.checked)">
+              <span><b>Punto de partida.</b> Es la primera vez que esta obra usa el reporte por unidades: escribe en cada tarea cuánto lleva <b>acumulado a la fecha</b>. Este avance no cuenta como trabajo de hoy. Desmárcalo para reportar solo lo de hoy.</span></label>
             <input id="rd-hito-search" type="search" placeholder="Buscar tarea del Gantt para marcar Hoy / Mañana…" oninput="rdHitoFilter(this.value)" style="width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:8px 11px;font-size:13px;margin-bottom:10px;background:var(--surface-1);color:var(--text-1);">
             <div id="rd-hitos-list" class="rd-prog"></div>
             <p id="rd-hitos-empty" style="font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;">No hay tareas del Gantt en este proyecto. Importa el cronograma en el tab Gantt, o agrega una tarea manual abajo.</p>
@@ -4368,22 +4399,12 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
     <!-- ══ CONTRATAS ══ -->
     <div class="tab-content" id="tab-contratas">
 
-      <!-- LICITACIONES DEL GANTT -->
-      <div class="sec-card">
-        <div class="sec-head">
-          <span class="sec-title">
-            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--brand-500);margin-right:8px;vertical-align:middle"></span>
-            Licitaciones del proyecto
-          </span>
-          <div style="display:flex;align-items:center;gap:10px">
-            <span id="lic-summary" style="font-size:11px;color:var(--text-2)"></span>
-            <button class="btn btn-outline btn-sm" onclick="loadLicitaciones()" title="Refrescar">⟳</button>
-          </div>
-        </div>
-        <div class="sec-body" style="padding:0">
-          <div id="lic-content"><div class="loading" style="padding:20px"><span class="spinner"></span>Cargando…</div></div>
-        </div>
-      </div>
+      <!-- 20-oct-2026 (Kiara): la lista de partidas licitables vivía aquí Y en la pestaña Licitaciones.
+           Queda solo en Licitaciones (marcar partidas → Licitar → invitados → adjudicada). -->
+      <div class="sec-card"><div class="sec-body" style="font-size:12.5px;color:var(--text-2)">
+        Las partidas a licitar y el estado de cada licitación están en la pestaña
+        <a href="#" onclick="showTab('licitaciones');return false;" style="font-weight:700">Licitaciones</a>.
+      </div></div>
 
       <div class="sec-card">
         <div class="sec-head"><span class="sec-title">Evaluación de contratas — hoy</span></div>
@@ -9988,7 +10009,7 @@ function rdComputeCompleteness(){
     !!(g('rd-real') && g('rd-real').value),
     !!(g('rd-entrada') && g('rd-entrada').value) && !!(g('rd-salida') && g('rd-salida').value),
     rdFotos.length > 0,
-    rdHitos.length ? rdHitos.some(h => (h.pct_nuevo||0) !== (h.pct_actual||0)) : !!(g('rd-real') && g('rd-real').value),
+    rdHitos.length ? rdHitos.some(h => (h.pct_nuevo||0) !== (h.pct_actual||0) || !!h.hoy_cant) : !!(g('rd-real') && g('rd-real').value),
     RD_CHECKLIST.every((_,i) => g('rd-chk-'+i)?.checked),
     !!(g('rd-firma-nombre') && g('rd-firma-nombre').value.trim())
   ];
@@ -10211,9 +10232,29 @@ async function cargarHitosReporte() {
   }
   if (cod) {
     try {
-      // Trae las TAREAS del cronograma (no solo milestones): hitos primero, luego actividades, ordenadas por fecha
-      const rows = await sbFetch(`/rest/v1/tareas_gantt?cod_proyecto=eq.${encodeURIComponent(cod)}&select=id,nombre_tarea,pct_avance,es_hito,nivel,duracion_dias,fecha_inicio_base&order=es_hito.desc,fecha_inicio_base.asc&limit=400`);
-      (rows||[]).forEach(r => rdHitos.push({ id:r.id, nombre:r.nombre_tarea, pct_actual:Number(r.pct_avance)||0, pct_nuevo:Number(r.pct_avance)||0, manual:false, es_hito:!!r.es_hito, nivel:r.nivel, dur:Number(r.duracion_dias)||0, hoy:false, manana:false }));
+      // Trae las TAREAS del cronograma (no solo milestones): hitos primero, luego actividades, ordenadas por fecha.
+      // Sale de `v_gantt_supervisor` para traer, junto a la tarea, el costo de su partida en NISIRA:
+      // el avance se captura en UNIDADES y cada tarea pesa según lo que cuesta (decisión de Kiara, 20-oct-2026).
+      const rows = await sbFetch(`/rest/v1/v_gantt_supervisor?cod_proyecto=eq.${encodeURIComponent(cod)}&select=id,partida_item,presupuesto_id,nombre_tarea,pct_avance,es_hito,nivel,duracion_dias,fecha_inicio_base,unidad,cantidad_total,cantidad_ejecutada,costo_total,costo_unit,es_licitacion&order=es_hito.desc,fecha_inicio_base.asc&limit=1000`);
+      (rows||[]).forEach(r => {
+        const pct = Number(r.pct_avance)||0;
+        const tot = Number(r.cantidad_total)||0;
+        const unidad = (r.unidad||'').trim();
+        const enUnidades = !!unidad && tot > 0 && !r.es_hito;
+        // Lo ejecutado acumulado; si la tarea solo tiene % (avance previo a la regla nueva), se convierte.
+        const cant = enUnidades ? (r.cantidad_ejecutada != null ? Number(r.cantidad_ejecutada)||0 : tot*pct/100) : null;
+        rdHitos.push({ id:r.id, item:r.partida_item||null, nombre:r.nombre_tarea, pct_actual:pct, pct_nuevo:pct, manual:false,
+          es_hito:!!r.es_hito, nivel:r.nivel, dur:Number(r.duracion_dias)||0, hoy:false, manana:false,
+          unidad: enUnidades ? unidad : null, cant_total: enUnidades ? tot : null, cant_actual:cant, hoy_cant:0,
+          costo:Number(r.costo_total)||0, cu:Number(r.costo_unit)||0, lic:!!r.es_licitacion,
+          presupuesto_id:r.presupuesto_id||null, adjudicado:false, lic_estado:null });
+      });
+      await rdMarcarServiciosAdjudicados();
+      // PUNTO DE PARTIDA (Kiara, 20-oct-2026): la primera vez que una obra usa el reporte nuevo, el supervisor
+      // declara el avance ACUMULADO con el que arranca (no se infiere de reportes viejos). Se activa solo si
+      // ninguna tarea en unidades tiene avance todavía; el supervisor puede apagarlo.
+      rdModoPartida = rdHayCostos() && !rdHitos.some(h => h.unidad && (h.cant_actual||0) > 0);
+      rdPartidaDisponible = rdModoPartida;
     } catch(e){ /* sin gantt */ }
   }
   renderHitos();
@@ -10234,9 +10275,9 @@ function renderHitos() {
   const q = (_hitoFilter||'').trim().toLowerCase();
   const total = rdHitos.length;
   // Visibles: las marcadas (Hoy/Mañana) siempre + las que coincidan con la búsqueda (o todas si son pocas)
-  const visibles = rdHitos.map((h,i)=>({h,i})).filter(({h})=>
-    h.hoy || h.manana || (q ? (h.nombre||'').toLowerCase().includes(q) : total<=15)
-  ).slice(0, 80);
+  const visibles = rdHitos.map((h,i)=>({h,i})).filter(({h})=> (
+    h.hoy || h.manana || (q ? (h.nombre||'').toLowerCase().includes(q) : (total<=15 || (rdModoPartida && !!h.unidad))))
+  ).slice(0, rdModoPartida ? 1000 : 80);
   if (empty){
     if (!total){ empty.style.display='block'; }
     else if (!visibles.length){
@@ -10267,6 +10308,29 @@ function renderHitos() {
       </div>`;
     }
     const esTitulo = !h.manual && !cuentan.includes(h);
+    // Tarea con unidad y metrado: se reporta CUÁNTO se hizo hoy en su unidad (m, m², und…).
+    if (h.unidad){
+      const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+      const tag = esTitulo ? `<span class="rd-hito-tag gris">${h.costo>0?'Título':'Sin costo'} · no suma</span>` : '';
+      const LIC_TXT = { pendiente:'Por licitar', en_licitacion:'En licitación', adjudicado:'Adjudicado', contratado:'Contratado', cancelado:'Licitación cancelada' };
+      const lic = h.lic ? `<span class="rd-hito-tag lic${h.adjudicado?' ok':''}">Servicio · ${LIC_TXT[h.lic_estado] || 'Por licitar'}</span>` : '';
+      const precio = h.cu > 0 ? ` · <span class="rd-u-precio">${rdMoney(h.cu,2)}/${esc(h.unidad)}</span>` : '';
+      const peso = (!esTitulo && h.costo > 0) ? ` · pesa ${rdMoney(h.costo)}` : '';
+      return `<div class="rd-prog-card unid${esTitulo?' titulo':''}">
+      <div class="rd-prog-name">${lic}${esc(h.nombre)}${tag}
+        <small>${rdNum(h.cant_total)} ${esc(h.unidad)}${precio}${peso}</small>
+        <small id="rd-hito-acum-${i}">${rdHitoAcumTxt(h)}</small>
+        <div class="rd-hito-tog">
+          <button class="rd-hito-b hoy ${h.hoy?'on':''}" onclick="rdHitoToggle(${i},'hoy')">✓ Hoy</button>
+          <button class="rd-hito-b man ${h.manana?'on':''}" onclick="rdHitoToggle(${i},'manana')">→ Mañana</button>
+        </div>
+      </div>
+      <div class="rd-prog-track"><div class="rd-prog-fill" id="rd-hito-fill-${i}" style="width:${Math.min(100,h.pct_nuevo||0)}%"></div></div>
+      <div class="rd-prog-pct rd-u-in">${rdModoPartida
+        ? `<label>A la fecha</label><input class="rd-prog-inp" type="number" step="any" value="${h.tocado ? Math.max(0,(h.cant_actual||0)+(h.hoy_cant||0)) : ''}" placeholder="${rdNum(h.cant_actual)}" oninput="rdHitoCant(${i},this.value)">`
+        : `<label>Hoy</label><input class="rd-prog-inp" type="number" step="any" value="${h.hoy_cant||''}" placeholder="0" oninput="rdHitoCant(${i},this.value)">`}<span>${esc(h.unidad)}</span></div>
+    </div>`;
+    }
     return `<div class="rd-prog-card${esTitulo?' titulo':''}">
       <div class="rd-prog-name">${(h.nombre||'').replace(/</g,'&lt;')}${esTitulo?'<span class="rd-hito-tag gris">Título · no suma</span>':''}${sub}
         <div class="rd-hito-tog">
@@ -10311,7 +10375,60 @@ function rdEnsureHitoTogStyles(){
 }
 function rdHitoInput(i, val){
   rdHitos[i].pct_nuevo = parseFloat(val) || 0;
+  rdHitos[i].tocado = true;
   const f = document.getElementById('rd-hito-fill-'+i); if (f) f.style.width = rdHitos[i].pct_nuevo + '%';
+  recalcAvanceGlobal();
+}
+// SERVICIOS LICITADOS (Kiara, 20-oct-2026, opción B): pesan su costo y el supervisor reporta su avance
+// como cualquier tarea. La adjudicación es solo ESTADO (se muestra en la tarea): no suma avance por sí
+// sola, porque así el % seguiría midiendo contratación y no obra (Drokasa Túneles sin empezar daba 59%).
+// El estado se LEE de Gerencia (lic_*), igual que la pestaña Licitaciones: nunca se copia.
+let rdModoPartida = false, rdPartidaDisponible = false;
+function rdTogglePartida(on){ rdModoPartida = !!on; renderHitos(); if(typeof scheduleAutosave==='function') scheduleAutosave(); }
+function rdEsServicio(h){ return !!h.lic && !h.es_hito && !h.manual; }
+async function rdMarcarServiciosAdjudicados(){
+  const serv = rdHitos.filter(h => rdEsServicio(h) && h.presupuesto_id);
+  if (!serv.length || typeof window._licEstadosDesdeGerencia !== 'function') return;
+  let est = {};
+  try { est = await window._licEstadosDesdeGerencia(serv.map(h => h.presupuesto_id)) || {}; } catch(e){}
+  serv.forEach(h => {
+    const g = est[h.presupuesto_id];
+    h.lic_estado = g ? g.estado : null;
+    h.adjudicado = !!g && (g.estado === 'adjudicado' || g.estado === 'contratado');
+  });
+}
+// % con el que la tarea entra al cálculo: el servicio, por adjudicación; el resto, por lo reportado.
+function rdPctCalc(h, campo){ return Math.min(100, h[campo]||0); }
+function rdNum(v, d){ return Number(v||0).toLocaleString('en-US', { maximumFractionDigits: d==null ? 2 : d }); }
+function rdMoney(v, d){
+  const n = Number(v||0), dec = d==null ? 0 : d;
+  return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits:dec, maximumFractionDigits:dec });
+}
+// Avance en UNIDADES (regla de Kiara, 20-oct-2026): el supervisor escribe lo que se hizo HOY;
+// lo acumulado = lo que ya había + hoy, y el % de la tarea = acumulado ÷ metrado total.
+function rdHitoRecalc(h){
+  const acum = Math.max(0, (h.cant_actual||0) + (h.hoy_cant||0));
+  h.cant_nueva = acum;
+  h.pct_nuevo = h.cant_total > 0 ? Math.min(100, Math.round(acum / h.cant_total * 1000) / 10) : 0;
+}
+function rdHitoAcumTxt(h){
+  const u = String(h.unidad||'').replace(/</g,'&lt;');
+  const acum = Math.max(0, (h.cant_actual||0) + (h.hoy_cant||0));
+  const sobra = h.cant_total > 0 && acum > h.cant_total
+    ? ` · <b style="color:var(--danger)">pasa el metrado (${rdNum(h.cant_total)} ${u})</b>` : '';
+  const hoy = (h.hoy_cant && !rdModoPartida) ? ` · <b style="color:${h.hoy_cant>0?'var(--success)':'var(--danger)'}">${h.hoy_cant>0?'+':''}${rdNum(h.hoy_cant)} hoy</b>` : '';
+  return `antes ${rdNum(h.cant_actual)} ${u} → ${rdNum(acum)} / ${rdNum(h.cant_total)} ${u} (${(h.pct_nuevo||0).toFixed(1)}%)${hoy}${sobra}`;
+}
+function rdHitoCant(i, val){
+  const h = rdHitos[i]; if (!h) return;
+  if (rdModoPartida){
+    // Punto de partida: lo escrito es el ACUMULADO a la fecha; vacío = sin cambio.
+    h.hoy_cant = (val === '' || val == null) ? 0 : (parseFloat(val) || 0) - (h.cant_actual || 0);
+  } else h.hoy_cant = parseFloat(val) || 0;
+  h.tocado = true;
+  rdHitoRecalc(h);
+  const f = document.getElementById('rd-hito-fill-'+i); if (f) f.style.width = Math.min(100, h.pct_nuevo) + '%';
+  const a = document.getElementById('rd-hito-acum-'+i); if (a) a.innerHTML = rdHitoAcumTxt(h);
   recalcAvanceGlobal();
 }
 // FUENTE ÚNICA del "% Avance Real" (decisión de Kiara, 18-ago-2026): el promedio
@@ -10325,11 +10442,18 @@ function rdHitoInput(i, val){
 //    cuenta el mismo trabajo dos veces y las arrastra a 0 (en QALI los niveles 1 y 2 están
 //    todos en 0 y el trabajo real vive en el nivel 3).
 // El trabajo real se toma como el nivel MÁS PROFUNDO que traiga el cronograma.
-// Limitación conocida: la duración no es el costo. Lo correcto sería ponderar por
-// horas-hombre o por el monto de cada partida, pero el cronograma no los tiene.
+// 20-oct-2026: con los cronogramas de NISIRA ya hay costo por partida → ver rdHayCostos() abajo.
+// La ponderación por duración queda solo para cronogramas sin costos.
+// REGLA NUEVA (Kiara, 20-oct-2026): si el cronograma trae el costo de sus partidas (NISIRA),
+// cuentan las tareas con costo y cada una PESA SU COSTO:
+//   % avance = Σ (% tarea × costo tarea) ÷ Σ costo tarea  =  $ avanzados ÷ $ total de las tareas.
+// Los títulos del EDT vienen con costo 0, así que quedan fuera solos (sin contar doble).
+// Sin costos (cronograma viejo, no NISIRA) se mantiene la regla anterior por duración.
+function rdHayCostos(){ return rdHitos.some(h => !h.es_hito && h.costo > 0); }
 function rdTareasQueCuentan(){
   const noHitos = rdHitos.filter(h => !h.es_hito);
   if (!noHitos.length) return [];
+  if (rdHayCostos()) return noHitos.filter(h => h.costo > 0);
   const niveles = noHitos.map(h => h.nivel).filter(n => n != null);
   if (!niveles.length) return noHitos;                       // cronograma sin niveles: todas cuentan
   const hondo = Math.max(...niveles);
@@ -10337,6 +10461,11 @@ function rdTareasQueCuentan(){
 }
 function rdAvanceRealFuente(){
   const reales = rdTareasQueCuentan();
+  if (reales.length && rdHayCostos()){
+    const m = rdAvanceMonto();
+    return { valor: m.total > 0 ? m.avanzado / m.total * 100 : 0, fuente:'costo',
+             texto:'· ponderado por costo sobre ' + reales.length + ' tarea' + (reales.length===1?'':'s') + ' del cronograma' };
+  }
   if (reales.length){
     let num = 0, den = 0;
     reales.forEach(h => { const peso = (h.dur && h.dur > 0) ? h.dur : 1; num += (h.pct_nuevo||0)*peso; den += peso; });
@@ -10349,7 +10478,46 @@ function rdAvanceRealFuente(){
                                fuente: 'especialidades', texto:'· sin cronograma: promedio de las especialidades' };
   return { valor: 0, fuente: 'vacio', texto:'· carga el cronograma o las especialidades' };
 }
+// $ avanzados: cada tarea aporta su % × su costo. `antes` = lo que ya estaba avanzado al abrir el reporte.
+function rdAvanceMonto(){
+  let total = 0, avanzado = 0, antes = 0, servTotal = 0, servAdj = 0, servN = 0, servAdjN = 0;
+  rdTareasQueCuentan().forEach(h => {
+    const c = h.costo || 0;
+    total += c;
+    avanzado += c * rdPctCalc(h, 'pct_nuevo') / 100;
+    antes += c * rdPctCalc(h, 'pct_actual') / 100;
+    if (rdEsServicio(h)){ servN++; servTotal += c; if (h.adjudicado){ servAdjN++; servAdj += c; } }
+  });
+  return { total, avanzado, hoy: avanzado - antes, servTotal, servAdj, servN, servAdjN };
+}
+function rdPintarMonto(){
+  const box = document.getElementById('rd-monto'); if (!box) return;
+  if (!rdHayCostos()){ box.classList.add('hidden'); return; }
+  const m = rdAvanceMonto();
+  box.classList.remove('hidden');
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  set('rd-monto-av', rdMoney(m.avanzado));
+  set('rd-monto-tot', rdMoney(m.total));
+  set('rd-monto-pend', rdMoney(m.total - m.avanzado));
+  const pb = document.getElementById('rd-partida-box'); if (pb) pb.classList.toggle('hidden', !rdModoPartida && !rdPartidaDisponible);
+  const pc = document.getElementById('rd-partida-chk'); if (pc) pc.checked = rdModoPartida;
+  const hoyLbl = document.querySelector('#rd-monto .rd-monto-k:nth-child(2) span'); if (hoyLbl) hoyLbl.textContent = rdModoPartida ? 'Punto de partida' : 'Hoy';
+  const hoy = document.getElementById('rd-monto-hoy');
+  if (hoy && rdModoPartida){ hoy.textContent = rdMoney(m.avanzado); hoy.style.color = 'var(--navy-800)'; }
+  else if (hoy){ hoy.textContent = (m.hoy >= 0 ? '+' : '') + rdMoney(m.hoy); hoy.style.color = m.hoy < 0 ? 'var(--danger)' : 'var(--success)'; }
+  const sv = document.getElementById('rd-monto-serv');
+  if (sv){
+    sv.innerHTML = m.servN
+      ? `<b>Servicios licitados:</b> ${rdMoney(m.servAdj)} adjudicado de ${rdMoney(m.servTotal)} (${m.servAdjN} de ${m.servN}). `
+        + `Su avance lo reportas tú en cada tarea; la adjudicación es solo su estado.`
+      : '';
+    sv.style.display = m.servN ? '' : 'none';
+  }
+  const bar = document.getElementById('rd-monto-bar'); if (bar) bar.style.width = (m.total > 0 ? Math.min(100, m.avanzado / m.total * 100) : 0) + '%';
+  const b = document.getElementById('rd-avance-monto'); if (b) b.textContent = ' · ' + rdMoney(m.avanzado);
+}
 function recalcAvanceGlobal() {
+  rdPintarMonto();
   const f = rdAvanceRealFuente();
   const e = document.getElementById('rd-avance-global'); if (e) e.textContent = f.valor.toFixed(1)+'%';
   const real = document.getElementById('rd-real'); if (real) real.value = f.valor.toFixed(1);
@@ -15013,7 +15181,22 @@ async function hidratarReporte(r, cod){
   if (r.jornada_motivo && g('rd-jornada-motivo')) g('rd-jornada-motivo').value = r.jornada_motivo;
   await rdEspLoad(cod, r);
   if (Array.isArray(r.hitos_dia)) {
-    r.hitos_dia.forEach(hd=>{ const h=rdHitos.find(x=>x.nombre===hd.nombre); if(h){ h.hoy=!!hd.hoy; h.manana=!!hd.manana; if(hd.pct!=null) h.pct_nuevo=hd.pct; } });
+    // Las tareas en UNIDADES guardan la base del día (cant_antes) y lo de hoy (hoy_cant). Al retomar el reporte
+    // del MISMO día se restauran ambas: el autoguardado ya escribió el acumulado al cronograma y, si no, se
+    // sumaría dos veces. Un reporte de otro día ("cargar último") no toca las unidades: el cronograma ya las tiene.
+    const mismoDia = r.fecha_reporte && r.fecha_reporte === (g('rd-fecha')?.value || '');
+    if (mismoDia && r.hitos_dia.some(hd => hd && hd.punto_partida)) rdModoPartida = rdPartidaDisponible = true;
+    r.hitos_dia.forEach(hd=>{ const h=rdHitos.find(x=>(hd.id && x.id===hd.id) || x.nombre===hd.nombre); if(!h) return;
+      h.hoy=!!hd.hoy; h.manana=!!hd.manana;
+      if (h.unidad){
+        if (mismoDia && hd.cant_antes != null){
+          h.cant_actual = Number(hd.cant_antes)||0;
+          h.pct_actual = h.cant_total > 0 ? Math.min(100, Math.round(h.cant_actual / h.cant_total * 1000) / 10) : 0;
+          h.hoy_cant = Number(hd.hoy_cant)||0; h.tocado = !!hd.tocado || !!h.hoy_cant;
+          rdHitoRecalc(h);
+        }
+      } else if(hd.pct!=null) h.pct_nuevo=hd.pct;
+    });
     if (typeof renderHitos==='function') renderHitos();
   }
   if (Array.isArray(r.fotos)) { rdFotos = r.fotos; renderFotosReporte(); _rehidratarFotosPendientes(); }
@@ -15158,7 +15341,9 @@ function _collectReportePayload(esDraft, firmaUrl){
   const _hoy = rdHitos.filter(h=>h.hoy);
   const actividadAuto = _hoy.length
     ? _hoy.map(h=>{
-        const pct = (h.pct_nuevo!=null && h.pct_nuevo!=='') ? ` (${h.pct_nuevo}%)` : '';
+        const pct = (h.unidad && h.hoy_cant && rdModoPartida) ? ` (punto de partida: ${rdNum((h.cant_actual||0)+h.hoy_cant)} ${h.unidad})`
+                  : (h.unidad && h.hoy_cant) ? ` (${h.hoy_cant>0?'+':''}${rdNum(h.hoy_cant)} ${h.unidad})`
+                  : (h.pct_nuevo!=null && h.pct_nuevo!=='') ? ` (${h.pct_nuevo}%)` : '';
         return (h.nombre||'').trim() + pct;
       }).filter(x=>x.trim()).join(' · ')
     : null;
@@ -15178,8 +15363,14 @@ function _collectReportePayload(esDraft, firmaUrl){
     personal_total: personalTotal,
     especialidades,
     avance_especialidades: avanceEsp,
-    hitos_dia: rdHitos.map(h=>({ id:h.id||null, item:h.item||null, nombre:h.nombre, pct:h.pct_nuevo, pct_actual:h.pct_actual,
-                                hoy:!!h.hoy, manana:!!h.manana, manual:!!h.manual })),
+    hitos_dia: rdHitos.map(h=>{
+      const o = { id:h.id||null, item:h.item||null, nombre:h.nombre, pct:h.pct_nuevo, pct_actual:h.pct_actual,
+                  hoy:!!h.hoy, manana:!!h.manana, manual:!!h.manual, tocado:!!h.tocado,
+                  punto_partida: rdModoPartida || undefined };
+      if (h.unidad) Object.assign(o, { unidad:h.unidad, cant_total:h.cant_total, cant_antes:h.cant_actual,
+        hoy_cant:h.hoy_cant||0, cant:Math.max(0,(h.cant_actual||0)+(h.hoy_cant||0)), costo:h.costo||0, costo_unit:h.cu||0 });
+      return o;
+    }),
     actividad: actividadAuto,
     actividad_auto: true,
     reprogramacion: (function(){
@@ -15555,7 +15746,15 @@ async function _persistirExtras(payload){
 
   // Avance de los hitos reales del Gantt
   for (const h of (payload.hitos_dia || [])) {
-    if (h && h.id && h.pct != null && h.pct !== h.pct_actual) {
+    if (h && h.id && h.cant != null && (h.tocado || h.cant !== h.cant_antes)) {
+      // En unidades: se escribe el ACUMULADO (absoluto), así repetir el guardado no suma dos veces.
+      try {
+        await sbFetch(`/rest/v1/tareas_gantt?id=eq.${h.id}`, {
+          method:'PATCH', headers:{'Prefer':'return=minimal'},
+          body: JSON.stringify({ cantidad_ejecutada: h.cant, pct_avance: h.pct, updated_at: new Date().toISOString() })
+        });
+      } catch(e){ console.warn('hito patch', e); }
+    } else if (h && h.id && h.cant == null && h.pct != null && (h.tocado || h.pct !== h.pct_actual)) {
       try {
         await sbFetch(`/rest/v1/tareas_gantt?id=eq.${h.id}`, {
           method:'PATCH', headers:{'Prefer':'return=minimal'},
@@ -18276,6 +18475,7 @@ let _dashSources = null;
     }catch(e){ console.warn('[lic] no se pudo leer el estado desde Gerencia:', e); }
     return out;
   }
+  window._licEstadosDesdeGerencia = _estadosDesdeGerencia;   // lo usa también el reporte diario
 
   window.loadLicitaciones = async function(){
     const el = document.getElementById('lic-content');
@@ -18503,7 +18703,7 @@ let _dashSources = null;
   const _origShowTab_lic = window.showTab;
   window.showTab = function(tab){
     if(typeof _origShowTab_lic === 'function') _origShowTab_lic(tab);
-    if(tab === 'contratas') loadLicitaciones();
+    // (la lista de licitaciones de esta pestaña se movió a la pestaña Licitaciones, 20-oct-2026)
   };
   const _origCargarProyecto_lic = window.cargarProyecto;
   window.cargarProyecto = async function(...args){

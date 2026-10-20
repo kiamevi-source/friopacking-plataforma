@@ -178,6 +178,34 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   sugeridos van a `lic_invitados` con estado `Sugerido` y el portal no los ve
   hasta que Gerencia los invite. El código fuente de ambas funciones está en
   `supabase/functions/`.
+  **Cambio del 20 de octubre de 2026 (Kiara):** la pestaña abre en la **lista de
+  partidas licitables** con el estado de cada una (Por licitar → En borrador →
+  Invitadas → En evaluación → Adjudicada, calculado de `lic_licitaciones` +
+  `lic_invitados`); se marcan y «Licitar» abre el borrador con ellas. Los
+  contratistas que elige el supervisor quedan **`Invitado`** (con `invitado_at`),
+  ya no `Sugerido`: `lic_sup_guardar` los reescribe solo mientras la licitación
+  es Borrador/Observada. El portal sigue sin mostrarla hasta que se publica
+  (`OCULTAS` en `lic-portal`). La lista repetida de partidas de la pestaña
+  «Contratas» de app-sup se quitó (era lectura de `tareas_gantt` categoría
+  LICITACION con estado editable que nadie usaba).
+  Mismo día, para que licitar sea más corto: el nombre se arma solo con los
+  rubros marcados; la especialidad se elige entre alternativas (varias a la vez,
+  sugeridas por el rubro de NISIRA); las especificaciones vacías se copian de la
+  última licitación con la misma partida (acción nueva `especificaciones` de
+  `lic-supervisor`, solo texto); «Invitar contratistas» ordena primero a quienes
+  ya hicieron esa especialidad (`PMO.portafolio_servicios` «Contratado») con su
+  puntaje (`PMO.evaluacion_contratistas`), ambas de solo lectura; «Planos de
+  Ingeniería» lee Seguimiento de Planos (instancia de Ingeniería
+  `qkgwvzxtdobgyjvwkhrk`, `documentos` + bucket `entregables`) y **copia** el
+  archivo al expediente (`lic-expediente`) con la acción `subir` de siempre; y
+  avisa las partidas por licitar que empiezan en el cronograma en ≤ 15 días
+  (`v_gantt_supervisor`).
+- **Adjudicar crea la contrata en Servicios (20 de octubre de 2026).** Trigger
+  `trg_lic_adjudicacion_a_servicios` en `PMO.lic_adjudicaciones` (AFTER INSERT):
+  completa la fila de `portafolio_servicios` de esa obra + especialidad que no
+  estaba contratada, o crea una (`Contratado`, `Por Iniciar`, supervisor de la
+  obra). No duplica si la misma contrata ya figura. Así aparece sola en la
+  pestaña Contratas, en el selector del reporte diario y en el portal.
 - **Gerencia entra con sesión y licitaciones queda cerrada sin ella (12 de
   octubre de 2026).** `app-live/js/auth.js` va en `index.html`, `index.legacy.html`
   y los módulos: sin sesión manda al login del portal (`/#gerencia`) y en toda

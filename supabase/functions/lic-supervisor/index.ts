@@ -38,8 +38,9 @@ const sinError = <T>(r: { data: T; error: any }) => {
   return r.data;
 };
 const seguro = (n: string) =>
-  String(n || "archivo").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9._-]+/g, "_").slice(-120);
+  String(n || "archivo").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9._-]+/g, "_").slice(-120);
 const num = (v: any) => (v === null || v === undefined || v === "" || isNaN(Number(v)) ? null : Number(v));
+const likeExacto = (s: string) => s.replace(/[\\%_]/g, (c) => "\\" + c);
 
 type Quien = { email: string; token: string };
 
@@ -56,7 +57,7 @@ async function quien(req: Request): Promise<Quien> {
 async function tieneAcceso(email: string, cod: string) {
   if (ADMINS.includes(email)) return true;
   const r = sinError(await db.from("proyecto_accesos").select("id").eq("cod_proyecto", cod).eq("activo", true)
-    .ilike("email", email.replace(/[\\%_]/g, (c) => "\\" + c)).limit(1)) as any[];
+    .ilike("email", likeExacto(email)).limit(1)) as any[];
   return r.length > 0;
 }
 async function obra(cod: string) {
@@ -95,7 +96,7 @@ const acciones: Record<string, (q: Quien, b: any) => Promise<unknown>> = {
       return sinError(await db.from("proyectos").select("cod_proyecto,nombre,estado").not("cod_proyecto", "is", null).order("nombre"));
     }
     const acc = sinError(await db.from("proyecto_accesos").select("cod_proyecto").eq("activo", true)
-      .ilike("email", q.email.replace(/[\\%_]/g, (c) => "\\" + c))) as any[];
+      .ilike("email", likeExacto(q.email))) as any[];
     const cods = [...new Set(acc.map((a) => a.cod_proyecto))];
     if (!cods.length) return [];
     return sinError(await db.from("proyectos").select("cod_proyecto,nombre,estado").in("cod_proyecto", cods).order("nombre"));
@@ -226,11 +227,32 @@ const acciones: Record<string, (q: Quien, b: any) => Promise<unknown>> = {
   async enviar(q, b) {
     const L = await licDeObra(q, String(b?.id || ""));
     if (!editable(L)) throw new Falla(409, "Ya fue enviada");
-    const n = sinError(await db.from("lic_partidas").select("id", { count: "exact", head: false }).eq("licitacion_id", L.id)) as any[];
+    const n = sinError(await db.from("lic_partidas").select("id").eq("licitacion_id", L.id).limit(1)) as any[];
     if (!n.length) throw new Falla(400, "Agrega al menos una partida antes de enviar");
     sinError(await db.from("lic_licitaciones").update({ estado: "Por aprobar", enviado_at: new Date().toISOString(), observacion_gerencia: null }).eq("id", L.id));
     sinError(await db.from("lic_eventos").insert({ licitacion_id: L.id, usuario: q.email, accion: "Cambio de estado", detalle: L.estado + " → Por aprobar" }));
     return { ok: true, estado: "Por aprobar" };
+  },
+
+  // Especificaciones ya escritas para partidas iguales en otras licitaciones (Kiara, 20-oct-2026):
+  // el supervisor no reescribe lo mismo en cada obra. Se compara por descripción normalizada y se
+  // devuelve la más reciente. Solo texto técnico: nunca precios ni datos de ofertas.
+  async especificaciones(q, b) {
+    await obraConAcceso(q, String(b?.cod_proyecto || ""));
+    const norm = (t: any) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+    const quiero = new Set((Array.isArray(b?.descripciones) ? b.descripciones : []).slice(0, 500).map(norm).filter(Boolean));
+    if (!quiero.size) return {};
+    const filas = sinError(await db.from("lic_partidas").select("descripcion,especificacion,licitacion_id")
+      .not("especificacion", "is", null).limit(5000)) as any[];
+    const licIds = [...new Set(filas.map((f) => f.licitacion_id))];
+    const lics = licIds.length ? (sinError(await db.from("lic_licitaciones").select("id,codigo,proyecto,created_at").in("id", licIds)) as any[]) : [];
+    const out: Record<string, any> = {};
+    for (const f of filas) {
+      const k = norm(f.descripcion); if (!quiero.has(k) || !String(f.especificacion || "").trim()) continue;
+      const L = lics.find((l) => l.id === f.licitacion_id); if (!L || L.id === b?.excluir) continue;
+      if (!out[k] || String(L.created_at) > String(out[k].fecha)) out[k] = { especificacion: f.especificacion, codigo: L.codigo, obra: L.proyecto, fecha: L.created_at };
+    }
+    return out;
   },
 
   // Estado de licitación por partida del presupuesto (reemplaza las lecturas anónimas de app-sup)
