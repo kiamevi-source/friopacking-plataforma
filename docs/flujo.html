@@ -180,12 +180,12 @@ const MAPA = {
     {id:'a-sup', tipo:'app', x:338, y:470, color:'#2FBCA3', titulo:'Supervisión · Campo', sub:'app-sup', filas:[
       {id:'dash', t:'Dashboard de obra'},
       {id:'prep', t:'Preparación · kick-off'},
-      {id:'diario', t:'Reporte diario', key:true},
+      {id:'diario', t:'Reporte diario · unidades y avance en $', key:true},
       {id:'gantt', t:'Gantt y avance', key:true},
       {id:'personal', t:'Histograma y personal'},
       {id:'planos', t:'Planos · desde Ingeniería', key:true},
       {id:'riesgos', t:'Levantamiento de observaciones', key:true},
-      {id:'licitaciones', t:'Licitaciones · arma y envía', key:true},
+      {id:'licitaciones', t:'Licitaciones · partidas → licitar → invita', key:true},
       {id:'facturas', t:'Facturas'},
       {id:'contratas', t:'Contratas en obra'},
       {id:'equipos', t:'Equipos en obra'},
@@ -261,7 +261,7 @@ const MAPA = {
     {from:'a-ger:proyectos', to:'d-sup:checklist', tipo:'lee', label:'lee la preparación'},
     {from:'a-ger:licitaciones', to:'d-sup:presupuestos', tipo:'lee', label:'partidas licitables por rubro'},
     {from:'a-ger:licitaciones', to:'d-ct:cuentas', tipo:'lee', label:'invita a cuentas reales del portal'},
-    {from:'a-sup:licitaciones', to:'d-pmo:lic', tipo:'lee', label:'arma y envía licitaciones · vía función lic-supervisor'},
+    {from:'a-sup:licitaciones', to:'d-pmo:lic', tipo:'lee', label:'arma, invita y envía · vía función lic-supervisor'},
     {from:'a-sup:riesgos', to:'d-pmo:adicionales', tipo:'lee', label:'crea adicionales y pedidos'},
     {from:'a-ger:observaciones', to:'d-sup:riesgos', tipo:'lee', label:'observaciones de todas las obras'},
     {from:'a-ct:facturas', to:'d-sup:riesgos', tipo:'lee', label:'urgentes que retienen el pago'},
@@ -282,7 +282,11 @@ const MAPA = {
     {from:'a-sup:riesgos', to:'d-pmo:portafolio', tipo:'lee', label:'contratistas para asignar'},
     {from:'x-netlify', to:'d-pmo:reportes', tipo:'entrada', label:'escribe directo'},
     {from:'x-nisira', to:'d-pmo:proyectos', tipo:'entrada', label:'copia manual · obras nuevas'},
-    {from:'a-sup:planos', to:'x-ing', tipo:'lee', label:'lee en vivo · «Requerir plano» abre su página'}
+    {from:'a-sup:planos', to:'x-ing', tipo:'lee', label:'lee en vivo · «Requerir plano» abre su página'},
+    {from:'a-sup:licitaciones', to:'x-ing', tipo:'lee', label:'copia planos al expediente de la licitación'},
+    {from:'a-sup:licitaciones', to:'d-pmo:portafolio', tipo:'lee', label:'recomienda contratistas por historial y evaluación'},
+    {from:'a-sup:diario', to:'d-sup:presupuestos', tipo:'lee', label:'costo por partida (v_gantt_supervisor) · pesa el avance'},
+    {from:'d-pmo:lic', to:'d-pmo:portafolio', tipo:'sync', fromSide:'r', toSide:'r', bulge:60, label:'al adjudicar crea la contrata (trigger)'}
   ]
 };
 
