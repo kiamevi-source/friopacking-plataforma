@@ -4162,7 +4162,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
             </div>
             <div id="alerta-diferencia" class="hidden" style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#991b1b;font-weight:600;">⚠ Diferencia detectada entre avance supervisor y contrata. Revisar.</div>
             <label id="rd-partida-box" class="rd-partida hidden"><input type="checkbox" id="rd-partida-chk" onchange="rdTogglePartida(this.checked)">
-              <span><b>Punto de partida.</b> Es la primera vez que esta obra usa el reporte por unidades: escribe en cada tarea cuánto lleva <b>acumulado a la fecha</b>. Este avance no cuenta como trabajo de hoy. Desmárcalo para reportar solo lo de hoy.</span></label>
+              <span><b>Punto de partida.</b> Es la primera vez que esta obra usa el reporte por unidades: busca cada tarea y escribe cuánto lleva <b>acumulado a la fecha</b>; las que llenes se quedan a la vista. Este avance no cuenta como trabajo de hoy. Desmárcalo para reportar solo lo de hoy.</span></label>
             <input id="rd-hito-search" type="search" placeholder="Buscar tarea del Gantt para marcar Hoy / Mañana…" oninput="rdHitoFilter(this.value)" style="width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:8px 11px;font-size:13px;margin-bottom:10px;background:var(--surface-1);color:var(--text-1);">
             <div id="rd-hitos-list" class="rd-prog"></div>
             <p id="rd-hitos-empty" style="font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;">No hay tareas del Gantt en este proyecto. Importa el cronograma en el tab Gantt, o agrega una tarea manual abajo.</p>
@@ -10316,8 +10316,8 @@ function renderHitos() {
   const total = rdHitos.length;
   // Visibles: las marcadas (Hoy/Mañana) siempre + las que coincidan con la búsqueda (o todas si son pocas)
   const visibles = rdHitos.map((h,i)=>({h,i})).filter(({h})=> (
-    h.hoy || h.manana || (q ? (h.nombre||'').toLowerCase().includes(q) : (total<=15 || (rdModoPartida && !!h.unidad))))
-  ).slice(0, rdModoPartida ? 1000 : 80);
+    h.hoy || h.manana || h.tocado || (q ? (h.nombre||'').toLowerCase().includes(q) : total<=15))
+  ).slice(0, 80);
   if (empty){
     if (!total){ empty.style.display='block'; }
     else if (!visibles.length){
