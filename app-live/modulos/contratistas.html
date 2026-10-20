@@ -219,7 +219,7 @@ input[type=date].ed{width:128px}
   <div class="grid2">
     <div class="card">
       <div class="card-h"><h3><i class="ti ti-alert-triangle"></i>Sin contratar</h3><span class="muted" id="r-sc-n"></span></div>
-      <div class="scroll"><table><thead><tr><th>Obra</th><th>Especialidad</th><th>Responsable</th><th>Inicio</th></tr></thead><tbody id="r-sc"></tbody></table></div>
+      <div class="scroll"><table><thead><tr><th>Obra</th><th>Especialidad</th><th>Responsable</th><th>Estado</th></tr></thead><tbody id="r-sc"></tbody></table></div>
     </div>
     <div class="card">
       <div class="card-h"><h3><i class="ti ti-users-group"></i>Carga por contratista</h3><span class="muted">obras activas a la vez</span></div>
@@ -311,9 +311,13 @@ const dias=d=>{const x=toD(d);return x?Math.round((x-HOY)/864e5):null;};
 const proyDe=cod=>PROY.find(p=>p.cod_proyecto===cod)||null;
 const contDe=id=>CONT.find(c=>c.id===id)||null;
 const proyVivo=cod=>{const p=proyDe(cod);return !p||!PROY_CERRADO.includes(p.estado);};
-const servVivo=s=>SERV_VIVO.includes(s.estado)&&proyVivo(s.cod_proyecto);
+/* Solo cuenta el estado del servicio. Un servicio abierto en una obra ya cerrada
+   es levantamiento de observaciones: sigue vivo. Las fechas no se usan por ahora. */
+const servVivo=s=>SERV_VIVO.includes(s.estado);
+const enLevantamiento=s=>servVivo(s)&&!proyVivo(s.cod_proyecto);
+const tagLev=s=>enLevantamiento(s)?' <span class="pill p-info" title="Obra cerrada: levantamiento de observaciones">Lev. obs.</span>':'';
 const sinContratar=s=>servVivo(s)&&(s.situacion!=='Contratado'||!s.contratista_id);
-const fechasMal=s=>{const a=toD(s.fecha_inicio),b=toD(s.fecha_fin);return a&&b&&b<a;};
+
 
 /* Evaluaciones: el módulo de evaluación guarda el nombre escrito; se cruza por alias. */
 let EVAL_POR=new Map();
@@ -396,10 +400,9 @@ function cargaContratistas(){
 function revisiones(){
   const vivos=SERV.filter(servVivo);
   return [
-    {k:'fechas',t:'Fechas invertidas',d:'El fin es anterior al inicio',l:vivos.filter(fechasMal),tipo:'serv'},
-    {k:'sinfecha',t:'Sin fechas',d:'Servicio sin inicio o fin',l:vivos.filter(s=>!s.fecha_inicio||!s.fecha_fin),tipo:'serv'},
-    {k:'vencido',t:'Fin vencido sin cerrar',d:'Fin pasado y estado aún abierto',l:vivos.filter(s=>{const d=dias(s.fecha_fin);return d!=null&&d<0&&s.estado!=='Cierre'&&!fechasMal(s);}),tipo:'serv'},
-    {k:'cerradas',t:'En obras cerradas',d:'Servicios abiertos de obras ya cerradas',l:SERV.filter(s=>SERV_VIVO.includes(s.estado)&&!proyVivo(s.cod_proyecto)),tipo:'serv'},
+    {k:'propuesto',t:'Con empresa, aún pendiente',d:'Tiene contratista propuesto pero la situación no es Contratado',l:vivos.filter(s=>s.contratista_id&&s.situacion!=='Contratado'),tipo:'serv'},
+    {k:'sinempresa',t:'Sin empresa',d:'Servicio abierto sin contratista',l:vivos.filter(s=>!s.contratista_id),tipo:'serv'},
+    {k:'lev',t:'Levantamiento de observaciones',d:'Servicios abiertos en obras ya cerradas',l:vivos.filter(enLevantamiento),tipo:'serv'},
     {k:'fichas',t:'Fichas por completar',d:'Empresa sin RUC, encargado o correo',l:CONT.filter(c=>c.activo&&!c.completo),tipo:'cont'},
   ];
 }
@@ -420,12 +423,11 @@ function renderResumen(){
     <div class="kpi ${choques?'bad':''}"><div class="n num">${choques}</div><div class="l">Con 3+ obras</div><div class="s">riesgo de sobrecarga</div></div>
     <div class="kpi click ${incompletas?'warn':''}" onclick="DIR_FILTRO='incompletos';ir('directorio')"><div class="n num">${incompletas}</div><div class="l">Fichas incompletas</div><div class="s">falta RUC o contacto</div></div>`;
 
-  sc.sort((a,b)=>String(a.fecha_inicio||'9').localeCompare(String(b.fecha_inicio||'9')));
+  sc.sort((a,b)=>nombreObra(a.cod_proyecto,a.cliente).localeCompare(nombreObra(b.cod_proyecto,b.cliente))||String(a.especialidad).localeCompare(String(b.especialidad)));
   document.getElementById('r-sc-n').textContent=sc.length+' servicios';
   document.getElementById('r-sc').innerHTML=sc.length?sc.map(s=>{
-    const d=dias(s.fecha_inicio);
-    const ini=s.fecha_inicio?`${fdate(s.fecha_inicio)}${d!=null&&d<=15?` <span class="pill ${d<0?'p-bad':'p-warn'}">${d<0?'ya debió iniciar':'en '+d+' d'}</span>`:''}`:'<span class="sub">sin fecha</span>';
-    return `<tr class="row-link" onclick="ir('obra','${esc(s.cod_proyecto)}')"><td><b>${esc(nombreObra(s.cod_proyecto,s.cliente))}</b><div class="sub">${esc(s.cod_proyecto||'')}</div></td><td>${esc(s.especialidad)}${s.contratista?`<div class="sub">propuesto: ${esc(s.contratista)}</div>`:''}</td><td>${esc(s.responsable||'—')}</td><td>${ini}</td></tr>`;
+    const ini=`<span class="pill ${s.situacion==='Contratado'?'p-warn':'p-mute'}">${esc(s.situacion||'—')}</span> <span class="sub" style="display:inline">${esc(s.estado||'')}</span>`;
+    return `<tr class="row-link" onclick="ir('obra','${esc(s.cod_proyecto)}')"><td><b>${esc(nombreObra(s.cod_proyecto,s.cliente))}</b>${tagLev(s)}<div class="sub">${esc(s.cod_proyecto||'')}</div></td><td>${esc(s.especialidad)}${s.contratista?`<div class="sub">propuesto: ${esc(s.contratista)}</div>`:''}</td><td>${esc(s.responsable||'—')}</td><td>${ini}</td></tr>`;
   }).join(''):'<tr><td colspan="4" class="empty">Todo lo activo está contratado.</td></tr>';
 
   const max=Math.max(1,...carga.map(x=>x.obras));
@@ -440,7 +442,7 @@ function renderResumen(){
   document.getElementById('r-rev-list').innerHTML=!sel?'':!sel.l.length?'<div class="empty">Nada pendiente aquí.</div>':
     sel.tipo==='cont'
     ?`<table><tbody>${sel.l.map(c=>`<tr class="row-link" onclick="abrirFicha(${c.id})"><td><b>${esc(c.nombre)}</b></td><td>${faltantes(c).map(f=>`<span class="pill p-warn">${f}</span>`).join(' ')}</td></tr>`).join('')}</tbody></table>`
-    :`<div class="scroll"><table><thead><tr><th>Obra</th><th>Especialidad</th><th>Contratista</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr></thead><tbody>${sel.l.map(s=>`<tr class="row-link" onclick="ir('obra','${esc(s.cod_proyecto)}')"><td><b>${esc(nombreObra(s.cod_proyecto,s.cliente))}</b><div class="sub">${esc(s.cod_proyecto||'')}</div></td><td>${esc(s.especialidad)}</td><td>${esc(s.contratista||'—')}</td><td>${fdate(s.fecha_inicio)||'—'}</td><td>${fdate(s.fecha_fin)||'—'}</td><td>${esc(s.estado)}</td></tr>`).join('')}</tbody></table></div>`;
+    :`<div class="scroll"><table><thead><tr><th>Obra</th><th>Especialidad</th><th>Contratista</th><th>Situación</th><th>Estado</th></tr></thead><tbody>${sel.l.map(s=>`<tr class="row-link" onclick="ir('obra','${esc(s.cod_proyecto)}')"><td><b>${esc(nombreObra(s.cod_proyecto,s.cliente))}</b>${tagLev(s)}<div class="sub">${esc(s.cod_proyecto||'')}</div></td><td>${esc(s.especialidad)}</td><td>${esc(s.contratista||'—')}</td><td>${esc(s.situacion||'—')}</td><td>${esc(s.estado)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function nombreObra(cod,fallback){const p=proyDe(cod);return p?p.nombre:(fallback||cod||'—');}
 function faltantes(c){const f=[];if(!c.ruc)f.push('RUC');if(!c.razon_social)f.push('Razón social');if(!c.encargado)f.push('Encargado');if(!c.telefono)f.push('Teléfono');if(!c.email)f.push('Correo');return f;}
@@ -453,25 +455,26 @@ document.getElementById('o-seg').addEventListener('click',e=>{
 function obrasLista(){
   const porCod=new Map();
   SERV.forEach(s=>{if(!porCod.has(s.cod_proyecto))porCod.set(s.cod_proyecto,[]);porCod.get(s.cod_proyecto).push(s);});
-  /* Todas las obras no cerradas aparecen, tengan o no servicios: así se empieza a llenar una obra nueva. */
+  /* Todas las obras no cerradas aparecen, tengan o no servicios: así se empieza a llenar una obra nueva.
+     Una obra cerrada con servicios abiertos sigue en «Activas» (levantamiento de observaciones). */
   const cods=new Set([...porCod.keys(),...PROY.filter(p=>!PROY_CERRADO.includes(p.estado)).map(p=>p.cod_proyecto)]);
   return [...cods].filter(Boolean).map(cod=>{
     const l=porCod.get(cod)||[];const p=proyDe(cod);
     const vivos=l.filter(servVivo);
-    return{cod,nombre:p?p.nombre:(l[0]&&l[0].cliente)||cod,estado:p?p.estado:'—',sup:p&&p.supervisor,n:l.length,ok:l.filter(s=>s.situacion==='Contratado'&&s.contratista_id).length,pend:vivos.filter(sinContratar).length,cerrada:p&&PROY_CERRADO.includes(p.estado)};
+    return{cod,nombre:p?p.nombre:(l[0]&&l[0].cliente)||cod,estado:p?p.estado:'—',sup:p&&p.supervisor,n:l.length,ok:l.filter(s=>s.situacion==='Contratado'&&s.contratista_id).length,pend:vivos.filter(sinContratar).length,cerrada:p&&PROY_CERRADO.includes(p.estado),lev:vivos.length>0&&!!p&&PROY_CERRADO.includes(p.estado)};
   }).sort((a,b)=>(b.pend>0)-(a.pend>0)||b.n-a.n||a.nombre.localeCompare(b.nombre));
 }
 function renderObraList(){
   const q=norm(document.getElementById('o-q').value);
   let l=obrasLista();
-  if(OBRA_FILTRO==='activas')l=l.filter(o=>!o.cerrada);
+  if(OBRA_FILTRO==='activas')l=l.filter(o=>!o.cerrada||o.lev);
   if(OBRA_FILTRO==='pend')l=l.filter(o=>o.pend>0);
   if(q)l=l.filter(o=>norm(o.nombre+' '+o.cod+' '+(o.sup||'')).includes(q));
   if(!OBRA_SEL&&l.length)OBRA_SEL=l[0].cod;
   document.getElementById('o-list').innerHTML=l.length?l.map(o=>`
     <div class="oitem ${o.cod===OBRA_SEL?'on':''}" onclick="OBRA_SEL='${esc(o.cod)}';renderObraList();renderObra()">
       <div class="t"><span>${esc(o.nombre)}</span>${o.pend?`<span class="pill p-warn">${o.pend}</span>`:o.n?'<span class="pill p-ok"><i class="ti ti-check"></i></span>':''}</div>
-      <div class="m"><span>${esc(o.cod)}</span><span>${o.n?o.ok+'/'+o.n+' contratados':'sin servicios'}</span></div>
+      <div class="m"><span>${esc(o.cod)}${o.lev?' · lev. obs.':''}</span><span>${o.n?o.ok+'/'+o.n+' contratados':'sin servicios'}</span></div>
       ${o.n?`<div class="pb"><span style="width:${o.ok/o.n*100}%"></span></div>`:''}
     </div>`).join(''):'<div class="empty">Sin obras con ese filtro.</div>';
 }
@@ -499,14 +502,13 @@ function renderObra(){
     <div class="addbar"><span class="lbl">Agregar especialidad:</span>${ESP_RAPIDAS.map(e=>`<button class="qchip" onclick="agregarServicio('${e}')">${e}</button>`).join('')}<button class="qchip" onclick="agregarServicio()">Otra…</button></div>`;
 }
 function filaObra(s){
-  const malF=fechasMal(s);
   return `<tr data-id="${s.id}">
     <td><input class="ed" value="${esc(s.especialidad)}" onchange="guardarServ(${s.id},'especialidad',this.value)" style="min-width:150px;font-weight:600"></td>
     <td><select class="ed ${s.contratista_id?'':'miss'}" onchange="cambiarContratista(${s.id},this)" style="min-width:170px">${opcionesContratista(s.contratista_id)}</select>${s.contratista_id?`<div class="sub" style="padding-left:8px;cursor:pointer" onclick="abrirFicha(${s.contratista_id})">ver ficha</div>`:''}</td>
     <td><select class="ed" onchange="guardarServ(${s.id},'situacion',this.value)">${opts(SITUACIONES,s.situacion)}</select></td>
     <td><select class="ed" onchange="guardarServ(${s.id},'estado',this.value)">${opts(ESTADOS,s.estado)}</select></td>
-    <td><input type="date" class="ed ${malF?'bad':''}" value="${esc((s.fecha_inicio||'').slice(0,10))}" onchange="guardarServ(${s.id},'fecha_inicio',this.value||null)"></td>
-    <td><input type="date" class="ed ${malF?'bad':''}" value="${esc((s.fecha_fin||'').slice(0,10))}" onchange="guardarServ(${s.id},'fecha_fin',this.value||null)" ${malF?'title="El fin es anterior al inicio"':''}></td>
+    <td><input type="date" class="ed" value="${esc((s.fecha_inicio||'').slice(0,10))}" onchange="guardarServ(${s.id},'fecha_inicio',this.value||null)"></td>
+    <td><input type="date" class="ed" value="${esc((s.fecha_fin||'').slice(0,10))}" onchange="guardarServ(${s.id},'fecha_fin',this.value||null)"></td>
     <td><select class="ed" onchange="guardarServ(${s.id},'responsable',this.value||null)">${opts(RESPONSABLES,s.responsable)}</select></td>
     <td><button class="icon-btn" title="Quitar" onclick="borrarServ(${s.id})"><i class="ti ti-trash"></i></button></td>
   </tr>`;
@@ -517,7 +519,6 @@ async function guardarServ(id,campo,valor){
   try{await api('portafolio_servicios?id=eq.'+id,{method:'PATCH',body:JSON.stringify({[campo]:valor}),prefer:'return=minimal'});stamp('Guardado '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}));}
   catch(e){s[campo]=antes;toast('No se pudo guardar',true);stamp('No se pudo guardar',true);}
   publicarBadges();renderObraList();
-  if(campo==='fecha_inicio'||campo==='fecha_fin'){const tr=document.querySelector(`tr[data-id="${id}"]`);if(tr)tr.outerHTML=filaObra(s);}
 }
 async function cambiarContratista(id,sel){
   if(sel.value==='__nuevo'){
@@ -606,7 +607,7 @@ function renderFicha(){
       </div>
       ${nuevo?'':`
       <div class="sec">Obras (${new Set(serv.map(s=>s.cod_proyecto)).size})</div>
-      ${serv.length?`<table class="mini"><tbody>${serv.map(s=>`<tr class="row-link" onclick="cerrarFicha();ir('obra','${esc(s.cod_proyecto)}')"><td><b>${esc(nombreObra(s.cod_proyecto,s.cliente))}</b><div class="sub">${esc(s.especialidad)} · ${fdate(s.fecha_inicio)||'s/f'} → ${fdate(s.fecha_fin)||'s/f'}</div></td><td><span class="pill ${servVivo(s)?(s.estado==='Proceso'?'p-brand':'p-info'):'p-mute'}">${esc(servVivo(s)?s.estado:'Cerrada')}</span></td></tr>`).join('')}</tbody></table>`:'<div class="note"><i class="ti ti-info-circle"></i>Sin obras asignadas. Se asigna desde «Por obra».</div>'}
+      ${serv.length?`<table class="mini"><tbody>${serv.map(s=>`<tr class="row-link" onclick="cerrarFicha();ir('obra','${esc(s.cod_proyecto)}')"><td><b>${esc(nombreObra(s.cod_proyecto,s.cliente))}</b>${tagLev(s)}<div class="sub">${esc(s.especialidad)} · ${esc(s.situacion||'')}</div></td><td><span class="pill ${servVivo(s)?(s.estado==='Proceso'?'p-brand':'p-info'):'p-mute'}">${esc(s.estado||'—')}</span></td></tr>`).join('')}</tbody></table>`:'<div class="note"><i class="ti ti-info-circle"></i>Sin obras asignadas. Se asigna desde «Por obra».</div>'}
       <div class="sec">Evaluación de desempeño</div>
       ${ev?`<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><span class="score ${scoreCls(ev.final)}" style="font-size:20px;padding:6px 12px">${ev.final.toFixed(0)}</span><div><b>${esc(ev.ult.clasificacion||'')}</b><div class="sub">promedio de ${ev.n} ${ev.n>1?'evaluaciones':'evaluación'} · última ${fdate(ev.ult.periodo)} (${esc(ev.ult.supervisor||'')})</div></div></div>
         <div class="dims">${[['Seguridad',ev.seg],['Cumplimiento',ev.cum],['Calidad',ev.cal],['Gestión',ev.ges]].map(d=>`<div class="dim"><div class="v num">${d[1]==null?'—':d[1].toFixed(0)}</div><div class="k">${d[0]}</div></div>`).join('')}</div>`
