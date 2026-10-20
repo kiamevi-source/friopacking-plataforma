@@ -226,6 +226,7 @@ const MAPA = {
       {id:'gantt', t:'tareas_gantt · avance_log'},
       {id:'equipos_pmo', t:'equipos_pmo', key:true},
       {id:'presupuestos', t:'presupuestos · costos_reales'},
+      {id:'partida_contrata', t:'partida_contratista · quién hace cada partida', key:true},
       {id:'planos', t:'planos'},
       {id:'riesgos', t:'riesgos · pendientes · obra_zonas'},
       {id:'checklist', t:'checklist_proyecto'},
@@ -286,6 +287,7 @@ const MAPA = {
     {from:'a-sup:licitaciones', to:'x-ing', tipo:'lee', label:'copia planos al expediente de la licitación'},
     {from:'a-sup:licitaciones', to:'d-pmo:portafolio', tipo:'lee', label:'recomienda contratistas por historial y evaluación'},
     {from:'a-sup:diario', to:'d-sup:presupuestos', tipo:'lee', label:'costo por partida (v_gantt_supervisor) · pesa el avance'},
+    {from:'a-sup:licitaciones', to:'d-sup:partida_contrata', tipo:'lee', label:'el supervisor asigna la contrata de cada partida'},
     {from:'d-pmo:lic', to:'d-pmo:portafolio', tipo:'sync', fromSide:'r', toSide:'r', bulge:60, label:'al adjudicar crea la contrata (trigger)'}
   ]
 };

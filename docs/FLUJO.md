@@ -211,6 +211,13 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   tuberías y puesta en marcha (Mecánica cubre equipos solo si no hay EEMM);
   «Instalación electromecánica» = mecánica + eléctrico (+ equipos/aislamiento
   si no se contrataron aparte). Auditado en todas las obras el 20-oct.
+- **El supervisor asigna la contrata de cada partida (20 de octubre de 2026).**
+  Tabla nueva `Supervisor.partida_contratista` (una fila por `presupuesto_id`,
+  RLS con `tiene_acceso(cod_proyecto)`, escribe app-sup desde Licitaciones →
+  «Asignar contrata»). Manda sobre la sugerencia de Servicios porque una contrata
+  puede hacer varias especialidades. `contratista = '(ninguna)'` = «no está
+  contratada» (quita la sugerencia y deja la partida por licitar). Las
+  sugerencias se muestran como «Sugerida» y no cuentan como adjudicadas.
 - **Adjudicar crea la contrata en Servicios (20 de octubre de 2026).** Trigger
   `trg_lic_adjudicacion_a_servicios` en `PMO.lic_adjudicaciones` (AFTER INSERT):
   completa la fila de `portafolio_servicios` de esa obra + especialidad que no

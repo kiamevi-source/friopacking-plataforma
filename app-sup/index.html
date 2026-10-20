@@ -10357,10 +10357,10 @@ function renderHitos() {
       const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
       const tag = esTitulo ? `<span class="rd-hito-tag gris">${h.costo>0?'Título':'Sin costo'} · no suma</span>` : '';
       const LIC_TXT = { pendiente:'Por licitar', en_licitacion:'En licitación', adjudicado:'Adjudicado', contratado:'Contratado', cancelado:'Licitación cancelada' };
-      const licTxt = h.ct ? ((h.ct.parcial ? 'Contratado en parte' : 'Contratado') + (h.ct.contratista ? ' · ' + esc(h.ct.contratista) : ''))
+      const licTxt = h.ct ? ((h.ct.sugerida ? (h.ct.parcial ? 'Sugerido en parte' : 'Sugerido') : 'Contratado') + (h.ct.contratista ? ' · ' + esc(h.ct.contratista) : ''))
                           : (LIC_TXT[h.lic_estado] || 'Por licitar');
-      const lic = h.lic ? `<span class="rd-hito-tag lic${(h.adjudicado||h.ct)?' ok':''}">Servicio · ${licTxt}</span>`
-                : (h.ct && h.ct.contratista ? `<span class="rd-hito-tag lic ok">Contrata · ${esc(h.ct.contratista)}</span>` : '');
+      const lic = h.lic ? `<span class="rd-hito-tag lic${((h.adjudicado||h.ct) && !(h.ct && h.ct.sugerida))?' ok':''}">Servicio · ${licTxt}</span>`
+                : (h.ct && h.ct.contratista ? `<span class="rd-hito-tag lic${h.ct.sugerida?'':' ok'}">${h.ct.sugerida?'Contrata sugerida':'Contrata'} · ${esc(h.ct.contratista)}</span>` : '');
       const precio = h.cu > 0 ? ` · <span class="rd-u-precio">${rdMoney(h.cu,2)}/${esc(h.unidad)}</span>` : '';
       const peso = (!esTitulo && h.costo > 0) ? ` · pesa ${rdMoney(h.costo)}` : '';
       return `<div class="rd-prog-card unid${esTitulo?' titulo':''}">
@@ -10524,10 +10524,26 @@ async function rdMarcarServiciosAdjudicados(){
   });
   // Sin licitación en el sistema: se busca el contrato en Servicios por la especialidad de la partida.
   // Vale para servicios Y para tareas medidas por metrado que igual se contrataron (p. ej. movimiento de tierras).
-  const sinLic = rdHitos.filter(h => h.presupuesto_id && !h.lic_estado && !h.es_hito);
-  if (!sinLic.length || !currentProyecto) return;
+  if (!currentProyecto) return;
+  const cod = currentProyecto.cod || '';
+  // 1) Lo que asignó el supervisor (Licitaciones → «Asignar contrata») manda sobre todo lo demás.
+  let asig = {};
   try {
-    const cod = currentProyecto.cod || '';
+    const a = await sbFetch('/rest/v1/partida_contratista?cod_proyecto=eq.' + encodeURIComponent(cod) + '&select=presupuesto_id,contratista');
+    (a||[]).forEach(x => { asig[Number(x.presupuesto_id)] = x.contratista; });
+  } catch(e) {}
+  rdHitos.forEach(h => {
+    const v = h.presupuesto_id != null ? asig[Number(h.presupuesto_id)] : null;
+    if (v == null || h.lic_estado) return;
+    h._asignada = true;
+    if (v === '(ninguna)') { h.ct = null; return; }
+    h.ct = { contratista: v, parcial: false, manual: true };
+    if (rdEsServicio(h)) h.adjudicado = true;
+  });
+  // 2) El resto: sugerencia por especialidad desde Servicios.
+  const sinLic = rdHitos.filter(h => h.presupuesto_id && !h.lic_estado && !h.es_hito && !h._asignada);
+  if (!sinLic.length) return;
+  try {
     const ids = sinLic.map(h => h.presupuesto_id).join(',');
     const [filas, lic, pres] = await Promise.all([
       pmoDbFetch('/rest/v1/portafolio_servicios?select=especialidad,situacion,contratista&cod_proyecto=eq.' + encodeURIComponent(cod)),
@@ -10541,7 +10557,7 @@ async function rdMarcarServiciosAdjudicados(){
     sinLic.forEach(h => {
       const f = byId[h.presupuesto_id]; if (!f) return;
       const c = svContratoDe(f, filas);
-      if (c){ h.ct = c; if (rdEsServicio(h)) h.adjudicado = !c.parcial; }
+      if (c){ c.sugerida = true; h.ct = c; }   // sugerencia: se muestra, pero no cuenta como adjudicado
     });
   } catch(e) { /* sin Servicios: queda «Por licitar» */ }
 }

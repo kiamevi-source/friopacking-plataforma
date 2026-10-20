@@ -142,7 +142,8 @@ async function cargar(){
   $('#app').innerHTML='<div class="empty">Cargando licitaciones de '+esc(S.nombre||S.cod)+'…</div>';
   var r=await Promise.all([api('listar',{cod_proyecto:S.cod}), api('partidas_licitables',{cod_proyecto:S.cod})]);
   S.lics=r[0]; S.filas=r[1]; S.marc={};
-  S.serv=[]; try{ var sv=await pmo.from('portafolio_servicios').select('especialidad,situacion,contratista').eq('cod_proyecto',S.cod); S.serv=sv.data||[]; }catch(e){}
+  S.serv=[]; try{ var sv=await pmo.from('portafolio_servicios').select('id,especialidad,situacion,contratista').eq('cod_proyecto',S.cod); S.serv=sv.data||[]; }catch(e){}
+  await cargarAsignaciones();
   // fechas de inicio del cronograma por partida, para avisar qué hay que licitar ya
   S.ini={};
   try{ if(parent && parent.sbFetch){
@@ -156,10 +157,11 @@ function pintarLista(){
   S.rubrosE=agrupar(S.filas||[], null);
   var marcadas=[]; S.rubrosE.forEach(function(R){ R.items.forEach(function(it){ if(S.marc[it.key]) marcadas.push(it); }); });
   var cnt={}, urg=[]; S.rubrosE.forEach(function(R){ R.items.forEach(function(it){
-    it._ct = it.en ? null : svContratoDe(it.f, S.serv);          // contrato ya registrado en Servicios
-    it._bloq = !!it.en || !!(it._ct && !it._ct.parcial);
-    var t=estadoPartida(it.en, it).t; cnt[t]=(cnt[t]||0)+1; var d=diasInicio(it); it._dias=d; if(!it._bloq && d!==null && d<=URGENTE) urg.push(it); }); });
-  app.innerHTML='<div class="head"><div><div class="h1">Licitaciones · '+esc(S.nombre||S.cod)+'</div><div class="sub">Marca las partidas y presiona «Licitar». Cada partida muestra en qué va su licitación.</div></div>'+
+    it._ct = it.en ? null : contrataDe(it);       // asignada por el supervisor, o sugerida por Servicios
+    it._bloq = !!it.en;                           // solo lo que ya está en una licitación no se puede marcar
+    it._contratada = !!(it._ct && !it._ct.parcial);
+    var t=estadoPartida(it.en, it).t; cnt[t]=(cnt[t]||0)+1; var d=diasInicio(it); it._dias=d; if(!it.en && !it._contratada && d!==null && d<=URGENTE) urg.push(it); }); });
+  app.innerHTML='<div class="head"><div><div class="h1">Licitaciones · '+esc(S.nombre||S.cod)+'</div><div class="sub">Marca las partidas y presiona «Licitar», o «Asignar contrata» si ya están contratadas. «Sugerida» sale de Servicios: confírmala o corrígela.</div></div>'+
       '<div style="display:flex;gap:8px">'+(S.obras.length>1?'<button class="btn" id="otra">Cambiar obra</button>':'')+'</div></div>'+
     (urg.length?'<div class="urg"><span><b>'+urg.length+' partida'+(urg.length===1?'':'s')+' por licitar</b> empieza'+(urg.length===1?'':'n')+' en el cronograma en menos de '+URGENTE+' días.</span><button class="btn sm" id="marcar-urg">Marcarlas</button></div>':'')+
     '<div class="card"><h3>Partidas</h3><div class="hint">'+Object.keys(cnt).map(function(k){ return cnt[k]+' '+k.toLowerCase(); }).join(' · ')+'</div>'+
@@ -167,10 +169,10 @@ function pintarLista(){
         var libres=R.items.filter(function(it){ return !it._bloq; });
         return '<div class="rubro"><input type="checkbox" data-erub="'+ri+'"'+(libres.length&&libres.every(function(it){ return S.marc[it.key]; })?' checked':'')+(libres.length?'':' disabled')+'><span class="t">'+esc(R.nombre)+'</span><small>'+R.items.length+' líneas</small></div>'+
           R.items.map(function(it,ii){ var st=estadoPartida(it.en, it);
-            return '<label class="it'+(it.en?' lnk':'')+'"'+(it.en?' data-ver="'+esc(it.en.id)+'"':'')+'><input type="checkbox" data-eit="'+ri+'-'+ii+'"'+(S.marc[it.key]?' checked':'')+(it._bloq?' disabled':'')+'><span class="c">'+esc(it.codigo)+'</span><span class="d">'+esc(it.descripcion)+(it.ids.length>1?' <span class="tag">'+it.ids.length+' ítems</span>':'')+'</span><span class="q">'+Number(Math.round(it.cantidad*100)/100).toLocaleString('es-PE')+' '+esc(it.unidad||'')+'</span>'+(!it._bloq && it._dias!==null && it._dias<=URGENTE?'<span class="pill p-urg st">'+(it._dias<0?'Debió empezar hace '+(-it._dias)+' d':'Empieza en '+it._dias+' d')+'</span>':'')+'<span class="pill '+st.c+' st">'+esc(st.t)+(it.en?' · '+esc(it.en.codigo):(it._ct&&it._ct.contratista?' · '+esc(it._ct.contratista):''))+'</span></label>'; }).join('');
+            return '<label class="it'+(it.en?' lnk':'')+'"'+(it.en?' data-ver="'+esc(it.en.id)+'"':'')+'><input type="checkbox" data-eit="'+ri+'-'+ii+'"'+(S.marc[it.key]?' checked':'')+(it._bloq?' disabled':'')+'><span class="c">'+esc(it.codigo)+'</span><span class="d">'+esc(it.descripcion)+(it.ids.length>1?' <span class="tag">'+it.ids.length+' ítems</span>':'')+'</span><span class="q">'+Number(Math.round(it.cantidad*100)/100).toLocaleString('es-PE')+' '+esc(it.unidad||'')+'</span>'+(!it.en && !it._contratada && it._dias!==null && it._dias<=URGENTE?'<span class="pill p-urg st">'+(it._dias<0?'Debió empezar hace '+(-it._dias)+' d':'Empieza en '+it._dias+' d')+'</span>':'')+'<span class="pill '+st.c+' st">'+esc(st.t)+(it.en?' · '+esc(it.en.codigo):(it._ct&&it._ct.contratista?' · '+esc(it._ct.contratista):''))+'</span></label>'; }).join('');
       }).join('')+'</div>' : '<div class="empty" style="border:0">Esta obra no tiene partidas licitables en el presupuesto.</div>')+
     '</div>'+
-    (marcadas.length?'<div class="bar"><span style="align-self:center;font-size:13px;color:var(--t2)">'+marcadas.length+' partida'+(marcadas.length===1?'':'s')+' marcada'+(marcadas.length===1?'':'s')+'</span><button class="btn pri" id="licitar">Licitar</button></div>':'')+
+    (marcadas.length?'<div class="bar"><span style="align-self:center;font-size:13px;color:var(--t2)">'+marcadas.length+' partida'+(marcadas.length===1?'':'s')+' marcada'+(marcadas.length===1?'':'s')+'</span><button class="btn" id="asignar">Asignar contrata</button><button class="btn pri" id="licitar">Licitar</button></div>':'')+
     '<div class="sec-t">Licitaciones de la obra</div>'+
     (S.lics.length? S.lics.map(function(L){
       return '<div class="card lic" data-lic="'+L.id+'"><div style="min-width:0"><div class="cod">'+esc(L.codigo)+'</div><div class="nm">'+esc(L.nombre)+'</div>'+
@@ -181,7 +183,14 @@ function pintarLista(){
   document.querySelectorAll('[data-eit]').forEach(function(cb){ cb.onchange=function(){ var p=cb.dataset.eit.split('-'); var it=S.rubrosE[p[0]].items[p[1]]; if(cb.checked) S.marc[it.key]=true; else delete S.marc[it.key]; pintarLista(); }; });
   document.querySelectorAll('[data-erub]').forEach(function(cb){ cb.onchange=function(){ S.rubrosE[cb.dataset.erub].items.forEach(function(it){ if(it._bloq) return; if(cb.checked) S.marc[it.key]=true; else delete S.marc[it.key]; }); pintarLista(); }; });
   document.querySelectorAll('[data-ver]').forEach(function(el){ el.onclick=function(e){ e.preventDefault(); var L=S.lics.find(function(x){ return x.id===el.dataset.ver; }); if(L) abrir(L); }; });
-  var lb=$('#licitar'); if(lb) lb.onclick=function(){ abrir(null, Object.keys(S.marc)); };
+  var lb=$('#licitar'); if(lb) lb.onclick=function(){
+    // lo que ya está contratado (asignado o sugerido) no se licita; para licitarlo, marcar «No está contratada»
+    var ya=marcadas.filter(function(it){ return it._contratada; }), libres=marcadas.filter(function(it){ return !it._contratada; });
+    if(!libres.length){ toast('Esas partidas ya tienen contrata. Si no es así, usa «Asignar contrata» → «No está contratada».',true); return; }
+    if(ya.length) toast(ya.length+' partida'+(ya.length===1?' ya contratada no se licita':'s ya contratadas no se licitan'));
+    abrir(null, libres.map(function(it){ return it.key; }));
+  };
+  var ab=$('#asignar'); if(ab) ab.onclick=function(){ asignarContrata(marcadas); };
   var mu=$('#marcar-urg'); if(mu) mu.onclick=function(){ urg.forEach(function(it){ S.marc[it.key]=true; }); pintarLista(); };
   var o=$('#otra'); if(o) o.onclick=function(){ S.cod=''; boot(); };
   document.querySelectorAll('[data-lic]').forEach(function(el){ el.onclick=function(){ abrir(S.lics.find(function(x){ return x.id===el.dataset.lic; })); }; });
@@ -295,6 +304,22 @@ function agrupar(filas, curId){
 }
 // Estado de la partida según su licitación (Kiara, 20-oct-2026): Por licitar → En borrador → Invitadas →
 // En evaluación → Adjudicada. Es el mismo estado que ve Gerencia: todo sale de lic_* en PMO.
+// Contrata asignada por el supervisor a cada partida (Supervisor.partida_contratista). Manda sobre la
+// sugerencia de Servicios: una contrata puede hacer varias especialidades (Kiara, 20-oct-2026).
+var SIN_CONTRATA='(ninguna)';
+async function cargarAsignaciones(){
+  S.asig={};
+  try{ if(parent && parent.sbFetch){
+    var a=await parent.sbFetch('/rest/v1/partida_contratista?cod_proyecto=eq.'+encodeURIComponent(S.cod)+'&select=presupuesto_id,contratista');
+    (a||[]).forEach(function(x){ S.asig[Number(x.presupuesto_id)]=x.contratista; });
+  } }catch(e){}
+}
+function contrataDe(it){
+  var asig=null; it.ids.forEach(function(id){ if(!asig && S.asig && S.asig[id]!=null) asig=S.asig[id]; });
+  if(asig===SIN_CONTRATA) return null;
+  if(asig) return { contratista:asig, parcial:false, manual:true };
+  var c=svContratoDe(it.f, S.serv); if(c) c.sugerida=true; return c;
+}
 // Días hasta que empieza en el cronograma (la fecha más temprana de sus ítems); null si no tiene fecha
 function diasInicio(it){
   var f=null; it.ids.forEach(function(id){ var d=S.ini&&S.ini[id]; if(d&&(!f||d<f)) f=d; });
@@ -303,7 +328,11 @@ function diasInicio(it){
 }
 var URGENTE=15;
 function estadoPartida(en, it){
-  if(!en){ if(it && it._ct) return { t: it._ct.parcial?'Contratada en parte':'Contratada', c:'p-ok' }; return { t:'Por licitar', c:'p-borr' }; }
+  if(!en){
+    if(it && it._ct && it._ct.manual) return { t:'Contratada', c:'p-ok' };
+    if(it && it._ct) return { t: it._ct.parcial?'Sugerida en parte':'Sugerida', c:'p-apr' };
+    return { t:'Por licitar', c:'p-borr' };
+  }
   var L=(S.lics||[]).find(function(x){ return x.id===en.id; });
   var inv=L&&(L.invitados||[]).some(function(v){ return v.estado && v.estado!=='Sugerido'; });
   var e=en.estado;
@@ -507,6 +536,46 @@ function puntuar(c, h){
 }
 // Planos de Seguimiento de Planos (Ingeniería) de esta obra que ya tienen archivo
 function pryClave(t){ var m=String(t||'').toUpperCase().match(/(PRY|PRD|VSR)\s*(\d{4})\s*-\s*0*(\d+)/); return m?m[1]+m[2]+'-'+m[3]:''; }
+// Asignar contrata a las partidas marcadas (o marcarlas como no contratadas)
+function asignarContrata(items){
+  if(!items.length) return;
+  var porContrata={};
+  (S.serv||[]).forEach(function(r){ if(!r.contratista) return; var k=r.contratista;
+    porContrata[k]=porContrata[k]||{ nombre:k, esp:[], contratado:false, id:r.id };
+    if(porContrata[k].esp.indexOf(r.especialidad)<0) porContrata[k].esp.push(r.especialidad);
+    if(nn(r.situacion)==='contratado') porContrata[k].contratado=true; });
+  var lista=Object.keys(porContrata).map(function(k){ return porContrata[k]; }).sort(function(a,b){ return (b.contratado-a.contratado)||a.nombre.localeCompare(b.nombre); });
+  var sug=items.map(function(it){ return it._ct&&it._ct.contratista; }).filter(Boolean);
+  var pre=sug.length===items.length && sug.every(function(x){ return x===sug[0]; }) ? sug[0] : '';
+  var box=document.createElement('div');
+  box.style.cssText='position:fixed;inset:0;background:rgba(11,18,38,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px';
+  box.innerHTML='<div class="card" style="width:560px;max-width:100%;max-height:86vh;display:flex;flex-direction:column;margin:0"><h3>Asignar contrata · '+items.length+' partida'+(items.length===1?'':'s')+'</h3><div class="hint">¿Quién hace estas partidas? Lo que asignes manda sobre la sugerencia de Servicios, aquí y en el reporte diario.</div>'+
+    '<div class="lista" style="flex:1;max-height:none">'+lista.map(function(c,i){ return '<label class="sug"><input type="radio" name="ac" value="'+esc(c.nombre)+'"'+(c.nombre===pre?' checked':'')+'><div style="flex:1"><b>'+esc(c.nombre)+'</b><div class="e">'+esc(c.esp.join(', '))+(c.contratado?'':' · pendiente en Servicios')+'</div></div></label>'; }).join('')+
+      '<label class="sug"><input type="radio" name="ac" value="__otra"><div style="flex:1"><b>Otra contrata</b><input id="ac-otra" placeholder="Nombre de la contrata" style="margin-top:6px;width:100%;border:1px solid var(--bd);border-radius:8px;padding:7px 9px;font-family:inherit"></div></label>'+
+      '<label class="sug"><input type="radio" name="ac" value="'+SIN_CONTRATA+'"><div style="flex:1"><b>No está contratada</b><div class="e">Quita la sugerencia: la partida queda por licitar</div></div></label>'+
+      '<label class="sug"><input type="radio" name="ac" value="__auto"><div style="flex:1"><b>Volver a la sugerencia</b><div class="e">Borra lo asignado y usa lo que dice Servicios</div></div></label>'+
+    '</div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn" id="ac-c">Cancelar</button><button class="btn pri" id="ac-ok">Guardar</button></div></div>';
+  document.body.appendChild(box);
+  box.querySelector('#ac-otra').onfocus=function(){ box.querySelector('input[value="__otra"]').checked=true; };
+  box.querySelector('#ac-c').onclick=function(){ box.remove(); };
+  box.querySelector('#ac-ok').onclick=async function(){
+    var sel=box.querySelector('input[name="ac"]:checked'); if(!sel){ toast('Elige una opción',true); return; }
+    var v=sel.value; if(v==='__otra'){ v=box.querySelector('#ac-otra').value.trim(); if(!v){ toast('Escribe el nombre de la contrata',true); return; } }
+    var ids=[]; items.forEach(function(it){ ids=ids.concat(it.ids); });
+    var b=box.querySelector('#ac-ok'); b.disabled=true; b.textContent='Guardando…';
+    try{
+      if(v==='__auto'){
+        await parent.sbFetch('/rest/v1/partida_contratista?presupuesto_id=in.('+ids.join(',')+')',{ method:'DELETE', headers:{'Prefer':'return=minimal'} });
+      }else{
+        var c=porContrata[v];
+        await parent.sbFetch('/rest/v1/partida_contratista?on_conflict=presupuesto_id',{ method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+          body: JSON.stringify(ids.map(function(id){ return { cod_proyecto:S.cod, presupuesto_id:id, contratista:v, portafolio_id:c?c.id:null, especialidad:c?c.esp.join(', '):null, updated_at:new Date().toISOString() }; })) });
+      }
+      box.remove(); S.marc={}; await cargarAsignaciones(); pintarLista();
+      toast(v==='__auto'?'Se usa la sugerencia de Servicios':(v===SIN_CONTRATA?'Marcadas como no contratadas':'Asignadas a '+v));
+    }catch(e){ toast('No se pudo guardar: '+(e.message||e),true); b.disabled=false; b.textContent='Guardar'; }
+  };
+}
 async function elegirPlanos(){
   leerForm();
   if(!ing){ toast('No se pudo conectar con Ingeniería',true); return; }
