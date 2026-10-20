@@ -499,7 +499,11 @@ function enlazar(g){
       body:'<div class="fg"><label>Monto adjudicado ('+(L.moneda==='PEN'?'S/':'US$')+')</label><input type="number" id="am" step="0.01" value="'+mf+'"></div><div class="fg"><label>Código de contrato</label><input id="ac" value="CTR-'+y+'-'+String(n+1).padStart(3,'0')+'"></div><div class="fg"><label>Motivo</label><textarea id="aj">'+(mf===montoFinal(c,c.ofertas.slice().sort(function(a,b){ return montoFinal(c,a)-montoFinal(c,b); })[0])?'Mejor oferta económica.':'')+'</textarea></div>',
       fn:async function(w){ var m=Number(w.querySelector('#am').value), j=w.querySelector('#aj').value.trim();
         if(!(m>0)){ toast('Indica el monto',true); return false; } if(!j){ toast('Escribe el motivo',true); return false; }
-        chk(await sb.from('lic_adjudicaciones').insert({ licitacion_id:L.id, licitacion_codigo:L.codigo, oferta_id:o.id, email:o.email||null, contratista:o.contratista, monto_adjudicado:m, moneda:L.moneda||'USD', contrato_codigo:w.querySelector('#ac').value.trim()||null, responsable:USER, aprobador:USER, justificacion:j }));
+        // el código une adjudicación ↔ facturas del contratista: debe venir completo y no repetirse
+        var cc=w.querySelector('#ac').value.trim().toUpperCase();
+        if(!/^CTR-\d{4}-\d{3,}$/.test(cc)){ toast('El código de contrato debe ser como CTR-'+y+'-001',true); return false; }
+        if(Object.keys(S.adj).some(function(k){ return S.adj[k]&&String(S.adj[k].contrato_codigo||'').toUpperCase()===cc; })){ toast('Ese código de contrato ya existe',true); return false; }
+        chk(await sb.from('lic_adjudicaciones').insert({ licitacion_id:L.id, licitacion_codigo:L.codigo, oferta_id:o.id, email:o.email||null, contratista:o.contratista, monto_adjudicado:m, moneda:L.moneda||'USD', contrato_codigo:cc, responsable:USER, aprobador:USER, justificacion:j }));
         chk(await sb.from('lic_ofertas').update({ estado:'Adjudicada' }).eq('id',o.id));
         await cambiarEstado(L,'Adjudicación');
         await evento(L.id,'Adjudicación','Adjudicado a '+o.contratista+' — '+money2(m,L.moneda)); toast('Adjudicada a '+o.contratista); abrir(L.id); } });
