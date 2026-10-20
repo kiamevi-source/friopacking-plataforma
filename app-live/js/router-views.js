@@ -10,7 +10,7 @@
   'use strict';
 
   const HOME_KEY = 'inicio';
-  const LEGACY_URL = 'index.legacy.html?v=20261020sharepoint';
+  const LEGACY_URL = 'index.legacy.html?v=20261020eqheader';
 
   // ── Alias de hash → nombre de vista real en el legacy ──
   // (el legacy tiene algunas vistas con renderers rotos o con nombres distintos)

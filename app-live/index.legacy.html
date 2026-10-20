@@ -8174,6 +8174,14 @@ body>#gcc-legend{display:none!important}
 .eqv2-cmd-chip.info{color:var(--eq-info)}
 .eqv2-cmd-chip.ok{color:var(--eq-ok)}
 .eqv2-cmd-actions{display:flex;align-items:center;gap:8px}
+/* eqv2-cmd: encabezado que se acomoda — si los botones no caben al lado, bajan a su
+   propia fila en vez de aplastar el título y los indicadores. */
+.eqv2-cmd{display:flex;flex-wrap:wrap;justify-content:space-between;row-gap:12px}
+.eqv2-cmd>:first-child{flex:1 1 460px;min-width:0}
+.eqv2-cmd-text{min-width:0}
+.eqv2-cmd-actions{flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
+.eqv2-cmd-actions .eqv2-btn{white-space:nowrap}
+.eqv2-cmd-summary .eqv2-cmd-chip{white-space:nowrap}
 .eqv2-search{position:relative}
 .eqv2-search input{width:240px;padding:8px 12px 8px 32px;background:rgba(255,255,255,.9);border:1px solid var(--eq-line);border-radius:10px;font-size:12.5px;color:var(--eq-ink);transition:all .15s;font-family:inherit}
 .eqv2-search input:focus{outline:none;border-color:var(--eq-teal);box-shadow:0 0 0 4px rgba(45,196,166,.12);background:#fff}
@@ -9403,6 +9411,7 @@ function renderEquiposPremium(){
           ${enFabActivos>0?`<span class="eqv2-cmd-chip info">🔧 ${enFabActivos} en fabricación</span>`:''}
           <span class="eqv2-cmd-chip ok">✓ ${entregados} entregados</span>
           ${(()=>{const sc=W._eqDataSrc;if(!sc)return '';
+            if(W._eqSp&&W._eqSp.estado==='ok'&&sc.tipo==='supabase'&&sc.ts&&(Date.now()-sc.ts)<10*864e5)return '';
             const et={import:'📥 importado',supabase:'☁️ sincronizado',snapshot:'📄 datos embebidos'}[sc.tipo]||sc.tipo;
             const cuando=sc.ts?' '+new Date(sc.ts).toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'2-digit'}):'';
             // La importación es semanal (viernes): pasados 10 días el dato está viejo
@@ -9437,7 +9446,7 @@ function renderEquiposPremium(){
       </div>
       <input type="file" id="eq-import-input" accept=".csv,.xlsx,.xls,.pdf,application/pdf" style="display:none" onchange="W.onEquiposImport&&W.onEquiposImport(event)">
       <button class="eqv2-btn primary" onclick="document.getElementById('eq-import-input').click()">📂 Importar</button>
-      <button class="eqv2-btn" onclick="W._eqTraerSharePoint&&W._eqTraerSharePoint(this)" title="Leer ahora el Excel de importaciones de SharePoint (también se hace solo cada 15 min)">🔗 Traer de SharePoint</button>
+      <button class="eqv2-btn" onclick="W._eqTraerSharePoint&&W._eqTraerSharePoint(this)" title="Leer ahora el Excel de importaciones de SharePoint (también se hace solo cada 15 min)">🔗 SharePoint</button>
       <button class="eqv2-btn" onclick="W.eqSyncNow&&W.eqSyncNow()" title="Subir a supervisores los equipos que estás viendo, sin volver a cargar el Excel">☁️ Sincronizar</button>
       <button class="eqv2-btn" onclick="W.openEquiposHistorial&&W.openEquiposHistorial()" title="Historial de cambios">🕑 Historial</button>
       <button class="eqv2-btn icon-only" onclick="W.renderEquipos&&W.renderEquipos()" title="Refrescar">🔄</button>
@@ -10712,7 +10721,7 @@ function _eqParseRows(raw){
   W._eqReloadDatos=bootstrap;
   W._eqTraerSharePoint=async function(btn){
     const toast=(m,t,ms)=>{if(typeof showToast==='function')showToast(m,t,ms);};
-    if(btn){btn.disabled=true;btn.dataset.txt=btn.textContent;btn.textContent='⏳ Leyendo SharePoint…';}
+    if(btn){btn.disabled=true;btn.dataset.txt=btn.textContent;btn.textContent='⏳ Leyendo…';}
     try{
       const res=await fetch(SB_URL+'/functions/v1/sync-equipos-sharepoint',{method:'POST',
         headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({forzar:true})});
@@ -10731,7 +10740,7 @@ function _eqParseRows(raw){
         await bootstrap();
       }
     }catch(e){toast('⚠️ No se pudo leer SharePoint: '+(e.message||e),'alert',6000);}
-    finally{if(btn){btn.disabled=false;btn.textContent=btn.dataset.txt||'🔗 Traer de SharePoint';}}
+    finally{if(btn){btn.disabled=false;btn.textContent=btn.dataset.txt||'🔗 SharePoint';}}
   };
 
   // Arrancar sin bloquear la carga de la página
