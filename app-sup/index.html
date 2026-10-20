@@ -1105,7 +1105,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
   height:42px;
 }
 .gantt-list-head{
-  display:grid;grid-template-columns:30px 1fr 48px 122px;align-items:center;gap:0;
+  display:grid;grid-template-columns:30px 1fr 48px 216px;align-items:center;gap:0;
   padding:0 8px 0 0;border-bottom:1px solid rgba(255,255,255,.10);
 }
 .gantt-list-head .col{padding:0 10px;}
@@ -1127,7 +1127,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 
 /* List rows */
 .gantt-row{
-  display:grid;grid-template-columns:30px 1fr 48px 122px;align-items:center;
+  display:grid;grid-template-columns:30px 1fr 48px 216px;align-items:center;
   height:34px;border-bottom:1px solid var(--border);
   font-size:12px;color:var(--text);
   transition:background var(--d) var(--ease);
@@ -1156,6 +1156,9 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 }
 .gpct-inp{width:42px;text-align:right;border:1px solid var(--border-strong);border-radius:6px;padding:2px 5px;font-size:11px;font-weight:800;color:var(--navy-800);background:var(--surface-1);}
 .gpct-listo{border:1px solid var(--border-strong);border-radius:6px;padding:3px 9px;font-size:10.5px;font-weight:800;cursor:pointer;white-space:nowrap;background:var(--surface-2);color:var(--teal-700,#0e7490);transition:background .12s,color .12s;}
+.gq-inp{width:64px;}
+.gq-tot{font-size:10.5px;font-weight:700;color:var(--text-3);white-space:nowrap;}
+.gpu{font-size:10px;font-weight:600;color:var(--text-3);flex-shrink:0;}
 .gpct-listo:hover{background:var(--teal-50,#ecfeff);}
 .gpct-listo.done{background:#16a34a;color:#fff;border-color:#16a34a;}
 .gantt-row.lvl-1 .gname{font-weight:800;color:var(--navy-800);text-transform:uppercase;font-size:11px;letter-spacing:.04em;}
@@ -5601,6 +5604,12 @@ async function cargarGantt() {
     if (loadEl) loadEl.classList.add('hidden');
 
     _ganttState.tasks = rows || [];
+    // Costo de la partida (NISIRA) para mostrar precio y ponderar por costo (Kiara, 20-oct-2026)
+    try {
+      const cs = await sbFetch(`/rest/v1/v_gantt_supervisor?cod_proyecto=eq.${encodeURIComponent(cod)}&presupuesto_id=not.is.null&select=id,costo_total,costo_unit,es_licitacion`);
+      const byId = {}; (cs||[]).forEach(c => { byId[c.id] = c; });
+      (rows||[]).forEach(t => { const c = byId[t.id]; if (c){ t._costo = Number(c.costo_total)||0; t._cu = Number(c.costo_unit)||0; t._lic = !!c.es_licitacion; } });
+    } catch(e) { /* sin costos: el Gantt sigue en % */ }
 
     // Auto-categorizar tareas viejas (importadas antes de Phase 4B) si no tienen categoría
     (rows||[]).forEach(t => {
@@ -5672,6 +5681,34 @@ async function guardarTareaGantt() {
   }
 }
 
+// Gantt en UNIDADES (Kiara, 20-oct-2026): si la tarea tiene unidad y metrado, se escribe cuánto va
+// ejecutado (acumulado) y el % sale solo. Se guarda cantidad_ejecutada + pct_avance.
+function ganttEnUnidades(t){ return !!(t && t.unidad && Number(t.cantidad_total) > 0); }
+function ganttEjec(t){
+  const tot = Number(t.cantidad_total)||0;
+  const q = Number(t.cantidad_ejecutada)||0, p = Number(t.pct_avance)||0;
+  // si solo hay % (escrito con la pantalla anterior), la cantidad sale del %
+  return (q > 0 || p <= 0) ? q : tot * p / 100;
+}
+function ganttCeldaUnidades(t, pct){
+  const tot = Number(t.cantidad_total)||0, ej = Math.round(ganttEjec(t)*100)/100;
+  const u = String(t.unidad||'').replace(/</g,'&lt;');
+  return `<input class="gpct-inp gq-inp" type="number" min="0" step="any" value="${ej}" onclick="event.stopPropagation()" onchange="setTaskCantInline('${t.id||''}',this.value)" title="Cuánto va ejecutado en ${u} (acumulado)">`
+    + `<span class="gq-tot">/ ${tot.toLocaleString('en-US',{maximumFractionDigits:2})} ${u}</span>`
+    + `<button class="gpct-listo ${pct>=100?'done':''}" onclick="event.stopPropagation();setTaskCantInline('${t.id||''}',${tot})" title="Marcar como listo (todo el metrado)">${pct>=100?'✓':'Listo'}</button>`;
+}
+async function setTaskCantInline(id, val){
+  const t = (_ganttState.tasks||[]).find(x=>String(x.id)===String(id));
+  if(!t || !ganttEnUnidades(t)) return setTaskPctInline(id, val);
+  const tot = Number(t.cantidad_total)||0;
+  const cant = Math.max(0, parseFloat(val)||0);
+  const pct = Math.min(100, Math.round(cant / tot * 1000) / 10);
+  t.cantidad_ejecutada = cant;
+  const row = document.querySelector(`.gantt-row[data-id="${id}"]`);
+  if (row){ const q=row.querySelector('.gq-inp'); if(q) q.value = Math.round(cant*100)/100; }
+  try { await sbFetch(`/rest/v1/tareas_gantt?id=eq.${encodeURIComponent(id)}`, { method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify({ cantidad_ejecutada: cant }) }); } catch(e){}
+  return setTaskPctInline(id, pct);
+}
 async function setTaskPctInline(id, val){
   if(!id) { showToast('Esta tarea no se puede editar aquí'); return; }
   const pct = Math.max(0, Math.min(100, parseFloat(val)||0));
@@ -5682,8 +5719,8 @@ async function setTaskPctInline(id, val){
   // Actualización EN SITIO de esa fila (sin re-render → instantáneo, no pierde scroll)
   const row = document.querySelector(`.gantt-row[data-id="${id}"]`);
   if(row){
-    const inp = row.querySelector('.gpct-inp'); if(inp) inp.value = pct.toFixed(0);
-    const btn = row.querySelector('.gpct-listo'); if(btn){ btn.classList.toggle('done', done); btn.textContent = done ? '✓ Listo' : 'Listo'; }
+    const inp = row.querySelector('.gpct-inp:not(.gq-inp)'); if(inp) inp.value = pct.toFixed(0);
+    const btn = row.querySelector('.gpct-listo'); if(btn){ btn.classList.toggle('done', done); btn.textContent = done ? (row.querySelector('.gq-inp')?'✓':'✓ Listo') : 'Listo'; }
     const bg = row.querySelector('.row-bgfill'); if(bg) bg.style.width = Math.max(0,Math.min(100,pct)) + '%';
     row.classList.toggle('row-done', done);
   }
@@ -9469,7 +9506,7 @@ function renderGanttBoard() {
   }
 
   // ── LIST COL ──
-  let listHtml = `<div class="gantt-list-head"><div class="col">#</div><div class="col">Tarea</div><div class="col r">Dur.</div><div class="col r">%</div></div>`;
+  let listHtml = `<div class="gantt-list-head"><div class="col">#</div><div class="col">Tarea</div><div class="col r">Dur.</div><div class="col r">Avance</div></div>`;
   if (monthBand) listHtml += `<div style="height:20px;background:linear-gradient(180deg,#0B1739,#1B2D5B);border-bottom:1px solid rgba(255,255,255,.08)"></div>`;
   listHtml += tasks.map((t,i) => {
     const lvl = Math.min(3, Math.max(1, t.nivel||3));
@@ -9524,9 +9561,10 @@ function renderGanttBoard() {
       <div class="gname">
         ${healthPill}
         <span class="nm-main">${chips.join('')}${(t.nombre_tarea||'').replace(/</g,'&lt;')}</span>
+        ${(lvl!==1 && t._cu>0 && t.unidad) ? `<span class="gpu">$${Number(t._cu).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}/${String(t.unidad).replace(/</g,'&lt;')}</span>` : ''}
       </div>
       <div class="gdur">${t.duracion_dias!=null?t.duracion_dias+'d':'—'}</div>
-      <div class="gpct" style="${lvl===1?'':'display:flex;align-items:center;gap:6px;justify-content:flex-end;'}">${lvl===1?`${pct.toFixed(0)}%`:`<input class="gpct-inp" type="number" min="0" max="100" value="${pct.toFixed(0)}" onclick="event.stopPropagation()" onchange="setTaskPctInline('${t.id||''}',this.value)" title="Escribe el % de avance (100 = cumplido)"><button class="gpct-listo ${pct>=100?'done':''}" onclick="event.stopPropagation();setTaskPctInline('${t.id||''}',100)" title="Marcar como listo (100%)">${pct>=100?'✓ Listo':'Listo'}</button>`}</div>
+      <div class="gpct" style="${lvl===1?'':'display:flex;align-items:center;gap:6px;justify-content:flex-end;'}">${lvl===1?`${pct.toFixed(0)}%`:(ganttEnUnidades(t)?ganttCeldaUnidades(t,pct):`<input class="gpct-inp" type="number" min="0" max="100" value="${pct.toFixed(0)}" onclick="event.stopPropagation()" onchange="setTaskPctInline('${t.id||''}',this.value)" title="Escribe el % de avance (100 = cumplido)"><button class="gpct-listo ${pct>=100?'done':''}" onclick="event.stopPropagation();setTaskPctInline('${t.id||''}',100)" title="Marcar como listo (100%)">${pct>=100?'✓ Listo':'Listo'}</button>`)}</div>
     </div>`;
   }).join('');
 
@@ -10242,7 +10280,8 @@ async function cargarHitosReporte() {
         const unidad = (r.unidad||'').trim();
         const enUnidades = !!unidad && tot > 0 && !r.es_hito;
         // Lo ejecutado acumulado; si la tarea solo tiene % (avance previo a la regla nueva), se convierte.
-        const cant = enUnidades ? (r.cantidad_ejecutada != null ? Number(r.cantidad_ejecutada)||0 : tot*pct/100) : null;
+        const q = Number(r.cantidad_ejecutada)||0;
+        const cant = enUnidades ? ((q > 0 || pct <= 0) ? q : tot*pct/100) : null;
         rdHitos.push({ id:r.id, item:r.partida_item||null, nombre:r.nombre_tarea, pct_actual:pct, pct_nuevo:pct, manual:false,
           es_hito:!!r.es_hito, nivel:r.nivel, dur:Number(r.duracion_dias)||0, hoy:false, manana:false,
           unidad: enUnidades ? unidad : null, cant_total: enUnidades ? tot : null, cant_actual:cant, hoy_cant:0,
