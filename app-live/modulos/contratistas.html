@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<script src="../js/auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contratistas · Gerencia</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   Contratistas — módulo único de Gerencia (reemplaza a servicios-v5).
+   3 vistas que pide el rail del shell con setView():
+     resumen    · KPIs, sin contratar, carga por contratista, datos a revisar
+     obra       · PRY → especialidad → contratista (aquí se llena)
+     directorio · empresas con ficha (datos, obras, evaluación)
+   Datos (PMO): contratistas (maestro, solo Gerencia) + portafolio_servicios
+   (asignaciones, enlazadas por cod_proyecto y contratista_id) + proyectos +
+   evaluacion_contratistas (solo lectura).
+   ═══════════════════════════════════════════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4f6f9;--surface:#fff;--surface2:#f8fafc;--border:#e5e7eb;--border2:#d1d5db;
+  --t1:#0f172a;--t2:#475569;--t3:#94a3b8;
+  --navy:#0a1f63;--navy-l:#e7eaf5;
+  --brand:#2fbfae;--brand-l:#dcf6f2;--brand-d:#127a6e;
+  --amber:#f59e0b;--amber-l:#fef3c7;--amber-d:#b45309;
+  --green:#10b981;--green-l:#d1fae5;--green-d:#047857;
+  --red:#ef4444;--red-l:#fee2e2;--red-d:#b91c1c;
+  --shadow:0 1px 2px rgba(15,23,42,.06),0 1px 1px rgba(15,23,42,.04);
+  --shadow-lg:0 18px 40px -12px rgba(15,23,42,.25);
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--t1);font-family:'Poppins','Segoe UI',system-ui,sans-serif;font-size:13px;-webkit-font-smoothing:antialiased}
+.main{height:100%;overflow-y:auto}
+.page{display:none;padding:22px 24px 40px}
+.page.active{display:block}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+
+/* Encabezado */
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.ph h1{font-size:21px;font-weight:700;letter-spacing:-.4px}
+.ph p{font-size:12.5px;color:var(--t2);margin-top:3px}
+.ph-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.stamp{font-size:11.5px;color:var(--t3);display:flex;align-items:center;gap:6px}
+.stamp.err{color:var(--red-d)}
+.stamp .dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.stamp.err .dot{background:var(--red)}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--t2);transition:.15s}
+.btn:hover{border-color:var(--border2);color:var(--t1)}
+.btn.primary{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn.primary:hover{background:#071440}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.danger:hover{color:var(--red-d);border-color:#fecaca;background:var(--red-l)}
+.btn i{font-size:15px}
+.btn.sm{padding:5px 9px;font-size:11.5px}
+
+/* KPIs: una franja, números protagonistas */
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px}
+.kpi{padding:16px 18px;border-right:1px solid var(--border);cursor:default;position:relative}
+.kpi:last-child{border-right:none}
+.kpi.click{cursor:pointer}
+.kpi.click:hover{background:var(--surface2)}
+.kpi .n{font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1}
+.kpi .l{font-size:10.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.9px;margin-top:8px}
+.kpi .s{font-size:11.5px;color:var(--t2);margin-top:4px}
+.kpi .bar{height:4px;border-radius:4px;background:#eef2f6;margin-top:9px;overflow:hidden}
+.kpi .bar span{display:block;height:100%;background:var(--brand)}
+.kpi.warn .n{color:var(--amber-d)}
+.kpi.bad .n{color:var(--red-d)}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.kpi:nth-child(3){border-right:none}.kpi:nth-child(-n+3){border-bottom:1px solid var(--border)}}
+
+/* Tarjetas */
+.grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:16px}
+@media(max-width:1100px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border)}
+.card-h h3{font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px}
+.card-h h3 i{color:var(--brand-d);font-size:17px}
+.card-h .muted{font-size:11.5px;color:var(--t3)}
+.card-b{padding:6px 0}
+.empty{padding:26px 16px;text-align:center;color:var(--t3);font-size:12.5px}
+
+/* Tablas */
+table{width:100%;border-collapse:collapse}
+th{font-size:10.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap;position:sticky;top:0;z-index:1}
+td{padding:8px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr.row-link{cursor:pointer}
+tr.row-link:hover td{background:#f8fafc}
+.sub{font-size:11px;color:var(--t3);margin-top:1px}
+.num{font-variant-numeric:tabular-nums}
+.scroll{max-height:420px;overflow:auto}
+
+/* Píldoras */
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.p-ok{background:var(--green-l);color:var(--green-d)}
+.p-warn{background:var(--amber-l);color:var(--amber-d)}
+.p-bad{background:var(--red-l);color:var(--red-d)}
+.p-info{background:var(--navy-l);color:var(--navy)}
+.p-mute{background:#f1f5f9;color:var(--t2)}
+.p-brand{background:var(--brand-l);color:var(--brand-d)}
+
+/* Barras de carga */
+.load{display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer}
+.load:hover{background:var(--surface2)}
+.load .nm{width:170px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.load .tr{flex:1;height:8px;background:#eef2f6;border-radius:6px;overflow:hidden}
+.load .tr span{display:block;height:100%;border-radius:6px;background:var(--brand)}
+.load.w2 .tr span{background:var(--amber)}
+.load.w3 .tr span{background:var(--red)}
+.load .ct{width:96px;text-align:right;font-size:11.5px;color:var(--t2)}
+
+/* Chips de revisión */
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:9px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--t2);cursor:pointer}
+.chip b{color:var(--t1)}
+.chip:hover{border-color:var(--border2)}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.chip.on b{color:#fff}
+
+/* Por obra: lista + detalle */
+.obra-wrap{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
+@media(max-width:1000px){.obra-wrap{grid-template-columns:1fr}}
+.olist{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;position:sticky;top:0}
+.olist-h{padding:10px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.search{display:flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:9px;padding:6px 10px;background:var(--surface2)}
+.search input{border:none;background:none;outline:none;flex:1;min-width:0}
+.search i{color:var(--t3)}
+.seg{display:flex;background:#f1f5f9;border-radius:8px;padding:2px;gap:2px}
+.seg button{flex:1;border:none;background:none;padding:5px 6px;border-radius:6px;font-size:11.5px;font-weight:600;color:var(--t2);cursor:pointer}
+.seg button.on{background:#fff;color:var(--t1);box-shadow:var(--shadow)}
+.olist-b{max-height:calc(100vh - 230px);overflow:auto}
+.oitem{padding:10px 12px;border-bottom:1px solid #f1f5f9;cursor:pointer;border-left:3px solid transparent}
+.oitem:hover{background:var(--surface2)}
+.oitem.on{background:#f0fbf9;border-left-color:var(--brand-d)}
+.oitem .t{font-weight:600;font-size:12.5px;display:flex;justify-content:space-between;gap:8px}
+.oitem .m{font-size:11px;color:var(--t3);margin-top:2px;display:flex;justify-content:space-between;gap:8px}
+.oitem .pb{height:3px;background:#eef2f6;border-radius:3px;margin-top:6px;overflow:hidden}
+.oitem .pb span{display:block;height:100%;background:var(--brand)}
+
+.ohead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.ohead h2{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.ohead .meta{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--t2);margin-top:5px}
+.ohead .meta span{display:inline-flex;align-items:center;gap:5px}
+.ohead .meta i{color:var(--t3)}
+
+/* Celdas editables */
+.ed{width:100%;border:1px solid transparent;border-radius:6px;padding:5px 7px;background:transparent;outline:none;min-width:0}
+.ed:hover{border-color:var(--border)}
+.ed:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 3px rgba(47,191,174,.15)}
+select.ed{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:18px;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 6px center}
+input[type=date].ed{width:128px}
+.ed.miss{color:var(--amber-d);font-style:italic}
+.ed.bad{color:var(--red-d)}
+.tbl-obra td{padding:4px 8px}
+.tbl-obra td:first-child{padding-left:14px}
+.addbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px;border-top:1px solid var(--border);background:var(--surface2)}
+.addbar .lbl{font-size:11.5px;color:var(--t3);font-weight:600;margin-right:2px}
+.qchip{border:1px dashed var(--border2);background:#fff;border-radius:20px;padding:4px 10px;font-size:11.5px;font-weight:600;color:var(--t2);cursor:pointer}
+.qchip:hover{border-color:var(--brand-d);color:var(--brand-d)}
+.icon-btn{border:none;background:none;color:var(--t3);cursor:pointer;padding:5px;border-radius:6px;font-size:16px;display:inline-flex}
+.icon-btn:hover{color:var(--red-d);background:var(--red-l)}
+
+/* Directorio */
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.toolbar .search{background:#fff;min-width:260px}
+.score{display:inline-flex;align-items:center;justify-content:center;min-width:38px;padding:2px 7px;border-radius:7px;font-weight:700;font-size:12px}
+
+/* Ficha (panel lateral) */
+.veil{position:fixed;inset:0;background:rgba(15,23,42,.35);opacity:0;pointer-events:none;transition:.2s;z-index:20}
+.veil.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:#fff;box-shadow:var(--shadow-lg);transform:translateX(102%);transition:.25s ease;z-index:21;display:flex;flex-direction:column}
+.drawer.on{transform:none}
+.dr-h{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:12px;background:linear-gradient(180deg,#f0fbf9,#fff)}
+.dr-h h2{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.dr-h .rs{font-size:11.5px;color:var(--t2);margin-top:3px}
+.dr-b{flex:1;overflow:auto;padding:16px 20px 30px}
+.dr-f{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:8px;align-items:center}
+.sec{font-size:10.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin:18px 0 9px;display:flex;align-items:center;gap:8px}
+.sec::after{content:"";flex:1;height:1px;background:var(--border)}
+.sec:first-child{margin-top:0}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.form .full{grid-column:1/-1}
+.form label{display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px}
+.form input,.form textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:7px 10px;outline:none;background:#fff}
+.form input:focus,.form textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(47,191,174,.15)}
+.form textarea{min-height:60px;resize:vertical}
+.form .hint{font-size:10.5px;color:var(--t3);margin-top:3px}
+.mini{width:100%;border-collapse:collapse}
+.mini td{padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:12px}
+.mini td:last-child{text-align:right}
+.dims{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.dim{border:1px solid var(--border);border-radius:10px;padding:9px 10px}
+.dim .v{font-size:18px;font-weight:800}
+.dim .k{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-top:2px}
+.note{font-size:11.5px;color:var(--t2);background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 11px;display:flex;gap:8px;align-items:flex-start}
+.note i{color:var(--brand-d);font-size:15px;margin-top:1px}
+
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--t1);color:#fff;padding:9px 16px;border-radius:9px;font-size:12.5px;font-weight:500;opacity:0;transition:.2s;z-index:40;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.toast.err{background:var(--red-d)}
+.loading{padding:60px;text-align:center;color:var(--t3)}
+</style>
+</head>
+<body>
+<div class="main">
+
+<!-- ═════════════════ RESUMEN ═════════════════ -->
+<section class="page" id="page-resumen">
+  <div class="ph">
+    <div><h1>Contratistas · Resumen</h1><p>Cómo están cubiertas las obras activas y quién está cargado.</p></div>
+    <div class="ph-actions"><span class="stamp" id="stamp-resumen"></span><button class="btn" onclick="exportar()"><i class="ti ti-file-spreadsheet"></i>Exportar Excel</button></div>
+  </div>
+  <div class="kpis" id="r-kpis"><div class="loading" style="grid-column:1/-1">Cargando…</div></div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-h"><h3><i class="ti ti-alert-triangle"></i>Sin contratar</h3><span class="muted" id="r-sc-n"></span></div>
+      <div class="scroll"><table><thead><tr><th>Obra</th><th>Especialidad</th><th>Responsable</th><th>Inicio</th></tr></thead><tbody id="r-sc"></tbody></table></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3><i class="ti ti-users-group"></i>Carga por contratista</h3><span class="muted">obras activas a la vez</span></div>
+      <div class="card-b scroll" id="r-carga"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="card-h"><h3><i class="ti ti-list-check"></i>Datos a revisar</h3><span class="muted">clic para ir al detalle</span></div>
+    <div class="chips" id="r-rev"></div>
+    <div id="r-rev-list"></div>
+  </div>
+</section>
+
+<!-- ═════════════════ POR OBRA ═════════════════ -->
+<section class="page" id="page-obra">
+  <div class="ph">
+    <div><h1>Contratistas por obra</h1><p>Cada obra con sus especialidades y quién las ejecuta. Lo que cambies aquí lo ven el modal del proyecto, el Supervisor y el portal Contratas.</p></div>
+    <div class="ph-actions"><span class="stamp" id="stamp-obra"></span></div>
+  </div>
+  <div class="obra-wrap">
+    <aside class="olist">
+      <div class="olist-h">
+        <div class="search"><i class="ti ti-search"></i><input id="o-q" placeholder="Buscar obra o código…" oninput="renderObraList()"></div>
+        <div class="seg" id="o-seg">
+          <button data-f="activas" class="on">Activas</button><button data-f="pend">Con pendientes</button><button data-f="todas">Todas</button>
+        </div>
+      </div>
+      <div class="olist-b" id="o-list"></div>
+    </aside>
+    <div class="card" id="o-det"><div class="empty">Elige una obra de la lista.</div></div>
+  </div>
+</section>
+
+<!-- ═════════════════ DIRECTORIO ═════════════════ -->
+<section class="page" id="page-directorio">
+  <div class="ph">
+    <div><h1>Directorio de contratistas</h1><p>Una ficha por empresa: datos de contacto, obras, evaluación y acceso al portal.</p></div>
+    <div class="ph-actions"><span class="stamp" id="stamp-directorio"></span><button class="btn primary" onclick="nuevoContratista()"><i class="ti ti-plus"></i>Nuevo contratista</button></div>
+  </div>
+  <div class="toolbar">
+    <div class="search"><i class="ti ti-search"></i><input id="d-q" placeholder="Empresa, RUC, encargado, correo…" oninput="renderDirectorio()"></div>
+    <div class="chips" style="padding:0" id="d-f"></div>
+  </div>
+  <div class="card">
+    <div style="overflow:auto"><table><thead><tr><th>Empresa</th><th>RUC</th><th>Encargado</th><th>Contacto</th><th>Obras activas</th><th>Evaluación</th><th>Ficha</th></tr></thead><tbody id="d-body"></tbody></table></div>
+  </div>
+</section>
+
+</div>
+
+<!-- Ficha -->
+<div class="veil" id="veil" onclick="cerrarFicha()"></div>
+<aside class="drawer" id="drawer" aria-hidden="true"></aside>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ─────────────── Conexión PMO ───────────────
+   auth.js cambia el Bearer por el token de la sesión de Gerencia:
+   la tabla contratistas solo responde a es_gerencia(). */
+const SB='https://vsploxglutkbeokumunp.supabase.co/rest/v1/';
+const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+const HDR=x=>Object.assign({apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json'},x||{});
+async function api(path,opt){
+  const r=await fetch(SB+path,Object.assign({headers:HDR(opt&&opt.prefer?{Prefer:opt.prefer}:null)},opt||{}));
+  if(!r.ok){const t=await r.text().catch(()=>'');throw new Error('HTTP '+r.status+' '+t.slice(0,160));}
+  return r.status===204?null:r.json().catch(()=>null);
+}
+
+/* ─────────────── Catálogos ─────────────── */
+const SITUACIONES=['Contratado','Pendiente','Licitación'];
+const ESTADOS=['Por Iniciar','Proceso','Cierre','Concluido'];
+const RESPONSABLES=['','Operaciones','Ingeniería'];
+const ESP_RAPIDAS=['Paneles','Mecánica','Eléctrico','Aislamiento','Lonas','EEMM','OOCC','Gasificado'];
+const PROY_CERRADO=['Cerrado','Cancelado','Anulado'];
+const SERV_VIVO=['Por Iniciar','Proceso','Cierre'];
+
+/* ─────────────── Estado ─────────────── */
+let PROY=[],SERV=[],CONT=[],EVAL=[];
+let VIEW='resumen',OBRA_SEL=null,OBRA_FILTRO='activas',DIR_FILTRO='todos',REV_SEL=null,FICHA=null;
+const HOY=new Date();HOY.setHours(0,0,0,0);
+
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
+const fdate=d=>{if(!d)return '';const p=String(d).slice(0,10).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0].slice(2)}`:d;};
+const toD=d=>{if(!d)return null;const x=new Date(String(d).slice(0,10)+'T00:00:00');return isNaN(x)?null:x;};
+const dias=d=>{const x=toD(d);return x?Math.round((x-HOY)/864e5):null;};
+
+const proyDe=cod=>PROY.find(p=>p.cod_proyecto===cod)||null;
+const contDe=id=>CONT.find(c=>c.id===id)||null;
+const proyVivo=cod=>{const p=proyDe(cod);return !p||!PROY_CERRADO.includes(p.estado);};
+const servVivo=s=>SERV_VIVO.includes(s.estado)&&proyVivo(s.cod_proyecto);
+const sinContratar=s=>servVivo(s)&&(s.situacion!=='Contratado'||!s.contratista_id);
+const fechasMal=s=>{const a=toD(s.fecha_inicio),b=toD(s.fecha_fin);return a&&b&&b<a;};
+
+/* Evaluaciones: el módulo de evaluación guarda el nombre escrito; se cruza por alias. */
+let EVAL_POR=new Map();
+function indexarEval(){
+  const idx=new Map();
+  CONT.forEach(c=>[c.nombre,...(c.aliases||[])].forEach(a=>idx.set(norm(a),c.id)));
+  EVAL_POR=new Map();
+  EVAL.forEach(e=>{const id=idx.get(norm(e.contratista));if(id==null)return;if(!EVAL_POR.has(id))EVAL_POR.set(id,[]);EVAL_POR.get(id).push(e);});
+  EVAL_POR.forEach(l=>l.sort((a,b)=>String(b.periodo).localeCompare(String(a.periodo))));
+}
+function evalResumen(id){
+  const l=EVAL_POR.get(id);if(!l||!l.length)return null;
+  const avg=k=>{const v=l.map(e=>+e[k]).filter(x=>!isNaN(x));return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;};
+  return{n:l.length,final:avg('puntaje_final'),seg:avg('prom_seguridad'),cum:avg('prom_cumplimiento'),cal:avg('prom_calidad'),ges:avg('prom_gestion'),ult:l[0]};
+}
+const scoreCls=v=>v==null?'p-mute':v>=85?'p-ok':v>=70?'p-info':v>=60?'p-warn':'p-bad';
+
+/* ─────────────── Carga ─────────────── */
+async function cargar(){
+  try{
+    const [p,s,c,e]=await Promise.all([
+      api('proyectos?select=cod_proyecto,nombre,estado,supervisor&order=cod_proyecto.desc'),
+      api('portafolio_servicios?select=*&order=cod_proyecto.asc,especialidad.asc'),
+      api('contratistas?select=*&order=nombre.asc'),
+      api('evaluacion_contratistas?select=contratista,periodo,supervisor,especialidad,prom_seguridad,prom_cumplimiento,prom_calidad,prom_gestion,puntaje_final,clasificacion')
+    ]);
+    PROY=p||[];SERV=s||[];CONT=c||[];EVAL=e||[];
+    indexarEval();
+    stamp('Supabase en vivo');
+  }catch(err){
+    console.error(err);stamp('No se pudo cargar · '+err.message,true);
+  }
+  render();
+}
+function stamp(t,err){
+  document.querySelectorAll('.stamp').forEach(el=>{el.className='stamp'+(err?' err':'');el.innerHTML='<span class="dot"></span>'+esc(t);});
+}
+let toastT;
+function toast(t,err){const el=document.getElementById('toast');el.textContent=t;el.className='toast on'+(err?' err':'');clearTimeout(toastT);toastT=setTimeout(()=>el.className='toast',2200);}
+
+/* ─────────────── Navegación (la llama el rail del shell) ─────────────── */
+function setView(id){
+  const alias={ejecutiva:'resumen',urgentes:'resumen',operativa:'obra',matriz:'obra',gantt:'obra',editor:'obra',disponibilidad:'resumen',universo:'directorio'};
+  id=alias[id]||id||'resumen';
+  if(!document.getElementById('page-'+id))id='resumen';
+  VIEW=id;
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+id));
+  document.querySelector('.main').scrollTop=0;
+  render();return true;
+}
+window.setView=setView;
+function ir(view,extra){
+  if(view==='obra'&&extra)OBRA_SEL=extra;
+  /* Pide al shell que marque el ítem del rail; si no hay shell, cambia aquí. */
+  const hash={resumen:'ct-resumen',obra:'ct-obra',directorio:'ct-directorio'}[view];
+  try{if(window.parent!==window&&window.parent.location.hash!=='#'+hash){window.parent.location.hash=hash;return;}}catch(e){}
+  setView(view);
+}
+
+function render(){
+  publicarBadges();
+  if(VIEW==='resumen')renderResumen();
+  else if(VIEW==='obra'){renderObraList();renderObra();}
+  else renderDirectorio();
+  if(FICHA)renderFicha();
+}
+function publicarBadges(){
+  try{window.parent.postMessage({tipo:'servicios:badges',contratistas:CONT.filter(c=>c.activo).length,sinContratar:SERV.filter(sinContratar).length},'*');}catch(e){}
+}
+
+/* ═══════════════ RESUMEN ═══════════════ */
+function cargaContratistas(){
+  const m=new Map();
+  SERV.filter(s=>servVivo(s)&&s.contratista_id).forEach(s=>{
+    if(!m.has(s.contratista_id))m.set(s.contratista_id,{obras:new Set(),serv:0,esp:new Set()});
+    const x=m.get(s.contratista_id);x.obras.add(s.cod_proyecto);x.serv++;x.esp.add(s.especialidad);
+  });
+  return [...m.entries()].map(([id,x])=>({c:contDe(id),obras:x.obras.size,serv:x.serv,esp:[...x.esp]})).filter(x=>x.c).sort((a,b)=>b.obras-a.obras||b.serv-a.serv);
+}
+function revisiones(){
+  const vivos=SERV.filter(servVivo);
+  return [
+    {k:'fechas',t:'Fechas invertidas',d:'El fin es anterior al inicio',l:vivos.filter(fechasMal),tipo:'serv'},
+    {k:'sinfecha',t:'Sin fechas',d:'Servicio sin inicio o fin',l:vivos.filter(s=>!s.fecha_inicio||!s.fecha_fin),tipo:'serv'},
+    {k:'vencido',t:'Fin vencido sin cerrar',d:'Fin pasado y estado aún abierto',l:vivos.filter(s=>{const d=dias(s.fecha_fin);return d!=null&&d<0&&s.estado!=='Cierre'&&!fechasMal(s);}),tipo:'serv'},
+    {k:'cerradas',t:'En obras cerradas',d:'Servicios abiertos de obras ya cerradas',l:SERV.filter(s=>SERV_VIVO.includes(s.estado)&&!proyVivo(s.cod_proyecto)),tipo:'serv'},
+    {k:'fichas',t:'Fichas por completar',d:'Empresa sin RUC, encargado o correo',l:CONT.filter(c=>c.activo&&!c.completo),tipo:'cont'},
+  ];
+}
+function renderResumen(){
+  const vivos=SERV.filter(servVivo);
+  const obras=new Set(vivos.map(s=>s.cod_proyecto));
+  const contr=vivos.filter(s=>s.situacion==='Contratado'&&s.contratista_id).length;
+  const sc=vivos.filter(sinContratar);
+  const carga=cargaContratistas();
+  const choques=carga.filter(x=>x.obras>=3).length;
+  const pct=vivos.length?Math.round(contr/vivos.length*100):0;
+  const incompletas=CONT.filter(c=>c.activo&&!c.completo).length;
+  document.getElementById('r-kpis').innerHTML=`
+    <div class="kpi click" onclick="ir('obra')"><div class="n num">${obras.size}</div><div class="l">Obras con servicios</div><div class="s">${vivos.length} servicios abiertos</div></div>
+    <div class="kpi"><div class="n num">${pct}%</div><div class="l">Contratado</div><div class="s">${contr} de ${vivos.length}</div><div class="bar"><span style="width:${pct}%"></span></div></div>
+    <div class="kpi click ${sc.length?'warn':''}" onclick="document.getElementById('r-sc').scrollIntoView({behavior:'smooth',block:'center'})"><div class="n num">${sc.length}</div><div class="l">Sin contratar</div><div class="s">pendientes o sin empresa</div></div>
+    <div class="kpi click" onclick="DIR_FILTRO='activos';ir('directorio')"><div class="n num">${carga.length}</div><div class="l">Contratistas en obra</div><div class="s">de ${CONT.filter(c=>c.activo).length} en el directorio</div></div>
+    <div class="kpi ${choques?'bad':''}"><div class="n num">${choques}</div><div class="l">Con 3+ obras</div><div class="s">riesgo de sobrecarga</div></div>
+    <div class="kpi click ${incompletas?'warn':''}" onclick="DIR_FILTRO='incompletos';ir('directorio')"><div class="n num">${incompletas}</div><div class="l">Fichas incompletas</div><div class="s">falta RUC o contacto</div></div>`;
+
+  sc.sort((a,b)=>String(a.fecha_inicio||'9').localeCompare(String(b.fecha_inicio||'9')));
+  document.getElementById('r-sc-n').textContent=sc.length+' servicios';
+  document.getElementById('r-sc').innerHTML=sc.length?sc.map(s=>{
+    const d=dias(s.fecha_inicio);
+    const ini=s.fecha_inicio?`${fdate(s.fecha_inicio)}${d!=null&&d<=15?` <span class="pill ${d<0?'p-bad':'p-warn'}">${d<0?'ya debió iniciar':'en '+d+' d'}</span>`:''}`:'<span class="sub">sin fecha</span>';
+    return `<tr class="row-link" onclick="ir('obra','${esc(s.cod_proyecto)}')"><td><b>${esc(nombreObra(s.cod_proyecto,s.cliente))}</b><div class="sub">${esc(s.cod_proyecto||'')}</div></td><td>${esc(s.especialidad)}${s.contratista?`<div class="sub">propuesto: ${esc(s.contratista)}</div>`:''}</td><td>${esc(s.responsable||'—')}</td><td>${ini}</td></tr>`;
+  }).join(''):'<tr><td colspan="4" class="empty">Todo lo activo está contratado.</td></tr>';
+
+  const max=Math.max(1,...carga.map(x=>x.obras));
+  document.getElementById('r-carga').innerHTML=carga.length?carga.map(x=>`
+    <div class="load ${x.obras>=3?'w3':x.obras===2?'w2':''}" onclick="abrirFicha(${x.c.id})" title="${esc(x.esp.join(' · '))}">
+      <div class="nm">${esc(x.c.nombre)}</div><div class="tr"><span style="width:${x.obras/max*100}%"></span></div>
+      <div class="ct num">${x.obras} obra${x.obras>1?'s':''} · ${x.serv} serv.</div></div>`).join(''):'<div class="empty">Sin contratistas asignados.</div>';
+
+  const rev=revisiones();
+  document.getElementById('r-rev').innerHTML=rev.map(r=>`<span class="chip ${REV_SEL===r.k?'on':''}" onclick="REV_SEL=REV_SEL==='${r.k}'?null:'${r.k}';renderResumen()" title="${esc(r.d)}"><b>${r.l.length}</b>${esc(r.t)}</span>`).join('');
+  const sel=rev.find(r=>r.k===REV_SEL);
+  document.getElementById('r-rev-list').innerHTML=!sel?'':!sel.l.length?'<div class="empty">Nada pendiente aquí.</div>':
+    sel.tipo==='cont'
+    ?`<table><tbody>${sel.l.map(c=>`<tr class="row-link" onclick="abrirFicha(${c.id})"><td><b>${esc(c.nombre)}</b></td><td>${faltantes(c).map(f=>`<span class="pill p-warn">${f}</span>`).join(' ')}</td></tr>`).join('')}</tbody></table>`
+    :`<div class="scroll"><table><thead><tr><th>Obra</th><th>Especialidad</th><th>Contratista</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr></thead><tbody>${sel.l.map(s=>`<tr class="row-link" onclick="ir('obra','${esc(s.cod_proyecto)}')"><td><b>${esc(nombreObra(s.cod_proyecto,s.cliente))}</b><div class="sub">${esc(s.cod_proyecto||'')}</div></td><td>${esc(s.especialidad)}</td><td>${esc(s.contratista||'—')}</td><td>${fdate(s.fecha_inicio)||'—'}</td><td>${fdate(s.fecha_fin)||'—'}</td><td>${esc(s.estado)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function nombreObra(cod,fallback){const p=proyDe(cod);return p?p.nombre:(fallback||cod||'—');}
+function faltantes(c){const f=[];if(!c.ruc)f.push('RUC');if(!c.razon_social)f.push('Razón social');if(!c.encargado)f.push('Encargado');if(!c.telefono)f.push('Teléfono');if(!c.email)f.push('Correo');return f;}
+
+/* ═══════════════ POR OBRA ═══════════════ */
+document.getElementById('o-seg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  OBRA_FILTRO=b.dataset.f;document.querySelectorAll('#o-seg button').forEach(x=>x.classList.toggle('on',x===b));renderObraList();
+});
+function obrasLista(){
+  const porCod=new Map();
+  SERV.forEach(s=>{if(!porCod.has(s.cod_proyecto))porCod.set(s.cod_proyecto,[]);porCod.get(s.cod_proyecto).push(s);});
+  /* Todas las obras no cerradas aparecen, tengan o no servicios: así se empieza a llenar una obra nueva. */
+  const cods=new Set([...porCod.keys(),...PROY.filter(p=>!PROY_CERRADO.includes(p.estado)).map(p=>p.cod_proyecto)]);
+  return [...cods].filter(Boolean).map(cod=>{
+    const l=porCod.get(cod)||[];const p=proyDe(cod);
+    const vivos=l.filter(servVivo);
+    return{cod,nombre:p?p.nombre:(l[0]&&l[0].cliente)||cod,estado:p?p.estado:'—',sup:p&&p.supervisor,n:l.length,ok:l.filter(s=>s.situacion==='Contratado'&&s.contratista_id).length,pend:vivos.filter(sinContratar).length,cerrada:p&&PROY_CERRADO.includes(p.estado)};
+  }).sort((a,b)=>(b.pend>0)-(a.pend>0)||b.n-a.n||a.nombre.localeCompare(b.nombre));
+}
+function renderObraList(){
+  const q=norm(document.getElementById('o-q').value);
+  let l=obrasLista();
+  if(OBRA_FILTRO==='activas')l=l.filter(o=>!o.cerrada);
+  if(OBRA_FILTRO==='pend')l=l.filter(o=>o.pend>0);
+  if(q)l=l.filter(o=>norm(o.nombre+' '+o.cod+' '+(o.sup||'')).includes(q));
+  if(!OBRA_SEL&&l.length)OBRA_SEL=l[0].cod;
+  document.getElementById('o-list').innerHTML=l.length?l.map(o=>`
+    <div class="oitem ${o.cod===OBRA_SEL?'on':''}" onclick="OBRA_SEL='${esc(o.cod)}';renderObraList();renderObra()">
+      <div class="t"><span>${esc(o.nombre)}</span>${o.pend?`<span class="pill p-warn">${o.pend}</span>`:o.n?'<span class="pill p-ok"><i class="ti ti-check"></i></span>':''}</div>
+      <div class="m"><span>${esc(o.cod)}</span><span>${o.n?o.ok+'/'+o.n+' contratados':'sin servicios'}</span></div>
+      ${o.n?`<div class="pb"><span style="width:${o.ok/o.n*100}%"></span></div>`:''}
+    </div>`).join(''):'<div class="empty">Sin obras con ese filtro.</div>';
+}
+function opcionesContratista(sel){
+  const act=CONT.filter(c=>c.activo||c.id===sel);
+  return `<option value="">— Sin asignar —</option>`+act.map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${esc(c.nombre)}${c.completo?'':' · ficha incompleta'}</option>`).join('')+`<option value="__nuevo">＋ Nuevo contratista…</option>`;
+}
+const opts=(list,cur)=>list.map(o=>`<option value="${esc(o)}" ${o===(cur||'')?'selected':''}>${esc(o||'—')}</option>`).join('')+(cur&&!list.includes(cur)?`<option selected>${esc(cur)}</option>`:'');
+function renderObra(){
+  const box=document.getElementById('o-det');
+  if(!OBRA_SEL){box.innerHTML='<div class="empty">Elige una obra de la lista.</div>';return;}
+  const p=proyDe(OBRA_SEL);
+  const l=SERV.filter(s=>s.cod_proyecto===OBRA_SEL);
+  const nombre=p?p.nombre:(l[0]&&l[0].cliente)||OBRA_SEL;
+  const ok=l.filter(s=>s.situacion==='Contratado'&&s.contratista_id).length;
+  box.innerHTML=`
+    <div class="ohead">
+      <div><h2>${esc(nombre)}</h2>
+        <div class="meta"><span><i class="ti ti-hash"></i>${esc(OBRA_SEL)}</span><span><i class="ti ti-user-cog"></i>${esc(p&&p.supervisor||'Sin supervisor')}</span><span><i class="ti ti-flag"></i>${esc(p&&p.estado||'—')}</span></div>
+      </div>
+      <div style="text-align:right"><div style="font-size:22px;font-weight:800" class="num">${ok}/${l.length}</div><div class="sub">contratados</div></div>
+    </div>
+    <div style="overflow:auto"><table class="tbl-obra"><thead><tr><th>Especialidad</th><th>Contratista</th><th>Situación</th><th>Estado</th><th>Inicio</th><th>Fin</th><th>Responsable</th><th></th></tr></thead>
+    <tbody>${l.length?l.map(s=>filaObra(s)).join(''):'<tr><td colspan="8" class="empty">Esta obra aún no tiene especialidades. Agrega la primera abajo.</td></tr>'}</tbody></table></div>
+    <div class="addbar"><span class="lbl">Agregar especialidad:</span>${ESP_RAPIDAS.map(e=>`<button class="qchip" onclick="agregarServicio('${e}')">${e}</button>`).join('')}<button class="qchip" onclick="agregarServicio()">Otra…</button></div>`;
+}
+function filaObra(s){
+  const malF=fechasMal(s);
+  return `<tr data-id="${s.id}">
+    <td><input class="ed" value="${esc(s.especialidad)}" onchange="guardarServ(${s.id},'especialidad',this.value)" style="min-width:150px;font-weight:600"></td>
+    <td><select class="ed ${s.contratista_id?'':'miss'}" onchange="cambiarContratista(${s.id},this)" style="min-width:170px">${opcionesContratista(s.contratista_id)}</select>${s.contratista_id?`<div class="sub" style="padding-left:8px;cursor:pointer" onclick="abrirFicha(${s.contratista_id})">ver ficha</div>`:''}</td>
+    <td><select class="ed" onchange="guardarServ(${s.id},'situacion',this.value)">${opts(SITUACIONES,s.situacion)}</select></td>
+    <td><select class="ed" onchange="guardarServ(${s.id},'estado',this.value)">${opts(ESTADOS,s.estado)}</select></td>
+    <td><input type="date" class="ed ${malF?'bad':''}" value="${esc((s.fecha_inicio||'').slice(0,10))}" onchange="guardarServ(${s.id},'fecha_inicio',this.value||null)"></td>
+    <td><input type="date" class="ed ${malF?'bad':''}" value="${esc((s.fecha_fin||'').slice(0,10))}" onchange="guardarServ(${s.id},'fecha_fin',this.value||null)" ${malF?'title="El fin es anterior al inicio"':''}></td>
+    <td><select class="ed" onchange="guardarServ(${s.id},'responsable',this.value||null)">${opts(RESPONSABLES,s.responsable)}</select></td>
+    <td><button class="icon-btn" title="Quitar" onclick="borrarServ(${s.id})"><i class="ti ti-trash"></i></button></td>
+  </tr>`;
+}
+async function guardarServ(id,campo,valor){
+  const s=SERV.find(x=>x.id===id);if(!s)return;
+  const antes=s[campo];s[campo]=valor;
+  try{await api('portafolio_servicios?id=eq.'+id,{method:'PATCH',body:JSON.stringify({[campo]:valor}),prefer:'return=minimal'});stamp('Guardado '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}));}
+  catch(e){s[campo]=antes;toast('No se pudo guardar',true);stamp('No se pudo guardar',true);}
+  publicarBadges();renderObraList();
+  if(campo==='fecha_inicio'||campo==='fecha_fin'){const tr=document.querySelector(`tr[data-id="${id}"]`);if(tr)tr.outerHTML=filaObra(s);}
+}
+async function cambiarContratista(id,sel){
+  if(sel.value==='__nuevo'){
+    const c=await crearContratistaRapido();
+    if(!c){renderObra();return;}
+    sel.value=String(c.id);
+  }
+  const cid=sel.value?+sel.value:null;const c=contDe(cid);
+  const s=SERV.find(x=>x.id===id);if(!s)return;
+  const patch={contratista_id:cid,contratista:c?c.nombre:null};
+  /* Al asignar empresa a algo pendiente, se propone contratado; se puede volver a cambiar. */
+  if(c&&s.situacion==='Pendiente'&&confirm(`¿Marcar «${s.especialidad}» como Contratado con ${c.nombre}?`))patch.situacion='Contratado';
+  const antes={...s};Object.assign(s,patch);
+  try{await api('portafolio_servicios?id=eq.'+id,{method:'PATCH',body:JSON.stringify(patch),prefer:'return=minimal'});stamp('Guardado');}
+  catch(e){Object.assign(s,antes);toast('No se pudo guardar',true);}
+  publicarBadges();renderObraList();renderObra();
+}
+async function agregarServicio(esp){
+  if(!esp){esp=prompt('Nombre de la especialidad:');if(!esp||!esp.trim())return;esp=esp.trim();}
+  const p=proyDe(OBRA_SEL);
+  const fila={cod_proyecto:OBRA_SEL,cliente:p?p.nombre:OBRA_SEL,supervisor:p&&p.supervisor||null,especialidad:esp,situacion:'Pendiente',estado:'Por Iniciar'};
+  try{const r=await api('portafolio_servicios',{method:'POST',body:JSON.stringify(fila),prefer:'return=representation'});SERV.push(r[0]);toast(esp+' agregada');}
+  catch(e){toast('No se pudo agregar',true);return;}
+  publicarBadges();renderObraList();renderObra();
+}
+async function borrarServ(id){
+  const s=SERV.find(x=>x.id===id);if(!s)return;
+  if(!confirm(`¿Quitar «${s.especialidad}»${s.contratista?' ('+s.contratista+')':''} de esta obra?`))return;
+  try{await api('portafolio_servicios?id=eq.'+id,{method:'DELETE',prefer:'return=minimal'});SERV=SERV.filter(x=>x.id!==id);toast('Quitado');}
+  catch(e){toast('No se pudo quitar',true);}
+  publicarBadges();renderObraList();renderObra();
+}
+
+/* ═══════════════ DIRECTORIO ═══════════════ */
+function obrasActivasDe(id){return [...new Set(SERV.filter(s=>s.contratista_id===id&&servVivo(s)).map(s=>s.cod_proyecto))];}
+function renderDirectorio(){
+  const q=norm(document.getElementById('d-q').value);
+  const filtros=[['todos','Todos',CONT.length],['activos','En obra',CONT.filter(c=>obrasActivasDe(c.id).length).length],['libres','Sin obra',CONT.filter(c=>c.activo&&!obrasActivasDe(c.id).length).length],['incompletos','Por completar',CONT.filter(c=>c.activo&&!c.completo).length],['inactivos','Inactivos',CONT.filter(c=>!c.activo).length]];
+  document.getElementById('d-f').innerHTML=filtros.filter(f=>f[0]!=='inactivos'||f[2]).map(f=>`<span class="chip ${DIR_FILTRO===f[0]?'on':''}" onclick="DIR_FILTRO='${f[0]}';renderDirectorio()"><b>${f[2]}</b>${f[1]}</span>`).join('');
+  let l=CONT.slice();
+  if(DIR_FILTRO==='activos')l=l.filter(c=>obrasActivasDe(c.id).length);
+  if(DIR_FILTRO==='libres')l=l.filter(c=>c.activo&&!obrasActivasDe(c.id).length);
+  if(DIR_FILTRO==='incompletos')l=l.filter(c=>c.activo&&!c.completo);
+  if(DIR_FILTRO==='inactivos')l=l.filter(c=>!c.activo);
+  if(DIR_FILTRO==='todos')l=l.filter(c=>c.activo);
+  if(q)l=l.filter(c=>norm([c.nombre,c.razon_social,c.ruc,c.encargado,c.email,c.telefono,...(c.especialidades||[])].join(' ')).includes(q));
+  document.getElementById('d-body').innerHTML=l.length?l.map(c=>{
+    const ob=obrasActivasDe(c.id);const ev=evalResumen(c.id);
+    return `<tr class="row-link" onclick="abrirFicha(${c.id})">
+      <td><b>${esc(c.nombre)}</b><div class="sub">${esc(c.razon_social||'—')}</div></td>
+      <td class="num">${esc(c.ruc||'—')}</td>
+      <td>${esc(c.encargado||'—')}</td>
+      <td>${c.telefono?esc(c.telefono):''}${c.email?`<div class="sub">${esc(c.email)}</div>`:''}${!c.telefono&&!c.email?'—':''}</td>
+      <td>${ob.length?`<span class="pill ${ob.length>=3?'p-bad':ob.length===2?'p-warn':'p-brand'}">${ob.length}</span> <span class="sub" style="display:inline">${esc(ob.map(x=>nombreObra(x)).join(', '))}</span>`:'<span class="sub">—</span>'}</td>
+      <td>${ev?`<span class="score ${scoreCls(ev.final)}">${ev.final.toFixed(0)}</span>`:'<span class="sub">sin evaluar</span>'}</td>
+      <td>${c.completo?'<span class="pill p-ok"><i class="ti ti-check"></i>Completa</span>':`<span class="pill p-warn">Falta ${faltantes(c).length}</span>`}</td>
+    </tr>`;}).join(''):'<tr><td colspan="7" class="empty">Ningún contratista con ese filtro.</td></tr>';
+}
+
+/* ─────────────── Ficha ─────────────── */
+function abrirFicha(id){FICHA=id;renderFicha();document.getElementById('veil').classList.add('on');const d=document.getElementById('drawer');d.classList.add('on');d.setAttribute('aria-hidden','false');}
+function cerrarFicha(){FICHA=null;document.getElementById('veil').classList.remove('on');const d=document.getElementById('drawer');d.classList.remove('on');d.setAttribute('aria-hidden','true');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&FICHA)cerrarFicha();});
+function renderFicha(){
+  const nuevo=FICHA==='nuevo';
+  const c=nuevo?{nombre:'',razon_social:'',ruc:'',encargado:'',telefono:'',email:'',especialidades:[],notas:'',activo:true,completo:false}:contDe(FICHA);
+  if(!c){cerrarFicha();return;}
+  const serv=nuevo?[]:SERV.filter(s=>s.contratista_id===c.id).sort((a,b)=>servVivo(b)-servVivo(a));
+  const ev=nuevo?null:evalResumen(c.id);
+  const f=(k,lbl,extra)=>`<div class="${extra&&extra.full?'full':''}"><label>${lbl}</label><input id="f-${k}" value="${esc(c[k]||'')}" ${extra&&extra.ph?`placeholder="${extra.ph}"`:''}>${extra&&extra.hint?`<div class="hint">${extra.hint}</div>`:''}</div>`;
+  document.getElementById('drawer').innerHTML=`
+    <div class="dr-h"><div><h2>${nuevo?'Nuevo contratista':esc(c.nombre)}</h2><div class="rs">${nuevo?'Completa lo que tengas; puedes volver luego.':esc(c.razon_social||'Sin razón social')}${!nuevo&&c.dir_n?` · N° ${c.dir_n} del directorio`:''}</div></div>
+      <button class="icon-btn" onclick="cerrarFicha()" title="Cerrar" style="color:var(--t2)"><i class="ti ti-x"></i></button></div>
+    <div class="dr-b">
+      <div class="sec">Datos de la empresa</div>
+      <div class="form">
+        ${f('nombre','Nombre corto *',{hint:'Como se le conoce en obra. Es el que se elige en «Por obra».'})}
+        ${f('ruc','RUC',{ph:'11 dígitos'})}
+        ${f('razon_social','Razón social',{full:true})}
+        ${f('encargado','Encargado')}
+        ${f('telefono','Teléfono',{ph:'+51 9xx xxx xxx'})}
+        ${f('email','Correo',{full:true,hint:'Es también su usuario del portal Contratas.'})}
+        <div class="full"><label>Especialidades</label><input id="f-especialidades" value="${esc((c.especialidades||[]).join(', '))}" placeholder="Paneles, Mecánica, Eléctrico…"></div>
+        <div class="full"><label>Notas</label><textarea id="f-notas">${esc(c.notas||'')}</textarea></div>
+        ${nuevo?'':`<div class="full"><label style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="f-activo" ${c.activo?'checked':''} style="width:auto">Activo (aparece para asignar en obras)</label></div>`}
+      </div>
+      ${nuevo?'':`
+      <div class="sec">Obras (${new Set(serv.map(s=>s.cod_proyecto)).size})</div>
+      ${serv.length?`<table class="mini"><tbody>${serv.map(s=>`<tr class="row-link" onclick="cerrarFicha();ir('obra','${esc(s.cod_proyecto)}')"><td><b>${esc(nombreObra(s.cod_proyecto,s.cliente))}</b><div class="sub">${esc(s.especialidad)} · ${fdate(s.fecha_inicio)||'s/f'} → ${fdate(s.fecha_fin)||'s/f'}</div></td><td><span class="pill ${servVivo(s)?(s.estado==='Proceso'?'p-brand':'p-info'):'p-mute'}">${esc(servVivo(s)?s.estado:'Cerrada')}</span></td></tr>`).join('')}</tbody></table>`:'<div class="note"><i class="ti ti-info-circle"></i>Sin obras asignadas. Se asigna desde «Por obra».</div>'}
+      <div class="sec">Evaluación de desempeño</div>
+      ${ev?`<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><span class="score ${scoreCls(ev.final)}" style="font-size:20px;padding:6px 12px">${ev.final.toFixed(0)}</span><div><b>${esc(ev.ult.clasificacion||'')}</b><div class="sub">promedio de ${ev.n} ${ev.n>1?'evaluaciones':'evaluación'} · última ${fdate(ev.ult.periodo)} (${esc(ev.ult.supervisor||'')})</div></div></div>
+        <div class="dims">${[['Seguridad',ev.seg],['Cumplimiento',ev.cum],['Calidad',ev.cal],['Gestión',ev.ges]].map(d=>`<div class="dim"><div class="v num">${d[1]==null?'—':d[1].toFixed(0)}</div><div class="k">${d[0]}</div></div>`).join('')}</div>`
+      :'<div class="note"><i class="ti ti-info-circle"></i>Aún no tiene evaluaciones registradas.</div>'}
+      <div style="margin-top:10px"><button class="btn sm" onclick="irEvaluacion()"><i class="ti ti-clipboard-check"></i>Registrar evaluación</button></div>
+      <div class="sec">Portal Contratas</div>
+      <div class="note"><i class="ti ti-key"></i><div>${c.email?`Entra al portal con <b>${esc(c.email)}</b>. Ahí ve sus obras, licitaciones y facturas.`:'Sin correo: aún no puede entrar al portal.'}<div class="sub" style="margin-top:4px">Las claves las entrega Operaciones; si cambias el correo o el nombre corto, avisa para actualizar su acceso.</div></div></div>`}
+    </div>
+    <div class="dr-f">${nuevo?'<span></span>':`<span class="sub">Actualizado ${c.updated_at?new Date(c.updated_at).toLocaleDateString('es-PE'):''}</span>`}
+      <div style="display:flex;gap:8px"><button class="btn" onclick="cerrarFicha()">Cancelar</button><button class="btn primary" onclick="guardarFicha()"><i class="ti ti-device-floppy"></i>${nuevo?'Crear':'Guardar'}</button></div></div>`;
+}
+function leerFicha(){
+  const v=k=>{const el=document.getElementById('f-'+k);return el?el.value.trim():'';};
+  const o={nombre:v('nombre'),ruc:v('ruc')||null,razon_social:v('razon_social')||null,encargado:v('encargado')||null,telefono:v('telefono')||null,email:(v('email')||'').toLowerCase()||null,
+    especialidades:v('especialidades').split(',').map(x=>x.trim()).filter(Boolean),notas:v('notas')||null};
+  const act=document.getElementById('f-activo');if(act)o.activo=act.checked;
+  o.completo=!!(o.ruc&&o.razon_social&&o.encargado&&o.email);
+  return o;
+}
+async function guardarFicha(){
+  const o=leerFicha();
+  if(!o.nombre){toast('El nombre corto es obligatorio',true);return;}
+  if(o.ruc&&!/^\d{11}$/.test(o.ruc)){toast('El RUC debe tener 11 dígitos',true);return;}
+  if(o.email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.email)){toast('Correo no válido',true);return;}
+  const dup=CONT.find(c=>c.id!==FICHA&&(norm(c.nombre)===norm(o.nombre)||(o.ruc&&c.ruc===o.ruc)));
+  if(dup){toast('Ya existe: '+dup.nombre,true);return;}
+  try{
+    if(FICHA==='nuevo'){
+      o.aliases=[o.nombre.toLowerCase()];
+      const r=await api('contratistas',{method:'POST',body:JSON.stringify(o),prefer:'return=representation'});
+      CONT.push(r[0]);FICHA=r[0].id;toast('Contratista creado');
+    }else{
+      const c=contDe(FICHA);const renombre=c.nombre!==o.nombre;
+      if(renombre)o.aliases=[...new Set([...(c.aliases||[]),c.nombre.toLowerCase(),o.nombre.toLowerCase()])];
+      const r=await api('contratistas?id=eq.'+FICHA,{method:'PATCH',body:JSON.stringify(o),prefer:'return=representation'});
+      Object.assign(c,r[0]);
+      /* El texto en portafolio_servicios acompaña al nombre (lo leen el modal, el Supervisor y el portal). */
+      if(renombre){await api('portafolio_servicios?contratista_id=eq.'+FICHA,{method:'PATCH',body:JSON.stringify({contratista:o.nombre}),prefer:'return=minimal'});SERV.forEach(s=>{if(s.contratista_id===FICHA)s.contratista=o.nombre;});}
+      toast('Ficha guardada');
+    }
+    CONT.sort((a,b)=>a.nombre.localeCompare(b.nombre));indexarEval();render();
+  }catch(e){console.error(e);toast('No se pudo guardar: '+(/duplicate|23505/.test(e.message)?'nombre, RUC o correo repetido':'error de conexión'),true);}
+}
+function nuevoContratista(){abrirFicha('nuevo');}
+async function crearContratistaRapido(){
+  const n=(prompt('Nombre corto del contratista nuevo (luego completas su ficha en Directorio):')||'').trim();
+  if(!n)return null;
+  const dup=CONT.find(c=>norm(c.nombre)===norm(n));if(dup)return dup;
+  try{const r=await api('contratistas',{method:'POST',body:JSON.stringify({nombre:n,aliases:[n.toLowerCase()],completo:false}),prefer:'return=representation'});CONT.push(r[0]);CONT.sort((a,b)=>a.nombre.localeCompare(b.nombre));toast(n+' creado · ficha por completar');return r[0];}
+  catch(e){toast('No se pudo crear',true);return null;}
+}
+function irEvaluacion(){try{window.parent.location.hash='ct-evaluacion';}catch(e){}}
+
+/* ─────────────── Exportar ─────────────── */
+function exportar(){
+  if(!window.XLSX){toast('No cargó el exportador',true);return;}
+  const filas=SERV.map(s=>{const c=contDe(s.contratista_id)||{};return{'Código':s.cod_proyecto,'Obra':nombreObra(s.cod_proyecto,s.cliente),'Supervisor':s.supervisor,'Especialidad':s.especialidad,'Situación':s.situacion,'Estado':s.estado,'Contratista':s.contratista,'RUC':c.ruc,'Encargado':c.encargado,'Teléfono':c.telefono,'Correo':c.email,'Inicio':s.fecha_inicio,'Fin':s.fecha_fin,'Responsable':s.responsable};});
+  const dir=CONT.map(c=>({'Nombre':c.nombre,'Razón social':c.razon_social,'RUC':c.ruc,'Encargado':c.encargado,'Teléfono':c.telefono,'Correo':c.email,'Especialidades':(c.especialidades||[]).join(', '),'Activo':c.activo?'Sí':'No','Ficha completa':c.completo?'Sí':'No'}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(filas),'Servicios por obra');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(dir),'Directorio');
+  XLSX.writeFile(wb,'Contratistas_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+/* Arranque: sin shell (abierto suelto) muestra el resumen. */
+setView((location.hash||'').replace('#','')||'resumen');
+cargar();
+</script>
+</body>
+</html>

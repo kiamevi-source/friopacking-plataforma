@@ -25,18 +25,21 @@
   const vistaEl = document.getElementById('view-vista');
   const iframe  = document.getElementById('vista-frame');
 
-  // ── Grupo "Contratistas": 10 sub-vistas bajo un solo ítem del rail ──
-  // 8 viven dentro del módulo servicios-v5 (una sola carga de iframe, se le
-  // pide la vista con setView); 2 son módulos aparte con su propio iframe.
+  // ── Grupo "Contratistas": 3 vistas del módulo modulos/contratistas.html ──
+  // (una sola carga de iframe, se le pide la vista con setView). Los hashes de
+  // las 10 sub-vistas anteriores siguen funcionando y caen en su equivalente.
   const CT_MODULO = {
-    'ct-resumen':        'ejecutiva',
-    'ct-operativa':      'operativa',
-    'ct-matriz':         'matriz',
-    'ct-gantt':          'gantt',
-    'ct-urgentes':       'urgentes',
-    'ct-disponibilidad': 'disponibilidad',
-    'ct-editor':         'editor',
-    'ct-universo':       'universo',
+    'ct-resumen':        'resumen',
+    'ct-obra':           'obra',
+    'ct-directorio':     'directorio',
+    // compat (vistas absorbidas el 20-oct-2026)
+    'ct-operativa':      'obra',
+    'ct-matriz':         'obra',
+    'ct-gantt':          'obra',
+    'ct-editor':         'obra',
+    'ct-urgentes':       'resumen',
+    'ct-disponibilidad': 'resumen',
+    'ct-universo':       'directorio',
   };
   const CT_DEFAULT = 'ct-resumen';
 

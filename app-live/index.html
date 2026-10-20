@@ -308,8 +308,8 @@
         <span>Equipos</span>
       </a>
       <!-- ── Contratistas: una sola entrada que despliega sus vistas.
-           Antes eran 3 entradas sueltas (Servicios, Eval., Dashboard) + un rail
-           propio dentro del módulo. Ver nav-group en router-views.js. ── -->
+           20-oct-2026: 10 sub-vistas sintetizadas en 3 (modulos/contratistas.html).
+           Evaluación se abre desde la ficha de cada empresa. Ver router-views.js. ── -->
       <div class="nav-group" data-group="contratistas">
         <a href="#ct-resumen" class="nav-item nav-parent" data-group-parent="contratistas">
           <i data-lucide="layers" class="ic"></i>
@@ -317,22 +317,13 @@
           <i data-lucide="chevron-down" class="ic chev"></i>
         </a>
         <div class="nav-sub">
-          <div class="nav-sub-label">Portafolio</div>
           <a href="#ct-resumen" class="nav-item nav-child" data-section="ct-resumen"><span>Resumen</span></a>
-          <a href="#ct-operativa" class="nav-item nav-child" data-section="ct-operativa"><span>Operativa</span></a>
-          <a href="#ct-matriz" class="nav-item nav-child" data-section="ct-matriz"><span>Matriz</span></a>
-          <a href="#ct-gantt" class="nav-item nav-child" data-section="ct-gantt"><span>Gantt</span></a>
-          <a href="#ct-urgentes" class="nav-item nav-child" data-section="ct-urgentes">
-            <span>Sin contratar</span><span class="nav-count" id="nav-ct-urgentes"></span>
+          <a href="#ct-obra" class="nav-item nav-child" data-section="ct-obra">
+            <span>Por obra</span><span class="nav-count" id="nav-ct-urgentes"></span>
           </a>
-          <a href="#ct-disponibilidad" class="nav-item nav-child" data-section="ct-disponibilidad"><span>Disponibilidad</span></a>
-          <a href="#ct-editor" class="nav-item nav-child" data-section="ct-editor"><span>Editor de datos</span></a>
-          <div class="nav-sub-label">Empresas</div>
-          <a href="#ct-universo" class="nav-item nav-child" data-section="ct-universo">
-            <span>Universo</span><span class="nav-count brand" id="nav-ct-universo"></span>
+          <a href="#ct-directorio" class="nav-item nav-child" data-section="ct-directorio">
+            <span>Directorio</span><span class="nav-count brand" id="nav-ct-universo"></span>
           </a>
-          <a href="#ct-evaluacion" class="nav-item nav-child" data-section="ct-evaluacion"><span>Evaluación</span></a>
-          <a href="#ct-dashboard" class="nav-item nav-child" data-section="ct-dashboard"><span>Dashboard</span></a>
         </div>
       </div>
       <a href="#licitaciones" class="nav-item" data-section="licitaciones">
@@ -631,8 +622,8 @@
     <div id="view-servicios" style="display:none">
       <iframe
         id="servicios-frame"
-        data-src="modulos/servicios-v5.html?v=20260817"
-        title="Dashboard de Servicios"
+        data-src="modulos/contratistas.html?v=20261020a"
+        title="Contratistas"
         loading="lazy"
         style="width:100%;height:calc(100vh - 90px);border:none;border-radius:14px;background:#f5f7fa;box-shadow:0 1px 2px rgba(15,30,53,.04),0 12px 28px -8px rgba(15,30,53,.08);display:block"
       ></iframe>
@@ -819,7 +810,7 @@
 <script src="js/views/servicios.js?v=20260607a"></script>
 <script src="js/globe.js?v=20260812a"></script>
 <script src="js/globe-exec.js?v=20260812a"></script>
-<script src="js/router-views.js?v=20260728d"></script>
+<script src="js/router-views.js?v=20261020c"></script>
 <script src="js/chatbot.js?v=20260607a"></script>
 
 </body>

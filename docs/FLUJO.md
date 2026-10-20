@@ -357,6 +357,25 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   cual si el responsable es el propio cliente). Todo se arma con lo que ya está en `pendientes`:
   no se guarda nada nuevo ni se envía a ningún servicio externo.
 
+- **Directorio maestro de contratistas (20-oct-2026).** Gerencia llena
+  contratistas desde un solo módulo, `app-live/modulos/contratistas.html`, con 3
+  vistas: Resumen, Por obra y Directorio. Antes eran 10 sub-vistas de
+  `servicios-v5.html`, que queda en el repo sin enlazar. Las empresas viven en
+  la tabla `contratistas` (PMO): RUC, razón social, contacto y `aliases`. Solo
+  la lee y escribe Gerencia (`es_gerencia()`); anon no tiene acceso porque
+  guarda correos y teléfonos. `portafolio_servicios` ganó `cod_proyecto`,
+  `contratista_id` (FK al directorio) y `responsable`. La columna de texto
+  `contratista` se sigue llenando con el nombre corto, porque el modal del
+  proyecto, el Supervisor y el portal la leen por nombre. Si se renombra una
+  empresa, el módulo actualiza ese texto en sus filas. **Pero el portal
+  Contratas reconoce a cada empresa por `contratas_cuentas.aliases`, en otra
+  instancia:** un nombre nuevo hay que agregarlo ahí o la empresa deja de ver
+  sus obras. La carga inicial reemplazó todo el portafolio con el Excel «Base
+  de Datos_Servicios 20.10» (80 filas) y el directorio 2026 (43 empresas + 6
+  por completar). El respaldo está en `portafolio_servicios_backup_20261020`.
+  La evaluación de desempeño sigue en `evaluacion_contratistas` y la ficha la
+  cruza por alias.
+
 ## 4. Cómo se mantiene
 
 1. El mapa se edita en el bloque `const MAPA` de `docs/flujo.html`, en el mismo
