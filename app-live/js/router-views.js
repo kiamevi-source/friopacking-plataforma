@@ -94,21 +94,6 @@
       el: document.getElementById('view-dash-contratistas'),
       init: () => {},
     },
-    // PMO Ejecutivo (módulo editable · asignaciones_pmo — reemplaza al Timeline)
-    'pmo-ejecutivo': {
-      el: document.getElementById('view-pmo-ejecutivo'),
-      init: () => {},
-    },
-    // Evaluación 360° (módulo lectura · eval360_areas/items/supervisores)
-    'eval360': {
-      el: document.getElementById('view-eval360'),
-      init: () => {},
-    },
-    // Captura 360° (módulo captura · escribe eval360_respuestas y recalcula agregados)
-    'captura360': {
-      el: document.getElementById('view-captura360'),
-      init: () => {},
-    },
     // Ficha del Equipo (módulo editable · supervisores_equipo en instancia propia)
     'ficha': {
       el: document.getElementById('view-ficha'),
