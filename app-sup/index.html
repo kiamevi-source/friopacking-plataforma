@@ -3322,6 +3322,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 .rd-hito-tag.lic{background:#fef3c7;color:#92400e;}
 .rd-hito-tag.lic.ok{background:#dcfce7;color:#166534;}
 @media(max-width:640px){.rd-prog-card.unid{grid-template-columns:1fr;}.rd-u-in{justify-content:flex-start;}}
+.rd-grupo{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);padding:10px 4px 2px;border-bottom:1px solid var(--border);}
 .rd-partida{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;margin-bottom:12px;border:1px solid #fcd34d;background:#fffbeb;border-radius:10px;font-size:12px;color:#78350f;cursor:pointer;}
 .rd-partida input{margin-top:2px;}
 .rd-monto{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 14px;padding:12px 14px;margin-bottom:14px;
@@ -10347,6 +10348,10 @@ function renderHitos() {
       </div>`;
     }
     const esTitulo = !h.manual && !cuentan.includes(h);
+    // Título del EDT (agrupa tareas, sin unidad ni costo): solo encabezado, sin casilla (Kiara, 20-oct-2026)
+    if (esTitulo && !h.unidad && !(h.costo > 0)){
+      return `<div class="rd-grupo">${(h.nombre||'').replace(/</g,'&lt;')}</div>`;
+    }
     // Tarea con unidad y metrado: se reporta CUÁNTO se hizo hoy en su unidad (m, m², und…).
     if (h.unidad){
       const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
