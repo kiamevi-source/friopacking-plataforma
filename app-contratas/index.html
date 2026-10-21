@@ -1214,10 +1214,10 @@
 
   // Archivos de licitación: bucket privado de Gerencia, se abren con link firmado de 1 hora
   var LZ_BUCKET='lic-expediente';
-  // Los 3 formatos obligatorios de la oferta (el servidor también los exige al guardar).
+  // Los 2 formatos obligatorios de la oferta (el servidor también los exige al guardar).
+  // El presupuesto no va como formato aparte: es la misma oferta por partidas.
   var LZ_FORMATOS=[
     { tipo:'Garantía',    url:'/app-live/modulos/formatos/FP-LIC-F03-Garantias.xlsx' },
-    { tipo:'Presupuesto', url:'/app-live/modulos/formatos/FP-LIC-F01-Presupuesto.xlsx' },
     { tipo:'Cronograma',  url:'/app-live/modulos/formatos/FP-LIC-F02-Cronograma-Histograma.xlsx' }
   ];
   var LZ_OCULTAS=['Borrador','Preparación','Por aprobar','Observada']; // aún no publicadas: el contratista no las ve
@@ -1403,7 +1403,7 @@
           '</tbody><tfoot><tr class="lz-tot"><td colspan="4" style="text-align:right">TOTAL OFERTA</td><td class="n" id="lz-total">'+lzMoney(0,L.moneda)+'</td></tr></tfoot></table>'+
           // adjuntos
           '<div style="margin-top:16px"><div style="font-size:12.5px;font-weight:800;color:var(--ink)">Documentos de tu oferta</div>'+
-            '<div style="font-size:12px;color:var(--muted);margin:2px 0 6px">Obligatorios para enviar: <b>Garantía</b>, <b>Presupuesto</b> y <b>Cronograma con histograma de personal</b>, en los formatos de FrioPacking.</div>'+
+            '<div style="font-size:12px;color:var(--muted);margin:2px 0 6px">Obligatorios para enviar: <b>Garantía</b> y <b>Cronograma con histograma de personal</b>, en los formatos de FrioPacking.</div>'+
             '<div class="lz-formatos" style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px">'+LZ_FORMATOS.map(function(f){
               var ok=adjuntos.some(function(a){ return a.tipo===f.tipo; }) || c.pend.some(function(x){ return x.tipo===f.tipo; });
               return '<a class="lz-dl" href="'+f.url+'" download style="text-decoration:none">'+(ok?'✓ ':'')+'Formato '+esc(f.tipo)+'</a>';
@@ -1411,7 +1411,7 @@
             (adjuntos.length||c.pend.length ? adjuntos.map(function(a){ return '<div class="lz-file"><div class="nm"><b>'+esc(a.nombre)+'</b><small>'+esc(a.tipo||'')+(a.bytes?' · '+lzSize(a.bytes):'')+'</small></div>'+lzDlBtn(a.path,'Ver')+(editable?' <button type="button" class="lz-dl" data-lzquitar="'+esc(a.path)+'">Quitar</button>':'')+'</div>'; }).join('')+
               c.pend.map(function(x,i){ return '<div class="lz-file"><div class="nm"><b>'+esc(x.file.name)+'</b><small>'+esc(x.tipo)+' · '+lzSize(x.file.size)+' · se sube al enviar</small></div><button type="button" class="lz-dl" data-lzpend="'+i+'">Quitar</button></div>'; }).join('')
               : '<div style="font-size:12.5px;color:var(--muted)">Sin documentos adjuntos.</div>')+
-            (editable?'<div class="lz-adj-add"><select id="lz-adj-tipo"><option>Garantía</option><option>Presupuesto</option><option>Cronograma</option><option>Otro</option></select><input type="file" id="lz-adj-file" multiple></div>':'')+
+            (editable?'<div class="lz-adj-add"><select id="lz-adj-tipo"><option>Garantía</option><option>Cronograma</option><option>Otro</option></select><input type="file" id="lz-adj-file" multiple></div>':'')+
           '</div>'+
           '<div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap">'+
             '<label style="font-size:12.5px;font-weight:700;color:var(--muted)">Plazo ofertado (días): <input id="lz-plazo" type="number" min="0" value="'+(c.plazoTmp!=null?c.plazoTmp:(c.oferta&&c.oferta.plazo_dias||L.plazo_dias||''))+'" style="width:90px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-family:inherit"'+(editable?'':' disabled')+'></label>'+

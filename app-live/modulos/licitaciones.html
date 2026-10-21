@@ -318,7 +318,7 @@ function plazoFinal(c,o){
 }
 function formatos(o){
   var t=(o.adjuntos||[]).map(function(a){ return a.tipo; });
-  return ['Presupuesto','Cronograma','Garantía'].map(function(x){ return '<span class="chip '+(t.indexOf(x)>=0?'ok':'bad')+'">'+x+'</span>'; }).join('');
+  return ['Cronograma','Garantía'].map(function(x){ return '<span class="chip '+(t.indexOf(x)>=0?'ok':'bad')+'">'+x+'</span>'; }).join('');
 }
 function vEvaluacion(c){
   var L=c.L;

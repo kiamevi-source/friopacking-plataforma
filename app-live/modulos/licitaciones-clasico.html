@@ -2016,10 +2016,10 @@ function tabComparador(){
   var anom=ofs.filter(function(o){ var pct=base?((o.monto_total-base)/base*100):0; return Math.abs(pct)>15; });
   var minOf=ofs.reduce(function(m,o){return (!m||o.monto_total<m.monto_total)?o:m;},null);
   // resumen: total, desviación, plazo, formatos obligatorios, capacidad y monto negociado
-  var FORM=['Presupuesto','Cronograma','Garantía'];
+  var FORM=['Cronograma','Garantía'];
   var ranking=ofs.slice().sort(function(a,b){ return montoFinal(a)-montoFinal(b); });
   var resumen='<div class="panel"><div class="panel-t"><i data-lucide="bar-chart-3"></i>Análisis comparativo</div>'+
-    '<div class="panel-d">Ordenado por monto final (después de negociar). Formatos = los 3 obligatorios del contratista.</div>'+
+    '<div class="panel-d">Ordenado por monto final (después de negociar). Formatos = los 2 obligatorios del contratista.</div>'+
     '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Contratista</th><th class="num">Oferta</th><th class="num">Monto final</th><th class="num">vs presupuesto</th><th class="num">Plazo</th><th>Formatos</th><th>Capacidad</th><th class="num">Puntaje</th></tr></thead><tbody>'+
     ranking.map(function(o,i){
       var fin=montoFinal(o), pct=base?((fin-base)/base*100):0;
@@ -2027,7 +2027,7 @@ function tabComparador(){
       var inv=c.invitados.find(function(v){ return normname(v.email)===normname(o.email); });
       return '<tr'+(i===0?' style="background:#f0fdf8"':'')+'><td style="font-weight:800">'+(i+1)+'</td><td style="font-weight:800">'+esc(o.contratista)+'</td><td class="num">'+money(o.monto_total,cur)+'</td><td class="num" style="font-weight:800">'+money(fin,cur)+'</td>'+
         '<td class="num" style="font-weight:700;color:'+(pct>0?'#b42318':'#12805c')+'">'+(base?(pct>0?'+':'')+pct.toFixed(1)+'%':'—')+'</td><td class="num">'+(o.plazo_dias||'—')+' d</td>'+
-        '<td><span style="font-size:11.5px;font-weight:800;color:'+(tiene.length===3?'#12805c':'#b45309')+'" title="'+esc(tiene.join(', ')||'ninguno')+'">'+tiene.length+'/3</span></td>'+
+        '<td><span style="font-size:11.5px;font-weight:800;color:'+(tiene.length===FORM.length?'#12805c':'#b45309')+'" title="'+esc(tiene.join(', ')||'ninguno')+'">'+tiene.length+'/'+FORM.length+'</span></td>'+
         '<td>'+capChip(capacidadDe(o.contratista,o.email))+'</td><td class="num">'+(o.score_total!=null?o.score_total:'—')+'</td></tr>';
     }).join('')+'</tbody></table></div></div>';
   return resumen+(anom.length?'<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:12px 15px;margin-bottom:14px;font-size:12.5px;color:#92400e;font-weight:600"><i data-lucide="alert-triangle" style="width:15px;height:15px;vertical-align:-2px"></i> '+anom.length+' oferta(s) con desviación anómala (>15% vs presupuesto): '+anom.map(function(o){return esc(o.contratista);}).join(', ')+'</div>':'')+
