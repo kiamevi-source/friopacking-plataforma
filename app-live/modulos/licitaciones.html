@@ -292,7 +292,8 @@ function vInvitados(c,ed){
 // ── Etapa 2: Recibiendo ofertas ──
 function vOfertasAbiertas(c){
   var L=c.L, pend=c.consultas.filter(function(q){ return !q.respuesta; });
-  return '<div class="note info">Los invitados ven la licitación en su portal y pueden ofertar hasta el <b>'+fdate(L.fecha_limite)+'</b> (fin del día). Llevan <b>'+c.ofertas.length+'</b> oferta'+(c.ofertas.length===1?'':'s')+'. Los montos se ven al cerrar la recepción.</div>'+
+  return '<div class="note info">Los invitados ven la licitación en su portal y pueden ofertar hasta el <b>'+fdate(L.fecha_limite)+'</b> (fin del día). Llevan <b>'+c.ofertas.length+'</b> oferta'+(c.ofertas.length===1?'':'s')+'. Puedes ir viendo el comparativo; adjudicar y pedir mejoras se hace al cerrar la recepción.</div>'+
+    (c.ofertas.length?vComparativo(c,false):'')+
     '<div class="grid2"><div>'+vInvitados(c,false)+
       '<div class="card"><h3>Avisos a los invitados <button class="btn sm" id="addaviso">+ Aviso / cambio</button></h3><div class="hint">Cambios a las bases, aclaraciones o prórrogas. Todos los invitados los ven como novedad.</div>'+
         (c.adendas.length?c.adendas.map(function(a){ return '<div style="padding:7px 0;border-bottom:1px solid #f1f4f8"><b>N° '+a.numero+' · '+esc(a.titulo)+'</b><div class="spec">'+esc(a.cambios||'')+'</div><small class="sub">'+fdt(a.created_at)+'</small></div>'; }).join(''):'<div class="hint" style="margin:0">Sin avisos.</div>')+
@@ -324,27 +325,32 @@ function vEvaluacion(c){
   var L=c.L;
   if(!c.ofertas.length) return '<div class="note warn">No llegó ninguna oferta. Puedes prorrogar la fecha (vuelve a recibir ofertas) o declararla desierta.</div>'+
     '<div class="actions"><button class="btn bad" id="desierta">Declarar desierta</button><button class="btn pri" id="prorroga">Prorrogar fecha</button></div>';
+  return vComparativo(c,true)+'<div class="actions"><button class="btn bad" id="desierta">Declarar desierta</button></div>';
+}
+// Ofertas + comparativo por partida. acciones=false mientras se reciben ofertas (solo lectura).
+function vComparativo(c,acciones){
+  var L=c.L;
   var ofs=c.ofertas.slice().sort(function(a,b){ return montoFinal(c,a)-montoFinal(c,b); });
   var mejor=montoFinal(c,ofs[0]), bs=base(c);
   var it={}; c.items.forEach(function(x){ it[x.oferta_id+'|'+x.partida_id]=x; });
-  var resumen='<div class="card"><h3>Ofertas recibidas</h3><div class="hint">Ordenadas de la más barata a la más cara. El monto final considera la negociación.</div><div class="tw"><table><thead><tr><th>Contratista</th><th class="num">Ofertó</th><th class="num">Monto final</th><th class="num">vs. base</th><th class="num">Plazo</th><th>Formatos</th><th>Negociación</th><th></th></tr></thead><tbody>'+
+  var resumen='<div class="card"><h3>Ofertas recibidas <span class="sub">'+ofs.length+'</span></h3><div class="hint">Ordenadas de la más barata a la más cara.'+(acciones?' El monto final considera la negociación.':' Hasta la fecha límite el contratista aún puede mejorar o enviar su oferta.')+'</div><div class="tw"><table><thead><tr><th>Contratista</th><th class="num">Ofertó</th><th class="num">Monto final</th><th class="num">vs. base</th><th class="num">Plazo</th><th>Formatos</th>'+(acciones?'<th>Negociación</th><th></th>':'')+'</tr></thead><tbody>'+
     ofs.map(function(o){
       var mf=montoFinal(c,o), dif=bs?((mf-bs)/bs*100):null;
       var ns=c.negs.filter(function(n){ return n.oferta_id===o.id; }), un=ns[ns.length-1];
       var neg=!un?'—':un.estado==='Pendiente'?'<span class="chip">Pidió '+money(un.monto_pedido,L.moneda)+' · esperando</span>':'<span class="chip '+(un.estado==='Rechazada'?'bad':'ok')+'">'+esc(un.estado)+(un.monto_respuesta?' '+money(un.monto_respuesta,L.moneda):'')+'</span>';
       return '<tr'+(mf===mejor?' class="best"':'')+'><td><b>'+esc(o.contratista||o.email)+'</b>'+(mf===mejor?' <span class="chip ok">mejor precio</span>':'')+'<div class="sub">'+esc(o.email||'')+'</div></td>'+
         '<td class="num">'+money(o.monto_total,L.moneda)+'</td><td class="num"><b>'+money(mf,L.moneda)+'</b></td><td class="num" style="color:'+(dif!=null&&dif>0?'var(--bad)':'var(--ok)')+'">'+(dif==null?'—':(dif>0?'+':'')+dif.toFixed(1)+'%')+'</td>'+
-        '<td class="num">'+(plazoFinal(c,o)?plazoFinal(c,o)+' d':'—')+'</td><td>'+formatos(o)+((o.adjuntos||[]).length?'<div><a class="lk" data-adjs="'+o.id+'" style="font-size:12px">Ver archivos</a></div>':'')+'</td><td>'+neg+'</td>'+
-        '<td style="white-space:nowrap"><button class="btn sm" data-negociar="'+o.id+'"'+(un&&un.estado==='Pendiente'?' disabled title="Esperando respuesta"':'')+'>Pedir mejora</button> <button class="btn sm pri" data-adjudicar="'+o.id+'">Adjudicar</button></td></tr>';
+        '<td class="num">'+(plazoFinal(c,o)?plazoFinal(c,o)+' d':'—')+'</td><td>'+formatos(o)+((o.adjuntos||[]).length?'<div><a class="lk" data-adjs="'+o.id+'" style="font-size:12px">Ver archivos</a></div>':'')+'</td>'+(acciones?'<td>'+neg+'</td>'+
+        '<td style="white-space:nowrap"><button class="btn sm" data-negociar="'+o.id+'"'+(un&&un.estado==='Pendiente'?' disabled title="Esperando respuesta"':'')+'>Pedir mejora</button> <button class="btn sm pri" data-adjudicar="'+o.id+'">Adjudicar</button></td>':'')+'</tr>';
     }).join('')+'</tbody></table></div></div>';
-  var detalle='<div class="card"><details><summary>Comparar por partida</summary><div class="tw" style="margin-top:10px"><table><thead><tr><th>Partida</th><th class="num">Cant.</th><th class="num">Base</th>'+ofs.map(function(o){ return '<th class="num">'+esc(o.contratista||o.email)+'</th>'; }).join('')+'</tr></thead><tbody>'+
+  var detalle='<div class="card"><details'+(acciones?'':' open')+'><summary>Comparar por partida</summary><div class="tw" style="margin-top:10px"><table><thead><tr><th>Partida</th><th class="num">Cant.</th><th class="num">Base</th>'+ofs.map(function(o){ return '<th class="num">'+esc(o.contratista||o.email)+'</th>'; }).join('')+'</tr></thead><tbody>'+
     c.partidas.map(function(p){
       var vals=ofs.map(function(o){ var x=it[o.id+'|'+p.id]; return x?Number(x.pu||0)*Number(p.cantidad||0):null; });
       var min=Math.min.apply(null,vals.filter(function(v){ return v!=null; }));
       return '<tr><td>'+esc(p.descripcion)+'</td><td class="num">'+Number(p.cantidad||0).toLocaleString('es-PE')+'</td><td class="num">'+money(Number(p.cantidad||0)*Number(p.pu_base||0),L.moneda)+'</td>'+
         vals.map(function(v){ return '<td class="num'+(v!=null&&v===min?' best':'')+'">'+(v==null?'—':money(v,L.moneda))+'</td>'; }).join('')+'</tr>';
     }).join('')+'</tbody></table></div></details></div>';
-  return resumen+detalle+'<div class="actions"><button class="btn bad" id="desierta">Declarar desierta</button></div>';
+  return resumen+detalle;
 }
 
 // ── Etapa 4: Cerrada ──
