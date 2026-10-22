@@ -5,7 +5,7 @@ fuente de verdad: los datos del mapa viven en el bloque `const MAPA` que está a
 inicio del `<script>`. Si cambia el flujo, se edita ahí, en el **mismo commit**
 que el código. Este documento es la letra chica que no cabe en el dibujo.
 
-Última revisión: **20 de octubre de 2026**
+Última revisión: **22 de octubre de 2026**
 
 ---
 
@@ -439,3 +439,36 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
    empieza a leer otra instancia, una entrada de datos nueva.
 3. Actualiza la fecha en la cabecera de este archivo y en el comentario del
    bloque `MAPA` cada vez que los toques.
+
+
+---
+
+## Reporte diario · tanda del 22-oct-2026
+
+- **Tareas por familia.** La lista de tareas se elige por familia (rubro de NISIRA, `subcategoria` de
+  `v_gantt_supervisor`), como las partidas de Licitaciones. Los **servicios** (`es_licitacion`) ya no
+  son tareas del reporte ni entran al % de avance real: se gestionan en Licitaciones.
+- **Equipos** los registra el supervisor en `equipos_obra` (Supervisor). Ya no se leen de `equipos_pmo`
+  en el reporte. `reportes.equipos_dia` guarda la foto del día (`origen:'supervisor'`).
+- **Planos**: el reporte lee en vivo Seguimiento de Planos (Ingeniería) y guarda los conteos en
+  `reportes.planos_dia`.
+- **Fotos**: máximo 3 por frente (los frentes = especialidades del reporte), sin texto de actividad.
+- **Evaluaciones del día** reemplazan el checklist de cierre: SSOMA (facilitador, tiempo en campo) y
+  cada contrata (coordinación, EPP's, BPM), escala 1 a 5 → `reportes.evaluaciones`. La firma sigue.
+- **Requerimientos** = el checklist de preparación dentro del reporte, solo nombres (listo/pendiente).
+  Misma tabla `checklist_proyecto`; foto del día en `reportes.requerimientos`. La pestaña Preparación
+  queda oculta.
+- **Valorización**: proyección por mes (mes en curso → fin de obra, máx. 8) con % automático sobre el
+  presupuesto de `valorizacion_lineas`; indicador «sin valorizar» si el mes en curso no tiene
+  valorización → `reportes.sin_valorizar`.
+- **Restricciones → alertas.** Cada restricción lleva `uid` (reenviar ya no duplica), `cod_proyecto`,
+  `especialidad`, `contratista` y `responsable_email`. Por cada destinatario se crea una fila en
+  `restriccion_alertas` (Supervisor): encargado, PMO + jefes de zona de la especialidad
+  (`PMO.alerta_destinatarios`, la mantiene Gerencia) y la contrata. La lectura es abierta con la llave
+  pública (misma postura que `restricciones`); con esa llave solo se puede marcar `visto_at`.
+  El correo queda `correo_estado='pendiente'` hasta tener la cuenta Microsoft 365.
+- **Gerencia · Reporte diario** (`app-live/modulos/reporte-diario.html`): indicadores generales y por
+  obra vía la función `indicadores_reporte_diario(p_desde, p_hasta)` (SECURITY DEFINER, solo agregados),
+  ranking de contratas y mantenimiento de `alerta_destinatarios`.
+- La copia de reportes a PMO (`sync_reportes_from_supervisor`) **no** lleva estas columnas nuevas:
+  Gerencia las lee del Supervisor por la función de indicadores.

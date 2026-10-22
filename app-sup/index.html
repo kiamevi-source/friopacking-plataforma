@@ -3362,6 +3362,12 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
   padding:7px 9px;font-size:12px;color:var(--navy-800);margin-bottom:7px;transition:all var(--d-fast);}
 .rd-ticket input:focus,.rd-ticket select:focus{border-color:var(--teal-500);background:#fff;box-shadow:0 0 0 3px rgba(6,182,212,.14);outline:none;}
 .rd-ticket-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;}
+.rd-restr-dest{font-size:11.5px;color:var(--text-3);line-height:1.5;}
+.rd-restr-ab-h{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);margin:14px 0 6px;}
+.rd-restr-ab{border:1px solid var(--border);border-left:3px solid #f59e0b;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px;}
+.rd-restr-ab.alto{border-left-color:#dc2626;} .rd-restr-ab.bajo{border-left-color:#16a34a;}
+.rd-restr-ab small.venc{color:#b91c1c;font-weight:700;}
+.rd-restr-dest b{color:var(--text-1);}
 
 /* Kanban riesgos */
 .rd-kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
@@ -3599,7 +3605,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       <span>Dashboard</span>
       <span class="tab-badge hidden"></span>
     </button>
-    <button class="nav-tab" data-tab="preparacion" onclick="showTab('preparacion')">
+    <button class="nav-tab" data-tab="preparacion" onclick="showTab('preparacion')" style="display:none" title="Ahora es «Requerimientos» dentro del reporte diario">
       <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
       <span>Preparación</span>
       <span class="tab-badge hidden"></span>
@@ -4163,7 +4169,8 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
             <div id="alerta-diferencia" class="hidden" style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#991b1b;font-weight:600;">⚠ Diferencia detectada entre avance supervisor y contrata. Revisar.</div>
             <label id="rd-partida-box" class="rd-partida hidden"><input type="checkbox" id="rd-partida-chk" onchange="rdTogglePartida(this.checked)">
               <span><b>Punto de partida.</b> Es la primera vez que esta obra usa el reporte por unidades: busca cada tarea y escribe cuánto lleva <b>acumulado a la fecha</b>; las que llenes se quedan a la vista. Este avance no cuenta como trabajo de hoy. Desmárcalo para reportar solo lo de hoy.</span></label>
-            <input id="rd-hito-search" type="search" placeholder="Buscar tarea del Gantt para marcar Hoy / Mañana…" oninput="rdHitoFilter(this.value)" style="width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:8px 11px;font-size:13px;margin-bottom:10px;background:var(--surface-1);color:var(--text-1);">
+            <div id="rd-fam-chips" class="rd-fam-chips"></div>
+            <input id="rd-hito-search" type="search" placeholder="Buscar tarea dentro de la familia (o en todas)…" oninput="rdHitoFilter(this.value)" style="width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:8px 11px;font-size:13px;margin-bottom:10px;background:var(--surface-1);color:var(--text-1);">
             <div id="rd-hitos-list" class="rd-prog"></div>
             <p id="rd-hitos-empty" style="font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;">No hay tareas del Gantt en este proyecto. Importa el cronograma en el tab Gantt, o agrega una tarea manual abajo.</p>
             <button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="agregarHitoManual()">+ Hito manual</button>
@@ -4180,17 +4187,41 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
             <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
           </div>
           <div class="rd-body">
+            <datalist id="rd-dest-dl"></datalist>
             <div id="rd-restricciones-list" class="rd-tickets"></div>
             <p id="rd-restricciones-empty" style="font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;">Sin restricciones registradas. Un buen día.</p>
+            <div id="rd-restr-abiertas"></div>
           </div>
         </div>
 
 
-        <!-- EQUIPOS DEL PROYECTO (PMO + estado en obra) -->
+        <!-- REQUERIMIENTOS (ex checklist de preparación; Kiara, 22-oct-2026) -->
+        <div class="rd-card folded">
+          <div class="rd-head click" onclick="rdFold(this,event)">
+            <div class="rd-head-ic"><i data-lucide="list-checks" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Requerimientos</h4><p>Lo que la obra necesita tener: márcalo listo o pendiente · se guarda para los días siguientes</p></div>
+            <span class="rd-head-badge teal" id="rd-req-badge">0%</span>
+            <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
+          </div>
+          <div class="rd-body"><div id="rd-req-mount"></div></div>
+        </div>
+
+        <!-- PLANOS (indicadores del módulo Planos · Ingeniería) -->
+        <div class="rd-card">
+          <div class="rd-head click" onclick="rdFold(this,event)">
+            <div class="rd-head-ic"><i data-lucide="drafting-compass" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Planos</h4><p>Lo que lleva Ingeniería en Seguimiento de Planos para esta obra · solo lectura</p></div>
+            <span class="rd-head-badge" id="rd-planos-badge">—</span>
+            <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
+          </div>
+          <div class="rd-body"><div id="rd-planos-mount"></div></div>
+        </div>
+
+        <!-- EQUIPOS DEL PROYECTO (los registra el supervisor) -->
         <div class="rd-card folded">
           <div class="rd-head click" onclick="rdFold(this,event)">
             <div class="rd-head-ic"><i data-lucide="package" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Equipos del proyecto</h4><p>Órdenes de importación desde Gerencia · marca el estado en obra de los que aplican</p></div>
+            <div class="rd-head-tt"><h4>Equipos del proyecto</h4><p>Los registras tú una vez y quedan guardados · marca su estado en obra cada día</p></div>
             <span class="rd-head-badge teal" id="rd-eq-badge">0</span>
             <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
           </div>
@@ -4201,16 +4232,11 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
         <div class="rd-card">
           <div class="rd-head click" onclick="rdFold(this,event)">
             <div class="rd-head-ic"><i data-lucide="image" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Evidencia fotográfica</h4><p>Cualquier formato y tamaño · indica el ambiente y la actividad de cada foto</p></div>
+            <div class="rd-head-tt"><h4>Evidencia fotográfica</h4><p>Hasta 3 fotos por frente de trabajo · no hace falta describirlas</p></div>
             <span class="rd-head-badge" id="rd-fotos-badge">0</span>
             <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
           </div>
           <div class="rd-body">
-            <div class="rd-drop" id="rd-drop" onclick="document.getElementById('rd-fotos-input').click()">
-              <div class="ic"><i data-lucide="upload-cloud" class="ri"></i></div>
-              <b>Arrastra tus fotos aquí o haz clic</b>
-              <span>Cualquier formato y tamaño</span>
-            </div>
             <input type="file" id="rd-fotos-input" multiple accept="image/*" onchange="subirFotosReporte(this.files)" style="display:none;">
             <div id="rd-fotos-status" style="font-size:11.5px;color:var(--text-3);margin-top:8px;"></div>
             <div id="rd-fotos-grid" class="rd-gallery"></div>
@@ -4272,14 +4298,15 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
           </div>
         </div>
 
-        <!-- CIERRE -->
+        <!-- EVALUACIONES DEL DÍA (reemplazan el checklist de cierre; Kiara, 22-oct-2026) -->
         <div class="rd-card">
           <div class="rd-head">
-            <div class="rd-head-ic"><i data-lucide="clipboard-check" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Cierre del reporte</h4><p>Checklist de seguridad y firma del supervisor</p></div>
+            <div class="rd-head-ic"><i data-lucide="star" class="ri"></i></div>
+            <div class="rd-head-tt"><h4>Evaluaciones del día</h4><p>SSOMA y cada contrata, de 1 a 5 · y la firma del supervisor</p></div>
+            <span class="rd-head-badge teal" id="rd-eval-badge">—</span>
           </div>
           <div class="rd-body">
-            <div id="rd-checklist" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 24px;"></div>
+            <div id="rd-eval-mount"></div>
             <div style="margin-top:18px;">
               <div class="rd-blk-lbl" style="margin-bottom:8px;"><i data-lucide="pen-tool"></i> Firma del supervisor</div>
               <div class="form-row" style="margin-bottom:8px;"><div class="field"><label>Nombre de quien firma</label><input type="text" id="rd-firma-nombre" placeholder="Nombre completo"></div></div>
@@ -9959,15 +9986,17 @@ async function cargarReporteDiario() {
   rdReproUltLoad(currentProyecto.cod || currentProyecto.nombre);   // fin proyectado que ya reportó obra
 
   await rdEspLoad(currentProyecto.cod || currentProyecto.nombre, null);
-  renderChecklistCierre();
+  rdEvalReset(); rdEvalRender();
+  rdReqLoad(); rdPlanosLoad(); rdDestLoad();
   await cargarHitosReporte();
   await cargarComercialReporte();
   // Restaurar restricciones/fotos vacíos para el nuevo día
   rdContratas = [];
   rdRestricciones = []; renderRestricciones();
   rdFotos = []; renderFotosReporte();
-  rdEquipos = {}; rdEquiposRender();
+  rdEquipos = {}; await rdEqObraCargar();
   await cargarReporteDeHoy();   // multi-dispositivo: retoma el borrador de hoy si ya existe
+  rdRestrAbiertasLoad();
   initFirmaCanvas();
   rdSetupDrop();
   rdBindRing();
@@ -10049,7 +10078,7 @@ function rdComputeCompleteness(){
     !!(g('rd-entrada') && g('rd-entrada').value) && !!(g('rd-salida') && g('rd-salida').value),
     rdFotos.length > 0,
     rdHitos.length ? rdHitos.some(h => (h.pct_nuevo||0) !== (h.pct_actual||0) || !!h.hoy_cant) : !!(g('rd-real') && g('rd-real').value),
-    RD_CHECKLIST.every((_,i) => g('rd-chk-'+i)?.checked),
+    rdEvalCompleta(),
     !!(g('rd-firma-nombre') && g('rd-firma-nombre').value.trim())
   ];
   return Math.round(checks.filter(Boolean).length / checks.length * 100);
@@ -10274,8 +10303,12 @@ async function cargarHitosReporte() {
       // Trae las TAREAS del cronograma (no solo milestones): hitos primero, luego actividades, ordenadas por fecha.
       // Sale de `v_gantt_supervisor` para traer, junto a la tarea, el costo de su partida en NISIRA:
       // el avance se captura en UNIDADES y cada tarea pesa según lo que cuesta (decisión de Kiara, 20-oct-2026).
-      const rows = await sbFetch(`/rest/v1/v_gantt_supervisor?cod_proyecto=eq.${encodeURIComponent(cod)}&select=id,partida_item,presupuesto_id,nombre_tarea,pct_avance,es_hito,nivel,duracion_dias,fecha_inicio_base,unidad,cantidad_total,cantidad_ejecutada,costo_total,costo_unit,es_licitacion&order=es_hito.desc,fecha_inicio_base.asc&limit=1000`);
+      const rows = await sbFetch(`/rest/v1/v_gantt_supervisor?cod_proyecto=eq.${encodeURIComponent(cod)}&select=id,partida_item,presupuesto_id,nombre_tarea,pct_avance,es_hito,nivel,duracion_dias,fecha_inicio_base,unidad,cantidad_total,cantidad_ejecutada,costo_total,costo_unit,es_licitacion,subcategoria&order=es_hito.desc,fecha_inicio_base.asc&limit=1000`);
+      rdServExcluidos = 0;
       (rows||[]).forEach(r => {
+        // Los SERVICIOS (partidas de instalación / mano de obra que van a licitación) ya no son tareas
+        // del reporte diario: se ven y se gestionan en Licitaciones (Kiara, 22-oct-2026).
+        if (r.es_licitacion && !r.es_hito){ rdServExcluidos++; return; }
         const pct = Number(r.pct_avance)||0;
         const tot = Number(r.cantidad_total)||0;
         const unidad = (r.unidad||'').trim();
@@ -10287,7 +10320,8 @@ async function cargarHitosReporte() {
           es_hito:!!r.es_hito, nivel:r.nivel, dur:Number(r.duracion_dias)||0, hoy:false, manana:false,
           unidad: enUnidades ? unidad : null, cant_total: enUnidades ? tot : null, cant_actual:cant, hoy_cant:0,
           costo:Number(r.costo_total)||0, cu:Number(r.costo_unit)||0, lic:!!r.es_licitacion,
-          presupuesto_id:r.presupuesto_id||null, adjudicado:false, lic_estado:null });
+          presupuesto_id:r.presupuesto_id||null, adjudicado:false, lic_estado:null,
+          familia:(r.subcategoria||'').trim() || null });
       });
       await rdMarcarServiciosAdjudicados();
       // PUNTO DE PARTIDA (Kiara, 20-oct-2026): la primera vez que una obra usa el reporte nuevo, el supervisor
@@ -10307,7 +10341,24 @@ function agregarHitoManual() {
 }
 function eliminarHito(i){ if(rdHitos[i].manual) rdHitos.splice(i,1); renderHitos(); }
 let _hitoFilter = '';
+let _hitoFam = '';          // familia elegida (rubro de NISIRA: Obras Civiles, Instalación Eléctrica…)
+let rdServExcluidos = 0;    // servicios que se quitaron de la lista (viven en Licitaciones)
 function rdHitoFilter(v){ _hitoFilter = v||''; renderHitos(); }
+function rdHitoFam(f){ _hitoFam = (_hitoFam === f) ? '' : f; renderHitos(); }
+const RD_SIN_FAM = 'Otras tareas';
+let rdFamOrden = [];
+function rdFamDe(h){ return h.es_hito ? 'Hitos' : (h.familia || RD_SIN_FAM); }
+// Chips de familias, como en las partidas de Licitaciones: se elige la familia y aparecen sus tareas.
+function rdRenderFamChips(){
+  const box = document.getElementById('rd-fam-chips'); if (!box) return;
+  const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fams = {}, orden = [];
+  rdHitos.forEach(h => { if (h.manual) return; const f = rdFamDe(h); if (!fams[f]){ fams[f] = { n:0, hoy:0 }; orden.push(f); } fams[f].n++; if (h.hoy || h.tocado) fams[f].hoy++; });
+  orden.sort((a,b) => (a==='Hitos') - (b==='Hitos') || (a===RD_SIN_FAM) - (b===RD_SIN_FAM) || a.localeCompare(b));
+  const nota = rdServExcluidos ? `<span class="rd-fam-nota">${rdServExcluidos} servicio${rdServExcluidos===1?'':'s'} a licitar no se listan aquí · están en Licitaciones</span>` : '';
+  rdFamOrden = orden;
+  box.innerHTML = orden.length < 2 && !nota ? '' : orden.map((f,k) => `<button type="button" class="rd-fam-chip${_hitoFam===f?' on':''}" onclick="rdHitoFam(rdFamOrden[${k}])">${esc(f)} <small>${fams[f].n}</small>${fams[f].hoy?`<i>${fams[f].hoy}</i>`:''}</button>`).join('') + nota;
+}
 function renderHitos() {
   const wrap = document.getElementById('rd-hitos-list');
   const empty = document.getElementById('rd-hitos-empty');
@@ -10315,18 +10366,37 @@ function renderHitos() {
   const q = (_hitoFilter||'').trim().toLowerCase();
   const total = rdHitos.length;
   // Visibles: las marcadas (Hoy/Mañana) siempre + las que coincidan con la búsqueda (o todas si son pocas)
-  const visibles = rdHitos.map((h,i)=>({h,i})).filter(({h})=> (
-    h.hoy || h.manana || h.tocado || (q ? (h.nombre||'').toLowerCase().includes(q) : total<=15))
-  ).slice(0, 80);
+  const fam = _hitoFam;
+  const visibles = rdHitos.map((h,i)=>({h,i})).filter(({h})=> {
+    if (h.hoy || h.manana || h.tocado) return true;
+    if (fam && rdFamDe(h) !== fam) return false;
+    if (q) return (h.nombre||'').toLowerCase().includes(q);
+    return !!fam || total<=15;
+  }).slice(0, fam ? 400 : 80);
+  // Agrupadas por familia, como en Licitaciones
+  if (!fam) visibles.sort((a,b) => { const fa = rdFamDe(a.h), fb = rdFamDe(b.h); return fa === fb ? a.i - b.i : (fa==='Hitos'?-1:fb==='Hitos'?1:fa.localeCompare(fb)); });
+  rdRenderFamChips();
   if (empty){
     if (!total){ empty.style.display='block'; }
     else if (!visibles.length){
       empty.style.display='block';
-      empty.textContent = q ? 'Ninguna tarea coincide con la búsqueda.' : `Busca una tarea del Gantt para marcarla como Hoy / Mañana (${total} tareas).`;
+      empty.textContent = q ? 'Ninguna tarea coincide con la búsqueda.' : `Elige una familia o busca una tarea para marcarla como Hoy / Mañana (${total} tareas).`;
     } else empty.style.display='none';
   }
   const cuentan = rdTareasQueCuentan();
+  let _famPrev = null;
   wrap.innerHTML = visibles.map(({h,i})=>{
+    const fh = rdFamDe(h);
+    const cab = (!h.manual && fh !== _famPrev && (visibles.length > 1)) ? `<div class="rd-fam-h">${String(fh).replace(/</g,'&lt;')}</div>` : '';
+    if (!h.manual) _famPrev = fh;
+    return cab + rdHitoCardHTML(h, i, cuentan);
+  }).join('');
+  rdEnsureHitoTogStyles();
+  recalcAvanceGlobal();
+  rdIcons();
+}
+function rdHitoCardHTML(h, i, cuentan){
+  {
     const delta = (h.pct_nuevo||0) - (h.pct_actual||0);
     const sub = h.manual ? '<small>manual</small>'
       : `<small>antes ${h.pct_actual}%${delta ? ` · <b style="color:${delta>0?'var(--success)':'var(--danger)'}">${delta>0?'+':''}${delta.toFixed(1)}</b>` : ''}</small>`;
@@ -10388,10 +10458,7 @@ function renderHitos() {
       <div class="rd-prog-track"><div class="rd-prog-fill" id="rd-hito-fill-${i}" style="width:${h.pct_nuevo||0}%"></div></div>
       <div class="rd-prog-pct"><input class="rd-prog-inp" type="number" min="0" max="100" step="0.1" value="${h.pct_nuevo}" oninput="rdHitoInput(${i},this.value)">${h.manual?`<button class="rd-ico-btn" onclick="eliminarHito(${i})"><i data-lucide="x" class="ri"></i></button>`:''}</div>
     </div>`;
-  }).join('');
-  rdEnsureHitoTogStyles();
-  recalcAvanceGlobal();
-  rdIcons();
+  }
 }
 function rdHitoCumplido(i, ok){
   if(!rdHitos[i]) return;
@@ -10409,6 +10476,14 @@ function rdEnsureHitoTogStyles(){
     padding:2px 7px;border-radius:999px;background:#dbeafe;color:#1d4ed8;margin-right:6px;}
   .rd-hito-tag.gris{background:var(--surface-2);color:var(--text-3);margin-left:6px;margin-right:0;}
   .rd-prog-card.titulo{opacity:.72;}
+  .rd-fam-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;}
+  .rd-fam-chip{border:1px solid var(--border-strong);background:var(--surface-1);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;color:var(--text-2);cursor:pointer;display:inline-flex;gap:6px;align-items:center;}
+  .rd-fam-chip small{font-weight:600;color:var(--text-3);}
+  .rd-fam-chip i{font-style:normal;background:#059669;color:#fff;border-radius:999px;padding:0 6px;font-size:10.5px;}
+  .rd-fam-chip.on{background:var(--navy-800,#0b1f4d);border-color:var(--navy-800,#0b1f4d);color:#fff;}
+  .rd-fam-chip.on small{color:#cbd5e1;}
+  .rd-fam-nota{font-size:11px;color:var(--text-3);margin-left:4px;}
+  .rd-fam-h{font-size:12px;font-weight:800;color:var(--navy-800,#0b1f4d);background:#eef2f8;border-radius:8px;padding:7px 11px;margin:10px 0 4px;}
   .rd-hito-estado{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;}
   .rd-hito-e{border:none;background:var(--surface-1);padding:6px 12px;font-size:11.5px;font-weight:700;
     color:var(--text-3);cursor:pointer;border-left:1px solid var(--border-strong);}
@@ -10691,9 +10766,75 @@ function recalcAvanceGlobal() {
 }
 
 // ── Restricciones estructuradas ──
+function rdUid(){ return (crypto.randomUUID ? crypto.randomUUID() : 'r' + Date.now() + Math.random().toString(16).slice(2)); }
 function agregarRestriccion() {
-  rdRestricciones.push({ categoria:'materiales', titulo:'', descripcion:'', impacto:'medio', responsable:'', fecha_objetivo:'' });
+  rdRestricciones.push({ uid: rdUid(), categoria:'materiales', titulo:'', descripcion:'', impacto:'medio', responsable:'', responsable_email:'',
+                         especialidad:'', contratista:'', fecha_objetivo:'' });
+  rdDestLoad();
   renderRestricciones();
+}
+// ── A quién le llega la alerta (Kiara, 22-oct-2026) ──
+// encargado (responsable de levantarla) · PMO y jefes de zona de la especialidad · la contrata.
+// La lista de PMO / jefes de zona la mantiene Gerencia (PMO.alerta_destinatarios); el encargado
+// se elige de esa lista o del equipo de supervisores para tener su correo.
+let rdDest = null;     // [{ nombre, email, rol, especialidad }]
+async function rdDestLoad(){
+  if (rdDest) return rdDest;
+  rdDest = [];
+  try {
+    const [d, sups] = await Promise.all([
+      pmoDbFetch('/rest/v1/alerta_destinatarios?activo=eq.true&select=nombre,email,rol,especialidad').catch(() => []),
+      pmoDbFetch('/rest/v1/supervisores_equipo?select=n,email&email=not.is.null').catch(() => [])
+    ]);
+    (d||[]).forEach(x => rdDest.push({ nombre:x.nombre, email:x.email, rol:x.rol, especialidad:x.especialidad || null }));
+    (sups||[]).forEach(x => { if (x.n && x.email && !rdDest.some(y => (y.email||'').toLowerCase() === x.email.toLowerCase())) rdDest.push({ nombre:x.n, email:x.email, rol:'Supervisor', especialidad:null, soloEncargado:true }); });
+  } catch(e){}
+  const dl = document.getElementById('rd-dest-dl');
+  if (dl) dl.innerHTML = rdDest.map(x => `<option value="${rdEsc2(x.nombre)}">${rdEsc2(x.rol)}${x.especialidad?' · '+rdEsc2(x.especialidad):''}</option>`).join('');
+  return rdDest;
+}
+function rdRestrResp(i, val){
+  const r = rdRestricciones[i]; if (!r) return;
+  r.responsable = val;
+  const m = (rdDest||[]).find(x => (x.nombre||'').toLowerCase() === String(val||'').trim().toLowerCase());
+  r.responsable_email = m ? m.email : '';
+  const hint = document.getElementById('rd-restr-dest-' + i); if (hint) hint.innerHTML = rdRestrDestTxt(r);
+}
+function rdRestrSet(i, campo, val){ const r = rdRestricciones[i]; if (!r) return; r[campo] = val; const hint = document.getElementById('rd-restr-dest-' + i); if (hint) hint.innerHTML = rdRestrDestTxt(r); }
+// Destinatarios que salen de una restricción
+function rdRestrDestinatarios(r){
+  const out = [];
+  const add = (o) => { const k = o.tipo + '|' + (o.destinatario_email||o.destinatario_nombre||'').toLowerCase(); if (!out.some(x => x._k === k)) out.push({ ...o, _k:k }); };
+  if ((r.responsable||'').trim()) add({ tipo:'encargado', destinatario_nombre: r.responsable.trim(), destinatario_email: r.responsable_email || null, rol:'Encargado' });
+  const nn = t => String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  (rdDest||[]).filter(x => !x.soloEncargado).forEach(x => {
+    if ((r.responsable_email||'').toLowerCase() === (x.email||'').toLowerCase()) return;   // ya le llega como encargado
+    if (x.rol === 'PMO' || !x.especialidad || (r.especialidad && nn(x.especialidad) === nn(r.especialidad)))
+      add({ tipo:'especialidad', destinatario_nombre: x.nombre, destinatario_email: x.email, rol: x.rol });
+  });
+  if ((r.contratista||'').trim()) add({ tipo:'contrata', destinatario_nombre: r.contratista.trim(), destinatario_email: null, rol:'Contrata' });
+  return out;
+}
+// Restricciones de días anteriores que siguen abiertas en la obra, con a quién se avisó
+async function rdRestrAbiertasLoad(){
+  const box = document.getElementById('rd-restr-abiertas'); if (!box) return;
+  box.innerHTML = '';
+  const cod = currentProyecto?.cod; if (!cod) return;
+  try {
+    const rows = await sbFetch('/rest/v1/v_restriccion_alertas?cod_proyecto=eq.' + encodeURIComponent(cod) + '&restriccion_estado=eq.abierta&select=restriccion_uid,titulo,impacto,fecha_objetivo,destinatario_nombre,rol,visto_at,created_at&order=created_at.desc&limit=300') || [];
+    const hoyUids = new Set(rdRestricciones.map(r => r.uid));
+    const by = {}; rows.forEach(a => { if (hoyUids.has(a.restriccion_uid)) return; (by[a.restriccion_uid] = by[a.restriccion_uid] || { ...a, dest:[] }).dest.push(a); });
+    const L = Object.values(by); if (!L.length) return;
+    const hoy = new Date().toISOString().slice(0,10);
+    box.innerHTML = `<div class="rd-restr-ab-h">Siguen abiertas (${L.length})</div>` + L.map(a => `<div class="rd-restr-ab ${a.impacto||''}">
+      <b>${rdEsc2(a.titulo||'Restricción')}</b>${a.fecha_objetivo?` <small class="${a.fecha_objetivo<hoy?'venc':''}">· ${a.fecha_objetivo<hoy?'vencida ':''}${rdFmtFecha(a.fecha_objetivo)}</small>`:''}
+      <div class="rd-restr-dest">Avisado a ${a.dest.map(d => `${rdEsc2(d.destinatario_nombre)}${d.visto_at?' ✓':''}`).join(', ')}</div></div>`).join('');
+  } catch(e){}
+}
+function rdRestrDestTxt(r){
+  const d = rdRestrDestinatarios(r);
+  if (!d.length) return 'Elige el encargado, la especialidad o la contrata para que la alerta le llegue a alguien.';
+  return '🔔 Llega a: ' + d.map(x => `<b>${rdEsc2(x.destinatario_nombre)}</b> <small>(${rdEsc2(x.rol)})</small>`).join(', ');
 }
 function eliminarRestriccion(i){ rdRestricciones.splice(i,1); renderRestricciones(); }
 const RD_CAT_ICON = { materiales:'📦', personal:'👷', frentes:'🚧', otros:'📌' };
@@ -10716,7 +10857,12 @@ function renderRestricciones() {
         <select onchange="rdRestricciones[${i}].impacto=this.value;renderRestricciones()">${['bajo','medio','alto'].map(x=>`<option value="${x}" ${r.impacto===x?'selected':''}>Impacto ${x}</option>`).join('')}</select>
         <input type="date" value="${r.fecha_objetivo||''}" oninput="rdRestricciones[${i}].fecha_objetivo=this.value">
       </div>
-      <input value="${(r.responsable||'').replace(/"/g,'&quot;')}" oninput="rdRestricciones[${i}].responsable=this.value" placeholder="Responsable de levantarla">
+      <input list="rd-dest-dl" value="${(r.responsable||'').replace(/"/g,'&quot;')}" oninput="rdRestrResp(${i},this.value)" placeholder="Encargado de levantarla (elige de la lista para avisarle)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+        <select onchange="rdRestrSet(${i},'especialidad',this.value)"><option value="">Especialidad…</option>${(rdEsp||[]).map(e=>e.label||e.esp).filter((v,k,a)=>v&&a.indexOf(v)===k).map(v=>`<option ${r.especialidad===v?'selected':''}>${rdEsc2(v)}</option>`).join('')}</select>
+        <select onchange="rdRestrSet(${i},'contratista',this.value)"><option value="">Contrata (opcional)…</option>${rdEvalContratas().map(c=>`<option ${r.contratista===c.n?'selected':''}>${rdEsc2(c.n)}</option>`).join('')}</select>
+      </div>
+      <div class="rd-restr-dest" id="rd-restr-dest-${i}">${rdRestrDestTxt(r)}</div>
       <div class="rd-ticket-foot">
         <span style="font-size:10.5px;color:var(--text-3);font-weight:700;">Ticket #${i+1}</span>
         <button class="rd-ico-btn" onclick="eliminarRestriccion(${i})"><i data-lucide="trash-2" class="ri"></i></button>
@@ -10767,94 +10913,132 @@ function rdEnsureEqStyles(){
   .rd-eq-toggle{margin-top:10px;width:100%;border:1px dashed var(--border-strong);background:transparent;
     border-radius:9px;padding:8px;font-size:12px;font-weight:700;color:var(--text-3);cursor:pointer;}
   .rd-eq-toggle:hover{color:var(--teal-700);border-color:var(--teal-700);}
+  .rd-eq-form{display:grid;grid-template-columns:2fr 1.4fr 70px auto;gap:6px;}
+  .rd-eq-form input{border:1px solid var(--border-strong);border-radius:7px;padding:6px 9px;font-size:12.5px;background:var(--surface-1);color:var(--text-1);min-width:0;}
+  .rd-eq-ok{border:none;background:var(--teal-700,#0e7490);color:#fff;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;}
+  .rd-eq-lnk{border:none;background:none;color:var(--text-3);font-size:11px;font-weight:600;cursor:pointer;text-decoration:underline;margin-left:8px;padding:0;}
+  @media(max-width:700px){ .rd-eq-form{grid-template-columns:1fr 1fr;} }
   .rd-eq-empty{font-size:12.5px;color:var(--text-3);padding:14px;text-align:center;border:1px dashed var(--border-strong);border-radius:10px;}
   @media(max-width:700px){ .rd-eq-row{grid-template-columns:1fr;} }
   `;
   const st = document.createElement('style'); st.id='rd-eq-styles'; st.textContent = css; document.head.appendChild(st);
 }
 
+// 22-oct-2026 (Kiara): los equipos los LLENA EL SUPERVISOR. Ya no salen de las órdenes de
+// importación de Gerencia: el supervisor los da de alta en `equipos_obra` (instancia Supervisor),
+// quedan guardados para los días siguientes y su estado se actualiza al tocarlo. El reporte del día
+// guarda una foto de la lista (equipos_dia) con el mismo formato de antes (doc, tipo, proveedor…).
+let rdEqObra = [];          // filas de equipos_obra de la obra actual
+let _rdEqCod = null;
+const _rdEqTimers = {};
+async function rdEqObraCargar(){
+  const cod = currentProyecto && (currentProyecto.cod || currentProyecto.nombre);
+  _rdEqCod = cod || null; rdEqObra = [];
+  if (cod){
+    try {
+      rdEqObra = await sbFetch('/rest/v1/equipos_obra?cod_proyecto=eq.' + encodeURIComponent(cod) + '&activo=eq.true&select=*&order=orden.asc,created_at.asc') || [];
+      try { localStorage.setItem('fp_eqobra_' + cod, JSON.stringify(rdEqObra)); } catch(e){}
+    } catch(e){
+      try { rdEqObra = JSON.parse(localStorage.getItem('fp_eqobra_' + cod) || '[]'); } catch(_){ rdEqObra = []; }
+    }
+  }
+  // Lo marcado en el borrador de hoy manda sobre el estado guardado
+  Object.keys(rdEquipos).forEach(id => { const e = rdEqObra.find(x => x.id === id); if (e){ e.estado = rdEquipos[id].estado || e.estado; e.nota = rdEquipos[id].nota ?? e.nota; } });
+  rdEquiposRender();
+}
+function rdEqGuardar(e){
+  clearTimeout(_rdEqTimers[e.id]);
+  _rdEqTimers[e.id] = setTimeout(async () => {
+    const quien = (currentUser && (currentUser.email || currentUser.nombre)) || null;
+    const body = { nombre: e.nombre || 'Equipo', marca_modelo: e.marca_modelo || null, cantidad: Number(e.cantidad) || 1,
+                   estado: e.estado || null, nota: (e.nota || '').trim() || null, activo: e.activo !== false,
+                   updated_at: new Date().toISOString(), updated_by: quien };
+    try {
+      if (e._nuevo){
+        const r = await sbFetch('/rest/v1/equipos_obra', { method:'POST', headers:{ Prefer:'return=representation' },
+          body: JSON.stringify({ ...body, id: e.id, cod_proyecto: _rdEqCod, orden: rdEqObra.indexOf(e) }) });
+        delete e._nuevo;
+      } else {
+        await sbFetch('/rest/v1/equipos_obra?id=eq.' + e.id, { method:'PATCH', body: JSON.stringify(body) });
+      }
+      e._pend = false;
+    } catch(err){ e._pend = true; }   // sin señal: queda en el reporte del día y se reintenta al tocarlo
+    try { localStorage.setItem('fp_eqobra_' + _rdEqCod, JSON.stringify(rdEqObra)); } catch(_){}
+  }, 700);
+}
+function rdEqAgregar(){
+  if (!currentProyecto){ showToast('Selecciona un proyecto'); return; }
+  const id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+  rdEqObra.push({ id, nombre:'', marca_modelo:'', cantidad:1, estado:'', nota:'', _nuevo:true, _editar:true });
+  rdEquiposRender();
+  setTimeout(() => { const el = document.getElementById('rd-eq-n-' + id); if (el) el.focus(); }, 30);
+}
+function rdEqCampo(id, campo, val){
+  const e = rdEqObra.find(x => x.id === id); if (!e) return;
+  if (campo === 'estado' && e.estado === val) val = '';   // volver a tocar lo desmarca
+  e[campo] = val;
+  if (campo === 'nombre' && !String(val).trim()) return;  // no guarda un equipo sin nombre
+  if (e.nombre && String(e.nombre).trim()) rdEqGuardar(e);
+  rdEquipos[id] = { estado: e.estado || '', nota: e.nota || '' };
+  if (campo === 'estado') rdEquiposRender(); else rdEqBadge();
+  if (typeof scheduleAutosave === 'function') scheduleAutosave();
+}
+function rdEqEditar(id, on){ const e = rdEqObra.find(x => x.id === id); if (!e) return; e._editar = on; rdEquiposRender(); }
+function rdEqQuitar(id){
+  const e = rdEqObra.find(x => x.id === id); if (!e) return;
+  if (e.nombre && !confirm('¿Quitar «' + e.nombre + '» de los equipos de la obra?')) return;
+  rdEqObra = rdEqObra.filter(x => x !== e); delete rdEquipos[id];
+  if (!e._nuevo){ e.activo = false; rdEqGuardar(e); }
+  rdEquiposRender();
+}
+function rdEqBadge(){
+  const b = document.getElementById('rd-eq-badge'); if (!b) return;
+  const n = rdEqObra.filter(e => (e.nombre||'').trim()).length;
+  const conEst = rdEqObra.filter(e => (e.nombre||'').trim() && e.estado).length;
+  b.textContent = n ? `${conEst}/${n}` : '0';
+}
 function rdEquiposRender(){
   const m = document.getElementById('rd-eq-mount'); if(!m) return;
   rdEnsureEqStyles();
-  const lista = (typeof pmoCurrentEquipos === 'function') ? pmoCurrentEquipos() : [];
-  const badge = document.getElementById('rd-eq-badge');
-  const marcados = Object.values(rdEquipos).filter(e=>e && (e.estado || (e.nota||'').trim())).length;
-  if (badge) badge.textContent = lista.length ? `${marcados}/${lista.length}` : '0';
-
-  if (!lista.length){
-    m.innerHTML = `<div class="rd-eq-empty">${currentProyecto
-      ? 'Este proyecto no tiene equipos registrados en Gerencia.'
-      : 'Selecciona un proyecto para ver sus equipos.'}</div>`;
-    return;
-  }
-  // Por defecto solo los que aún importan en obra; los culminados se ven con "ver todos"
-  const orden = { transito:0, produccion:1, pendiente:2, culminado:3 };
-  const ord0 = lista.slice().sort((a,b)=> orden[_eqStatusClass(a.st)] - orden[_eqStatusClass(b.st)]);
-  const culminados = ord0.filter(e=> _eqStatusClass(e.st)==='culminado'
-                                  && !rdEquipos[e.doc||'']);          // si lo marcó, se queda visible
-  const ord = rdEqVerTodos ? ord0 : ord0.filter(e=> !culminados.includes(e));
-
-  m.innerHTML = ord.map(e=>{
-    const doc = e.doc || '';
-    const st  = rdEquipos[doc] || {};
-    const cls = _eqStatusClass(e.st);
-    // Misma regla que las tarjetas: llegada estimada si existe, si no la entrega
-    // comprometida, y siempre diciendo cuál de las dos se está mostrando.
-    const fx = (typeof _equipoEtaInfo==='function') ? _equipoEtaInfo(e) : null;
-    const fTxt = fx && fx.etaDate
-      ? (fx.fuente==='comprometida' ? 'Comprometida ' : 'Llega ') + _fmtFechaES(fx.etaDate)
-      : 'Sin fecha del proveedor';
-    const sub = [ e.proveedor, e.mod, fTxt ].filter(Boolean)
-                  .map(x=>`<span>${rdEsc2(x)}</span>`).join('');
+  rdEqBadge();
+  if (!currentProyecto){ m.innerHTML = '<div class="rd-eq-empty">Selecciona un proyecto para ver sus equipos.</div>'; return; }
+  const filas = rdEqObra.map(e => {
+    const id = e.id;
+    const ed = e._editar || !(e.nombre||'').trim();
+    const ident = ed
+      ? `<div class="rd-eq-form">
+           <input id="rd-eq-n-${id}" placeholder="Equipo (ej. Evaporador, Compresor tornillo…)" value="${rdEsc2(e.nombre||'')}" oninput="rdEqCampo('${id}','nombre',this.value)">
+           <input placeholder="Marca / modelo" value="${rdEsc2(e.marca_modelo||'')}" oninput="rdEqCampo('${id}','marca_modelo',this.value)">
+           <input type="number" min="1" step="1" placeholder="Cant." value="${rdEsc2(e.cantidad||1)}" oninput="rdEqCampo('${id}','cantidad',this.value)">
+           <button class="rd-eq-ok" onclick="rdEqEditar('${id}',false)">Listo</button>
+         </div>`
+      : `<div class="rd-eq-tt">${rdEsc2(e.nombre)}${Number(e.cantidad)>1?` <span style="font-weight:600;color:var(--text-3);">× ${rdEsc2(e.cantidad)}</span>`:''}
+           <button class="rd-eq-lnk" onclick="rdEqEditar('${id}',true)">editar</button><button class="rd-eq-lnk" onclick="rdEqQuitar('${id}')">quitar</button></div>
+         ${e.marca_modelo?`<div class="rd-eq-sub"><span>${rdEsc2(e.marca_modelo)}</span></div>`:''}`;
     return `<div class="rd-eq-row">
-      <div class="rd-eq-id">
-        <div class="rd-eq-tt">${rdEsc2(e.tipo || 'Equipo')} <span style="font-weight:600;color:var(--text-3);">· ${rdEsc2(doc)}</span></div>
-        <div class="rd-eq-sub">${sub}<span class="rd-eq-pmo ${cls}">Gerencia: ${rdEsc2(e.st||'—')}</span></div>
-      </div>
+      <div class="rd-eq-id">${ident}</div>
       <div class="rd-eq-seg">${EQ_ESTADOS.filter(x=>x.k).map(x=>
-        `<button class="rd-eq-b ${x.cls} ${st.estado===x.k?'on':''}" onclick="rdEqSet('${rdEsc2(doc)}','estado','${x.k}')">${x.lbl}</button>`).join('')}</div>
-      ${st.estado ? `<input class="rd-eq-nota" placeholder="Nota del equipo (opcional)…" value="${rdEsc2(st.nota||'')}" oninput="rdEqSet('${rdEsc2(doc)}','nota',this.value)">` : ''}
+        `<button class="rd-eq-b ${x.cls} ${e.estado===x.k?'on':''}" onclick="rdEqCampo('${id}','estado','${x.k}')">${x.lbl}</button>`).join('')}</div>
+      ${e.estado ? `<input class="rd-eq-nota" placeholder="Nota del equipo (opcional)…" value="${rdEsc2(e.nota||'')}" oninput="rdEqCampo('${id}','nota',this.value)">` : ''}
     </div>`;
   }).join('');
-  if (culminados.length){
-    m.innerHTML += `<button class="rd-eq-toggle" onclick="rdEqVerTodos=!rdEqVerTodos;rdEquiposRender()">${
-      rdEqVerTodos ? 'Ocultar los culminados' : `Ver todos · ${culminados.length} culminado(s) en Gerencia`}</button>`;
-  }
+  m.innerHTML = (filas || '<div class="rd-eq-empty">Aún no registras equipos en esta obra. Agrégalos una vez y quedan guardados para los días siguientes.</div>')
+    + '<button class="rd-eq-toggle" onclick="rdEqAgregar()">＋ Agregar equipo</button>';
   rdIcons();
 }
 
-function rdEqSet(doc, campo, val){
-  if(!rdEquipos[doc]) rdEquipos[doc] = { estado:'', nota:'' };
-  // Volver a tocar el mismo estado lo desmarca
-  if (campo==='estado' && rdEquipos[doc].estado === val) val = '';
-  rdEquipos[doc][campo] = val;
-  if (!rdEquipos[doc].estado && !(rdEquipos[doc].nota||'').trim()) delete rdEquipos[doc];
-  if (campo==='estado') rdEquiposRender(); else {
-    const b=document.getElementById('rd-eq-badge');
-    if(b){ const l=(typeof pmoCurrentEquipos==='function')?pmoCurrentEquipos().length:0;
-      b.textContent = l ? `${Object.keys(rdEquipos).length}/${l}` : '0'; }
-  }
-  if (typeof scheduleAutosave==='function') scheduleAutosave();
-}
-
-// Lo que se guarda en el reporte: identidad del equipo (para que el informe
-// histórico no dependa de PMO) + lo que marcó el supervisor.
+// Lo que se guarda en el reporte: foto de la lista de la obra con su estado de hoy
+// (mismo formato de antes para que el informe y el PDF no cambien).
 function rdEquiposPayload(){
-  const lista = (typeof pmoCurrentEquipos === 'function') ? pmoCurrentEquipos() : [];
-  const porDoc = {}; lista.forEach(e=> porDoc[e.doc||''] = e);
-  return Object.keys(rdEquipos).map(doc=>{
-    const e = porDoc[doc] || {};
-    const st = rdEquipos[doc] || {};
-    return { doc, tipo:e.tipo||null, proveedor:e.proveedor||null, mod:e.mod||null,
-             etd:e.etd||null, eta:e.eta||null, st_pmo:e.st||null,
-             estado:st.estado||null, nota:(st.nota||'').trim()||null };
-  }).filter(x=> x.estado || x.nota);
+  return rdEqObra.filter(e => (e.nombre||'').trim()).map(e => ({
+    doc: e.id, tipo: e.nombre, proveedor: e.marca_modelo || null, cantidad: Number(e.cantidad)||1,
+    estado: e.estado || null, nota: (e.nota||'').trim() || null, origen: 'supervisor' }));
 }
 function rdEquiposLoad(row){
   rdEquipos = {};
   const arr = row && Array.isArray(row.equipos_dia) ? row.equipos_dia : [];
   arr.forEach(e=>{ if(e && e.doc) rdEquipos[e.doc] = { estado:e.estado||'', nota:e.nota||'' }; });
-  rdEquiposRender();
+  rdEqObraCargar();
 }
 
 // ── Fotos (cualquier formato y tamaño) → bucket reporte-fotos ──
@@ -10884,8 +11068,26 @@ async function _comprimirImagen(file, maxDim = 1600, quality = 0.8){
   } catch(e) { /* no se pudo decodificar → subir original */ }
   return { blob:file, type:file.type||'application/octet-stream', name:file.name };
 }
-async function subirFotosReporte(files) {
+// 3 FOTOS POR FRENTE (Kiara, 22-oct-2026): los frentes son las especialidades del reporte; cada
+// foto queda marcada con su frente y ya no se escribe la actividad.
+const RD_FOTOS_POR_FRENTE = 3;
+function rdFrentesFotos(){
+  const fr = [];
+  (rdEsp||[]).forEach(e => { const n = (e.label || e.esp || '').toString().trim(); if (n && !fr.includes(n)) fr.push(n); });
+  if (!fr.length) fr.push('General');
+  rdFotos.forEach(f => { const n = f.frente || f.ambiente; if (n && !fr.includes(n)) fr.push(n); });
+  return fr;
+}
+let _rdFotoFrente = null;
+function rdFotoPedir(k){ _rdFotoFrente = rdFrentesFotos()[k]; const inp = document.getElementById('rd-fotos-input'); if (inp) inp.click(); }
+async function subirFotosReporte(files, frente) {
   if (!files || !files.length) return;
+  frente = frente || _rdFotoFrente || rdFrentesFotos()[0];
+  const ya = rdFotos.filter(f => (f.frente || f.ambiente) === frente).length;
+  const cupo = Math.max(0, RD_FOTOS_POR_FRENTE - ya);
+  if (!cupo){ showToast(`«${frente}» ya tiene ${RD_FOTOS_POR_FRENTE} fotos`); document.getElementById('rd-fotos-input').value=''; return; }
+  if (files.length > cupo) showToast(`Solo se suben ${cupo} foto(s) más en «${frente}» (máximo ${RD_FOTOS_POR_FRENTE} por frente)`);
+  files = Array.from(files).slice(0, cupo);
   const cod = (currentProyecto?.cod || 'sin-cod').replace(/[^a-zA-Z0-9._-]/g,'_');
   const status = document.getElementById('rd-fotos-status');
   let encoladas = 0;
@@ -10906,12 +11108,12 @@ async function subirFotosReporte(files) {
         });
         if (!res.ok) throw new Error(await res.text());
         const url = `${SB_URL}/storage/v1/object/public/reporte-fotos/${path}`;
-        rdFotos.push({ url, nombre:c.name, tipo:c.type||'', ambiente:'', actividad:'', captura_ts: new Date().toISOString() });
+        rdFotos.push({ url, nombre:c.name, tipo:c.type||'', frente, ambiente:frente, actividad:'', captura_ts: new Date().toISOString() });
         continue;
       } catch(e) { console.warn('Subida directa falló, encolando offline:', e); }
     }
     // Sin señal o subida fallida → guardar la foto en el equipo (IndexedDB) y encolar.
-    const ok = await _encolarFotoOffline(c, cod);
+    const ok = await _encolarFotoOffline(c, cod, frente);
     if (ok) encoladas++;
   }
   try { await _mirrorLocal(); } catch(e){}   // persiste las fotos pendientes en el borrador local
@@ -10937,18 +11139,22 @@ function renderFotosReporte() {
   if (!grid) return;
   rdEnsureFotoStyles();
   const badge = document.getElementById('rd-fotos-badge'); if (badge) badge.textContent = rdFotos.length;
-  const attr = s => (s==null?'':String(s)).replace(/"/g,'&quot;');
-  grid.innerHTML = rdFotos.map((f,i)=>{
+  const card = (f,i)=>{
     const isImg = /^image\//.test(f.tipo||'') || /\.(jpe?g|png|webp|gif|heic|heif|bmp)$/i.test(f.nombre||'');
     const src = f.previewUrl || f.url || '';
     const body = isImg ? `<img src="${src}" alt="">` : `<div class="file"><i data-lucide="file" class="ri"></i><span>${(f.nombre||'archivo').slice(-18)}</span></div>`;
     const pend = f.pending ? `<span class="rd-photo-pend">⏳ sin subir</span>` : '';
     return `<div class="rd-photo-card${f.pending?' is-pending':''}">
       <div class="rd-photo-thumb">${body}${pend}<button class="del" title="Quitar" onclick="eliminarFotoReporte(${i})">×</button></div>
-      <div class="rd-photo-meta">
-        <input class="rd-photo-inp" placeholder="Ambiente (ej: Cámara 3, Sala de máquinas)" value="${attr(f.ambiente)}" oninput="rdSetFotoMeta(${i},'ambiente',this.value)">
-        <input class="rd-photo-inp" placeholder="¿Qué actividad se hizo?" value="${attr(f.actividad)}" oninput="rdSetFotoMeta(${i},'actividad',this.value)">
-      </div>
+    </div>`;
+  };
+  grid.innerHTML = rdFrentesFotos().map((fr, k) => {
+    const items = rdFotos.map((f,i)=>({f,i})).filter(({f}) => (f.frente || f.ambiente || rdFrentesFotos()[0]) === fr);
+    const lleno = items.length >= RD_FOTOS_POR_FRENTE;
+    return `<div class="rd-fr">
+      <div class="rd-fr-h"><b>${rdEsc2(fr)}</b><span class="${items.length?'ok':''}">${items.length}/${RD_FOTOS_POR_FRENTE}</span></div>
+      <div class="rd-fr-g">${items.map(({f,i}) => card(f,i)).join('')}
+        ${lleno ? '' : `<button type="button" class="rd-fr-add" onclick="rdFotoPedir(${k})"><i data-lucide="camera" class="ri"></i><span>Agregar foto</span></button>`}</div>
     </div>`;
   }).join('');
   if (window.lucide) lucide.createIcons();
@@ -10958,7 +11164,14 @@ let _rdFotoStylesDone = false;
 function rdEnsureFotoStyles(){
   if (_rdFotoStylesDone) return; _rdFotoStylesDone = true;
   const css = `
-  #rd-fotos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+  #rd-fotos-grid{display:grid;gap:14px;grid-template-columns:1fr !important;}
+  .rd-fr-h{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;margin-bottom:6px;color:var(--text-1);}
+  .rd-fr-h span{font-size:11px;font-weight:800;color:var(--text-3);background:var(--surface-2);border-radius:999px;padding:1px 8px;}
+  .rd-fr-h span.ok{background:#dcfce7;color:#15803d;}
+  .rd-fr-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+  .rd-fr-add{border:1.5px dashed var(--border-strong);border-radius:11px;background:transparent;min-height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--text-3);font-size:12px;font-weight:700;cursor:pointer;}
+  .rd-fr-add:hover{border-color:var(--teal-700);color:var(--teal-700);} .rd-fr-add i{width:20px;height:20px;}
+  @media(max-width:560px){ .rd-fr-g{grid-template-columns:repeat(2,minmax(0,1fr));} }
   .rd-photo-card{border:1px solid var(--border);border-radius:11px;overflow:hidden;background:var(--surface-1);}
   .rd-photo-thumb{position:relative;background:var(--surface-2);} .rd-photo-thumb img{width:100%;height:130px;object-fit:cover;display:block;}
   .rd-photo-thumb .file{height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--text-3);font-size:11.5px;padding:8px;text-align:center;} .rd-photo-thumb .file i{width:22px;height:22px;}
@@ -11088,6 +11301,8 @@ function rdContrataModo(i, otro){
 
 function rdEspRender(){
   const m = document.getElementById('rd-esp-mount'); if(!m) return;
+  // Los frentes alimentan las fotos (3 por frente) y las contratas a evaluar
+  setTimeout(() => { if (typeof renderFotosReporte==='function') renderFotosReporte(); if (typeof rdEvalRender==='function') rdEvalRender(); }, 0);
   rdEnsureEspStyles();
   const opciones = ESP_CAT.filter(c=>!rdEsp.some(r=>r.esp===c.key));
   let html = '';
@@ -11232,14 +11447,28 @@ function rvalRender(){
   const periodos={}; rval.forEach(r=>{ (periodos[r.periodo]=periodos[r.periodo]||[]).push(r); });
   const keys=Object.keys(periodos).sort().reverse();
   const hoyMes=new Date().toISOString().slice(0,7);
-  let html=`<div class="rval-hd"><i data-lucide="trending-up" class="ri"></i><span>Proyección de valorizaciones</span></div>
-    <div class="rval-form">
-      <input type="month" id="rval-periodo" class="rval-inp" value="${hoyMes}">
-      <input type="number" id="rval-monto" class="rval-inp" min="0" step="0.01" placeholder="Monto proyectado (S/)">
-      <input type="number" id="rval-pct" class="rval-inp" min="0" max="100" step="0.1" placeholder="% proyectado">
-      <button class="btn btn-teal btn-sm" onclick="rvalGuardar()">Guardar proyección</button>
+  // Proyección POR MES con % automático (Kiara, 22-oct-2026): desde el mes en curso hasta el fin
+  // proyectado de la obra (máx. 8 meses). El % = monto ÷ presupuesto de Gerencia, no lo escribe nadie.
+  const base = rvalBase();
+  const fin = String(currentProyecto?.finReal || currentProyecto?.finCont || '').slice(0,7);
+  const meses = []; let [yy,mm] = hoyMes.split('-').map(Number);
+  for (let k=0; k<8; k++){ const per = yy + '-' + String(mm).padStart(2,'0'); meses.push(per); if (k>=2 && fin && per >= fin) break; mm++; if (mm>12){ mm=1; yy++; } }
+  let acum = 0;
+  const filas = meses.map(per => {
+    const cur = (periodos[per]||[]).slice().sort((a,b)=>b.version-a.version)[0];
+    const v = cur ? Number(cur.monto_proyectado)||0 : '';
+    return `<div class="rval-mes">
+      <span class="rval-mes-l">${rvalMesLabel(per)}${cur&&cur.version>1?` <small>v${cur.version}</small>`:''}</span>
+      <input type="number" class="rval-inp rval-mes-in" data-per="${per}" data-prev="${v}" min="0" step="0.01" placeholder="S/ 0.00" value="${v}" oninput="rvalPctVivo()">
+      <span class="rval-mes-pct" id="rval-pct-${per}">—</span>
     </div>`;
-  if(!keys.length){ html+=`<div class="rval-empty">Aún no hay proyecciones. Registra la valorización que proyectas para el mes.</div>`; }
+  }).join('');
+  let html=`<div class="rval-hd"><i data-lucide="trending-up" class="ri"></i><span>Proyección de valorización por mes</span></div>
+    <div class="rval-base">${base>0 ? `El % se calcula solo sobre el presupuesto de Gerencia: <b>${rvalMoney(base)}</b>` : 'Gerencia aún no carga el presupuesto de la obra: el % se calculará cuando lo tenga.'}</div>
+    <div class="rval-meses">${filas}</div>
+    <div class="rval-tot" id="rval-tot"></div>
+    <button class="btn btn-teal btn-sm" style="margin-top:8px;" onclick="rvalGuardar()">Guardar proyección</button>`;
+  if(keys.length) html+=`<div class="rval-hd" style="margin-top:16px;"><i data-lucide="history" class="ri"></i><span>Seguimiento de lo proyectado</span></div>`;
   keys.forEach(p=>{
     const vs=periodos[p].slice().sort((a,b)=>b.version-a.version);
     const cur=vs[0];
@@ -11268,24 +11497,39 @@ function rvalRender(){
     html+=`</div>`;
   });
   m.innerHTML=html;
+  rvalPctVivo();
   if(window.lucide) lucide.createIcons();
+}
+// Presupuesto contra el que se mide el %: el de la valorización de Gerencia.
+function rvalBase(){ return parseFloat(rdValG && rdValG.presupuesto) || 0; }
+function rvalPctVivo(){
+  const base = rvalBase(); let tot = 0;
+  document.querySelectorAll('.rval-mes-in').forEach(inp => {
+    const n = parseFloat(inp.value) || 0; tot += n;
+    const el = document.getElementById('rval-pct-' + inp.dataset.per);
+    if (el) el.textContent = base > 0 && n > 0 ? (n / base * 100).toFixed(1) + '%' : '—';
+  });
+  const t = document.getElementById('rval-tot');
+  if (t) t.innerHTML = tot > 0 ? `Total proyectado <b>${rvalMoney(tot)}</b>${base>0?` · <b>${(tot/base*100).toFixed(1)}%</b> del presupuesto`:''}` : '';
 }
 function rvalToggleHist(p){ const el=document.getElementById('rval-hist-'+p); if(el) el.style.display = (el.style.display==='none'?'block':'none'); }
 async function rvalGuardar(){
   const cod=currentProyecto?.cod||currentProyecto?.nombre; if(!cod){ showToast('Selecciona un proyecto'); return; }
-  const per=document.getElementById('rval-periodo')?.value;
-  const monto=parseFloat(document.getElementById('rval-monto')?.value);
-  const pctV=parseFloat(document.getElementById('rval-pct')?.value);
-  if(!per||isNaN(monto)){ showToast('Ingresa periodo y monto proyectado'); return; }
-  const mismos=rval.filter(r=>r.periodo===per);
-  const ver=mismos.length?Math.max(...mismos.map(r=>r.version))+1:1;
-  const vigentePrev=mismos.find(r=>r.estado==='vigente');
+  const base = rvalBase();
+  // Solo los meses que cambiaron: cada cambio es una versión nueva (el seguimiento de replanteos se mantiene)
+  const cambios = [...document.querySelectorAll('.rval-mes-in')].filter(inp => inp.value !== '' && String(parseFloat(inp.value)) !== String(parseFloat(inp.dataset.prev)));
+  if(!cambios.length){ showToast('No hay montos nuevos que guardar'); return; }
   try{
-    if(vigentePrev) await sbFetch(`/rest/v1/proyecto_valorizaciones?id=eq.${vigentePrev.id}`,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({estado:'replanteado'})});
-    await sbFetch('/rest/v1/proyecto_valorizaciones',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({ cod_proyecto:cod, nombre_proyecto:currentProyecto?.nombre||null, periodo:per, monto_proyectado:monto, pct:isNaN(pctV)?null:pctV, version:ver, estado:'vigente', supervisor:currentProyecto?.supervisor||currentUser?.nombre||null })});
-    const mo=document.getElementById('rval-monto'); if(mo) mo.value='';
-    const pc=document.getElementById('rval-pct'); if(pc) pc.value='';
-    showToast(ver>1?'Replanteo guardado ✓':'Proyección guardada ✓');
+    for (const inp of cambios){
+      const per = inp.dataset.per, monto = parseFloat(inp.value);
+      if (isNaN(monto)) continue;
+      const mismos=rval.filter(r=>r.periodo===per);
+      const ver=mismos.length?Math.max(...mismos.map(r=>r.version))+1:1;
+      const vigentePrev=mismos.find(r=>r.estado==='vigente');
+      if(vigentePrev) await sbFetch(`/rest/v1/proyecto_valorizaciones?id=eq.${vigentePrev.id}`,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({estado:'replanteado'})});
+      await sbFetch('/rest/v1/proyecto_valorizaciones',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({ cod_proyecto:cod, nombre_proyecto:currentProyecto?.nombre||null, periodo:per, monto_proyectado:monto, pct: base>0 ? Math.round(monto/base*1000)/10 : null, fecha_proyeccion: new Date().toISOString().slice(0,10), version:ver, estado:'vigente', supervisor:currentProyecto?.supervisor||currentUser?.nombre||null })});
+    }
+    showToast(cambios.length===1 ? 'Proyección guardada ✓' : cambios.length + ' meses guardados ✓');
     await rvalLoad(cod);
   }catch(e){ showToast('Error al guardar proyección'); }
 }
@@ -11294,13 +11538,19 @@ async function rvalMarcar(id, estado){
   try{ await sbFetch(`/rest/v1/proyecto_valorizaciones?id=eq.${id}`,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({estado})}); await rvalLoad(cod); }
   catch(e){ showToast('Error'); }
 }
-function rvalReplantear(p){ const el=document.getElementById('rval-periodo'); if(el) el.value=p; const mo=document.getElementById('rval-monto'); if(mo) mo.focus(); showToast('Ingresa el nuevo monto y Guardar proyección'); }
+function rvalReplantear(p){ const mo=document.querySelector('.rval-mes-in[data-per="'+p+'"]'); if(mo){ mo.focus(); mo.select(); showToast('Escribe el nuevo monto y Guardar proyección'); } else showToast('Ese mes ya pasó: proyecta el monto en los meses que vienen'); }
 let _rvalStyles=false;
 function rvalEnsureStyles(){
   if(_rvalStyles) return; _rvalStyles=true;
   const css=`
   .rval-hd{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--teal-700,#0e7490);margin-bottom:10px;} .rval-hd i{width:15px;height:15px;}
   .rval-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+  .rval-base{font-size:11.5px;color:var(--text-3);margin-bottom:8px;}
+  .rval-meses{display:grid;gap:6px;}
+  .rval-mes{display:grid;grid-template-columns:90px 1fr 64px;gap:8px;align-items:center;}
+  .rval-mes-l{font-size:12.5px;font-weight:800;color:var(--text-1);} .rval-mes-l small{color:var(--text-3);font-weight:600;}
+  .rval-mes-pct{font-size:12.5px;font-weight:800;color:var(--teal-700,#0e7490);text-align:right;font-variant-numeric:tabular-nums;}
+  .rval-tot{font-size:12px;color:var(--text-2);margin-top:8px;}
   .rval-inp{border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;font-size:13px;background:var(--surface-1);color:var(--text-1);}
   .rval-empty{font-size:12.5px;color:var(--text-3);font-style:italic;padding:6px 0;}
   .rval-card{border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:9px;background:var(--surface-1);}
@@ -14663,6 +14913,8 @@ function rdEnsureValgStyles(){
   if(_valgStyles) return; _valgStyles = true;
   const css = `
   .rd-valg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+  .rd-valg-sinval{display:flex;gap:8px;align-items:flex-start;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:10px;padding:10px 12px;font-size:12.5px;margin-bottom:12px;}
+  .rd-valg-sinval i{width:16px;height:16px;flex:none;margin-top:1px;}
   .rd-valg-i{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
   .rd-valg-i .k{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
   .rd-valg-i .v{font-size:16px;font-weight:800;color:var(--navy-800,#0f2942);margin-top:3px;}
@@ -14691,6 +14943,7 @@ function rdSoles(v){
   if (isNaN(n)) return '—';
   return 'S/ ' + n.toLocaleString('es-PE',{minimumFractionDigits:0, maximumFractionDigits:0});
 }
+let rdValSinValorizar = false;
 async function rdValGLoad(cod){
   rdValG = null;
   const mount = document.getElementById('rd-valg-mount');
@@ -14709,13 +14962,21 @@ function rdValGRender(){
   const mount = document.getElementById('rd-valg-mount'); if(!mount) return;
   const badge = document.getElementById('rd-val-badge');
   const v = rdValG;
+  // Indicador «no ha valorizado» (Kiara, 22-oct-2026): el mes en curso todavía no tiene valorización.
+  const _mesHoy = new Date().toISOString().slice(0,7);
+  rdValSinValorizar = !v || String(v.periodo||'') < _mesHoy || !(parseFloat(v.valorizacion) > 0);
+  const _sinVal = rdValSinValorizar
+    ? `<div class="rd-valg-sinval"><i data-lucide="alert-triangle" class="ri"></i><span><b>Sin valorizar en ${rvalMesLabel(_mesHoy)}.</b> ${v && v.periodo ? 'La última valorización registrada es de ' + rvalMesLabel(String(v.periodo).slice(0,7)) + '.' : 'La obra no tiene ninguna valorización registrada.'}</span></div>` : '';
+  if (typeof rvalRender === 'function') rvalRender();   // el % de la proyección depende del presupuesto
   if(!v){
-    mount.innerHTML = `<div class="rd-valg-none">Gerencia todavía no tiene valorización cargada para este proyecto.</div>`;
-    if(badge) badge.textContent = '—';
+    mount.innerHTML = _sinVal + `<div class="rd-valg-none">Gerencia todavía no tiene valorización cargada para este proyecto.</div>`;
+    if(badge){ badge.textContent = 'Sin valorizar'; badge.style.cssText = 'background:#fee2e2;color:#b91c1c;'; }
+    rdIcons();
     return;
   }
   const pct = v.pct_acumulado != null ? (parseFloat(v.pct_acumulado)*100) : null;
-  if(badge) badge.textContent = (v.periodo || '—') + (pct!=null ? ' · ' + pct.toFixed(0) + '%' : '');
+  if(badge){ badge.textContent = rdValSinValorizar ? 'Sin valorizar' : (v.periodo || '—') + (pct!=null ? ' · ' + pct.toFixed(0) + '%' : '');
+    badge.style.cssText = rdValSinValorizar ? 'background:#fee2e2;color:#b91c1c;' : ''; }
   // Indicador del mes: cuánto se valorizó frente a lo proyectado
   const proy = parseFloat(v.valorizacion_proyectada)||0;
   const real = parseFloat(v.valorizacion)||0;
@@ -14734,7 +14995,7 @@ function rdValGRender(){
           cumpl>=100 ? ' · meta cumplida' : ' · faltan ' + rdSoles(proy-real)}</span></div>` : ''}
     </div>`;
   const item = (k,val,sub,cls)=>`<div class="rd-valg-i ${cls||''}"><span class="k">${k}</span><div class="v">${val}</div>${sub?`<div class="s">${sub}</div>`:''}</div>`;
-  mount.innerHTML = `
+  mount.innerHTML = _sinVal + `
     <div class="rd-valg-src">
       <i data-lucide="lock" class="ri" style="width:13px;height:13px;"></i>
       <span>Lo pone <b>Gerencia</b> (Valorización) · periodo <b>${rdEsc2(v.periodo||'—')}</b>${v.fecha_valorizacion?` · al ${rdFmtFecha(v.fecha_valorizacion)}`:''}${v.estado?` · <b>${rdEsc2(v.estado)}</b>`:''}</span>
@@ -14749,14 +15010,213 @@ function rdValGRender(){
   rdIcons();
 }
 
-// ── Checklist de cierre ──
-function renderChecklistCierre() {
-  const wrap = document.getElementById('rd-checklist');
-  if (!wrap) return;
-  wrap.innerHTML = RD_CHECKLIST.map((item,i)=>`
-    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:var(--navy);cursor:pointer;">
-      <input type="checkbox" id="rd-chk-${i}" style="width:16px;height:16px;"> ${item}
-    </label>`).join('');
+// ═══════════════════════════════════════════════
+// EVALUACIONES DEL DÍA (Kiara, 22-oct-2026) — reemplazan el checklist de cierre.
+// SSOMA: facilitador + tiempo en campo. Cada contrata del día: Coordinación, EPP's y BPM.
+// Escala 1 a 5, se promedia. Se guarda en reportes.evaluaciones.
+// ═══════════════════════════════════════════════
+const RD_EVAL_SSOMA = [ { k:'facilitador', lbl:'Facilitador' }, { k:'tiempo_campo', lbl:'Tiempo en campo' } ];
+const RD_EVAL_CT    = [ { k:'coordinacion', lbl:'Coordinación' }, { k:'epp', lbl:"EPP's" }, { k:'bpm', lbl:'BPM' } ];
+let rdEval = { ssoma:{ facilitador_nombre:'', horas:'', notas:{} }, contratas:{} };
+function rdEvalReset(){ rdEval = { ssoma:{ facilitador_nombre:'', horas:'', notas:{} }, contratas:{} }; }
+// Contratas del día = las que trabajan en los frentes del reporte
+function rdEvalContratas(){
+  const out = [];
+  (rdEsp||[]).forEach(r => { const n = (r.contrata||'').trim(); if (n && !out.some(o => o.n === n)) out.push({ n, esp: r.label || r.esp }); });
+  return out;
+}
+function rdProm(obj, crit){ const v = crit.map(c => Number(obj && obj[c.k])||0).filter(x => x > 0); return v.length === crit.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length*10)/10 : null; }
+function rdEvalSet(tipo, quien, k, v){
+  if (tipo === 'ssoma'){ rdEval.ssoma.notas[k] = (rdEval.ssoma.notas[k] === v) ? 0 : v; }
+  else { const c = rdEval.contratas[quien] = rdEval.contratas[quien] || {}; c[k] = (c[k] === v) ? 0 : v; }
+  rdEvalRender();
+  if (typeof scheduleAutosave === 'function') scheduleAutosave();
+}
+function rdEvalTxt(campo, val){ rdEval.ssoma[campo] = val; if (typeof scheduleAutosave === 'function') scheduleAutosave(); if (typeof rdUpdateRing === 'function') rdUpdateRing(); }
+function rdEvalCompleta(){
+  if (rdProm(rdEval.ssoma.notas, RD_EVAL_SSOMA) == null) return false;
+  return rdEvalContratas().every(c => rdProm(rdEval.contratas[c.n], RD_EVAL_CT) != null);
+}
+function rdEvalRender(){
+  const m = document.getElementById('rd-eval-mount'); if (!m) return;
+  rdEnsureEvalStyles();
+  const stars = (tipo, quien, k, val) => `<span class="rd-ev-st">${[1,2,3,4,5].map(n =>
+    `<button type="button" class="${n <= (val||0) ? 'on' : ''}" title="${n}" onclick="rdEvalSet('${tipo}',${quien==null?'null':'rdEvalContratas()['+quien+'].n'},'${k}',${n})">${n}</button>`).join('')}</span>`;
+  const fila = (lbl, html) => `<div class="rd-ev-row"><span class="rd-ev-l">${lbl}</span>${html}</div>`;
+  const pS = rdProm(rdEval.ssoma.notas, RD_EVAL_SSOMA);
+  let html = `<div class="rd-ev-blk"><div class="rd-ev-h"><b>SSOMA</b>${pS!=null?`<span class="rd-ev-p">${pS.toFixed(1)}</span>`:'<span class="rd-ev-p off">sin calificar</span>'}</div>
+    <div class="rd-ev-in"><input placeholder="Nombre del facilitador SSOMA" value="${rdEsc2(rdEval.ssoma.facilitador_nombre||'')}" oninput="rdEvalTxt('facilitador_nombre',this.value)">
+      <input type="number" min="0" max="24" step="0.5" placeholder="Horas en campo" value="${rdEsc2(rdEval.ssoma.horas||'')}" oninput="rdEvalTxt('horas',this.value)"></div>
+    ${RD_EVAL_SSOMA.map(c => fila(c.lbl, stars('ssoma', null, c.k, rdEval.ssoma.notas[c.k]))).join('')}</div>`;
+  const cts = rdEvalContratas();
+  html += `<div class="rd-ev-blk"><div class="rd-ev-h"><b>Contratas</b><span class="rd-ev-sub">${cts.length ? cts.length + ' en obra hoy' : ''}</span></div>`;
+  html += cts.length ? cts.map((c, qi) => {
+    const p = rdProm(rdEval.contratas[c.n], RD_EVAL_CT);
+    return `<div class="rd-ev-ct"><div class="rd-ev-cth">${rdEsc2(c.n)} <small>${rdEsc2(c.esp||'')}</small>${p!=null?`<span class="rd-ev-p">${p.toFixed(1)}</span>`:''}</div>
+      ${RD_EVAL_CT.map(k => fila(k.lbl, stars('ct', qi, k.k, (rdEval.contratas[c.n]||{})[k.k]))).join('')}</div>`;
+  }).join('') : `<p class="rd-ev-empty">Asigna la contrata de cada frente en «Contratas y avance por especialidad» para evaluarla aquí.</p>`;
+  html += '</div>';
+  m.innerHTML = html;
+  const b = document.getElementById('rd-eval-badge');
+  if (b){ const ps = [pS, ...cts.map(c => rdProm(rdEval.contratas[c.n], RD_EVAL_CT))].filter(x => x != null);
+    b.textContent = rdEvalCompleta() ? 'Completo' : `${ps.length}/${1 + cts.length}`; }
+  if (typeof rdUpdateRing === 'function') rdUpdateRing();
+}
+function rdEvalPayload(){
+  const cts = rdEvalContratas();
+  return {
+    escala: '1-5',
+    ssoma: { facilitador_nombre: (rdEval.ssoma.facilitador_nombre||'').trim() || null, horas_campo: parseFloat(rdEval.ssoma.horas) || null,
+             facilitador: Number(rdEval.ssoma.notas.facilitador)||null, tiempo_campo: Number(rdEval.ssoma.notas.tiempo_campo)||null,
+             promedio: rdProm(rdEval.ssoma.notas, RD_EVAL_SSOMA) },
+    contratas: cts.map(c => { const e = rdEval.contratas[c.n] || {};
+      return { contratista: c.n, especialidad: c.esp || null, coordinacion: Number(e.coordinacion)||null, epp: Number(e.epp)||null, bpm: Number(e.bpm)||null, promedio: rdProm(e, RD_EVAL_CT) }; })
+  };
+}
+function rdEvalLoad(ev){
+  rdEvalReset();
+  if (ev && typeof ev === 'object'){
+    const s = ev.ssoma || {};
+    rdEval.ssoma = { facilitador_nombre: s.facilitador_nombre || '', horas: s.horas_campo || '', notas: { facilitador: s.facilitador||0, tiempo_campo: s.tiempo_campo||0 } };
+    (ev.contratas||[]).forEach(c => { if (c && c.contratista) rdEval.contratas[c.contratista] = { coordinacion:c.coordinacion||0, epp:c.epp||0, bpm:c.bpm||0 }; });
+  }
+  rdEvalRender();
+}
+let _rdEvalStyles = false;
+function rdEnsureEvalStyles(){
+  if (_rdEvalStyles) return; _rdEvalStyles = true;
+  const css = `
+  .rd-ev-blk{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px;}
+  .rd-ev-h{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;color:var(--navy-800,#0b1f4d);}
+  .rd-ev-sub{font-size:11.5px;color:var(--text-3);}
+  .rd-ev-p{margin-left:auto;font-size:12px;font-weight:800;background:#ecfeff;color:#0e7490;border-radius:999px;padding:2px 10px;}
+  .rd-ev-p.off{background:var(--surface-2);color:var(--text-3);font-weight:700;}
+  .rd-ev-in{display:grid;grid-template-columns:1fr 130px;gap:8px;margin-bottom:8px;}
+  .rd-ev-in input{border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;font-size:12.5px;background:var(--surface-1);color:var(--text-1);min-width:0;}
+  .rd-ev-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;}
+  .rd-ev-l{font-size:12.5px;font-weight:600;color:var(--text-2);}
+  .rd-ev-st{display:inline-flex;gap:4px;}
+  .rd-ev-st button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface-1);font-size:12px;font-weight:800;color:var(--text-3);cursor:pointer;}
+  .rd-ev-st button.on{background:#f59e0b;border-color:#f59e0b;color:#fff;}
+  .rd-ev-ct{border-top:1px dashed var(--border);padding-top:8px;margin-top:8px;}
+  .rd-ev-ct:first-of-type{border-top:none;margin-top:0;padding-top:0;}
+  .rd-ev-cth{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;color:var(--text-1);margin-bottom:2px;}
+  .rd-ev-cth small{font-weight:600;color:var(--text-3);}
+  .rd-ev-empty{font-size:12px;color:var(--text-3);margin:0;}
+  @media(max-width:560px){ .rd-ev-in{grid-template-columns:1fr;} }`;
+  const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+}
+
+// ═══════════════════════════════════════════════
+// REQUERIMIENTOS (Kiara, 22-oct-2026): el checklist de preparación de obra entra al reporte diario,
+// se llama «Requerimientos» y solo lleva nombres (listo / pendiente), sin impedimento ni fechas.
+// Usa la MISMA data (checklist_proyecto) para que Gerencia lo siga viendo en la ficha de la obra.
+// ═══════════════════════════════════════════════
+async function rdReqLoad(){
+  const cod = currentProyecto?.cod || currentProyecto?.nombre;
+  chkState = null;
+  if (cod){
+    try {
+      const rows = await sbFetch(`/rest/v1/checklist_proyecto?cod_proyecto=eq.${encodeURIComponent(cod)}&select=data&limit=1`);
+      chkState = (rows&&rows[0]&&rows[0].data&&Object.keys(rows[0].data).length) ? _chkMerge(rows[0].data) : _chkDefault();
+    } catch(e){ chkState = _chkDefault(); }
+  }
+  rdReqRender();
+}
+function rdReqRender(){
+  const m = document.getElementById('rd-req-mount'); if (!m) return;
+  _chkEnsureStyles();
+  if (!chkState){ m.innerHTML = '<p style="color:var(--text-3);font-size:12.5px;">Selecciona un proyecto.</p>'; return; }
+  const st = _chkStats();
+  const b = document.getElementById('rd-req-badge'); if (b) b.textContent = `${st.listo}/${st.total} · ${st.pct}%`;
+  m.innerHTML = CHK_SECCIONES.map(sec => {
+    const items = chkState[sec.key] || [];
+    return `<div class="rd-req-sec"><div class="rd-req-h">${sec.label} <small>${items.filter(i=>i.estado==='listo').length}/${items.length}</small></div>
+      ${items.map((it, idx) => `<div class="rd-req-it ${it.estado||''}"><span>${_chkEsc(it.n)}</span>
+        <span class="chk-seg"><button class="${it.estado==='listo'?'on-ok':''}" onclick="rdReqEstado('${sec.key}',${idx},'listo')">Listo</button><button class="${it.estado==='pendiente'?'on-no':''}" onclick="rdReqEstado('${sec.key}',${idx},'pendiente')">Pendiente</button></span>
+        <button class="chk-del" title="Quitar" onclick="rdReqDel('${sec.key}',${idx})">×</button></div>`).join('')}
+      <div class="rd-req-add"><input id="rd-req-add-${sec.key}" placeholder="Agregar a ${sec.label}…" onkeydown="if(event.key==='Enter')rdReqAdd('${sec.key}')"><button onclick="rdReqAdd('${sec.key}')">＋</button></div></div>`;
+  }).join('');
+  rdEnsureReqStyles();
+}
+function rdReqEstado(sec, idx, estado){ const it = chkState?.[sec]?.[idx]; if (!it) return; it.estado = (it.estado === estado ? null : estado); rdReqRender(); chkGuardar(); if (typeof scheduleAutosave==='function') scheduleAutosave(); }
+function rdReqAdd(sec){ const inp = document.getElementById('rd-req-add-'+sec); const n = (inp?.value||'').trim(); if (!n || !chkState?.[sec]) return; chkState[sec].push({ n, estado:null, impedimento:'', fecha_max:'', fecha_est:'' }); rdReqRender(); chkGuardar(); }
+function rdReqDel(sec, idx){ if (!chkState?.[sec]) return; chkState[sec].splice(idx,1); rdReqRender(); chkGuardar(); }
+function rdReqPayload(){
+  if (!chkState) return null;
+  const st = _chkStats(); const out = { listo: st.listo, total: st.total, pct: st.pct, secciones: {} };
+  CHK_SECCIONES.forEach(sec => { out.secciones[sec.key] = (chkState[sec.key]||[]).map(it => ({ n: it.n, estado: it.estado || null })); });
+  return out;
+}
+let _rdReqStyles = false;
+function rdEnsureReqStyles(){
+  if (_rdReqStyles) return; _rdReqStyles = true;
+  const css = `
+  #rd-req-mount{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+  .rd-req-sec{border:1px solid var(--border);border-radius:12px;padding:10px 12px;}
+  .rd-req-h{font-size:12.5px;font-weight:800;color:var(--navy-800,#0b1f4d);margin-bottom:6px;} .rd-req-h small{color:var(--text-3);font-weight:700;margin-left:4px;}
+  .rd-req-it{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px;color:var(--text-1);}
+  .rd-req-it > span:first-child{flex:1;min-width:0;}
+  .rd-req-it.listo > span:first-child{color:#15803d;font-weight:700;}
+  .rd-req-it.pendiente > span:first-child{color:#b91c1c;font-weight:700;}
+  .rd-req-add{display:flex;gap:6px;margin-top:6px;}
+  .rd-req-add input{flex:1;border:1px solid var(--border-strong);border-radius:7px;padding:5px 9px;font-size:12px;background:var(--surface-1);color:var(--text-1);min-width:0;}
+  .rd-req-add button{border:1px solid var(--border-strong);background:var(--surface-1);border-radius:7px;padding:4px 10px;cursor:pointer;font-weight:800;color:var(--text-2);}`;
+  const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+}
+
+// ═══════════════════════════════════════════════
+// PLANOS EN EL REPORTE (Kiara, 22-oct-2026): conteo del módulo Planos. Se lee en vivo la base de
+// Ingeniería (Seguimiento de Planos) — la misma que usa la pestaña Planos — y se guarda una foto
+// de los indicadores en reportes.planos_dia para que Gerencia los vea por obra y en total.
+// ═══════════════════════════════════════════════
+const RD_ING_URL = 'https://qkgwvzxtdobgyjvwkhrk.supabase.co';
+const RD_ING_KEY = 'sb_publishable_yCAAlaw6viS6KEow5x4OdQ_SaMLDHQ1';
+let rdPlanos = null;   // { total, aprobados, por_aprobar, en_proceso, pendientes, atrasados, actualizado }
+function rdPryClave(t){ const m = String(t||'').toUpperCase().match(/(PRY|PRD|VSR)\s*(\d{4})\s*-\s*0*(\d+)/); return m ? m[1]+m[2]+'-'+m[3] : ''; }
+async function rdPlanosLoad(){
+  rdPlanos = null; rdPlanosRender(true);
+  const k = rdPryClave(currentProyecto?.cod);
+  if (!k){ rdPlanosRender(); return; }
+  try {
+    const h = { apikey: RD_ING_KEY };
+    const [prys, sols] = await Promise.all([
+      fetch(RD_ING_URL + '/rest/v1/documentos?coleccion=eq.proyectos&select=id,data', { headers:h }).then(r => r.ok ? r.json() : Promise.reject(r.status)),
+      fetch(RD_ING_URL + '/rest/v1/documentos?coleccion=eq.solicitudes&select=id,data', { headers:h }).then(r => r.ok ? r.json() : Promise.reject(r.status))
+    ]);
+    const pry = (prys||[]).find(x => rdPryClave(x.data && x.data.pry) === k);
+    const hoy = new Date().toISOString().slice(0,10);
+    const L = pry ? (sols||[]).map(x => x.data||{}).filter(s => s.proyectoId === pry.id && s.estado !== 'Anulado') : [];
+    const cerr = ['Completado','Aprobado','Anulado'];
+    rdPlanos = {
+      en_ingenieria: !!pry,
+      total: L.length,
+      aprobados: L.filter(s => s.estado === 'Aprobado').length,
+      por_aprobar: L.filter(s => s.estado === 'Completado').length,
+      en_proceso: L.filter(s => ['En proceso','En revisión','Rechazado'].includes(s.estado)).length,
+      pendientes: L.filter(s => s.estado === 'Pendiente').length,
+      atrasados: L.filter(s => !cerr.includes(s.estado) && ((s.fechaFin && s.fechaFin < hoy) || (s.fechaRequerida && s.fechaRequerida < hoy))).length,
+      actualizado: new Date().toISOString()
+    };
+  } catch(e){ rdPlanos = { error: true }; }
+  rdPlanosRender();
+}
+function rdPlanosRender(cargando){
+  const m = document.getElementById('rd-planos-mount'); if (!m) return;
+  const b = document.getElementById('rd-planos-badge');
+  if (cargando){ m.innerHTML = '<div class="rd-eq-empty"><span class="spinner"></span> Leyendo Seguimiento de Planos…</div>'; return; }
+  const P = rdPlanos;
+  if (!P || P.error){ m.innerHTML = `<div class="rd-eq-empty">${P && P.error ? 'No se pudo leer Seguimiento de Planos (sin señal).' : 'Selecciona un proyecto.'}</div>`; if (b) b.textContent = '—'; return; }
+  if (!P.en_ingenieria){ m.innerHTML = '<div class="rd-eq-empty">Esta obra todavía no está registrada en Seguimiento de Planos de Ingeniería.</div>'; if (b) b.textContent = '0'; return; }
+  const pct = P.total ? Math.round(P.aprobados / P.total * 100) : 0;
+  if (b){ b.textContent = `${P.aprobados}/${P.total} aprobados`; b.style.cssText = P.atrasados ? 'background:#fee2e2;color:#b91c1c;' : ''; }
+  const k = (lbl, v, cls) => `<div class="rd-valg-i ${cls||''}"><span class="k">${lbl}</span><div class="v">${v}</div></div>`;
+  m.innerHTML = `<div class="rd-valg">
+      ${k('Planos pedidos', P.total, 'big')}${k('Aprobados', P.aprobados + ' · ' + pct + '%')}${k('Por aprobar', P.por_aprobar)}
+      ${k('En elaboración / revisión', P.en_proceso)}${k('Sin asignar', P.pendientes)}${k('Atrasados', P.atrasados, P.atrasados ? 'bad' : '')}
+    </div>
+    <button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="showTab('planos')">Ver planos</button>`;
+  if (typeof rdEnsureValgStyles === 'function') rdEnsureValgStyles();
 }
 
 // ═══════════════════════════════════════════════
@@ -15118,6 +15578,33 @@ function rvRenderReporte(r){
       `<div class="rv-check">${checklist.map(c=>`<div class="rv-check-i ${c.ok?'on':''}"><i data-lucide="${c.ok?'check-circle-2':'circle'}" class="ri"></i> ${rvEsc(c.item)}</div>`).join('')}</div>`);
   }
 
+  // Evaluaciones del día (desde 22-oct-2026)
+  const ev = r.evaluaciones && typeof r.evaluaciones === 'object' ? r.evaluaciones : null;
+  if (ev && ((ev.ssoma && ev.ssoma.promedio != null) || (ev.contratas||[]).some(c => c.promedio != null))){
+    const n = v => v ? '★'.repeat(v) + '<span style="opacity:.25">' + '★'.repeat(5-v) + '</span>' : '<span class="rv-none">—</span>';
+    const s0 = ev.ssoma || {};
+    html += card('star','Evaluaciones del día', 'Escala 1 a 5',
+      `<div class="rv-list">
+        <div class="rv-li"><span class="rv-tag">${s0.promedio!=null?Number(s0.promedio).toFixed(1):'—'}</span><div><b>SSOMA</b>${s0.facilitador_nombre?' · '+rvEsc(s0.facilitador_nombre):''}${s0.horas_campo?' · '+rvEsc(s0.horas_campo)+' h en campo':''}
+          <br><small>Facilitador ${n(s0.facilitador)} · Tiempo en campo ${n(s0.tiempo_campo)}</small></div></div>
+        ${(ev.contratas||[]).map(c => `<div class="rv-li"><span class="rv-tag ${c.promedio!=null&&c.promedio<3?'alto':''}">${c.promedio!=null?Number(c.promedio).toFixed(1):'—'}</span><div><b>${rvEsc(c.contratista)}</b>${c.especialidad?' · '+rvEsc(c.especialidad):''}
+          <br><small>Coordinación ${n(c.coordinacion)} · EPP's ${n(c.epp)} · BPM ${n(c.bpm)}</small></div></div>`).join('')}
+      </div>`);
+  }
+  // Requerimientos de la obra al día del reporte
+  const req = r.requerimientos && r.requerimientos.secciones ? r.requerimientos : null;
+  if (req && req.total){
+    const pend = []; Object.keys(req.secciones).forEach(k => (req.secciones[k]||[]).forEach(it => { if (it.estado === 'pendiente') pend.push(it.n); }));
+    html += card('list-checks','Requerimientos', `${req.listo}/${req.total} listos · ${req.pct}%`,
+      pend.length ? `<div class="rv-list"><div class="rv-li"><span class="rv-tag alto">${pend.length} pendiente(s)</span><div>${pend.map(rvEsc).join(' · ')}</div></div></div>` : '<p class="rv-none">Sin pendientes marcados.</p>');
+  }
+  // Planos (Ingeniería) al día del reporte
+  const pl = r.planos_dia && r.planos_dia.en_ingenieria ? r.planos_dia : null;
+  if (pl){
+    html += card('drafting-compass','Planos', `${pl.aprobados}/${pl.total} aprobados`,
+      `<div class="rv-list"><div class="rv-li"><span class="rv-tag ${pl.atrasados?'alto':'bajo'}">${pl.atrasados?pl.atrasados+' atrasado(s)':'al día'}</span><div>Por aprobar ${pl.por_aprobar} · En elaboración / revisión ${pl.en_proceso} · Sin asignar ${pl.pendientes}</div></div></div>`);
+  }
+
   // Equipos del proyecto reportados hoy
   const equiposDia = rvArr(r.equipos_dia).filter(e=>e && (e.estado||e.nota));
   if (equiposDia.length){
@@ -15126,7 +15613,7 @@ function rvRenderReporte(r){
     html += card('package','Equipos del proyecto', `${equiposDia.length} equipo(s) reportado(s)`,
       `<div class="rv-list">${equiposDia.map(e=>`<div class="rv-li">
         <span class="rv-tag ${EQ_TONO[e.estado]||''}">${rvEsc(EQ_LBL[e.estado]||'Sin estado')}</span>
-        <div><b>${rvEsc(e.tipo||'Equipo')}</b> · ${rvEsc(e.doc||'')}
+        <div><b>${rvEsc(e.tipo||'Equipo')}</b>${e.origen==='supervisor' ? (Number(e.cantidad)>1?' × '+rvEsc(e.cantidad):'') : ' · '+rvEsc(e.doc||'')}
           ${e.proveedor?`<br><small>${rvEsc(e.proveedor)}${e.eta?' · llega '+rvEsc(e.eta):''}${e.st_pmo?' · Gerencia: '+rvEsc(e.st_pmo):''}</small>`:''}
           ${e.nota?`<br><span>${rvEsc(e.nota)}</span>`:''}</div>
       </div>`).join('')}</div>`);
@@ -15380,7 +15867,7 @@ async function hidratarReporte(r, cod){
     if (g('rd-repro-ref')) g('rd-repro-ref').value = _rp.formalizacion_ref || '';
     if (typeof rdToggleRepro==='function') rdToggleRepro(true);
   } else if (typeof rdToggleRepro==='function') { if (g('rd-repro-chk')) g('rd-repro-chk').checked = false; rdToggleRepro(false); }
-  if (Array.isArray(r.checklist_cierre)) r.checklist_cierre.forEach((c,i)=>{ const el=g('rd-chk-'+i); if (el) el.checked = !!c.ok; });
+  rdEvalLoad(r.evaluaciones);
   if (typeof rdPlanBars==='function') rdPlanBars();
   if (typeof rdUpdateRing==='function') rdUpdateRing();
 }
@@ -15497,8 +15984,9 @@ function _collectReportePayload(esDraft, firmaUrl){
   const avanceEsp = rdEsp.map(r=>({ esp:r.esp, label:r.label, contrata:(r.contrata||'').trim(), personal:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
   const especialidades = {}; let personalTotal = 0;
   rdEsp.forEach(r=>{ especialidades[r.esp]=parseInt(r.personal)||0; personalTotal+=parseInt(r.personal)||0; });
-  const checklist = RD_CHECKLIST.map((item,i)=>({ item, ok: !!document.getElementById('rd-chk-'+i)?.checked }));
-  const checklistOk = checklist.filter(c=>c.ok).length;
+  // El checklist de cierre salió del reporte (22-oct-2026): lo reemplazan las evaluaciones del día.
+  const checklist = [];
+  const checklistOk = null;
   const contratas = rdEsp.filter(r=>r.contrata && r.contrata.trim()).map(r=>({ nombre:r.contrata.trim(), especialidad:r.label, obreros:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
   // Gerencia lee `actividad` como la observación del día ("Último reporte: …").
   // Ya no hay bitácora manual, así que se arma con los hitos marcados como hechos hoy.
@@ -15570,6 +16058,10 @@ function _collectReportePayload(esDraft, firmaUrl){
     facturado_codigo: facturado,
     checklist_cierre: checklist,
     checklist_ok: checklistOk,
+    evaluaciones: rdEvalPayload(),
+    requerimientos: rdReqPayload(),
+    planos_dia: (rdPlanos && !rdPlanos.error) ? rdPlanos : null,
+    sin_valorizar: rdValSinValorizar,
     es_draft: esDraft,
     firmado: !esDraft && (!!firmaUrl || _firmaDirty),   // firmado aunque la imagen suba después
     enviado: !esDraft
@@ -15707,14 +16199,14 @@ async function _flushFirmas(){
 }
 
 // Guarda una foto comprimida en el equipo y la agrega a rdFotos como "pendiente".
-async function _encolarFotoOffline(c, cod){
+async function _encolarFotoOffline(c, cod, frente){
   const fecha = document.getElementById('rd-fecha')?.value || new Date().toISOString().slice(0,10);
   const localId = 'foto_' + Date.now() + '_' + Math.round(Math.random()*1e6);
   const rec = { localId, cod, fecha, blob:c.blob, nombre:c.name, tipo:c.type||'', ts:Date.now() };
   try { await _idbPutFoto(rec); }
   catch(e){ showToast('No se pudo guardar la foto sin señal en este equipo.'); console.error('IDB put foto:', e); return false; }
   let previewUrl = ''; try{ previewUrl = URL.createObjectURL(c.blob); }catch(e){}
-  rdFotos.push({ pending:true, localId, nombre:c.name, tipo:c.type||'', ambiente:'', actividad:'', captura_ts:new Date().toISOString(), previewUrl });
+  rdFotos.push({ pending:true, localId, nombre:c.name, tipo:c.type||'', frente:frente||'', ambiente:frente||'', actividad:'', captura_ts:new Date().toISOString(), previewUrl });
   return true;
 }
 
@@ -15947,18 +16439,33 @@ async function _persistirExtras(payload){
     }catch(e){ console.warn('PMO fecha_fin_real', e); }
   }
 
-  const rows = (payload.restricciones || [])
-    .filter(r => r && (r.titulo || r.descripcion))
-    .map(r => ({
+  const lista = (payload.restricciones || []).filter(r => r && (r.titulo || r.descripcion));
+  // Cada restricción lleva su uid: reenviar el mismo reporte ya no la duplica (antes se volvía a insertar).
+  lista.forEach((r, k) => { if (!r.uid) r.uid = 'rep-' + (payload.cod_proyecto||'') + '-' + payload.fecha_reporte + '-' + k; });
+  const rows = lista.map(r => ({
+      uid: r.uid, cod_proyecto: payload.cod_proyecto || null,
       nombre_proyecto: payload.nombre_proyecto, fecha: payload.fecha_reporte,
       categoria: r.categoria, titulo: r.titulo, descripcion: r.descripcion,
-      impacto: r.impacto, responsable: r.responsable || null,
-      fecha_objetivo: r.fecha_objetivo || null, estado: 'abierta',
+      impacto: r.impacto, responsable: r.responsable || null, responsable_email: r.responsable_email || null,
+      especialidad: r.especialidad || null, contratista: r.contratista || null,
+      fecha_objetivo: r.fecha_objetivo || null,      // estado: lo pone la base ('abierta') y no se pisa al reenviar
       reportada_por: payload.supervisor || null
     }));
   if (rows.length) {
-    try { await sbFetch('/rest/v1/restricciones', { method:'POST', headers:{'Prefer':'return=minimal'}, body: JSON.stringify(rows) }); }
+    try { await sbFetch('/rest/v1/restricciones?on_conflict=uid', { method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}, body: JSON.stringify(rows) }); }
     catch(e){ console.warn('restricciones insert', e); }
+    // Alertas: una fila por destinatario (plataforma ya; el correo sale cuando esté la cuenta Microsoft 365)
+    try {
+      await rdDestLoad();
+      const alertas = [];
+      lista.forEach(r => rdRestrDestinatarios(r).forEach(d => alertas.push({
+        restriccion_uid: r.uid, cod_proyecto: payload.cod_proyecto || null, nombre_proyecto: payload.nombre_proyecto,
+        tipo: d.tipo, destinatario_nombre: d.destinatario_nombre, destinatario_email: d.destinatario_email, rol: d.rol,
+        especialidad: r.especialidad || null, contratista: r.contratista || null,
+        titulo: r.titulo || (r.descripcion||'').slice(0,80), detalle: r.descripcion || null, impacto: r.impacto || null,
+        fecha_objetivo: r.fecha_objetivo || null, reportada_por: payload.supervisor || null })));
+      if (alertas.length) await sbFetch('/rest/v1/restriccion_alertas?on_conflict=restriccion_uid,tipo,dest_key', { method:'POST', headers:{'Prefer':'resolution=ignore-duplicates,return=minimal'}, body: JSON.stringify(alertas) });
+    } catch(e){ console.warn('restriccion_alertas', e); }
   }
 }
 
@@ -16449,11 +16956,10 @@ async function exportarPDF() {
     if(_eqTitle) _eqTitle.style.display = '';
     _eqTable.style.display = '';
     _eqTable.innerHTML =
-      `<thead><tr><th>Equipo</th><th>Orden</th><th>Proveedor</th><th>Llegada estimada</th><th>Estado en Gerencia</th><th>En obra</th><th>Nota</th></tr></thead>
+      `<thead><tr><th>Equipo</th><th>Marca / modelo</th><th>Cant.</th><th>En obra</th><th>Nota</th></tr></thead>
        <tbody>${_eqPdf.map(e=>`<tr>
-         <td>${e.tipo||'—'}</td><td>${e.doc||'—'}</td><td>${e.proveedor||'—'}</td>
-         <td>${e.eta||'—'}</td><td>${e.st_pmo||'—'}</td>
-         <td>${_eqLbl[e.estado]||'—'}</td><td>${e.nota||''}</td></tr>`).join('')}</tbody>`;
+         <td>${rdEsc2(e.tipo||'—')}</td><td>${rdEsc2(e.proveedor||'—')}</td><td>${rdEsc2(e.cantidad||1)}</td>
+         <td>${_eqLbl[e.estado]||'—'}</td><td>${rdEsc2(e.nota||'')}</td></tr>`).join('')}</tbody>`;
   } else {
     if(_eqTitle) _eqTitle.style.display = 'none';
     if(_eqTable) _eqTable.style.display = 'none';

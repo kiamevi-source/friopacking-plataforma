@@ -79,6 +79,11 @@
       el: document.getElementById('view-observaciones'),
       init: () => {},
     },
+    // Reporte diario (lectura · indicadores que manda el Supervisor, generales y por obra)
+    'reporte-diario': {
+      el: document.getElementById('view-reporte-diario'),
+      init: () => {},
+    },
     // Licitaciones (módulo editable · lic_* en PMO — cockpit de Operaciones/Carlos)
     licitaciones: {
       el: document.getElementById('view-licitaciones'),

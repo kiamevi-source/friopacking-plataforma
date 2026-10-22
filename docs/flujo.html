@@ -145,7 +145,7 @@
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    DATOS DEL FLUJO — esto es lo único que se edita cuando algo cambia.
-   Revisado: 20 de octubre de 2026
+   Revisado: 22 de octubre de 2026
    ═══════════════════════════════════════════════════════════════════ */
 const MAPA = {
   nodes:[
@@ -175,12 +175,12 @@ const MAPA = {
       {id:'contratistas', t:'Contratistas · resumen · por obra · directorio', key:true},
       {id:'licitaciones', t:'Licitaciones · aprueba y adjudica', key:true},
       {id:'observaciones', t:'Observaciones de obra', key:true},
+      {id:'rdiario', t:'Reporte diario · indicadores y alertas', key:true},
       {id:'valorizacion', t:'Valorización', key:true}
     ]},
     {id:'a-sup', tipo:'app', x:338, y:470, color:'#2FBCA3', titulo:'Supervisión · Campo', sub:'app-sup', filas:[
       {id:'dash', t:'Dashboard de obra'},
-      {id:'prep', t:'Preparación · kick-off'},
-      {id:'diario', t:'Reporte diario · unidades y avance en $', key:true},
+      {id:'diario', t:'Reporte diario · familias, evaluaciones, requerimientos, restricciones', key:true},
       {id:'gantt', t:'Gantt y avance', key:true},
       {id:'personal', t:'Histograma y personal'},
       {id:'planos', t:'Planos · desde Ingeniería', key:true},
@@ -188,11 +188,11 @@ const MAPA = {
       {id:'licitaciones', t:'Licitaciones · partidas → licitar → invita', key:true},
       {id:'facturas', t:'Facturas'},
       {id:'contratas', t:'Contratas en obra'},
-      {id:'equipos', t:'Equipos en obra'},
+      {id:'equipos', t:'Equipos en obra · los registra el supervisor'},
       {id:'historico', t:'Histórico'}
     ]},
     {id:'a-ct', tipo:'app', x:338, y:940, color:'#E08A2B', titulo:'Contratas · Externo', sub:'app-contratas', filas:[
-      {id:'resumen', t:'Resumen y perfil'},
+      {id:'resumen', t:'Resumen y perfil · restricciones que lo involucran'},
       {id:'proyectos', t:'Mis proyectos'},
       {id:'observaciones', t:'Observaciones de obra', key:true},
       {id:'licitaciones', t:'Licitaciones', key:true},
@@ -215,6 +215,7 @@ const MAPA = {
       {id:'lic', t:'lic_* · lic-expediente · solo con sesión de Gerencia', key:true},
       {id:'adicionales', t:'adicionales · requerimientos', key:true},
       {id:'supervisores', t:'supervisores_equipo'},
+      {id:'alerta_dest', t:'alerta_destinatarios · PMO y jefes de zona', key:true},
       {id:'hitos', t:'hitos_proyectos · timeline'},
       {id:'snapshot', t:'proyectos_snapshot · títulos'}
     ]},
@@ -229,7 +230,9 @@ const MAPA = {
       {id:'partida_contrata', t:'partida_contratista · quién hace cada partida', key:true},
       {id:'planos', t:'planos'},
       {id:'riesgos', t:'riesgos · pendientes · obra_zonas'},
-      {id:'checklist', t:'checklist_proyecto'},
+      {id:'checklist', t:'checklist_proyecto · requerimientos'},
+      {id:'equipos_obra', t:'equipos_obra · del supervisor', key:true},
+      {id:'restricciones', t:'restricciones · restriccion_alertas', key:true},
       {id:'accesos', t:'proyecto_accesos', key:true},
       {id:'personal', t:'ingreso_personal · histograma'},
       {id:'nisira', t:'nisira_* · sin datos'}
@@ -259,7 +262,13 @@ const MAPA = {
     {from:'a-sup:dash', to:'d-pmo:proyectos', tipo:'lee', label:'obras y valorización'},
     {from:'a-ct:licitaciones', to:'d-pmo:lic', tipo:'lee', label:'solo lo suyo, vía función lic-portal'},
     {from:'a-ger:equipos', to:'d-sup:equipos_pmo', tipo:'lee', label:'escribe equipos importados'},
-    {from:'a-ger:proyectos', to:'d-sup:checklist', tipo:'lee', label:'lee la preparación'},
+    {from:'a-ger:proyectos', to:'d-sup:checklist', tipo:'lee', label:'lee los requerimientos'},
+    {from:'a-ger:rdiario', to:'d-sup:reportes', tipo:'lee', label:'función indicadores_reporte_diario · agregados por obra'},
+    {from:'a-ger:rdiario', to:'d-pmo:alerta_dest', tipo:'lee', label:'Gerencia mantiene a quién llegan las alertas'},
+    {from:'a-sup:diario', to:'d-pmo:alerta_dest', tipo:'lee', label:'destinatarios de cada restricción'},
+    {from:'a-sup:diario', to:'d-sup:restricciones', tipo:'lee', label:'crea la restricción y una alerta por destinatario'},
+    {from:'a-sup:diario', to:'x-ing', tipo:'lee', label:'conteo de planos de la obra'},
+    {from:'a-ct:resumen', to:'d-sup:restricciones', tipo:'lee', label:'ve sus restricciones y las marca vistas'},
     {from:'a-ger:proyectos', to:'d-sup:partida_contrata', tipo:'lee', label:'ficha · pestaña Partidas: avance en $ y contrata por partida'},
     {from:'a-ger:licitaciones', to:'d-sup:presupuestos', tipo:'lee', label:'partidas licitables por rubro'},
     {from:'a-ger:licitaciones', to:'d-ct:cuentas', tipo:'lee', label:'invita a cuentas reales del portal'},

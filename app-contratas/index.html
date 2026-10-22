@@ -700,7 +700,30 @@
   // pago queda en espera mientras haya urgentes sin levantar.
   var SUP_URL = 'https://iiceeajjmugtuzcfqggs.supabase.co';
   var SUP_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpY2VlYWpqbXVndHV6Y2ZxZ2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODg5OTUsImV4cCI6MjA5NDc2NDk5NX0.xeOFlxEGoPsqO5mBLz2_o6UqMCiUw5t8Aghg0ieRqs4';
-  var OBS_URG = [], OBS_AB = [], OBS_TODAS = [], OBS_TAB = 'atender', OBS_FORM = null;
+  var OBS_URG = [], OBS_AB = [], OBS_TODAS = [], OBS_TAB = 'atender', OBS_FORM = null, RESTR_AB = [];
+  // Panel «Restricciones de obra» en el Resumen: lo que el supervisor reportó que frena la obra y te toca.
+  function renderRestrHome(){
+    var ah=$('#rs-accion'); if(!ah) return;
+    var box=$('#rs-restr');
+    if(!box){ box=document.createElement('div'); box.id='rs-restr'; box.style.marginTop='14px'; ah.parentNode.insertBefore(box, ah.nextSibling); }
+    if(!RESTR_AB.length){ box.innerHTML=''; return; }
+    var hoy=new Date().toISOString().slice(0,10);
+    box.innerHTML='<div class="panel" style="padding:15px 16px;border-color:rgba(217,119,6,.35)"><div class="panel-h" style="margin-bottom:10px"><h3>Restricciones de obra que te involucran</h3><span class="count">'+RESTR_AB.length+'</span></div>'+
+      '<ul style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.65">'+RESTR_AB.slice(0,8).map(function(a){
+        var venc=a.fecha_objetivo && String(a.fecha_objetivo).slice(0,10)<hoy;
+        return '<li><b>'+esc(a.titulo||'Restricción')+'</b>'+(a.visto_at?'':' <span style="font-size:10px;font-weight:800;color:#b45309;background:#fef3c7;border-radius:6px;padding:1px 6px">NUEVA</span>')+
+          '<br><span style="color:var(--muted)">'+esc(a.nombre_proyecto||a.cod_proyecto||'')+(a.especialidad?' · '+esc(a.especialidad):'')+(a.impacto?' · impacto '+esc(a.impacto):'')+
+          (a.fecha_objetivo?' · '+(venc?'<b style="color:#b91c1c">vencida</b> ':'')+'levantar antes del '+fmtDate(a.fecha_objetivo):'')+'</span>'+
+          (a.detalle?'<br><span>'+esc(String(a.detalle).slice(0,160))+'</span>':'')+'</li>';
+      }).join('')+'</ul>'+(RESTR_AB.length>8?'<p style="margin:8px 0 0;font-size:12px;color:var(--muted)">y '+(RESTR_AB.length-8)+' más</p>':'')+
+      '<p style="margin:10px 0 0;font-size:12px;color:var(--muted)">Coordina con el supervisor de la obra para levantarlas.</p></div>';
+    // Se marcan como vistas
+    var nuevas=RESTR_AB.filter(function(a){ return !a.visto_at; }).map(function(a){ return a.id; });
+    if(nuevas.length){
+      fetch(SUP_URL+'/rest/v1/restriccion_alertas?id=in.('+nuevas.join(',')+')',{method:'PATCH',headers:{apikey:SUP_KEY, Authorization:'Bearer '+SUP_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({visto_at:new Date().toISOString()})})
+        .then(function(){ RESTR_AB.forEach(function(a){ if(!a.visto_at) a._vistoLocal=true; }); }).catch(function(){});
+    }
+  }
   function nnObs(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
   function obsUrgente(p){
     if(p.estado!=='abierta' && p.estado!=='en_proceso') return false;
@@ -727,6 +750,16 @@
       OBS_AB=OBS_TODAS.filter(function(p){ return p.estado==='abierta' || p.estado==='en_proceso'; });
       OBS_URG=OBS_AB.filter(obsUrgente);
     }catch(e){ console.warn('observaciones', e); OBS_URG=[]; OBS_AB=[]; OBS_TODAS=[]; }
+    // Restricciones del reporte diario que nombran a esta contrata (Kiara, 22-oct-2026): le llegan como alerta.
+    try{
+      RESTR_AB=[];
+      if(aliases.length){
+        var ra=await fetch(SUP_URL+'/rest/v1/v_restriccion_alertas?tipo=eq.contrata&restriccion_estado=eq.abierta&select=id,restriccion_uid,titulo,detalle,impacto,fecha_objetivo,nombre_proyecto,cod_proyecto,contratista,especialidad,reportada_por,created_at,visto_at&order=created_at.desc&limit=500',
+          {headers:{apikey:SUP_KEY, Authorization:'Bearer '+SUP_KEY}});
+        var fr=await ra.json();
+        RESTR_AB=(Array.isArray(fr)?fr:[]).filter(function(a){ var n=' '+nnObs(a.contratista)+' '; return aliases.some(function(x){ return n.indexOf(' '+x+' ')>=0 || nnObs(a.contratista)===x; }); });
+      }
+    }catch(e){ console.warn('restricciones', e); RESTR_AB=[]; }
     renderFacAviso(); renderObs();
     if(typeof renderResumenHome==='function') renderResumenHome();
   }
@@ -1599,6 +1632,7 @@
     if(porResp) items.push({cls:'info',ic:'gavel',t:porResp+' licitación(es) por responder',s:'Revisa tus invitaciones y envía tu oferta',go:'licitaciones'});
     var obs=facturas.filter(function(f){ return f.estado_revision==='observada'; });
     if(obs.length) items.push({cls:'crit',ic:'receipt',t:obs.length+' factura(s) observada(s)',s:'El supervisor pide corrección — revísalas',go:'factura'});
+    if(RESTR_AB.length) items.push({cls:'warn',ic:'octagon-alert',t:RESTR_AB.length+' restricción(es) de obra te involucran',s:'El supervisor reportó algo que frena la obra y te toca levantarlo',go:'resumen'});
     if(typeof OBS_AB!=='undefined' && OBS_AB.length) items.push({cls:OBS_URG.length?'crit':'warn',ic:'clipboard-check',t:OBS_AB.length+' observación(es) de obra por atender',s:OBS_URG.length?(OBS_URG.length+' urgente(s): retienen tus facturas'):'Cuéntale al supervisor en qué va y avísale al levantarlas',go:'observaciones'});
     var reqPend=(typeof reqPendTotal==='function')?reqPendTotal():0;
     if(reqPend) items.push({cls:'warn',ic:'shield-check',t:reqPend+' requisito(s) SSOMA por cumplir',s:'Descarga el documento y marca lo entregado',go:'requisitos'});
@@ -1610,6 +1644,7 @@
         '<div class="rs-alist">'+items.map(function(a){ return '<div class="rs-ai '+a.cls+'" data-go="'+a.go+'"><div class="rs-ic"><svg data-lucide="'+a.ic+'"></svg></div><div style="min-width:0"><div class="rs-at">'+esc(a.t)+'</div><div class="rs-as">'+esc(a.s)+'</div></div></div>'; }).join('')+'</div></div>';
       ah.querySelectorAll('[data-go]').forEach(function(b){ b.addEventListener('click', function(){ showView(b.dataset.go); }); });
     }
+    renderRestrHome();
     // Mis contratos (saldo) en el home
     var ch=$('#rs-contratos');
     if(ch){

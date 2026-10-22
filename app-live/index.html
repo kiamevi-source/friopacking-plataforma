@@ -330,6 +330,10 @@
         <i data-lucide="gavel" class="ic"></i>
         <span>Licitaciones</span>
       </a>
+      <a href="#reporte-diario" class="nav-item" data-section="reporte-diario">
+        <i data-lucide="clipboard-list" class="ic"></i>
+        <span>Reporte diario</span>
+      </a>
       <a href="#observaciones" class="nav-item" data-section="observaciones">
         <i data-lucide="clipboard-check" class="ic"></i>
         <span>Observaciones</span>
@@ -618,6 +622,17 @@
     </div>
 
     <!-- ═══════════════ VIEW: OBSERVACIONES (consolidado de obra · pendientes en Supervisor) ═══════════════ -->
+    <!-- ═══════════════ VIEW: REPORTE DIARIO (lectura · indicadores del Supervisor) ═══════════════ -->
+    <div id="view-reporte-diario" style="display:none">
+      <iframe
+        id="reporte-diario-frame"
+        data-src="modulos/reporte-diario.html?v=20261022a"
+        title="Reporte diario · indicadores"
+        loading="lazy"
+        style="width:100%;height:calc(100vh - 90px);border:none;border-radius:14px;background:#f5f7fa;box-shadow:0 1px 2px rgba(15,30,53,.04),0 12px 28px -8px rgba(15,30,53,.08);display:block"
+      ></iframe>
+    </div>
+
     <div id="view-observaciones" style="display:none">
       <iframe
         id="observaciones-frame"
