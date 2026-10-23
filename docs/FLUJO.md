@@ -5,7 +5,7 @@ fuente de verdad: los datos del mapa viven en el bloque `const MAPA` que está a
 inicio del `<script>`. Si cambia el flujo, se edita ahí, en el **mismo commit**
 que el código. Este documento es la letra chica que no cabe en el dibujo.
 
-Última revisión: **22 de octubre de 2026**
+Última revisión: **23 de octubre de 2026**
 
 ---
 
@@ -472,3 +472,16 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   ranking de contratas y mantenimiento de `alerta_destinatarios`.
 - La copia de reportes a PMO (`sync_reportes_from_supervisor`) **no** lleva estas columnas nuevas:
   Gerencia las lee del Supervisor por la función de indicadores.
+
+### Ajustes del 23-oct-2026
+
+- Ya no se captura el % de avance por contrata (la tarjeta queda en contrata + personal).
+- El avance en $ y el precio de las tareas usan el **precio de venta** (`venta_total`) de NISIRA.
+- Cada familia trae «Marcar todas como hechas hoy».
+- Restricción: **de una especialidad** (avisa a PMO, a los jefes de zona y a la contrata) o **de un área
+  responsable** (avisa al correo que se escribe, y a PMO). Se quitó el campo «encargado».
+- Planos: además de los conteos se listan título y estado de cada plano (`planos_dia.lista`).
+- Frentes de las fotos: los escribe el supervisor una vez → tabla `obra_frentes` (Supervisor).
+- Valorización y proyección en **US$**.
+- Evaluaciones con 4 criterios: SSOMA (facilitador, tiempo en campo, charla de seguridad,
+  inspecciones y permisos de trabajo) y contrata (coordinación, EPP's, BPM, orden y limpieza).

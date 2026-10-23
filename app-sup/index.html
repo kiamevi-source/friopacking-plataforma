@@ -3363,6 +3363,10 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 .rd-ticket input:focus,.rd-ticket select:focus{border-color:var(--teal-500);background:#fff;box-shadow:0 0 0 3px rgba(6,182,212,.14);outline:none;}
 .rd-ticket-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;}
 .rd-restr-dest{font-size:11.5px;color:var(--text-3);line-height:1.5;}
+.rd-restr-tipo{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;}
+.rd-restr-tipo button{border:none;background:var(--surface-1);padding:7px 8px;font-size:11.5px;font-weight:700;color:var(--text-3);cursor:pointer;}
+.rd-restr-tipo button+button{border-left:1px solid var(--border-strong);}
+.rd-restr-tipo button.on{background:var(--navy-800,#0b1f4d);color:#fff;}
 .rd-restr-ab-h{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);margin:14px 0 6px;}
 .rd-restr-ab{border:1px solid var(--border);border-left:3px solid #f59e0b;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px;}
 .rd-restr-ab.alto{border-left-color:#dc2626;} .rd-restr-ab.bajo{border-left-color:#16a34a;}
@@ -4132,8 +4136,8 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
         <div class="rd-card accent">
           <div class="rd-head accent">
             <div class="rd-head-ic"><i data-lucide="layers" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Contratas y avance por especialidad</h4><p>Personal y avance por frente · el % Avance Real del día sale del cronograma, no de aquí</p></div>
-            <div class="rd-head-badge teal"><span id="rd-esp-personal">0</span> obreros · Global <strong id="rd-esp-global">0%</strong></div>
+            <div class="rd-head-tt"><h4>Contratas y personal por especialidad</h4><p>Quién trabaja en cada frente y con cuánta gente · el avance sale del cronograma</p></div>
+            <div class="rd-head-badge teal"><span id="rd-esp-personal">0</span> obreros</div>
           </div>
           <div class="rd-body"><div id="rd-esp-mount"></div></div>
         </div>
@@ -4167,7 +4171,6 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
               <p id="rd-monto-serv" style="display:none"></p>
               <p id="rd-monto-proy" style="display:none"></p>
             </div>
-            <div id="alerta-diferencia" class="hidden" style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#991b1b;font-weight:600;">⚠ Diferencia detectada entre avance supervisor y contrata. Revisar.</div>
             <label id="rd-partida-box" class="rd-partida hidden"><input type="checkbox" id="rd-partida-chk" onchange="rdTogglePartida(this.checked)">
               <span><b>Punto de partida.</b> Es la primera vez que esta obra usa el reporte por unidades: busca cada tarea y escribe cuánto lleva <b>acumulado a la fecha</b>; las que llenes se quedan a la vista. Este avance no cuenta como trabajo de hoy. Desmárcalo para reportar solo lo de hoy.</span></label>
             <div id="rd-fam-chips" class="rd-fam-chips"></div>
@@ -4233,7 +4236,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
         <div class="rd-card">
           <div class="rd-head click" onclick="rdFold(this,event)">
             <div class="rd-head-ic"><i data-lucide="image" class="ri"></i></div>
-            <div class="rd-head-tt"><h4>Evidencia fotográfica</h4><p>Hasta 3 fotos por frente de trabajo · no hace falta describirlas</p></div>
+            <div class="rd-head-tt"><h4>Evidencia fotográfica</h4><p>Tus frentes quedan guardados · hasta 3 fotos por frente, sin describirlas</p></div>
             <span class="rd-head-badge" id="rd-fotos-badge">0</span>
             <span class="rd-chev"><i data-lucide="chevron-down" class="ri"></i></span>
           </div>
@@ -9990,7 +9993,7 @@ async function cargarReporteDiario() {
 
   await rdEspLoad(currentProyecto.cod || currentProyecto.nombre, null);
   rdEvalReset(); rdEvalRender();
-  rdReqLoad(); rdPlanosLoad(); rdDestLoad();
+  rdReqLoad(); rdPlanosLoad(); rdDestLoad(); rdFrentesLoad();
   await cargarHitosReporte();
   await cargarComercialReporte();
   // Restaurar restricciones/fotos vacíos para el nuevo día
@@ -10352,6 +10355,13 @@ let rdServExcluidos = 0;    // servicios que se quitaron de la lista (viven en L
 let rdServExcluidosVenta = 0; // su precio de venta: no suma al avance, se muestra aparte con el total del proyecto
 function rdHitoFilter(v){ _hitoFilter = v||''; renderHitos(); }
 function rdHitoFam(f){ _hitoFam = (_hitoFam === f) ? '' : f; renderHitos(); }
+function rdFamTodasHoy(f){
+  const deFam = rdHitos.filter(x => !x.manual && rdFamDe(x) === f);
+  const marcar = !deFam.every(x => x.hoy);
+  deFam.forEach(x => { x.hoy = marcar; });
+  renderHitos();
+  if (typeof scheduleAutosave === 'function') scheduleAutosave();
+}
 const RD_SIN_FAM = 'Otras tareas';
 let rdFamOrden = [];
 function rdFamDe(h){ return h.es_hito ? 'Hitos' : (h.familia || RD_SIN_FAM); }
@@ -10394,7 +10404,16 @@ function renderHitos() {
   let _famPrev = null;
   wrap.innerHTML = visibles.map(({h,i})=>{
     const fh = rdFamDe(h);
-    const cab = (!h.manual && fh !== _famPrev && (visibles.length > 1)) ? `<div class="rd-fam-h">${String(fh).replace(/</g,'&lt;')}</div>` : '';
+    let cab = '';
+    if (!h.manual && fh !== _famPrev && (visibles.length > 1 || fam)){
+      // Marcar toda la familia como hecha hoy de un toque (Kiara, 23-oct-2026)
+      const k = rdFamOrden.indexOf(fh);
+      const deFam = rdHitos.filter(x => !x.manual && rdFamDe(x) === fh);
+      const todas = deFam.length && deFam.every(x => x.hoy);
+      cab = `<div class="rd-fam-h"><span>${String(fh).replace(/</g,'&lt;')} <small>${deFam.length} tarea${deFam.length===1?'':'s'}</small></span>`
+          + (k >= 0 ? `<button type="button" class="rd-fam-all${todas?' on':''}" onclick="rdFamTodasHoy(rdFamOrden[${k}])">${todas?'✓ Todas hechas hoy · desmarcar':'✓ Marcar todas como hechas hoy'}</button>` : '')
+          + `</div>`;
+    }
     if (!h.manual) _famPrev = fh;
     return cab + rdHitoCardHTML(h, i, cuentan);
   }).join('');
@@ -10490,7 +10509,10 @@ function rdEnsureHitoTogStyles(){
   .rd-fam-chip.on{background:var(--navy-800,#0b1f4d);border-color:var(--navy-800,#0b1f4d);color:#fff;}
   .rd-fam-chip.on small{color:#cbd5e1;}
   .rd-fam-nota{font-size:11px;color:var(--text-3);margin-left:4px;}
-  .rd-fam-h{font-size:12px;font-weight:800;color:var(--navy-800,#0b1f4d);background:#eef2f8;border-radius:8px;padding:7px 11px;margin:10px 0 4px;}
+  .rd-fam-h{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;font-weight:800;color:var(--navy-800,#0b1f4d);background:#eef2f8;border-radius:8px;padding:7px 11px;margin:10px 0 4px;}
+  .rd-fam-h small{font-weight:600;color:var(--text-3);margin-left:4px;}
+  .rd-fam-all{border:1px solid #059669;background:#fff;color:#059669;border-radius:7px;padding:4px 10px;font-size:11.5px;font-weight:800;cursor:pointer;}
+  .rd-fam-all.on{background:#059669;color:#fff;}
   .rd-hito-estado{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;}
   .rd-hito-e{border:none;background:var(--surface-1);padding:6px 12px;font-size:11.5px;font-weight:700;
     color:var(--text-3);cursor:pointer;border-left:1px solid var(--border-strong);}
@@ -10786,7 +10808,7 @@ function recalcAvanceGlobal() {
 // ── Restricciones estructuradas ──
 function rdUid(){ return (crypto.randomUUID ? crypto.randomUUID() : 'r' + Date.now() + Math.random().toString(16).slice(2)); }
 function agregarRestriccion() {
-  rdRestricciones.push({ uid: rdUid(), categoria:'materiales', titulo:'', descripcion:'', impacto:'medio', responsable:'', responsable_email:'',
+  rdRestricciones.push({ uid: rdUid(), categoria:'materiales', titulo:'', descripcion:'', impacto:'medio', tipo_resp:'especialidad', responsable:'', responsable_email:'',
                          especialidad:'', contratista:'', fecha_objetivo:'' });
   rdDestLoad();
   renderRestricciones();
@@ -10819,18 +10841,23 @@ function rdRestrResp(i, val){
   const hint = document.getElementById('rd-restr-dest-' + i); if (hint) hint.innerHTML = rdRestrDestTxt(r);
 }
 function rdRestrSet(i, campo, val){ const r = rdRestricciones[i]; if (!r) return; r[campo] = val; const hint = document.getElementById('rd-restr-dest-' + i); if (hint) hint.innerHTML = rdRestrDestTxt(r); }
+// Dos caminos (Kiara, 23-oct-2026): de una ESPECIALIDAD (avisa a PMO, jefes de zona de esa especialidad
+// y a la contrata) o de un ÁREA responsable (avisa al correo que se escribe, y a PMO).
+function rdRestrTipo(r){ return r.tipo_resp || ((r.responsable_email || (r.responsable && !r.especialidad)) ? 'area' : 'especialidad'); }
 // Destinatarios que salen de una restricción
 function rdRestrDestinatarios(r){
   const out = [];
   const add = (o) => { const k = o.tipo + '|' + (o.destinatario_email||o.destinatario_nombre||'').toLowerCase(); if (!out.some(x => x._k === k)) out.push({ ...o, _k:k }); };
-  if ((r.responsable||'').trim()) add({ tipo:'encargado', destinatario_nombre: r.responsable.trim(), destinatario_email: r.responsable_email || null, rol:'Encargado' });
   const nn = t => String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  const area = rdRestrTipo(r) === 'area';
+  const mail = String(r.responsable_email||'').trim();
+  if (area && /@/.test(mail)) add({ tipo:'encargado', destinatario_nombre: (r.responsable||'').trim() || mail, destinatario_email: mail, rol: (r.responsable||'').trim() ? 'Área ' + r.responsable.trim() : 'Responsable' });
   (rdDest||[]).filter(x => !x.soloEncargado).forEach(x => {
-    if ((r.responsable_email||'').toLowerCase() === (x.email||'').toLowerCase()) return;   // ya le llega como encargado
-    if (x.rol === 'PMO' || !x.especialidad || (r.especialidad && nn(x.especialidad) === nn(r.especialidad)))
+    if (area && mail.toLowerCase() === (x.email||'').toLowerCase()) return;   // ya le llega como responsable
+    if (x.rol === 'PMO' || (!area && (!x.especialidad || (r.especialidad && nn(x.especialidad) === nn(r.especialidad)))))
       add({ tipo:'especialidad', destinatario_nombre: x.nombre, destinatario_email: x.email, rol: x.rol });
   });
-  if ((r.contratista||'').trim()) add({ tipo:'contrata', destinatario_nombre: r.contratista.trim(), destinatario_email: null, rol:'Contrata' });
+  if (!area && (r.contratista||'').trim()) add({ tipo:'contrata', destinatario_nombre: r.contratista.trim(), destinatario_email: null, rol:'Contrata' });
   return out;
 }
 // Restricciones de días anteriores que siguen abiertas en la obra, con a quién se avisó
@@ -10851,7 +10878,7 @@ async function rdRestrAbiertasLoad(){
 }
 function rdRestrDestTxt(r){
   const d = rdRestrDestinatarios(r);
-  if (!d.length) return 'Elige el encargado, la especialidad o la contrata para que la alerta le llegue a alguien.';
+  if (!d.length) return rdRestrTipo(r)==='area' ? 'Escribe el correo del responsable para que le llegue la alerta.' : 'Elige la especialidad y la contrata para que la alerta les llegue.';
   return '🔔 Llega a: ' + d.map(x => `<b>${rdEsc2(x.destinatario_nombre)}</b> <small>(${rdEsc2(x.rol)})</small>`).join(', ');
 }
 function eliminarRestriccion(i){ rdRestricciones.splice(i,1); renderRestricciones(); }
@@ -10875,11 +10902,17 @@ function renderRestricciones() {
         <select onchange="rdRestricciones[${i}].impacto=this.value;renderRestricciones()">${['bajo','medio','alto'].map(x=>`<option value="${x}" ${r.impacto===x?'selected':''}>Impacto ${x}</option>`).join('')}</select>
         <input type="date" value="${r.fecha_objetivo||''}" oninput="rdRestricciones[${i}].fecha_objetivo=this.value">
       </div>
-      <input list="rd-dest-dl" value="${(r.responsable||'').replace(/"/g,'&quot;')}" oninput="rdRestrResp(${i},this.value)" placeholder="Encargado de levantarla (elige de la lista para avisarle)">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
-        <select onchange="rdRestrSet(${i},'especialidad',this.value)"><option value="">Especialidad…</option>${(rdEsp||[]).map(e=>e.label||e.esp).filter((v,k,a)=>v&&a.indexOf(v)===k).map(v=>`<option ${r.especialidad===v?'selected':''}>${rdEsc2(v)}</option>`).join('')}</select>
-        <select onchange="rdRestrSet(${i},'contratista',this.value)"><option value="">Contrata (opcional)…</option>${rdEvalContratas().map(c=>`<option ${r.contratista===c.n?'selected':''}>${rdEsc2(c.n)}</option>`).join('')}</select>
+      <div class="rd-restr-tipo">
+        <button type="button" class="${rdRestrTipo(r)==='especialidad'?'on':''}" onclick="rdRestrSet(${i},'tipo_resp','especialidad');renderRestricciones()">Es de una especialidad</button>
+        <button type="button" class="${rdRestrTipo(r)==='area'?'on':''}" onclick="rdRestrSet(${i},'tipo_resp','area');renderRestricciones()">Es de un área responsable</button>
       </div>
+      ${rdRestrTipo(r)==='especialidad' ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+        <select onchange="rdRestrSet(${i},'especialidad',this.value)"><option value="">Especialidad…</option>${(rdEsp||[]).map(e=>e.label||e.esp).filter((v,k,a)=>v&&a.indexOf(v)===k).map(v=>`<option ${r.especialidad===v?'selected':''}>${rdEsc2(v)}</option>`).join('')}</select>
+        <select onchange="rdRestrSet(${i},'contratista',this.value)"><option value="">Contrata…</option>${rdEvalContratas().map(c=>`<option ${r.contratista===c.n?'selected':''}>${rdEsc2(c.n)}</option>`).join('')}</select>
+      </div>` : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+        <input value="${(r.responsable||'').replace(/"/g,'&quot;')}" oninput="rdRestrSet(${i},'responsable',this.value)" placeholder="Área (ej. Logística, Compras)">
+        <input type="email" value="${(r.responsable_email||'').replace(/"/g,'&quot;')}" oninput="rdRestrSet(${i},'responsable_email',this.value.trim())" placeholder="Correo del responsable">
+      </div>`}
       <div class="rd-restr-dest" id="rd-restr-dest-${i}">${rdRestrDestTxt(r)}</div>
       <div class="rd-ticket-foot">
         <span style="font-size:10.5px;color:var(--text-3);font-weight:700;">Ticket #${i+1}</span>
@@ -11086,13 +11119,44 @@ async function _comprimirImagen(file, maxDim = 1600, quality = 0.8){
   } catch(e) { /* no se pudo decodificar → subir original */ }
   return { blob:file, type:file.type||'application/octet-stream', name:file.name };
 }
-// 3 FOTOS POR FRENTE (Kiara, 22-oct-2026): los frentes son las especialidades del reporte; cada
-// foto queda marcada con su frente y ya no se escribe la actividad.
+// 3 FOTOS POR FRENTE (Kiara, 22-oct-2026): cada foto queda marcada con su frente y ya no se escribe
+// la actividad. 23-oct-2026: los FRENTES los escribe el supervisor y quedan guardados por obra
+// (obra_frentes); solo se vuelven a tocar para agregar o quitar.
 const RD_FOTOS_POR_FRENTE = 3;
+let rdFrentesObra = [];   // [{id, nombre}]
+async function rdFrentesLoad(){
+  const cod = currentProyecto?.cod; rdFrentesObra = [];
+  if (!cod){ renderFotosReporte(); return; }
+  try {
+    rdFrentesObra = await sbFetch('/rest/v1/obra_frentes?cod_proyecto=eq.' + encodeURIComponent(cod) + '&activo=eq.true&select=id,nombre&order=orden.asc,id.asc') || [];
+    try { localStorage.setItem('fp_frentes_' + cod, JSON.stringify(rdFrentesObra)); } catch(e){}
+  } catch(e){ try { rdFrentesObra = JSON.parse(localStorage.getItem('fp_frentes_' + cod) || '[]'); } catch(_){ rdFrentesObra = []; } }
+  renderFotosReporte();
+}
+async function rdFrenteAgregar(){
+  const inp = document.getElementById('rd-frente-nuevo'); const nombre = (inp?.value || '').trim().replace(/\s+/g,' ');
+  const cod = currentProyecto?.cod;
+  if (!nombre || !cod) return;
+  if (rdFrentesObra.some(f => f.nombre.toLowerCase() === nombre.toLowerCase())){ showToast('Ese frente ya existe'); return; }
+  const f = { id: null, nombre }; rdFrentesObra.push(f); if (inp) inp.value = '';
+  renderFotosReporte();
+  try {
+    const r = await sbFetch('/rest/v1/obra_frentes', { method:'POST', headers:{ Prefer:'return=representation' },
+      body: JSON.stringify({ cod_proyecto: cod, nombre, orden: rdFrentesObra.length, creado_por: currentUser?.email || currentUser?.nombre || null }) });
+    if (r && r[0]) f.id = r[0].id;
+    try { localStorage.setItem('fp_frentes_' + cod, JSON.stringify(rdFrentesObra)); } catch(e){}
+  } catch(e){ showToast('No se pudo guardar el frente (sin señal): queda en este reporte'); }
+}
+async function rdFrenteQuitar(k){
+  const f = rdFrentesObra[k]; if (!f) return;
+  const n = rdFotos.filter(x => (x.frente || x.ambiente) === f.nombre).length;
+  if (!confirm(`¿Quitar el frente «${f.nombre}»?${n ? ' Sus fotos de hoy se mantienen en el reporte.' : ''} No se borra de los reportes anteriores.`)) return;
+  rdFrentesObra.splice(k, 1); renderFotosReporte();
+  if (f.id) { try { await sbFetch('/rest/v1/obra_frentes?id=eq.' + f.id, { method:'PATCH', body: JSON.stringify({ activo:false }) }); } catch(e){} }
+  try { localStorage.setItem('fp_frentes_' + currentProyecto?.cod, JSON.stringify(rdFrentesObra)); } catch(e){}
+}
 function rdFrentesFotos(){
-  const fr = [];
-  (rdEsp||[]).forEach(e => { const n = (e.label || e.esp || '').toString().trim(); if (n && !fr.includes(n)) fr.push(n); });
-  if (!fr.length) fr.push('General');
+  const fr = rdFrentesObra.map(f => f.nombre);
   rdFotos.forEach(f => { const n = f.frente || f.ambiente; if (n && !fr.includes(n)) fr.push(n); });
   return fr;
 }
@@ -11101,6 +11165,7 @@ function rdFotoPedir(k){ _rdFotoFrente = rdFrentesFotos()[k]; const inp = docume
 async function subirFotosReporte(files, frente) {
   if (!files || !files.length) return;
   frente = frente || _rdFotoFrente || rdFrentesFotos()[0];
+  if (!frente){ showToast('Primero agrega un frente de trabajo'); document.getElementById('rd-fotos-input').value=''; return; }
   const ya = rdFotos.filter(f => (f.frente || f.ambiente) === frente).length;
   const cupo = Math.max(0, RD_FOTOS_POR_FRENTE - ya);
   if (!cupo){ showToast(`«${frente}» ya tiene ${RD_FOTOS_POR_FRENTE} fotos`); document.getElementById('rd-fotos-input').value=''; return; }
@@ -11166,15 +11231,18 @@ function renderFotosReporte() {
       <div class="rd-photo-thumb">${body}${pend}<button class="del" title="Quitar" onclick="eliminarFotoReporte(${i})">×</button></div>
     </div>`;
   };
-  grid.innerHTML = rdFrentesFotos().map((fr, k) => {
-    const items = rdFotos.map((f,i)=>({f,i})).filter(({f}) => (f.frente || f.ambiente || rdFrentesFotos()[0]) === fr);
+  const frentes = rdFrentesFotos();
+  const alta = `<div class="rd-fr-alta"><input id="rd-frente-nuevo" placeholder="${frentes.length ? 'Agregar otro frente…' : 'Escribe el primer frente de trabajo (ej. Cámara 1, Sala de máquinas)…'}" onkeydown="if(event.key==='Enter'){event.preventDefault();rdFrenteAgregar();}"><button type="button" onclick="rdFrenteAgregar()">＋ Agregar frente</button></div>`;
+  grid.innerHTML = (frentes.length ? '' : `<p class="rd-fr-vacio">Esta obra aún no tiene frentes. Escríbelos una vez: quedan guardados para todos los días.</p>`) + frentes.map((fr, k) => {
+    const items = rdFotos.map((f,i)=>({f,i})).filter(({f}) => (f.frente || f.ambiente || frentes[0]) === fr);
     const lleno = items.length >= RD_FOTOS_POR_FRENTE;
+    const kObra = rdFrentesObra.findIndex(x => x.nombre === fr);
     return `<div class="rd-fr">
-      <div class="rd-fr-h"><b>${rdEsc2(fr)}</b><span class="${items.length?'ok':''}">${items.length}/${RD_FOTOS_POR_FRENTE}</span></div>
+      <div class="rd-fr-h"><b>${rdEsc2(fr)}</b><span class="rd-fr-r"><span class="${items.length?'ok':''}">${items.length}/${RD_FOTOS_POR_FRENTE}</span>${kObra>=0?`<button type="button" class="rd-fr-x" title="Quitar frente" onclick="rdFrenteQuitar(${kObra})">×</button>`:''}</span></div>
       <div class="rd-fr-g">${items.map(({f,i}) => card(f,i)).join('')}
         ${lleno ? '' : `<button type="button" class="rd-fr-add" onclick="rdFotoPedir(${k})"><i data-lucide="camera" class="ri"></i><span>Agregar foto</span></button>`}</div>
     </div>`;
-  }).join('');
+  }).join('') + alta;
   if (window.lucide) lucide.createIcons();
   if (typeof rdUpdateRing === 'function') rdUpdateRing();
 }
@@ -11186,6 +11254,13 @@ function rdEnsureFotoStyles(){
   .rd-fr-h{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;margin-bottom:6px;color:var(--text-1);}
   .rd-fr-h span{font-size:11px;font-weight:800;color:var(--text-3);background:var(--surface-2);border-radius:999px;padding:1px 8px;}
   .rd-fr-h span.ok{background:#dcfce7;color:#15803d;}
+  .rd-fr-h .rd-fr-r{display:inline-flex;gap:6px;align-items:center;background:none;padding:0;}
+  .rd-fr-x{border:none;background:none;color:var(--text-3);font-size:16px;cursor:pointer;line-height:1;}
+  .rd-fr-x:hover{color:var(--danger);}
+  .rd-fr-alta{display:flex;gap:8px;}
+  .rd-fr-alta input{flex:1;border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;font-size:12.5px;background:var(--surface-1);color:var(--text-1);min-width:0;}
+  .rd-fr-alta button{border:1px solid var(--teal-700,#0e7490);background:#fff;color:var(--teal-700,#0e7490);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;}
+  .rd-fr-vacio{font-size:12.5px;color:var(--text-3);margin:0;}
   .rd-fr-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
   .rd-fr-add{border:1.5px dashed var(--border-strong);border-radius:11px;background:transparent;min-height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--text-3);font-size:12px;font-weight:700;cursor:pointer;}
   .rd-fr-add:hover{border-color:var(--teal-700);color:var(--teal-700);} .rd-fr-add i{width:20px;height:20px;}
@@ -11320,29 +11395,27 @@ function rdContrataModo(i, otro){
 function rdEspRender(){
   const m = document.getElementById('rd-esp-mount'); if(!m) return;
   // Los frentes alimentan las fotos (3 por frente) y las contratas a evaluar
-  setTimeout(() => { if (typeof renderFotosReporte==='function') renderFotosReporte(); if (typeof rdEvalRender==='function') rdEvalRender(); }, 0);
+  setTimeout(() => { if (typeof rdEvalRender==='function') rdEvalRender(); }, 0);
   rdEnsureEspStyles();
   const opciones = ESP_CAT.filter(c=>!rdEsp.some(r=>r.esp===c.key));
   let html = '';
   if (!rdEsp.length){
     html += `<div class="rd-esp-empty">Este proyecto aún no tiene especialidades configuradas. Agrégalas una vez (con su contrata) y quedan guardadas para todos los días.</div>`;
   } else {
-    if (rdEspPrecargado) html += `<div class="rd-esp-pre">Contratas y personal traídos del reporte del ${rdFmtFecha(rdEspPrecargado)}. El <b>% de avance empieza en 0</b>: ponlo según lo de hoy.</div>`;
+    if (rdEspPrecargado) html += `<div class="rd-esp-pre">Contratas y personal traídos del reporte del ${rdFmtFecha(rdEspPrecargado)}.</div>`;
     html += `<div class="rd-esp-tblwrap"><table class="rd-esp-tbl"><thead><tr>
-      <th>Especialidad</th><th>Contrata</th><th style="width:82px;">Personal</th><th style="width:120px;">% Avance hoy</th><th style="width:30px;"></th></tr></thead><tbody>`;
+      <th>Especialidad</th><th>Contrata</th><th style="width:82px;">Personal</th><th style="width:30px;"></th></tr></thead><tbody>`;
     rdEsp.forEach((r,i)=>{
       html += `<tr>
         <td class="rd-esp-name">${rdEsc2(r.label)}</td>
         <td>${rdContrataCell(i, r)}</td>
         <td><input class="rd-esp-inp num" type="number" min="0" value="${r.personal||0}" oninput="rdEspSet(${i},'personal',this.value)"></td>
-        <td><div class="rd-esp-pct"><input class="rd-esp-inp num" type="number" min="0" max="100" step="0.1" value="${r.avance||0}" oninput="rdEspSet(${i},'avance',this.value)"><i class="rd-esp-bar" style="width:${Math.min(100,parseFloat(r.avance)||0)}%"></i></div></td>
         <td><button class="rd-esp-del" title="Quitar" onclick="rdEspRemove(${i})">×</button></td>
       </tr>`;
     });
     html += `</tbody><tfoot><tr class="rd-esp-total">
-      <td><strong>GLOBAL</strong></td><td></td>
+      <td><strong>TOTAL</strong></td><td></td>
       <td><strong id="rd-esp-tp">${rdEspTotalPersonal()}</strong></td>
-      <td><strong id="rd-esp-tg">${rdEspGlobalAvance().toFixed(1)}%</strong></td>
       <td></td></tr></tfoot></table></div>`;
   }
   html += `<div class="rd-esp-add">`;
@@ -11448,7 +11521,8 @@ function rdEnsureEspStyles(){
 // PROYECCIÓN DE VALORIZACIONES (versionada: cumplió sí/no + historial de replanteo)
 // ═══════════════════════════════════════════════
 let rval = [];
-function rvalMoney(v){ const n=parseFloat(v); return isNaN(n)?'—':'S/ '+n.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+// Valorización y proyección en DÓLARES (Kiara, 23-oct-2026): el presupuesto de Gerencia está en US$.
+function rvalMoney(v){ const n=parseFloat(v); return isNaN(n)?'—':'US$ '+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function rvalMesLabel(p){ if(!p) return '—'; const [y,m]=String(p).split('-'); const mm=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return (mm[parseInt(m)-1]||m)+' '+y; }
 const RVAL_EST = {cumplido:'Cumplió', no_cumplido:'No cumplió', replanteado:'Replanteado', vigente:'Vigente'};
 
@@ -11477,7 +11551,7 @@ function rvalRender(){
     const v = cur ? Number(cur.monto_proyectado)||0 : '';
     return `<div class="rval-mes">
       <span class="rval-mes-l">${rvalMesLabel(per)}${cur&&cur.version>1?` <small>v${cur.version}</small>`:''}</span>
-      <input type="number" class="rval-inp rval-mes-in" data-per="${per}" data-prev="${v}" min="0" step="0.01" placeholder="S/ 0.00" value="${v}" oninput="rvalPctVivo()">
+      <input type="number" class="rval-inp rval-mes-in" data-per="${per}" data-prev="${v}" min="0" step="0.01" placeholder="US$ 0.00" value="${v}" oninput="rvalPctVivo()">
       <span class="rval-mes-pct" id="rval-pct-${per}">—</span>
     </div>`;
   }).join('');
@@ -14959,7 +15033,7 @@ function rdEnsureValgStyles(){
 function rdSoles(v){
   const n = parseFloat(v);
   if (isNaN(n)) return '—';
-  return 'S/ ' + n.toLocaleString('es-PE',{minimumFractionDigits:0, maximumFractionDigits:0});
+  return 'US$ ' + n.toLocaleString('en-US',{minimumFractionDigits:0, maximumFractionDigits:0});   // es US$ desde el 23-oct-2026 (el nombre se quedó)
 }
 let rdValSinValorizar = false;
 async function rdValGLoad(cod){
@@ -15033,8 +15107,11 @@ function rdValGRender(){
 // SSOMA: facilitador + tiempo en campo. Cada contrata del día: Coordinación, EPP's y BPM.
 // Escala 1 a 5, se promedia. Se guarda en reportes.evaluaciones.
 // ═══════════════════════════════════════════════
-const RD_EVAL_SSOMA = [ { k:'facilitador', lbl:'Facilitador' }, { k:'tiempo_campo', lbl:'Tiempo en campo' } ];
-const RD_EVAL_CT    = [ { k:'coordinacion', lbl:'Coordinación' }, { k:'epp', lbl:"EPP's" }, { k:'bpm', lbl:'BPM' } ];
+// 4 criterios cada una (Kiara, 23-oct-2026)
+const RD_EVAL_SSOMA = [ { k:'facilitador', lbl:'Facilitador' }, { k:'tiempo_campo', lbl:'Tiempo en campo' },
+                        { k:'charla', lbl:'Charla de seguridad' }, { k:'inspeccion', lbl:'Inspecciones y permisos de trabajo' } ];
+const RD_EVAL_CT    = [ { k:'coordinacion', lbl:'Coordinación' }, { k:'epp', lbl:"EPP's" }, { k:'bpm', lbl:'BPM' },
+                        { k:'orden', lbl:'Orden y limpieza' } ];
 let rdEval = { ssoma:{ facilitador_nombre:'', horas:'', notas:{} }, contratas:{} };
 function rdEvalReset(){ rdEval = { ssoma:{ facilitador_nombre:'', horas:'', notas:{} }, contratas:{} }; }
 // Contratas del día = las que trabajan en los frentes del reporte
@@ -15084,19 +15161,20 @@ function rdEvalPayload(){
   const cts = rdEvalContratas();
   return {
     escala: '1-5',
-    ssoma: { facilitador_nombre: (rdEval.ssoma.facilitador_nombre||'').trim() || null, horas_campo: parseFloat(rdEval.ssoma.horas) || null,
-             facilitador: Number(rdEval.ssoma.notas.facilitador)||null, tiempo_campo: Number(rdEval.ssoma.notas.tiempo_campo)||null,
-             promedio: rdProm(rdEval.ssoma.notas, RD_EVAL_SSOMA) },
+    ssoma: Object.assign({ facilitador_nombre: (rdEval.ssoma.facilitador_nombre||'').trim() || null, horas_campo: parseFloat(rdEval.ssoma.horas) || null },
+             ...RD_EVAL_SSOMA.map(c => ({ [c.k]: Number(rdEval.ssoma.notas[c.k])||null })),
+             { promedio: rdProm(rdEval.ssoma.notas, RD_EVAL_SSOMA) }),
     contratas: cts.map(c => { const e = rdEval.contratas[c.n] || {};
-      return { contratista: c.n, especialidad: c.esp || null, coordinacion: Number(e.coordinacion)||null, epp: Number(e.epp)||null, bpm: Number(e.bpm)||null, promedio: rdProm(e, RD_EVAL_CT) }; })
+      return Object.assign({ contratista: c.n, especialidad: c.esp || null }, ...RD_EVAL_CT.map(k => ({ [k.k]: Number(e[k.k])||null })), { promedio: rdProm(e, RD_EVAL_CT) }); })
   };
 }
 function rdEvalLoad(ev){
   rdEvalReset();
   if (ev && typeof ev === 'object'){
     const s = ev.ssoma || {};
-    rdEval.ssoma = { facilitador_nombre: s.facilitador_nombre || '', horas: s.horas_campo || '', notas: { facilitador: s.facilitador||0, tiempo_campo: s.tiempo_campo||0 } };
-    (ev.contratas||[]).forEach(c => { if (c && c.contratista) rdEval.contratas[c.contratista] = { coordinacion:c.coordinacion||0, epp:c.epp||0, bpm:c.bpm||0 }; });
+    const notas = {}; RD_EVAL_SSOMA.forEach(c => { notas[c.k] = s[c.k] || 0; });
+    rdEval.ssoma = { facilitador_nombre: s.facilitador_nombre || '', horas: s.horas_campo || '', notas };
+    (ev.contratas||[]).forEach(c => { if (c && c.contratista){ const e = {}; RD_EVAL_CT.forEach(k => { e[k.k] = c[k.k] || 0; }); rdEval.contratas[c.contratista] = e; } });
   }
   rdEvalRender();
 }
@@ -15190,6 +15268,7 @@ function rdEnsureReqStyles(){
 // ═══════════════════════════════════════════════
 const RD_ING_URL = 'https://qkgwvzxtdobgyjvwkhrk.supabase.co';
 const RD_ING_KEY = 'sb_publishable_yCAAlaw6viS6KEow5x4OdQ_SaMLDHQ1';
+const RD_PLANO_LAB = { 'Pendiente':'Sin asignar', 'En proceso':'En elaboración', 'En revisión':'En revisión', 'Completado':'Por aprobar', 'Aprobado':'Aprobado', 'Rechazado':'En corrección' };
 let rdPlanos = null;   // { total, aprobados, por_aprobar, en_proceso, pendientes, atrasados, actualizado }
 function rdPryClave(t){ const m = String(t||'').toUpperCase().match(/(PRY|PRD|VSR)\s*(\d{4})\s*-\s*0*(\d+)/); return m ? m[1]+m[2]+'-'+m[3] : ''; }
 async function rdPlanosLoad(){
@@ -15214,6 +15293,11 @@ async function rdPlanosLoad(){
       en_proceso: L.filter(s => ['En proceso','En revisión','Rechazado'].includes(s.estado)).length,
       pendientes: L.filter(s => s.estado === 'Pendiente').length,
       atrasados: L.filter(s => !cerr.includes(s.estado) && ((s.fechaFin && s.fechaFin < hoy) || (s.fechaRequerida && s.fechaRequerida < hoy))).length,
+      // Título y estado de cada plano (Kiara, 23-oct-2026), con los mismos nombres que la pestaña Planos
+      lista: L.slice().sort((a,b) => (b.n||0) - (a.n||0)).map(s => ({
+        codigo: s.codPlano || null, plano: s.plano || 'Plano', especialidad: s.especialidad || null,
+        estado: RD_PLANO_LAB[s.estado] || s.estado || '—', estado_raw: s.estado || null,
+        atrasado: !cerr.includes(s.estado) && !!((s.fechaFin && s.fechaFin < hoy) || (s.fechaRequerida && s.fechaRequerida < hoy)) })),
       actualizado: new Date().toISOString()
     };
   } catch(e){ rdPlanos = { error: true }; }
@@ -15233,7 +15317,17 @@ function rdPlanosRender(cargando){
       ${k('Planos pedidos', P.total, 'big')}${k('Aprobados', P.aprobados + ' · ' + pct + '%')}${k('Por aprobar', P.por_aprobar)}
       ${k('En elaboración / revisión', P.en_proceso)}${k('Sin asignar', P.pendientes)}${k('Atrasados', P.atrasados, P.atrasados ? 'bad' : '')}
     </div>
+    ${(P.lista||[]).length ? `<div class="rd-pl-list">${P.lista.map(x => `<div class="rd-pl-it">
+        <div><b>${rdEsc2(x.plano)}</b><small>${[x.codigo, x.especialidad].filter(Boolean).map(rdEsc2).join(' · ')}</small></div>
+        <span class="rd-pl-st ${x.estado_raw==='Aprobado'?'ok':x.atrasado?'bad':x.estado_raw==='Completado'?'warn':''}">${rdEsc2(x.estado)}${x.atrasado?' · atrasado':''}</span></div>`).join('')}</div>` : ''}
     <button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="showTab('planos')">Ver planos</button>`;
+  if (!document.getElementById('rd-pl-styles')){ const st = document.createElement('style'); st.id = 'rd-pl-styles'; st.textContent = `
+    .rd-pl-list{margin-top:12px;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+    .rd-pl-it{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12.5px;}
+    .rd-pl-it:last-child{border-bottom:none;}
+    .rd-pl-it small{display:block;color:var(--text-3);font-size:11px;}
+    .rd-pl-st{flex:none;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;background:var(--surface-2);color:var(--text-2);}
+    .rd-pl-st.ok{background:#dcfce7;color:#15803d;} .rd-pl-st.warn{background:#fef3c7;color:#b45309;} .rd-pl-st.bad{background:#fee2e2;color:#b91c1c;}`; document.head.appendChild(st); }
   if (typeof rdEnsureValgStyles === 'function') rdEnsureValgStyles();
 }
 
@@ -15498,10 +15592,12 @@ function rvRenderReporte(r){
     const glob = sp>0 ? sw/sp : (avEsp.reduce((a,x)=>a+rvNum(x.avance),0) / avEsp.length);
     const hayPesos = sp>0;
     const tp = avEsp.reduce((a,x)=>a+rvNum(x.personal),0);
-    html += card('layers','Contratas y avance por especialidad', `${tp} obreros · Global ${glob.toFixed(1)}%`,
-      `<div class="rv-table-wrap"><table class="rv-table"><thead><tr><th>Especialidad</th><th>Contrata</th><th>Personal</th><th>% Avance</th>${hayPesos?'<th>Peso</th>':''}</tr></thead><tbody>
-        ${avEsp.map(a=>`<tr><td><strong>${rvEsc(a.label||a.esp)}</strong></td><td>${rvEsc(a.contrata||'—')}</td><td>${rvNum(a.personal)}</td><td>${rvNum(a.avance).toFixed(1)}%</td>${hayPesos?`<td>${rvNum(a.peso)}%</td>`:''}</tr>`).join('')}
-        <tr style="border-top:2px solid var(--border-strong);font-weight:800;"><td>GLOBAL</td><td></td><td>${tp}</td><td>${glob.toFixed(1)}%</td>${hayPesos?'<td></td>':''}</tr>
+    // El % de avance por contrata salió de la captura (Kiara, 23-oct-2026): solo se muestra en reportes viejos que lo traen.
+    const hayAv = avEsp.some(a => rvNum(a.avance) > 0);
+    html += card('layers', hayAv ? 'Contratas y avance por especialidad' : 'Contratas y personal por especialidad', `${tp} obreros${hayAv?` · Global ${glob.toFixed(1)}%`:''}`,
+      `<div class="rv-table-wrap"><table class="rv-table"><thead><tr><th>Especialidad</th><th>Contrata</th><th>Personal</th>${hayAv?'<th>% Avance</th>':''}${hayPesos?'<th>Peso</th>':''}</tr></thead><tbody>
+        ${avEsp.map(a=>`<tr><td><strong>${rvEsc(a.label||a.esp)}</strong></td><td>${rvEsc(a.contrata||'—')}</td><td>${rvNum(a.personal)}</td>${hayAv?`<td>${rvNum(a.avance).toFixed(1)}%</td>`:''}${hayPesos?`<td>${rvNum(a.peso)}%</td>`:''}</tr>`).join('')}
+        <tr style="border-top:2px solid var(--border-strong);font-weight:800;"><td>TOTAL</td><td></td><td>${tp}</td>${hayAv?`<td>${glob.toFixed(1)}%</td>`:''}${hayPesos?'<td></td>':''}</tr>
       </tbody></table></div>`);
   } else {
     html += card('users','Personal por especialidad', `${personal} personas en obra`,
@@ -15604,9 +15700,9 @@ function rvRenderReporte(r){
     html += card('star','Evaluaciones del día', 'Escala 1 a 5',
       `<div class="rv-list">
         <div class="rv-li"><span class="rv-tag">${s0.promedio!=null?Number(s0.promedio).toFixed(1):'—'}</span><div><b>SSOMA</b>${s0.facilitador_nombre?' · '+rvEsc(s0.facilitador_nombre):''}${s0.horas_campo?' · '+rvEsc(s0.horas_campo)+' h en campo':''}
-          <br><small>Facilitador ${n(s0.facilitador)} · Tiempo en campo ${n(s0.tiempo_campo)}</small></div></div>
+          <br><small>${RD_EVAL_SSOMA.filter(c => s0[c.k] != null).map(c => c.lbl + ' ' + n(s0[c.k])).join(' · ')}</small></div></div>
         ${(ev.contratas||[]).map(c => `<div class="rv-li"><span class="rv-tag ${c.promedio!=null&&c.promedio<3?'alto':''}">${c.promedio!=null?Number(c.promedio).toFixed(1):'—'}</span><div><b>${rvEsc(c.contratista)}</b>${c.especialidad?' · '+rvEsc(c.especialidad):''}
-          <br><small>Coordinación ${n(c.coordinacion)} · EPP's ${n(c.epp)} · BPM ${n(c.bpm)}</small></div></div>`).join('')}
+          <br><small>${RD_EVAL_CT.filter(k => c[k.k] != null || ['coordinacion','epp','bpm'].includes(k.k)).map(k => k.lbl + ' ' + n(c[k.k])).join(' · ')}</small></div></div>`).join('')}
       </div>`);
   }
   // Requerimientos de la obra al día del reporte
@@ -15620,7 +15716,8 @@ function rvRenderReporte(r){
   const pl = r.planos_dia && r.planos_dia.en_ingenieria ? r.planos_dia : null;
   if (pl){
     html += card('drafting-compass','Planos', `${pl.aprobados}/${pl.total} aprobados`,
-      `<div class="rv-list"><div class="rv-li"><span class="rv-tag ${pl.atrasados?'alto':'bajo'}">${pl.atrasados?pl.atrasados+' atrasado(s)':'al día'}</span><div>Por aprobar ${pl.por_aprobar} · En elaboración / revisión ${pl.en_proceso} · Sin asignar ${pl.pendientes}</div></div></div>`);
+      `<div class="rv-list"><div class="rv-li"><span class="rv-tag ${pl.atrasados?'alto':'bajo'}">${pl.atrasados?pl.atrasados+' atrasado(s)':'al día'}</span><div>Por aprobar ${pl.por_aprobar} · En elaboración / revisión ${pl.en_proceso} · Sin asignar ${pl.pendientes}</div></div>
+        ${(pl.lista||[]).map(x => `<div class="rv-li"><span class="rv-tag ${x.estado_raw==='Aprobado'?'bajo':x.atrasado?'alto':''}">${rvEsc(x.estado)}</span><div><b>${rvEsc(x.plano)}</b>${x.codigo?' · '+rvEsc(x.codigo):''}${x.especialidad?'<br><small>'+rvEsc(x.especialidad)+'</small>':''}</div></div>`).join('')}</div>`);
   }
 
   // Equipos del proyecto reportados hoy

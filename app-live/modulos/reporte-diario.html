@@ -71,7 +71,7 @@ function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,
 function hoy(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function diasDesde(f){ if(!f) return null; return Math.round((new Date(hoy()+'T12:00:00')-new Date(String(f).slice(0,10)+'T12:00:00'))/864e5); }
 function n1(v){ return v==null||v===''?'—':Number(v).toFixed(1); }
-function soles(v){ return v==null?'—':'S/ '+Number(v).toLocaleString('es-PE',{maximumFractionDigits:0}); }
+function soles(v){ return v==null?'—':'US$ '+Number(v).toLocaleString('en-US',{maximumFractionDigits:0}); }   // valorización en dólares
 function mesHoy(){ return hoy().slice(0,7); }
 function clave(c){ var m=String(c||'').toUpperCase().match(/(PRY|PRD|VSR)\s*(\d{4})\s*-\s*0*(\d+)/); return m?m[1]+m[2]+'-'+m[3]:String(c||'').trim().toUpperCase(); }
 function tonoEval(p){ return p==null?'gris':p>=4?'ok':p>=3?'warn':'late'; }
@@ -140,7 +140,7 @@ function pintar(){
   var html='<div class="kpis">'+
     k('', conRep.length+'/'+act.length,'Obras reportando', sinHoy.length?sinHoy.length+' sin reporte de ayer u hoy':'todas al día')+
     k(ss==null?'':ss>=4?'ok':ss>=3?'warn':'late', n1(ss),'SSOMA · promedio','escala 1 a 5')+
-    k(ctp==null?'':ctp>=4?'ok':ctp>=3?'warn':'late', n1(ctp),'Contratas · promedio','coordinación, EPP\'s, BPM')+
+    k(ctp==null?'':ctp>=4?'ok':ctp>=3?'warn':'late', n1(ctp),'Contratas · promedio','coordinación, EPP\'s, BPM, orden')+
     k(rVe?'late':rAb?'warn':'ok', rAb,'Restricciones abiertas', rVe?rVe+' vencidas':'ninguna vencida')+
     k(alSin?'warn':'', alSin,'Alertas sin ver','encargado, PMO, jefes de zona, contratas')+
     k(sinVal?'late':'ok', sinVal,'Obras sin valorizar', 'en '+mesHoy())+
@@ -178,13 +178,13 @@ function tablaObras(O){
 function detalle(o){
   var L=function(a,b){ return '<div class="l"><span>'+a+'</span><b>'+b+'</b></div>'; };
   var ss=o.ssoma||{};
-  var cts=(o.contratas||[]).map(function(c){ return L(esc(c.contratista), n1(c.promedio)+' <span class="cod" style="display:inline">coord '+n1(c.coordinacion)+' · EPP '+n1(c.epp)+' · BPM '+n1(c.bpm)+'</span>'); }).join('')||'<p class="cod">Sin evaluaciones en el periodo.</p>';
+  var cts=(o.contratas||[]).map(function(c){ return L(esc(c.contratista), n1(c.promedio)+' <span class="cod" style="display:inline">coord '+n1(c.coordinacion)+' · EPP '+n1(c.epp)+' · BPM '+n1(c.bpm)+' · orden '+n1(c.orden)+'</span>'); }).join('')||'<p class="cod">Sin evaluaciones en el periodo.</p>';
   var pl=o.planos&&o.planos.en_ingenieria?L('Pedidos',o.planos.total)+L('Aprobados',o.planos.aprobados)+L('Por aprobar',o.planos.por_aprobar)+L('En elaboración / revisión',o.planos.en_proceso)+L('Sin asignar',o.planos.pendientes)+L('Atrasados',o.planos.atrasados):'<p class="cod">La obra no está en Seguimiento de Planos o el supervisor no ha reportado.</p>';
   var eqE=(o.equipos&&o.equipos.por_estado)||{}; var LBL={esperando:'Por llegar',en_obra:'En obra',montaje:'En montaje',instalado:'Instalado',observado:'Observado',sin_estado:'Sin estado'};
   var eq=Object.keys(eqE).map(function(k){ return L(LBL[k]||k, eqE[k]); }).join('')||'<p class="cod">El supervisor no ha registrado equipos.</p>';
   var v=o._val;
   return '<div class="det">'+
-    '<div class="box"><h4>SSOMA</h4>'+L('Promedio',n1(ss.promedio))+L('Días evaluados',ss.dias||0)+L('Horas en campo (prom.)',ss.horas_campo_prom!=null?n1(ss.horas_campo_prom):'—')+L('Facilitador (último)',esc(ss.facilitador||'—'))+'</div>'+
+    '<div class="box"><h4>SSOMA</h4>'+L('Promedio',n1(ss.promedio))+L('Facilitador',n1(ss.facilitador_nota))+L('Tiempo en campo',n1(ss.tiempo_campo))+L('Charla de seguridad',n1(ss.charla))+L('Inspecciones y permisos',n1(ss.inspeccion))+L('Días evaluados',ss.dias||0)+L('Horas en campo (prom.)',ss.horas_campo_prom!=null?n1(ss.horas_campo_prom):'—')+L('Facilitador (último)',esc(ss.facilitador||'—'))+'</div>'+
     '<div class="box"><h4>Contratas</h4>'+cts+'</div>'+
     '<div class="box"><h4>Restricciones y alertas</h4>'+L('Abiertas',(o.restricciones||{}).abiertas||0)+L('Vencidas',(o.restricciones||{}).vencidas||0)+L('Impacto alto',(o.restricciones||{}).altas||0)+L('Alertas enviadas',(o.alertas||{}).total||0)+L('Sin ver',(o.alertas||{}).sin_ver||0)+L('Correo pendiente',(o.alertas||{}).correo_pendiente||0)+'</div>'+
     '<div class="box"><h4>Planos</h4>'+pl+'</div>'+
@@ -195,13 +195,13 @@ function detalle(o){
 function tablaContratas(O){
   var by={};
   O.forEach(function(o){ (o.contratas||[]).forEach(function(c){ var b=by[c.contratista]=by[c.contratista]||{ n:c.contratista, obras:[], p:[], co:[], epp:[], bpm:[], dias:0 };
-    b.obras.push(o.nombre_proyecto); b.p.push(c.promedio); b.co.push(c.coordinacion); b.epp.push(c.epp); b.bpm.push(c.bpm); b.dias+=c.dias||0; }); });
-  var L=Object.keys(by).map(function(k){ var b=by[k]; return { n:b.n, obras:b.obras, p:avg(b.p), co:avg(b.co), epp:avg(b.epp), bpm:avg(b.bpm), dias:b.dias }; })
+    b.obras.push(o.nombre_proyecto); b.p.push(c.promedio); b.co.push(c.coordinacion); b.epp.push(c.epp); b.bpm.push(c.bpm); (b.ord=b.ord||[]).push(c.orden); b.dias+=c.dias||0; }); });
+  var L=Object.keys(by).map(function(k){ var b=by[k]; return { n:b.n, obras:b.obras, p:avg(b.p), co:avg(b.co), epp:avg(b.epp), bpm:avg(b.bpm), ord:avg(b.ord||[]), dias:b.dias }; })
     .sort(function(a,b){ return (a.p==null)-(b.p==null) || (a.p||0)-(b.p||0); });
   return '<div class="card"><div class="card-h"><div><h2>Contratas · evaluación diaria</h2><p>Promedio del periodo en todas las obras, de la más baja a la más alta</p></div></div>'+
-    '<div class="tw"><table><thead><tr><th>Contrata</th><th>Obras</th><th>Promedio</th><th>Coordinación</th><th>EPP\'s</th><th>BPM</th><th>Evaluaciones</th></tr></thead><tbody>'+
-    (L.map(function(c){ return '<tr><td class="obra">'+esc(c.n)+'</td><td>'+c.obras.map(esc).join(', ')+'</td><td class="n"><span class="pill '+tonoEval(c.p)+'">'+n1(c.p)+'</span></td><td class="n">'+n1(c.co)+'</td><td class="n">'+n1(c.epp)+'</td><td class="n">'+n1(c.bpm)+'</td><td class="n">'+c.dias+'</td></tr>'; }).join('')
-      ||'<tr><td colspan="7" class="empty">Todavía no hay evaluaciones de contratas en el periodo.</td></tr>')+'</tbody></table></div></div>';
+    '<div class="tw"><table><thead><tr><th>Contrata</th><th>Obras</th><th>Promedio</th><th>Coordinación</th><th>EPP\'s</th><th>BPM</th><th>Orden y limpieza</th><th>Evaluaciones</th></tr></thead><tbody>'+
+    (L.map(function(c){ return '<tr><td class="obra">'+esc(c.n)+'</td><td>'+c.obras.map(esc).join(', ')+'</td><td class="n"><span class="pill '+tonoEval(c.p)+'">'+n1(c.p)+'</span></td><td class="n">'+n1(c.co)+'</td><td class="n">'+n1(c.epp)+'</td><td class="n">'+n1(c.bpm)+'</td><td class="n">'+n1(c.ord)+'</td><td class="n">'+c.dias+'</td></tr>'; }).join('')
+      ||'<tr><td colspan="8" class="empty">Todavía no hay evaluaciones de contratas en el periodo.</td></tr>')+'</tbody></table></div></div>';
 }
 function tablaDest(){
   var R=S.dest;
