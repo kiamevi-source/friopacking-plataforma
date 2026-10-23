@@ -4161,10 +4161,11 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
               <div class="rd-monto-k"><span>Avanzado</span><b id="rd-monto-av">$0</b></div>
               <div class="rd-monto-k"><span>Hoy</span><b id="rd-monto-hoy">+$0</b></div>
               <div class="rd-monto-k"><span>Por avanzar</span><b id="rd-monto-pend">$0</b></div>
-              <div class="rd-monto-k"><span>Costo total de las tareas</span><b id="rd-monto-tot">$0</b></div>
+              <div class="rd-monto-k"><span>Venta de las tareas (sin servicios)</span><b id="rd-monto-tot">$0</b></div>
               <div class="rd-monto-track"><i id="rd-monto-bar" style="width:0%"></i></div>
-              <p>Cada tarea pesa lo que cuesta su partida (costo de NISIRA). Escribe en cada tarea cuánto se hizo hoy, en su unidad.</p>
+              <p>Cada tarea pesa lo que vale su partida (precio de venta de NISIRA). Escribe en cada tarea cuánto se hizo hoy, en su unidad.</p>
               <p id="rd-monto-serv" style="display:none"></p>
+              <p id="rd-monto-proy" style="display:none"></p>
             </div>
             <div id="alerta-diferencia" class="hidden" style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#991b1b;font-weight:600;">⚠ Diferencia detectada entre avance supervisor y contrata. Revisar.</div>
             <label id="rd-partida-box" class="rd-partida hidden"><input type="checkbox" id="rd-partida-chk" onchange="rdTogglePartida(this.checked)">
@@ -5632,11 +5633,13 @@ async function cargarGantt() {
     if (loadEl) loadEl.classList.add('hidden');
 
     _ganttState.tasks = rows || [];
-    // Costo de la partida (NISIRA) para mostrar precio y ponderar por costo (Kiara, 20-oct-2026)
+    // Precio de VENTA de la partida (NISIRA) para mostrar precio unitario (Kiara, 23-oct-2026: antes era el costo).
+    // `_costo`/`_cu` conservan el nombre pero ya traen venta; la venta unitaria = venta ÷ metrado.
     try {
-      const cs = await sbFetch(`/rest/v1/v_gantt_supervisor?cod_proyecto=eq.${encodeURIComponent(cod)}&presupuesto_id=not.is.null&select=id,costo_total,costo_unit,es_licitacion`);
+      const cs = await sbFetch(`/rest/v1/v_gantt_supervisor?cod_proyecto=eq.${encodeURIComponent(cod)}&presupuesto_id=not.is.null&select=id,venta_total,cantidad_total,es_licitacion`);
       const byId = {}; (cs||[]).forEach(c => { byId[c.id] = c; });
-      (rows||[]).forEach(t => { const c = byId[t.id]; if (c){ t._costo = Number(c.costo_total)||0; t._cu = Number(c.costo_unit)||0; t._lic = !!c.es_licitacion; } });
+      (rows||[]).forEach(t => { const c = byId[t.id]; if (c){ const v = Number(c.venta_total)||0, q = Number(c.cantidad_total)||0;
+        t._costo = v; t._cu = q > 0 ? v / q : 0; t._lic = !!c.es_licitacion; } });
     } catch(e) { /* sin costos: el Gantt sigue en % */ }
 
     // Auto-categorizar tareas viejas (importadas antes de Phase 4B) si no tienen categoría
@@ -10301,14 +10304,17 @@ async function cargarHitosReporte() {
   if (cod) {
     try {
       // Trae las TAREAS del cronograma (no solo milestones): hitos primero, luego actividades, ordenadas por fecha.
-      // Sale de `v_gantt_supervisor` para traer, junto a la tarea, el costo de su partida en NISIRA:
-      // el avance se captura en UNIDADES y cada tarea pesa según lo que cuesta (decisión de Kiara, 20-oct-2026).
-      const rows = await sbFetch(`/rest/v1/v_gantt_supervisor?cod_proyecto=eq.${encodeURIComponent(cod)}&select=id,partida_item,presupuesto_id,nombre_tarea,pct_avance,es_hito,nivel,duracion_dias,fecha_inicio_base,unidad,cantidad_total,cantidad_ejecutada,costo_total,costo_unit,es_licitacion,subcategoria&order=es_hito.desc,fecha_inicio_base.asc&limit=1000`);
-      rdServExcluidos = 0;
+      // Sale de `v_gantt_supervisor` para traer, junto a la tarea, el precio de su partida en NISIRA:
+      // el avance se captura en UNIDADES y cada tarea pesa según lo que vale (decisión de Kiara, 20-oct-2026).
+      // 23-oct-2026 (Kiara): el peso es el precio de VENTA (venta_total), ya no el costo. El campo interno
+      // sigue llamándose `costo`/`cu` para no tocar el resto; cu = venta ÷ metrado.
+      const rows = await sbFetch(`/rest/v1/v_gantt_supervisor?cod_proyecto=eq.${encodeURIComponent(cod)}&select=id,partida_item,presupuesto_id,nombre_tarea,pct_avance,es_hito,nivel,duracion_dias,fecha_inicio_base,unidad,cantidad_total,cantidad_ejecutada,venta_total,es_licitacion,subcategoria&order=es_hito.desc,fecha_inicio_base.asc&limit=1000`);
+      rdServExcluidos = 0; rdServExcluidosVenta = 0;
       (rows||[]).forEach(r => {
         // Los SERVICIOS (partidas de instalación / mano de obra que van a licitación) ya no son tareas
         // del reporte diario: se ven y se gestionan en Licitaciones (Kiara, 22-oct-2026).
-        if (r.es_licitacion && !r.es_hito){ rdServExcluidos++; return; }
+        // Su venta se guarda aparte para mostrarla junto al total del proyecto (Kiara, 23-oct-2026).
+        if (r.es_licitacion && !r.es_hito){ rdServExcluidos++; rdServExcluidosVenta += Number(r.venta_total)||0; return; }
         const pct = Number(r.pct_avance)||0;
         const tot = Number(r.cantidad_total)||0;
         const unidad = (r.unidad||'').trim();
@@ -10319,7 +10325,7 @@ async function cargarHitosReporte() {
         rdHitos.push({ id:r.id, item:r.partida_item||null, nombre:r.nombre_tarea, pct_actual:pct, pct_nuevo:pct, manual:false,
           es_hito:!!r.es_hito, nivel:r.nivel, dur:Number(r.duracion_dias)||0, hoy:false, manana:false,
           unidad: enUnidades ? unidad : null, cant_total: enUnidades ? tot : null, cant_actual:cant, hoy_cant:0,
-          costo:Number(r.costo_total)||0, cu:Number(r.costo_unit)||0, lic:!!r.es_licitacion,
+          costo:Number(r.venta_total)||0, cu: tot > 0 ? (Number(r.venta_total)||0) / tot : 0, lic:!!r.es_licitacion,
           presupuesto_id:r.presupuesto_id||null, adjudicado:false, lic_estado:null,
           familia:(r.subcategoria||'').trim() || null });
       });
@@ -10343,6 +10349,7 @@ function eliminarHito(i){ if(rdHitos[i].manual) rdHitos.splice(i,1); renderHitos
 let _hitoFilter = '';
 let _hitoFam = '';          // familia elegida (rubro de NISIRA: Obras Civiles, Instalación Eléctrica…)
 let rdServExcluidos = 0;    // servicios que se quitaron de la lista (viven en Licitaciones)
+let rdServExcluidosVenta = 0; // su precio de venta: no suma al avance, se muestra aparte con el total del proyecto
 function rdHitoFilter(v){ _hitoFilter = v||''; renderHitos(); }
 function rdHitoFam(f){ _hitoFam = (_hitoFam === f) ? '' : f; renderHitos(); }
 const RD_SIN_FAM = 'Otras tareas';
@@ -10425,7 +10432,7 @@ function rdHitoCardHTML(h, i, cuentan){
     // Tarea con unidad y metrado: se reporta CUÁNTO se hizo hoy en su unidad (m, m², und…).
     if (h.unidad){
       const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-      const tag = esTitulo ? `<span class="rd-hito-tag gris">${h.costo>0?'Título':'Sin costo'} · no suma</span>` : '';
+      const tag = esTitulo ? `<span class="rd-hito-tag gris">${h.costo>0?'Título':'Sin precio'} · no suma</span>` : '';
       const LIC_TXT = { pendiente:'Por licitar', en_licitacion:'En licitación', adjudicado:'Adjudicado', contratado:'Contratado', cancelado:'Licitación cancelada' };
       const licTxt = h.ct ? ((h.ct.sugerida ? (h.ct.parcial ? 'Sugerido en parte' : 'Sugerido') : 'Contratado') + (h.ct.contratista ? ' · ' + esc(h.ct.contratista) : ''))
                           : (LIC_TXT[h.lic_estado] || 'Por licitar');
@@ -10686,6 +10693,7 @@ function rdHitoCant(i, val){
 // REGLA NUEVA (Kiara, 20-oct-2026): si el cronograma trae el costo de sus partidas (NISIRA),
 // cuentan las tareas con costo y cada una PESA SU COSTO:
 //   % avance = Σ (% tarea × costo tarea) ÷ Σ costo tarea  =  $ avanzados ÷ $ total de las tareas.
+// 23-oct-2026 (Kiara): "costo" aquí es el PRECIO DE VENTA de la partida (venta_total), no el costo.
 // Los títulos del EDT vienen con costo 0, así que quedan fuera solos (sin contar doble).
 // Sin costos (cronograma viejo, no NISIRA) se mantiene la regla anterior por duración.
 function rdHayCostos(){ return rdHitos.some(h => !h.es_hito && h.costo > 0); }
@@ -10703,7 +10711,7 @@ function rdAvanceRealFuente(){
   if (reales.length && rdHayCostos()){
     const m = rdAvanceMonto();
     return { valor: m.total > 0 ? m.avanzado / m.total * 100 : 0, fuente:'costo',
-             texto:'· ponderado por costo sobre ' + reales.length + ' tarea' + (reales.length===1?'':'s') + ' del cronograma' };
+             texto:'· ponderado por precio de venta sobre ' + reales.length + ' tarea' + (reales.length===1?'':'s') + ' del cronograma' };
   }
   if (reales.length){
     let num = 0, den = 0;
@@ -10751,6 +10759,16 @@ function rdPintarMonto(){
         + `Su avance lo reportas tú en cada tarea; la adjudicación es solo su estado.`
       : '';
     sv.style.display = m.servN ? '' : 'none';
+  }
+  // Servicios a licitación (fuera del avance, viven en Licitaciones) y total del proyecto = tareas + servicios
+  // (Kiara, 23-oct-2026: el reporte sigue sin servicios, pero se ven aparte y el total cuadra con NISIRA).
+  const pr = document.getElementById('rd-monto-proy');
+  if (pr){
+    pr.innerHTML = rdServExcluidosVenta > 0
+      ? `<b>Servicios a licitación</b> (no suman al avance, están en Licitaciones): <b>${rdMoney(rdServExcluidosVenta)}</b>`
+        + ` · <b>Total del proyecto: ${rdMoney(m.total + rdServExcluidosVenta)}</b>`
+      : '';
+    pr.style.display = rdServExcluidosVenta > 0 ? '' : 'none';
   }
   const bar = document.getElementById('rd-monto-bar'); if (bar) bar.style.width = (m.total > 0 ? Math.min(100, m.avanzado / m.total * 100) : 0) + '%';
   const b = document.getElementById('rd-avance-monto'); if (b) b.textContent = ' · ' + rdMoney(m.avanzado);
