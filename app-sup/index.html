@@ -4128,7 +4128,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
               <circle class="trk" cx="60" cy="60" r="52"/>
               <circle class="bar" id="rd-ring-bar" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7"/>
             </svg>
-            <div class="rd-ring-lbl"><b id="rd-ring-pct">0%</b><span>Completo</span></div>
+            <div class="rd-ring-lbl"><b id="rd-ring-pct">0%</b><span>Reporte llenado</span></div>
           </div>
         </div>
 
@@ -4327,7 +4327,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
               <svg viewBox="0 0 38 38"><circle class="t" cx="19" cy="19" r="15"/><circle class="b" id="rd-mini-bar" cx="19" cy="19" r="15" stroke-dasharray="94.2" stroke-dashoffset="94.2"/></svg>
               <b id="rd-mini-pct">0%</b>
             </div>
-            <span>Reporte <strong id="rd-save-hint" style="color:var(--navy-800);">en progreso</strong></span>
+            <span>Reporte llenado · <strong id="rd-save-hint" style="color:var(--navy-800);">en progreso</strong></span>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-outline btn-sm" onclick="cargarUltimoReporte()"><i data-lucide="history" class="ri" style="width:14px;height:14px;"></i> Cargar último</button>
@@ -10092,13 +10092,15 @@ function rdToggleRepro(on){
 function rdComputeCompleteness(){
   const g = id => document.getElementById(id);
   let personal = 0; ESPECIALIDADES.forEach(e => personal += parseInt(g('rd-ob-'+e)?.value) || 0);
+  if (typeof rdEspTotalPersonal === 'function') personal = Math.max(personal, rdEspTotalPersonal());   // el personal hoy vive en la tarjeta de especialidades
   const checks = [
     personal > 0,
     !!(g('rd-plan') && g('rd-plan').value),
-    !!(g('rd-real') && g('rd-real').value),
+    // (23-oct-2026) Antes contaba «% Avance Real» como lleno aunque fuera 0.0: el anillo arrancaba en 13%
+    // y se confundía con avance de obra. El avance real sale solo; lo que cuenta es haber reportado tareas (abajo).
     !!(g('rd-entrada') && g('rd-entrada').value) && !!(g('rd-salida') && g('rd-salida').value),
     rdFotos.length > 0,
-    rdHitos.length ? rdHitos.some(h => (h.pct_nuevo||0) !== (h.pct_actual||0) || !!h.hoy_cant) : !!(g('rd-real') && g('rd-real').value),
+    rdHitos.length ? rdHitos.some(h => (h.pct_nuevo||0) !== (h.pct_actual||0) || !!h.hoy_cant || h.hoy) : (parseFloat(g('rd-real')?.value) > 0),
     rdEvalCompleta(),
     !!(g('rd-firma-nombre') && g('rd-firma-nombre').value.trim())
   ];
@@ -10188,7 +10190,7 @@ function rdUpdateRing(){
   const lbl = document.getElementById('rd-ring-pct'); if (lbl) lbl.textContent = pct + '%';
   const mb = document.getElementById('rd-mini-bar'); if (mb) mb.style.strokeDashoffset = 94.2 * (1 - pct/100);
   const mp = document.getElementById('rd-mini-pct'); if (mp) mp.textContent = pct + '%';
-  const hint = document.getElementById('rd-save-hint'); if (hint) hint.textContent = pct >= 90 ? 'listo para enviar' : pct >= 45 ? 'en progreso' : 'iniciando';
+  const hint = document.getElementById('rd-save-hint'); if (hint) hint.textContent = pct >= 90 ? 'listo para enviar' : pct >= 45 ? 'en progreso' : pct > 0 ? 'iniciando' : 'sin empezar';
   rdRenderPlazos();
   // Estado operativo en el hero según avance vs plan + riesgos
   const plan = parseFloat(document.getElementById('rd-plan')?.value) || 0;
