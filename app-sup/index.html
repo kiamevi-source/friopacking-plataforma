@@ -4964,7 +4964,21 @@ async function doLogin() {
   }
 }
 
-function doLogout() {
+// Aviso fijo cuando la sesión venció: lo escrito no se pierde (queda en el equipo y sube al volver a entrar)
+function rdSesionVencida(on){
+  let b = document.getElementById('rd-sesion-vencida');
+  if (!on){ if (b) b.remove(); return; }
+  if (b) return;
+  b = document.createElement('div'); b.id = 'rd-sesion-vencida';
+  b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:84px;z-index:9999;max-width:520px;width:calc(100% - 32px);background:#7f1d1d;color:#fff;border-radius:12px;padding:12px 14px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;gap:10px;align-items:center;';
+  b.innerHTML = '<span style="flex:1"><b>Tu sesión venció.</b> Lo que escribiste está guardado en este equipo y se sube solo cuando vuelvas a entrar.</span><button style="border:none;border-radius:8px;padding:7px 12px;font-weight:800;cursor:pointer" onclick="doLogout()">Volver a entrar</button>';
+  document.body.appendChild(b);
+}
+async function doLogout() {
+  // Antes de salir se guarda lo que esté escrito: en el equipo siempre, y en el servidor si hay señal
+  // (con tope de 8 s para no dejar colgado el botón). Los borradores fp_rd_* NO se borran al salir.
+  try { if (currentProyecto) { _mirrorLocal(); if (_rdDirty && navigator.onLine) await Promise.race([_rdGuardarAhora(), new Promise(r => setTimeout(r, 8000))]); } } catch(e){}
+  rdSesionVencida(false);
   localStorage.removeItem('sb_token');
   localStorage.removeItem('sb_refresh');
   localStorage.removeItem('sb_user_fallback');
@@ -9981,6 +9995,7 @@ let _rdCargado = false;
 async function cargarReporteDiario() {
   if (!currentProyecto) return;
   _autosaveReady = false;
+  _rdEnviado = false; _rdFirmaUrlPrev = null; _rdFirmaNombrePrev = null; _rdDirty = false;
   // Fecha por defecto = hoy
   const fEl = document.getElementById('rd-fecha');
   if (fEl && !fEl.value) fEl.value = new Date().toISOString().split('T')[0];
@@ -11589,13 +11604,24 @@ function rvalRender(){
     html+=`</div>`;
   });
   m.innerHTML=html;
+  // Devuelve los montos que se escribieron y no se guardaron (refresh, sesión vencida…)
+  try { const borr = JSON.parse(localStorage.getItem(_rvalKey()) || '{}');
+    document.querySelectorAll('.rval-mes-in').forEach(inp => { if (borr[inp.dataset.per] != null) inp.value = borr[inp.dataset.per]; });
+    if (Object.keys(borr).length && window._rvalAviso !== _rvalKey()){ window._rvalAviso = _rvalKey(); showToast('Recuperé montos de proyección sin guardar · revisa y pulsa Guardar proyección', 4200); }
+  } catch(e){}
   rvalPctVivo();
   if(window.lucide) lucide.createIcons();
 }
 // Presupuesto contra el que se mide el %: el de la valorización de Gerencia.
 function rvalBase(){ return parseFloat(rdValG && rdValG.presupuesto) || 0; }
+// Montos escritos que aún no se guardaron con el botón: quedan en el equipo para no perderlos (23-oct-2026)
+function _rvalKey(){ return 'fp_rval_' + String(currentProyecto?.cod || currentProyecto?.nombre || '').replace(/[^a-zA-Z0-9._-]/g,'_'); }
 function rvalPctVivo(){
   const base = rvalBase(); let tot = 0;
+  try {
+    const borr = {}; document.querySelectorAll('.rval-mes-in').forEach(inp => { if (inp.value !== '' && String(parseFloat(inp.value)) !== String(parseFloat(inp.dataset.prev))) borr[inp.dataset.per] = inp.value; });
+    if (Object.keys(borr).length) localStorage.setItem(_rvalKey(), JSON.stringify(borr)); else localStorage.removeItem(_rvalKey());
+  } catch(e){}
   document.querySelectorAll('.rval-mes-in').forEach(inp => {
     const n = parseFloat(inp.value) || 0; tot += n;
     const el = document.getElementById('rval-pct-' + inp.dataset.per);
@@ -11621,6 +11647,7 @@ async function rvalGuardar(){
       if(vigentePrev) await sbFetch(`/rest/v1/proyecto_valorizaciones?id=eq.${vigentePrev.id}`,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({estado:'replanteado'})});
       await sbFetch('/rest/v1/proyecto_valorizaciones',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({ cod_proyecto:cod, nombre_proyecto:currentProyecto?.nombre||null, periodo:per, monto_proyectado:monto, pct: base>0 ? Math.round(monto/base*1000)/10 : null, fecha_proyeccion: new Date().toISOString().slice(0,10), version:ver, estado:'vigente', supervisor:currentProyecto?.supervisor||currentUser?.nombre||null })});
     }
+    try { localStorage.removeItem(_rvalKey()); } catch(e){}
     showToast(cambios.length===1 ? 'Proyección guardada ✓' : cambios.length + ' meses guardados ✓');
     await rvalLoad(cod);
   }catch(e){ showToast('Error al guardar proyección'); }
@@ -15940,6 +15967,11 @@ async function subirFirma() {
 // Rellena el formulario con un reporte guardado (usado por "cargar último", "de hoy" y multi-dispositivo)
 async function hidratarReporte(r, cod){
   const g = id => document.getElementById(id);
+  // Solo el reporte del MISMO día marca «ya enviado» (cargar el último de otro día no)
+  if (r.fecha_reporte && r.fecha_reporte === (g('rd-fecha')?.value || '')){
+    _rdEnviado = r.enviado === true || r.es_draft === false;
+    _rdFirmaUrlPrev = r.firma_url || null; _rdFirmaNombrePrev = r.firma_nombre || null;
+  }
   if (g('rd-plan')) g('rd-plan').value = r.pct_planificado || '';
   if (g('rd-real')) g('rd-real').value = r.pct_ejecutado || '';
   if (r.jornada_entrada && g('rd-entrada')) g('rd-entrada').value = r.jornada_entrada;
@@ -15983,6 +16015,7 @@ async function hidratarReporte(r, cod){
     if (typeof rdToggleRepro==='function') rdToggleRepro(true);
   } else if (typeof rdToggleRepro==='function') { if (g('rd-repro-chk')) g('rd-repro-chk').checked = false; rdToggleRepro(false); }
   rdEvalLoad(r.evaluaciones);
+  if (r.firma_nombre && g('rd-firma-nombre') && !g('rd-firma-nombre').value) g('rd-firma-nombre').value = r.firma_nombre;
   if (typeof rdPlanBars==='function') rdPlanBars();
   if (typeof rdUpdateRing==='function') rdUpdateRing();
 }
@@ -16014,6 +16047,10 @@ async function cargarReporteDeHoy() {
   const localNewer = (local && serverRow && serverRow.updated_at) ? (local.ts > Date.parse(serverRow.updated_at)) : !!local;
   if (local && (fetchFailed || local.pending || !serverRow || localNewer)) {
     await hidratarReporte(local.payload, cod);
+    // El borrador local puede ser anterior al envío: si el servidor ya lo tiene enviado, se respeta
+    if (serverRow && (serverRow.enviado === true || serverRow.es_draft === false)){
+      _rdEnviado = true; _rdFirmaUrlPrev = serverRow.firma_url || _rdFirmaUrlPrev; _rdFirmaNombrePrev = serverRow.firma_nombre || _rdFirmaNombrePrev;
+    }
     if (local.pending) setSyncStatus('error', navigator.onLine ? 'Pendiente de subir' : 'Sin señal · guardado aquí');
     return true;
   }
@@ -16060,8 +16097,12 @@ async function guardarReporte(esDraft = false, silent = false) {
       return;
     }
   }
+  // Un reporte YA ENVIADO que se sigue editando no vuelve a borrador con el autoguardado:
+  // se actualiza como enviado y conserva su firma (23-oct-2026).
+  if (esDraft && _rdEnviado){ esDraft = false; if (!firmaUrl) firmaUrl = _rdFirmaUrlPrev || window._lastFirmaUrl || null; }
   window._lastFirmaUrl = firmaUrl;
   const payload = _collectReportePayload(esDraft, firmaUrl);
+  if (_rdEnviado){ payload.enviado = true; payload.firmado = true; if (!payload.firma_nombre && _rdFirmaNombrePrev) payload.firma_nombre = _rdFirmaNombrePrev; }
   _saveDraftLocal(payload, true);   // espejo local ANTES de subir → si se refresca o no hay señal, no se pierde
 
   try {
@@ -16073,11 +16114,16 @@ async function guardarReporte(esDraft = false, silent = false) {
     await _persistirExtras(payload);
     _draftMarcarExtras(payload);   // ya se aplicaron: la cola no debe repetirlos
     _saveDraftLocal(payload, false);  // confirmado en el servidor
+    _rdDirty = false; rdSesionVencida(false);
+    if (!esDraft){ _rdEnviado = true; if (firmaUrl) _rdFirmaUrlPrev = firmaUrl; }
     if(!silent) showToast(esDraft ? 'Borrador guardado ✓' : 'Reporte guardado ✓');
     setSyncStatus('ok', silent ? 'Autoguardado ✓' : 'Guardado ✓');
     if(!silent) await cargarDashboard();
   } catch(e) {
     _saveDraftLocal(payload, true);   // queda PENDIENTE en este equipo; se subirá al reconectar
+    // Sesión vencida (token que ya no se pudo renovar): lo escrito está a salvo en el equipo,
+    // pero hay que decirlo claro para que el supervisor vuelva a entrar (Kiara, 23-oct-2026).
+    if (/JWT|401|PGRST30[13]|invalid claim|not authorized/i.test(String(e && e.message || ''))) rdSesionVencida(true);
     const off = !navigator.onLine;
     setSyncStatus('error', off ? 'Sin señal · guardado aquí' : 'Error al guardar');
     if(!silent) showToast(off
@@ -16167,7 +16213,7 @@ function _collectReportePayload(esDraft, firmaUrl){
     equipos_dia: rdEquiposPayload(),
     fotos: rdFotos,
     fotos_count: rdFotos.length,
-    firma_url: firmaUrl,
+    firma_url: firmaUrl || (_rdEnviado ? _rdFirmaUrlPrev : null),
     firma_nombre: document.getElementById('rd-firma-nombre').value||null,
     meta_mes: metaMes,
     facturado_codigo: facturado,
@@ -16177,9 +16223,10 @@ function _collectReportePayload(esDraft, firmaUrl){
     requerimientos: rdReqPayload(),
     planos_dia: (rdPlanos && !rdPlanos.error) ? rdPlanos : null,
     sin_valorizar: rdValSinValorizar,
-    es_draft: esDraft,
-    firmado: !esDraft && (!!firmaUrl || _firmaDirty),   // firmado aunque la imagen suba después
-    enviado: !esDraft
+    // Si el reporte de hoy ya se envió, cualquier guardado posterior lo mantiene enviado y con su firma
+    es_draft: esDraft && !_rdEnviado,
+    firmado: _rdEnviado || (!esDraft && (!!firmaUrl || _firmaDirty)),   // firmado aunque la imagen suba después
+    enviado: !esDraft || _rdEnviado
   };
 }
 
@@ -16403,17 +16450,50 @@ function _payloadParaServidor(payload){
 
 // ── Auto-guardado (multi-dispositivo): guarda borrador solo mientras se captura ──
 let _autosaveReady = false, _autosaveTimer = null;
+let _rdDirty = false;          // hay cambios que todavía no llegaron al servidor
+let _rdEnviado = false, _rdFirmaUrlPrev = null, _rdFirmaNombrePrev = null;   // el reporte de hoy ya se envió
+let _rdGuardando = false;
+function _rdEnCaptura(){
+  return !!(_autosaveReady && currentProyecto
+    && document.getElementById('rd-pane-cap')?.classList.contains('on')        // solo modo Capturar
+    && document.getElementById('rd-tipo-diario')?.classList.contains('on'));   // solo Reporte Diario
+}
 function scheduleAutosave(){
-  if (!_autosaveReady || !currentProyecto) return;
-  if (!document.getElementById('rd-pane-cap')?.classList.contains('on')) return;      // solo modo Capturar
-  if (!document.getElementById('rd-tipo-diario')?.classList.contains('on')) return;   // solo Reporte Diario
+  if (!_rdEnCaptura()) return;
+  _rdDirty = true;
   try{ _mirrorLocal(); }catch(e){}   // espejo local inmediato en cada cambio → un refresh no pierde nada
   clearTimeout(_autosaveTimer);
   setSyncStatus('syncing','Guardando…');
-  _autosaveTimer = setTimeout(()=>{ guardarReporte(true, true); }, 6000);
+  _autosaveTimer = setTimeout(()=>{ _rdGuardarAhora(); }, 6000);
+}
+// Sube el borrador ya (sin esperar el temporizador). Lo usan el guardado periódico, «Salir» y el
+// paso a segundo plano del celular. Si falla, el borrador queda pendiente en el equipo.
+async function _rdGuardarAhora(){
+  if (!currentProyecto || _rdGuardando) return;
+  clearTimeout(_autosaveTimer);
+  _rdGuardando = true;
+  try { await guardarReporte(true, true); } catch(e){}
+  finally { _rdGuardando = false; }
 }
 document.addEventListener('input',  (e)=>{ if (e.target.closest && e.target.closest('#rd-tipo-diario')) scheduleAutosave(); });
 document.addEventListener('change', (e)=>{ if (e.target.closest && e.target.closest('#rd-tipo-diario')) scheduleAutosave(); });
+// Botones que cambian el reporte sin disparar input/change (estrellas, Hoy/Mañana, agregar
+// restricción, especialidad/área, quitar foto…): también cuentan como cambio (23-oct-2026).
+document.addEventListener('click',  (e)=>{
+  if (!e.target.closest) return;
+  const b = e.target.closest('#rd-tipo-diario button, #rd-tipo-diario .rd-switch'); if (!b) return;
+  // Guardar/enviar, PDF, cargar último, modos y tipos de reporte NO son cambios del contenido
+  if (b.closest('.rd-savebar, .rd-modes, .rd-tipos, #rd-pane-ver, #rd-pane-his')) return;
+  setTimeout(scheduleAutosave, 0);
+});
+// Red de seguridad (Kiara, 23-oct-2026: «que se guarde cada minuto»): cada 60 s, si hay cambios
+// sin subir, se guarda el borrador. Al pasar la app a segundo plano (bloquear el celular, cambiar
+// de app) se guarda en el acto: los celulares cierran pestañas sin avisar.
+setInterval(()=>{ if (_rdDirty && _rdEnCaptura()) { try{ _mirrorLocal(); }catch(e){} if (navigator.onLine) _rdGuardarAhora(); } }, 60000);
+document.addEventListener('visibilitychange', ()=>{
+  if (document.hidden && _rdDirty && currentProyecto){ try{ _mirrorLocal(); }catch(e){} if (navigator.onLine) _rdGuardarAhora(); }
+});
+window.addEventListener('pagehide', ()=>{ if (currentProyecto){ try{ _mirrorLocal(); }catch(e){} } });
 
 // Efectos secundarios del reporte que NO viven en la fila de `reportes`:
 // el % de avance de las tareas del Gantt y las restricciones estructuradas.
