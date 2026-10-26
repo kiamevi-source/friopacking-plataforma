@@ -4172,7 +4172,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
               <p id="rd-monto-proy" style="display:none"></p>
             </div>
             <label id="rd-partida-box" class="rd-partida hidden"><input type="checkbox" id="rd-partida-chk" onchange="rdTogglePartida(this.checked)">
-              <span><b>Punto de partida.</b> Es la primera vez que esta obra usa el reporte por unidades: busca cada tarea y escribe cuánto lleva <b>acumulado a la fecha</b>; las que llenes se quedan a la vista. Este avance no cuenta como trabajo de hoy. Desmárcalo para reportar solo lo de hoy.</span></label>
+              <span><b>Punto de partida.</b> Márcalo para escribir en cada tarea cuánto lleva <b>acumulado a la fecha</b> (lo ya hecho antes de usar este reporte). Lo que ya está registrado no se borra: las tareas que dejes vacías se quedan como están. Este avance no cuenta como trabajo de hoy. Desmárcalo para reportar solo lo de hoy.</span></label>
             <div id="rd-fam-chips" class="rd-fam-chips"></div>
             <input id="rd-hito-search" type="search" placeholder="Buscar tarea dentro de la familia (o en todas)…" oninput="rdHitoFilter(this.value)" style="width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:8px 11px;font-size:13px;margin-bottom:10px;background:var(--surface-1);color:var(--text-1);">
             <div id="rd-hitos-list" class="rd-prog"></div>
@@ -10353,8 +10353,11 @@ async function cargarHitosReporte() {
       // PUNTO DE PARTIDA (Kiara, 20-oct-2026): la primera vez que una obra usa el reporte nuevo, el supervisor
       // declara el avance ACUMULADO con el que arranca (no se infiere de reportes viejos). Se activa solo si
       // ninguna tarea en unidades tiene avance todavía; el supervisor puede apagarlo.
+      // 26-oct-2026 (Kiara): la casilla queda SIEMPRE disponible (antes desaparecía apenas había algún avance
+      // y no se podía declarar lo acumulado de las demás tareas). Marcada por defecto solo si no hay avance.
+      // Activarla no borra nada: en ese modo lo escrito es el acumulado y vacío = sin cambio.
       rdModoPartida = rdHayCostos() && !rdHitos.some(h => h.unidad && (h.cant_actual||0) > 0);
-      rdPartidaDisponible = rdModoPartida;
+      rdPartidaDisponible = rdHayCostos();
     } catch(e){ /* sin gantt */ }
   }
   renderHitos();
