@@ -11320,10 +11320,22 @@ function rdEspCatLabel(key){ const c=ESP_CAT.find(x=>x.key===key); return c?c.la
 function rdEspTotalPersonal(){ return rdEsp.reduce((a,r)=>a+(parseInt(r.personal)||0),0); }
 // Global = promedio SIMPLE de las especialidades. Antes era ponderado por peso,
 // pero los pesos nunca sumaban 100% y el número terminaba engañando (Kiara, 18-ago).
+// Una especialidad puede tener varias contratas (varias filas con el mismo `esp`):
+// para el promedio cuenta una vez por especialidad, con el mayor avance de sus filas.
 function rdEspGlobalAvance(){
   if(!rdEsp.length) return 0;
-  const suma = rdEsp.reduce((a,r)=> a + (parseFloat(r.avance)||0), 0);
-  return suma / rdEsp.length;
+  const porEsp = {};
+  rdEsp.forEach(r=>{ porEsp[r.esp] = Math.max(porEsp[r.esp]||0, parseFloat(r.avance)||0); });
+  const v = Object.values(porEsp);
+  return v.reduce((a,b)=>a+b,0) / v.length;
+}
+// Fila de rdEsp que corresponde a un dato guardado {esp, contrata}: primero la de la
+// misma contrata, luego una de esa especialidad sin contrata aún. `usadas` evita
+// que dos datos caigan en la misma fila.
+function rdEspMatch(a, usadas){
+  const ct = (a.contrata||'').trim().toLowerCase();
+  return rdEsp.find(r=>!usadas.has(r) && r.esp===a.esp && (r.contrata||'').trim().toLowerCase()===ct)
+      || rdEsp.find(r=>!usadas.has(r) && r.esp===a.esp && !(r.contrata||'').trim());
 }
 
 async function rdEspLoad(cod, reportRow){
@@ -11338,10 +11350,12 @@ async function rdEspLoad(cod, reportRow){
     try{
       const prev = await sbFetch(`/rest/v1/v_reportes?cod_proyecto=eq.${encodeURIComponent(cod)}&es_draft=is.false&order=fecha_reporte.desc&limit=1&select=fecha_reporte,avance_especialidades`);
       const ayer = prev && prev[0] && prev[0].avance_especialidades;
+      const usadas = new Set();
       if (Array.isArray(ayer)) ayer.forEach(a=>{
         if(!a || !a.esp) return;
-        let row = rdEsp.find(r=>r.esp===a.esp);
-        if(!row){ row = { esp:a.esp, label:a.label||rdEspCatLabel(a.esp), contrata:'', personal:0, avance:0 }; rdEsp.push(row); }
+        let row = rdEspMatch(a, usadas);
+        if(!row){ row = { esp:a.esp, label:a.label||rdEspCatLabel(a.esp), contrata:'', personal:0, avance:0 }; rdEspInsert(row); }
+        usadas.add(row);
         if(!row.contrata && a.contrata) row.contrata = a.contrata;      // la contrata sí se hereda
         if(!row.personal) row.personal = parseInt(a.personal)||0;        // el personal también
       });
@@ -11350,10 +11364,12 @@ async function rdEspLoad(cod, reportRow){
   }
 
   const av = reportRow && reportRow.avance_especialidades;
+  const usadasRep = new Set();
   if (Array.isArray(av)) av.forEach(a=>{
-    const row=rdEsp.find(r=>r.esp===a.esp);
-    if(row){ row.personal=parseInt(a.personal)||0; row.avance=parseFloat(a.avance)||0; if(a.contrata&&!row.contrata) row.contrata=a.contrata; if(a.peso!=null&&!row.peso) row.peso=parseFloat(a.peso)||0; }
-    else rdEsp.push({ esp:a.esp, label:a.label||rdEspCatLabel(a.esp), contrata:a.contrata||'', peso:parseFloat(a.peso)||0, personal:parseInt(a.personal)||0, avance:parseFloat(a.avance)||0 });
+    if(!a || !a.esp) return;
+    const row=rdEspMatch(a, usadasRep);
+    if(row){ usadasRep.add(row); row.personal=parseInt(a.personal)||0; row.avance=parseFloat(a.avance)||0; if(a.contrata&&!row.contrata) row.contrata=a.contrata; if(a.peso!=null&&!row.peso) row.peso=parseFloat(a.peso)||0; }
+    else { const nueva={ esp:a.esp, label:a.label||rdEspCatLabel(a.esp), contrata:a.contrata||'', peso:parseFloat(a.peso)||0, personal:parseInt(a.personal)||0, avance:parseFloat(a.avance)||0 }; rdEspInsert(nueva); usadasRep.add(nueva); }
   });
   rdEspRender(); rdEspCalc();
   rdBancoLoad().then(()=>rdEspRender());   // el banco llega después: repinta con el selector
@@ -11423,8 +11439,13 @@ function rdEspRender(){
     html += `<div class="rd-esp-tblwrap"><table class="rd-esp-tbl"><thead><tr>
       <th>Especialidad</th><th>Contrata</th><th style="width:82px;">Personal</th><th style="width:30px;"></th></tr></thead><tbody>`;
     rdEsp.forEach((r,i)=>{
-      html += `<tr>
-        <td class="rd-esp-name">${rdEsc2(r.label)}</td>
+      // Varias contratas en una especialidad: el nombre va solo en la primera fila del grupo
+      // y «+ Otra contrata» en la última.
+      const primera = i===0 || rdEsp[i-1].esp!==r.esp;
+      const ultima  = i===rdEsp.length-1 || rdEsp[i+1].esp!==r.esp;
+      html += `<tr class="${primera?'':'rd-esp-sub'}">
+        <td class="rd-esp-name">${primera ? rdEsc2(r.label) : '<span class="rd-esp-cont">↳ misma especialidad</span>'}
+          ${ultima ? `<button type="button" class="rd-esp-more" onclick="rdEspAddContrata(${i})">+ Otra contrata</button>` : ''}</td>
         <td>${rdContrataCell(i, r)}</td>
         <td><input class="rd-esp-inp num" type="number" min="0" value="${r.personal||0}" oninput="rdEspSet(${i},'personal',this.value)"></td>
         <td><button class="rd-esp-del" title="Quitar" onclick="rdEspRemove(${i})">×</button></td>
@@ -11475,6 +11496,17 @@ function rdEspAddOtro(){
   rdEspOtro = false;
   rdEspRender(); rdEspCalc(); rdEspSaveConfig();
 }
+// Mete la fila junto a las de su misma especialidad (o al final si es nueva)
+function rdEspInsert(row){
+  let k = -1; rdEsp.forEach((r,j)=>{ if(r.esp===row.esp) k=j; });
+  if (k<0) rdEsp.push(row); else rdEsp.splice(k+1, 0, row);
+}
+// Otra contrata en la misma especialidad: fila nueva debajo de la i
+function rdEspAddContrata(i){
+  const r = rdEsp[i]; if(!r) return;
+  rdEsp.splice(i+1, 0, { esp:r.esp, label:r.label, contrata:'', peso:0, personal:0, avance:0 });
+  rdEspRender(); rdEspCalc(); rdEspSaveConfig();
+}
 function rdEspRemove(i){ rdEsp.splice(i,1); rdEspRender(); rdEspCalc(); rdEspSaveConfig(); }
 function rdEspSet(i,field,val){
   if(!rdEsp[i]) return;
@@ -11522,6 +11554,10 @@ function rdEnsureEspStyles(){
   .rd-esp-tbl th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-3);padding:6px 8px;border-bottom:2px solid var(--border);}
   .rd-esp-tbl td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
   .rd-esp-name{font-weight:700;color:var(--navy-800);}
+  .rd-esp-sub td{border-top:none;}
+  .rd-esp-cont{font-weight:500;font-size:11.5px;color:var(--text-3);}
+  .rd-esp-more{display:block;margin-top:4px;border:none;background:none;padding:0;font-size:11px;font-weight:700;color:var(--teal-700,#0e7490);cursor:pointer;}
+  .rd-esp-more:hover{text-decoration:underline;}
   .rd-esp-inp{border:1px solid var(--border-strong);border-radius:7px;padding:6px 8px;font-size:13px;color:var(--text-1);background:var(--surface-1);width:100%;}
   .rd-esp-inp.num{text-align:center;font-weight:700;}
   .rd-esp-inp:focus{outline:none;border-color:var(--teal-700,#0e7490);}
@@ -16146,7 +16182,7 @@ function _collectReportePayload(esDraft, firmaUrl){
   const spi   = plan > 0 ? (real/plan).toFixed(2) : '0';
   const avanceEsp = rdEsp.map(r=>({ esp:r.esp, label:r.label, contrata:(r.contrata||'').trim(), personal:parseInt(r.personal)||0, avance:parseFloat(r.avance)||0 }));
   const especialidades = {}; let personalTotal = 0;
-  rdEsp.forEach(r=>{ especialidades[r.esp]=parseInt(r.personal)||0; personalTotal+=parseInt(r.personal)||0; });
+  rdEsp.forEach(r=>{ especialidades[r.esp]=(especialidades[r.esp]||0)+(parseInt(r.personal)||0); personalTotal+=parseInt(r.personal)||0; });
   // El checklist de cierre salió del reporte (22-oct-2026): lo reemplazan las evaluaciones del día.
   const checklist = [];
   const checklistOk = null;
