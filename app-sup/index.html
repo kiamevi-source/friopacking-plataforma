@@ -25,16 +25,35 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-  // Configurar PDF.js worker
-  if (window['pdfjsLib']) {
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  }
+  /* 26-oct-2026 · arranque rápido: PDF, capturas, Excel y lector de PDF (~400 KB comprimidos,
+     ~1,8 MB a procesar) ya no se bajan al abrir la app: bloqueaban la pantalla y retrasaban
+     el login automático. Se cargan la primera vez que se exporta o importa algo. */
+  window.fpLib = (function(){
+    var CDN = 'https://cdnjs.cloudflare.com/ajax/libs/';
+    var LIBS = {
+      jspdf:       { src: CDN+'jspdf/2.5.1/jspdf.umd.min.js',           ok: function(){ return !!window.jspdf; } },
+      html2canvas: { src: CDN+'html2canvas/1.4.1/html2canvas.min.js',   ok: function(){ return !!window.html2canvas; } },
+      xlsx:        { src: CDN+'xlsx/0.18.5/xlsx.full.min.js',           ok: function(){ return !!window.XLSX; } },
+      pdfjs:       { src: CDN+'pdf.js/3.11.174/pdf.min.js',             ok: function(){ return !!window.pdfjsLib; },
+                     listo: function(){ window.pdfjsLib.GlobalWorkerOptions.workerSrc = CDN+'pdf.js/3.11.174/pdf.worker.min.js'; } }
+    };
+    var enCurso = {};
+    return function(k){
+      var L = LIBS[k];
+      if (!L) return Promise.reject(new Error('Librería desconocida: '+k));
+      if (L.ok()) return Promise.resolve();
+      if (enCurso[k]) return enCurso[k];
+      enCurso[k] = new Promise(function(ok, ko){
+        var sc = document.createElement('script');
+        sc.src = L.src; sc.async = true;
+        sc.onload = function(){ try{ if (L.listo) L.listo(); }catch(e){} ok(); };
+        sc.onerror = function(){ delete enCurso[k]; ko(new Error('No se pudo cargar '+k+'. Revisa tu conexión.')); };
+        document.head.appendChild(sc);
+      });
+      return enCurso[k];
+    };
+  })();
 </script>
 <style>
 :root {
@@ -5006,10 +5025,15 @@ async function iniciarApp() {
   // ── PMO Live Bridge: arrancar polling cada 60s ──
   pmoFetchLive(true);
   pmoStartPolling();
+  // Con la app ya en uso, el motor de PDF se baja en segundo plano: así exportar es inmediato
+  // y queda en caché para usarlo sin señal.
+  setTimeout(() => { ['jspdf','html2canvas'].forEach(k => fpLib(k).catch(() => {})); }, 8000);
 }
 
-// Auto-login si hay token
-window.addEventListener('load', async () => {
+// Auto-login si hay token. 26-oct-2026: arranca apenas el HTML está listo (DOMContentLoaded);
+// antes esperaba al evento load, o sea a que bajaran fuentes, íconos e imágenes.
+function fpAlListo(fn){ if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn); else fn(); }
+fpAlListo(async () => {
   // Si la sesión venció mientras la app estaba cerrada, se renueva en vez de pedir login.
   const token = localStorage.getItem('sb_token') ? await sbTokenVigente() : null;
   if (token) {
@@ -5901,7 +5925,7 @@ function parseFecha(str) {
 
 // ── PDF parser (MS Project export style) ──────
 async function parseGanttPDF(file) {
-  if (!window.pdfjsLib) throw new Error('PDF.js no se cargó. Recarga la página.');
+  await fpLib('pdfjs');
   const buf = await file.arrayBuffer();
   const pdf = await window.pdfjsLib.getDocument({data: buf}).promise;
   const tasks = [];
@@ -6051,7 +6075,7 @@ function _findCol(row, candidates) {
 }
 
 async function parseGanttExcel(file) {
-  if (!window.XLSX) throw new Error('SheetJS no se cargó.');
+  await fpLib('xlsx');
   const buf = await file.arrayBuffer();
   const wb = window.XLSX.read(buf, {cellDates: true});
   const ws = wb.Sheets[wb.SheetNames[0]];
@@ -12958,7 +12982,7 @@ function rdPendFirmaLimpiar(){
    pantalla y se cortaban cuando la lista era larga o la página estaba desplazada. */
 let _autoTableLib=null;
 function rdPdfLib(){
-  if(!window.jspdf) return Promise.reject(new Error('Motor PDF no disponible'));
+  if(!window.jspdf) return fpLib('jspdf').then(rdPdfLib);
   const probe=new window.jspdf.jsPDF();
   if(typeof probe.autoTable==='function') return Promise.resolve();
   if(_autoTableLib) return _autoTableLib;
@@ -13263,7 +13287,8 @@ function rdPendExcelWb(){
   window.XLSX.utils.book_append_sheet(wb,ws,'Observaciones');
   return wb;
 }
-function rdPendExportExcel(){
+async function rdPendExportExcel(){
+  try{ await fpLib('xlsx'); }catch(e){}
   const wb=rdPendExcelWb();
   if(!wb){ showToast('SheetJS no cargó. Recarga la página.',4000); return; }
   const nom=((currentProyecto&&currentProyecto.nombre)||'obra').replace(/\s+/g,'_');
@@ -13776,7 +13801,7 @@ function _imgData(src, maxW){
 async function rdZonasImprimir(ids){
   const zonas=(rdZonas||[]).filter(z=>!ids || ids.includes(z.id));
   if(!zonas.length) return;
-  if(!window.jspdf){ showToast('Motor PDF no disponible'); return; }
+  try{ await fpLib('jspdf'); }catch(e){ showToast('Motor PDF no disponible'); return; }
   showToast('Armando la hoja de QR…');
   try{
     const logo=await _imgData('assets/logo-color.png');
@@ -14530,7 +14555,7 @@ function rdPendImpFile(input){
 }
 
 async function rdPendImpParse(file){
-  if(!window.XLSX){ showToast('SheetJS no cargó. Recarga la página.',4000); return; }
+  try{ await fpLib('xlsx'); }catch(e){ showToast('No se pudo cargar el lector de Excel. Revisa tu conexión.',4000); return; }
   if(!rdPendCod()){ showToast('Selecciona un proyecto'); return; }
   showToast('Leyendo '+file.name+'…',1800);
   let wb;
@@ -15822,7 +15847,7 @@ function rvRenderReporte(r){
 async function exportarReporteCompleto(){
   const el = document.getElementById('rv-report');
   if (!el){ showToast('Primero carga un reporte'); return; }
-  if (!window.jspdf || !window.html2canvas){ showToast('Motor PDF no disponible'); return; }
+  try{ await Promise.all([fpLib('jspdf'), fpLib('html2canvas')]); }catch(e){ showToast('Motor PDF no disponible'); return; }
   showToast('Generando PDF…');
   try{
     const canvas = await html2canvas(el, { scale:2, useCORS:true, backgroundColor:'#ffffff', windowWidth: el.scrollWidth });
@@ -15867,7 +15892,7 @@ function _pdfEncabezadoHTML(titulo, subtitulo){
 // Clona el contenido, le pone el encabezado y lo pasa a PDF paginado.
 async function _pdfDesdeNodo(nodo, titulo, subtitulo, archivo){
   if (!nodo){ showToast('No hay nada que exportar'); return; }
-  if (!window.jspdf || !window.html2canvas){ showToast('Motor PDF no disponible'); return; }
+  try{ await Promise.all([fpLib('jspdf'), fpLib('html2canvas')]); }catch(e){ showToast('Motor PDF no disponible'); return; }
   showToast('Generando PDF…');
   const cont = document.createElement('div');
   // Fuera de pantalla pero en el flujo absoluto: con position:fixed html2canvas cortaba lo que no entraba en la ventana.
@@ -17227,6 +17252,7 @@ async function exportarPDF() {
   preview.style.left = '-9999px';
 
   try {
+    await Promise.all([fpLib('jspdf'), fpLib('html2canvas')]);
     const { jsPDF } = window.jspdf;
     const canvas = await html2canvas(document.getElementById('pdf-page-1'), {
       scale: 2, useCORS: true, backgroundColor: '#ffffff'
@@ -20470,7 +20496,7 @@ let _dashSources = null;
 </style>
 
 <!-- ── Asistente FrioPacking (chatbot · datos en vivo, escopado por sesión) ── -->
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://unpkg.com/lucide@1.61.0/dist/umd/lucide.min.js"></script>
 <script>
   window.FP_CHAT_CFG = {
     sbUrl: 'https://iiceeajjmugtuzcfqggs.supabase.co',
