@@ -10323,7 +10323,14 @@ function renderContratas() {
 }
 
 // ── ③ Avance por hito del Gantt ──
+// 2-nov-2026: el reporte se carga desde varios lugares (elegir obra, cambiar de pestaña, código del
+// adicional) y dos cargas podían correr a la vez: las dos vaciaban la lista ANTES de su consulta y
+// después las dos le sumaban sus tareas → cada tarea salía doble y el monto se duplicaba
+// (Agroberries: 1.170 tareas y $16,7 M en vez de 585 y $8,36 M). Ahora cada carga arma su lista
+// aparte y solo la más reciente la publica.
+let _rdHitosCarga = 0;
 async function cargarHitosReporte() {
+  const miCarga = ++_rdHitosCarga;
   rdHitos = [];
   const codRep = rdCodReporte();
   // Un adicional (o una orden agrupada en la misma ficha) usa SU cronograma en
@@ -10332,8 +10339,12 @@ async function cargarHitosReporte() {
   // no es lo que se está reportando.
   let cod = currentProyecto?.cod || currentProyecto?.nombre;
   if (currentProyecto && codRep && codRep !== currentProyecto.cod) {
-    if (!(await codTieneCronograma(codRep))) {
-      await cargarTareasDelCodigo(codRep);
+    const tiene = await codTieneCronograma(codRep);
+    if (miCarga !== _rdHitosCarga) return;          // ya hay una carga más nueva
+    if (!tiene) {
+      const filas = await tareasDelCodigo(codRep);
+      if (miCarga !== _rdHitosCarga) return;
+      rdHitos = []; rdServExcluidos = 0; rdServExcluidosVenta = 0; _rdHitosDelCodigo(filas);
       renderHitos();
       return;
     }
@@ -10347,12 +10358,13 @@ async function cargarHitosReporte() {
       // 23-oct-2026 (Kiara): el peso es el precio de VENTA (venta_total), ya no el costo. El campo interno
       // sigue llamándose `costo`/`cu` para no tocar el resto; cu = venta ÷ metrado.
       const rows = await sbFetch(`/rest/v1/v_gantt_supervisor?cod_proyecto=eq.${encodeURIComponent(cod)}&select=id,partida_item,presupuesto_id,nombre_tarea,pct_avance,es_hito,nivel,duracion_dias,fecha_inicio_base,unidad,cantidad_total,cantidad_ejecutada,venta_total,es_licitacion,subcategoria&order=es_hito.desc,fecha_inicio_base.asc&limit=1000`);
-      rdServExcluidos = 0; rdServExcluidosVenta = 0;
+      if (miCarga !== _rdHitosCarga) return;          // ya hay una carga más nueva: que publique ella
+      const lista = []; let servN = 0, servVenta = 0;
       (rows||[]).forEach(r => {
         // Los SERVICIOS (partidas de instalación / mano de obra que van a licitación) ya no son tareas
         // del reporte diario: se ven y se gestionan en Licitaciones (Kiara, 22-oct-2026).
         // Su venta se guarda aparte para mostrarla junto al total del proyecto (Kiara, 23-oct-2026).
-        if (r.es_licitacion && !r.es_hito){ rdServExcluidos++; rdServExcluidosVenta += Number(r.venta_total)||0; return; }
+        if (r.es_licitacion && !r.es_hito){ servN++; servVenta += Number(r.venta_total)||0; return; }
         const pct = Number(r.pct_avance)||0;
         const tot = Number(r.cantidad_total)||0;
         const unidad = (r.unidad||'').trim();
@@ -10360,14 +10372,16 @@ async function cargarHitosReporte() {
         // Lo ejecutado acumulado; si la tarea solo tiene % (avance previo a la regla nueva), se convierte.
         const q = Number(r.cantidad_ejecutada)||0;
         const cant = enUnidades ? ((q > 0 || pct <= 0) ? q : tot*pct/100) : null;
-        rdHitos.push({ id:r.id, item:r.partida_item||null, nombre:r.nombre_tarea, pct_actual:pct, pct_nuevo:pct, manual:false,
+        lista.push({ id:r.id, item:r.partida_item||null, nombre:r.nombre_tarea, pct_actual:pct, pct_nuevo:pct, manual:false,
           es_hito:!!r.es_hito, nivel:r.nivel, dur:Number(r.duracion_dias)||0, hoy:false, manana:false,
           unidad: enUnidades ? unidad : null, cant_total: enUnidades ? tot : null, cant_actual:cant, hoy_cant:0,
           costo:Number(r.venta_total)||0, cu: tot > 0 ? (Number(r.venta_total)||0) / tot : 0, lic:!!r.es_licitacion,
           presupuesto_id:r.presupuesto_id||null, adjudicado:false, lic_estado:null,
           familia:(r.subcategoria||'').trim() || null });
       });
+      rdHitos = lista; rdServExcluidos = servN; rdServExcluidosVenta = servVenta;
       await rdMarcarServiciosAdjudicados();
+      if (miCarga !== _rdHitosCarga) return;
       // PUNTO DE PARTIDA (Kiara, 20-oct-2026): la primera vez que una obra usa el reporte nuevo, el supervisor
       // declara el avance ACUMULADO con el que arranca (no se infiere de reportes viejos). Se activa solo si
       // ninguna tarea en unidades tiene avance todavía; el supervisor puede apagarlo.
@@ -10390,7 +10404,7 @@ function eliminarHito(i){ if(rdHitos[i].manual) rdHitos.splice(i,1); renderHitos
 let _hitoFilter = '';
 let _hitoFam = '';          // familia elegida (rubro de NISIRA: Obras Civiles, Instalación Eléctrica…)
 let rdServExcluidos = 0;    // servicios que se quitaron de la lista (viven en Licitaciones)
-let rdServExcluidosVenta = 0; // su precio de venta: no suma al avance, se muestra aparte con el total del proyecto
+let rdServExcluidosVenta = 0; // su precio de venta: no suma al avance ni a ningún total, solo se informa aparte
 function rdHitoFilter(v){ _hitoFilter = v||''; renderHitos(); }
 function rdHitoFam(f){ _hitoFam = (_hitoFam === f) ? '' : f; renderHitos(); }
 function rdFamTodasHoy(f){
@@ -10821,12 +10835,12 @@ function rdPintarMonto(){
     sv.style.display = m.servN ? '' : 'none';
   }
   // Servicios a licitación (fuera del avance, viven en Licitaciones) y total del proyecto = tareas + servicios
-  // (Kiara, 23-oct-2026: el reporte sigue sin servicios, pero se ven aparte y el total cuadra con NISIRA).
+  // (Kiara, 23-oct-2026: el reporte sigue sin servicios y se ven aparte. 2-nov: sin «Total del proyecto»).
   const pr = document.getElementById('rd-monto-proy');
   if (pr){
     pr.innerHTML = rdServExcluidosVenta > 0
-      ? `<b>Servicios a licitación</b> (no suman al avance, están en Licitaciones): <b>${rdMoney(rdServExcluidosVenta)}</b>`
-        + ` · <b>Total del proyecto: ${rdMoney(m.total + rdServExcluidosVenta)}</b>`
+      // 2-nov-2026 (Kiara): los servicios NO son tareas del reporte → no se suman a ningún total aquí.
+      ? `<b>Servicios a licitación</b> (no son tareas del reporte ni suman al avance, están en Licitaciones): ${rdMoney(rdServExcluidosVenta)}`
       : '';
     pr.style.display = rdServExcluidosVenta > 0 ? '' : 'none';
   }
@@ -16850,8 +16864,9 @@ async function tareasDelCodigo(cod){
   return filas.map(r => Object.assign({}, r, { pct: previo[r.item] || 0 }));
 }
 
-async function cargarTareasDelCodigo(cod){
-  (await tareasDelCodigo(cod)).forEach(r => {
+async function cargarTareasDelCodigo(cod){ _rdHitosDelCodigo(await tareasDelCodigo(cod)); }
+function _rdHitosDelCodigo(filas){
+  (filas || []).forEach(r => {
     rdHitos.push({ id:null, item:r.item, nombre:(r.item + ' · ' + (r.descripcion || '')),
       pct_actual:r.pct, pct_nuevo:r.pct, manual:false, es_hito:false,
       nivel:3, dur:0, hoy:false, manana:false });
