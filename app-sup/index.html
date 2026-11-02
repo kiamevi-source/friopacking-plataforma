@@ -11002,6 +11002,7 @@ function rdEnsureEqStyles(){
   .rd-eq-toggle{margin-top:10px;width:100%;border:1px dashed var(--border-strong);background:transparent;
     border-radius:9px;padding:8px;font-size:12px;font-weight:700;color:var(--text-3);cursor:pointer;}
   .rd-eq-toggle:hover{color:var(--teal-700);border-color:var(--teal-700);}
+  .rd-eq-acc{display:flex;gap:8px;} .rd-eq-acc .rd-eq-toggle{flex:1;}
   .rd-eq-form{display:grid;grid-template-columns:2fr 1.4fr 70px auto;gap:6px;}
   .rd-eq-form input{border:1px solid var(--border-strong);border-radius:7px;padding:6px 9px;font-size:12.5px;background:var(--surface-1);color:var(--text-1);min-width:0;}
   .rd-eq-ok{border:none;background:var(--teal-700,#0e7490);color:#fff;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;}
@@ -11111,9 +11112,276 @@ function rdEquiposRender(){
       ${e.estado ? `<input class="rd-eq-nota" placeholder="Nota del equipo (opcional)…" value="${rdEsc2(e.nota||'')}" oninput="rdEqCampo('${id}','nota',this.value)">` : ''}
     </div>`;
   }).join('');
+  const puedeEscribir = !(typeof soloLectura === 'function' && soloLectura());
   m.innerHTML = (filas || '<div class="rd-eq-empty">Aún no registras equipos en esta obra. Agrégalos una vez y quedan guardados para los días siguientes.</div>')
-    + '<button class="rd-eq-toggle" onclick="rdEqAgregar()">＋ Agregar equipo</button>';
+    + (puedeEscribir
+        ? '<div class="rd-eq-acc"><button class="rd-eq-toggle" onclick="rdEqAgregar()">＋ Agregar equipo</button>'
+          + '<button class="rd-eq-toggle" onclick="document.getElementById(\'rd-eq-file\').click()">⤓ Importar desde Excel</button></div>'
+          + '<input type="file" id="rd-eq-file" accept=".xlsx,.xls,.xlsm,.csv" style="display:none" onchange="if(this.files[0]) rdEqImpParse(this.files[0]); this.value=\'\'">'
+        : '');
   rdIcons();
+}
+
+// ═══════════════════════════════════════════════
+// IMPORTAR EQUIPOS DESDE EXCEL (2-nov-2026, Kiara)
+// Cada obra trae su propio cuadro (procura, lista de equipos, orden de compra…).
+// No hay plantilla: la hoja y las columnas se reconocen por el encabezado y por
+// lo que traen; cada fila se clasifica en equipo / puertas y ventanas / material
+// (estructura, paneles, pernos…). El supervisor ve la vista previa y elige.
+// ═══════════════════════════════════════════════
+const EQI_COLS = {
+  nombre:   ['material','equipo','equipos','descripcion','descripcion del equipo','descripcion del material','item descripcion','articulo','producto','nombre','denominacion','detalle','bien','suministro'],
+  cantidad: ['cantidad','cant','qty','cantidades','unidades requeridas','cant total','cantidad total'],
+  unidad:   ['und','unidad','u m','um','unid','unidad de medida','medida unidad'],
+  marca:    ['marca','fabricante','proveedor','brand','marca modelo'],
+  modelo:   ['modelo','model','referencia','part number','serie'],
+  medida:   ['medida','medidas','dimension','dimensiones','tamano','capacidad','potencia'],
+  area:     ['area','zona','ambiente','ubicacion','sector','sala','destino','frente'],
+  estado:   ['status','estado','situacion','estatus','condicion','seguimiento']
+};
+const EQI_EQUIPO = /(compres|condensad|evapor|enfriad|ventilad|bomba|tanque|tank|vessel|recibidor|separad|intercambiad|bater[ií]a|v[aá]lvul|detector|termosif|thermosiph|oil collector|colector|chiller|unidad (condensadora|compresora|evaporadora|enfriadora)|tablero|variador|motor|caldera|generador|grupo electr|transformad|pasarela hidr|niveladora?|rampa|abrigo|deshumid|humidific|purgador|plc|sensor|termometr|data ?logger|cortina de aire|montacarga|release device|ammonia|amoniaco|glicol|filtro|deshielo|torre de enfri|aerorefrig|equipo)/i;
+const EQI_PUERTA = /(puerta|ventana|mampara|port[oó]n|cortina|vidrio|escotilla)/i;
+const EQI_MATERIAL = /(perno|bolt|purlin|beam|column|bracing|tie rod|\brod\b|tube|pipe|plate|panel|cobertura|canaleta|gutter|bracket|angle|handrail|ladder|stair|accessor|pallet|tuber[ií]a|cable|plancha|perfil|tornillo|anclaje|soporte|pintura|aislamiento|lana de roca|cemento|concreto|fierro|varilla|estructura|calamina|correa|viga|columna|arriostr|escalera|baranda|platina|soldadura|consumible|turn buckle|strutting|casing)/i;
+const EQI_UNID_MATERIAL = /^(ton|tn|t|kg|kgr|kgs|m|ml|mts?|mt|m2|mt2|m²|m3|mt3|m³|jgo|juego|pza|pzas|rollo|bls|bolsa|gal|lt|lts|paq|pqt)$/i;
+
+function rdEqiNorm(s){ return rdPendNorm(String(s==null?'':s)); }
+function rdEqiCol(hdr){
+  // Columna → campo, por coincidencia de palabras con el encabezado (exacto gana).
+  const map = {}, usada = {};
+  const cand = [];
+  hdr.forEach((h,j)=>{
+    const n = rdEqiNorm(h); if(!n) return;
+    Object.keys(EQI_COLS).forEach(campo=>{
+      EQI_COLS[campo].forEach((a,ai)=>{
+        let s = 0;
+        if (n === a) s = 100 - ai;
+        else if ((' '+n+' ').indexOf(' '+a+' ') !== -1) s = 60 - ai;
+        if (s) cand.push({campo, j, s});
+      });
+    });
+  });
+  cand.sort((a,b)=>b.s-a.s);
+  cand.forEach(c=>{ if(map[c.campo]===undefined && !usada[c.j]){ map[c.campo]=c.j; usada[c.j]=1; } });
+  return map;
+}
+// Fila de encabezado: de las primeras 40, la que reconoce más columnas y tiene una de nombre.
+function rdEqiEncabezado(filas){
+  let mejor = null;
+  for (let i=0;i<Math.min(40,filas.length);i++){
+    const hdr = filas[i]||[];
+    if (hdr.filter(x=>typeof x==='string' && x.trim()).length < 2) continue;
+    const map = rdEqiCol(hdr);
+    if (map.nombre === undefined) continue;
+    const pts = Object.keys(map).length + (map.cantidad!==undefined?1:0);
+    if (!mejor || pts > mejor.pts) mejor = { idx:i, map, pts };
+  }
+  return mejor;
+}
+// Sin encabezado reconocible: la columna con más textos largos es el nombre.
+function rdEqiSinEncabezado(filas){
+  const pts = [];
+  filas.slice(0,300).forEach(r=>(r||[]).forEach((v,j)=>{
+    if (typeof v==='string' && v.trim().length>=6 && /[a-záéíóúñ]{3}/i.test(v) && !/^\d/.test(v.trim())) pts[j]=(pts[j]||0)+1;
+  }));
+  let j=-1, best=0; pts.forEach((p,k)=>{ if(p>best){best=p;j=k;} });
+  if (best < 3) return null;
+  // Cantidad: la primera columna a la derecha del nombre que casi siempre trae números.
+  const map = { nombre:j };
+  const conNombre = filas.filter(r => r && typeof r[j]==='string' && r[j].trim());
+  for (let k=j+1; k<j+6; k++){
+    const nums = conNombre.filter(r => typeof r[k]==='number' || /^\s*\d+([.,]\d+)?\s*$/.test(String(r[k]==null?'':r[k]))).length;
+    if (conNombre.length && nums/conNombre.length >= 0.7){ map.cantidad = k; break; }
+  }
+  return { idx:-1, map, pts:1 };
+}
+function rdEqiEstado(s){
+  const n = rdEqiNorm(s); if(!n) return '';
+  if (/instalad|culminad|montado|operativ|terminad/.test(n)) return 'instalado';
+  if (/montaje/.test(n)) return 'montaje';
+  if (/observ|danad|rechaz|defect|falla/.test(n)) return 'observado';
+  if (/en obra|recibido|entregado|llego a obra|en sitio/.test(n)) return 'en_obra';
+  if (/traslado|transito|fabricacion|almacen|stock|pendiente|compra|puerto|aduana|despacho|embarque|produccion|por llegar|origen|import/.test(n)) return 'esperando';
+  return '';
+}
+function rdEqiNombreCorto(s){
+  s = String(s||'').trim();
+  let resto = '';
+  const dbl = s.indexOf('//');
+  if (dbl > 0){ resto = s.slice(dbl+2).trim(); s = s.slice(0,dbl).trim(); }
+  if (s.length > 55){
+    const w = s.split(/\s+/);
+    // Hasta la primera palabra con dígitos (el modelo), si deja al menos dos palabras.
+    const k = w.findIndex((x,i) => i >= 1 && /\d/.test(x));
+    if (k >= 1 && k < w.length - 1){ resto = [w.slice(k+1).join(' '), resto].filter(Boolean).join(' '); s = w.slice(0,k+1).join(' '); }
+  }
+  return { nombre:s, resto };
+}
+function rdEqiTipo(nombre, unidad){
+  const u = String(unidad||'').trim().replace(/\.$/,'');
+  if (/cortina de aire|abrigo de and[eé]n|sello de and[eé]n/i.test(nombre)) return 'equipo';
+  if (EQI_PUERTA.test(nombre)) return 'puerta';
+  if (EQI_EQUIPO.test(nombre) && !/^(soporte|accesorio|cable|tuber)/i.test(nombre.trim())) return 'equipo';
+  if (EQI_MATERIAL.test(nombre) || (u && EQI_UNID_MATERIAL.test(u))) return 'material';
+  return 'otro';
+}
+
+let _eqiData = null;
+async function rdEqImpParse(file){
+  if (!currentProyecto){ showToast('Selecciona un proyecto'); return; }
+  try { await fpLib('xlsx'); } catch(e){ showToast('No se pudo cargar el lector de Excel. Revisa tu conexión.',4000); return; }
+  showToast('Leyendo '+file.name+'…',1800);
+  let wb;
+  try { wb = window.XLSX.read(await file.arrayBuffer(), {type:'array', cellDates:true}); }
+  catch(e){ console.warn('xlsx equipos', e); showToast('No se pudo leer el archivo',4000); return; }
+
+  // Hoja: la visible con mejor encabezado; a igual puntaje, la que trae más filas.
+  const meta = (wb.Workbook && wb.Workbook.Sheets) || [];
+  let mejor = null;
+  wb.SheetNames.forEach((nombre,si)=>{
+    if (meta[si] && meta[si].Hidden) return;
+    const hoja = rdPendLeerHoja(wb.Sheets[nombre]); if(!hoja) return;
+    const enc = rdEqiEncabezado(hoja.filas) || rdEqiSinEncabezado(hoja.filas); if(!enc) return;
+    const n = hoja.filas.length - enc.idx;
+    if (!mejor || enc.pts > mejor.pts || (enc.pts === mejor.pts && n > mejor.n)) mejor = Object.assign({ hoja:nombre, n }, hoja, enc);
+  });
+  if (!mejor){ showToast('No encontré una columna con nombres de equipos en '+file.name, 5000); return; }
+
+  const { filas, map, idx } = mejor;
+  const txt = (r,c) => c===undefined ? '' : rdPendTexto((r||[])[c]);
+  const yaHay = new Set(rdEqObra.map(e => rdEqiNorm(e.nombre)));
+  const items = [], vistos = new Map();
+  for (let i=idx+1;i<filas.length;i++){
+    const r = filas[i]||[];
+    let nombre = txt(r,map.nombre).replace(/\s+/g,' ').trim();
+    if (!nombre || nombre.length<3 || !/[a-záéíóúñ]/i.test(nombre)) continue;
+    if (/^(total|sub ?total|item|n[°º]|descripcion|material|equipo)s?$/i.test(rdEqiNorm(nombre))) continue;
+    const und = txt(r,map.unidad);
+    const area = txt(r,map.area);
+    const cantN = map.cantidad!==undefined ? Number(String((r||[])[map.cantidad]).replace(',','.')) : NaN;
+    const cant = isFinite(cantN) && cantN>0 ? cantN : 1;
+    nombre = rdTextoOrdenado(nombre);
+    // Nombres con la ficha técnica completa: el nombre queda hasta el modelo y el resto va a
+    // «Marca / modelo» (p. ej. «Enfriador cúbico CPG045» + «1SD-3S16.8F… 440V/3P»).
+    const corto = rdEqiNombreCorto(nombre);
+    nombre = corto.nombre;
+    const marca = [txt(r,map.marca), txt(r,map.modelo), txt(r,map.medida), corto.resto].filter(Boolean).join(' · ');
+    const areaOk = area && !/^(-|—|n\/?a)$/i.test(area) ? rdTextoOrdenado(area, true) : '';
+    const nombreFinal = areaOk ? nombre + ' · ' + areaOk : nombre;
+    const tipo = rdEqiTipo(nombre, und);
+    const clave = rdEqiNorm(nombreFinal + ' ' + marca);
+    // Misma fila repetida (mismo nombre, área y medida) → suma la cantidad
+    if (vistos.has(clave)){ const p = vistos.get(clave); p.cantidad += cant; continue; }
+    const it = { fila:i+1, nombre:nombreFinal, marca_modelo:marca || null, cantidad:cant,
+                 unidad:und, estado:rdEqiEstado(txt(r,map.estado)), estadoTxt:txt(r,map.estado), tipo,
+                 ya: yaHay.has(rdEqiNorm(nombreFinal)) };
+    it.sel = (tipo === 'equipo') && !it.ya;
+    vistos.set(clave, it); items.push(it);
+  }
+  if (!items.length){ showToast('La hoja «'+mejor.hoja+'» no trae filas con equipos', 5000); return; }
+  _eqiData = { archivo:file.name, hoja:mejor.hoja, items, cols:map, hdr:filas[idx]||[] };
+  rdEqImpModal();
+}
+
+const EQI_GRUPOS = [
+  { k:'equipo',   t:'Equipos',            d:'Compresores, evaporadores, bombas, tanques, válvulas…' },
+  { k:'puerta',   t:'Puertas y ventanas', d:'Puertas, ventanas, mamparas, cortinas' },
+  { k:'otro',     t:'Sin clasificar',     d:'No pude saber qué son: revísalos' },
+  { k:'material', t:'Materiales y estructura', d:'Estructura metálica, paneles, pernos, tubería… (no son equipos)' }
+];
+function rdEqImpModal(){
+  const D = _eqiData; if(!D) return;
+  let ov = document.getElementById('rd-eqi-ov');
+  if (!ov){
+    ov = document.createElement('div'); ov.id = 'rd-eqi-ov';
+    ov.innerHTML = `<style>
+      #rd-eqi-ov{position:fixed;inset:0;background:rgba(8,24,96,.35);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;}
+      #rd-eqi-ov .eqi-bx{background:var(--surface-1,#fff);border-radius:14px;width:min(860px,100%);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(8,24,96,.25);}
+      #rd-eqi-ov .eqi-hd{padding:16px 18px;border-bottom:1px solid var(--border);}
+      #rd-eqi-ov .eqi-hd h3{margin:0;font-size:16px;color:var(--text-1);} #rd-eqi-ov .eqi-hd p{margin:4px 0 0;font-size:12px;color:var(--text-3);}
+      #rd-eqi-ov .eqi-bd{overflow:auto;padding:6px 18px 12px;}
+      #rd-eqi-ov .eqi-gr{margin-top:12px;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+      #rd-eqi-ov .eqi-gh{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface-2,#f6f8fb);cursor:pointer;}
+      #rd-eqi-ov .eqi-gh b{font-size:13px;color:var(--text-1);} #rd-eqi-ov .eqi-gh span{font-size:11.5px;color:var(--text-3);}
+      #rd-eqi-ov .eqi-gh .eqi-n{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--text-3);white-space:nowrap;}
+      #rd-eqi-ov .eqi-it{display:grid;grid-template-columns:22px 1fr auto auto;gap:8px;align-items:center;padding:7px 12px;border-top:1px solid var(--border);font-size:12.5px;}
+      #rd-eqi-ov .eqi-it .eqi-nm{color:var(--text-1);font-weight:600;min-width:0;} #rd-eqi-ov .eqi-it .eqi-nm small{display:block;font-weight:400;color:var(--text-3);}
+      #rd-eqi-ov .eqi-it .eqi-q{color:var(--text-3);white-space:nowrap;}
+      #rd-eqi-ov .eqi-it .eqi-st{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--surface-2,#f1f5f9);color:var(--text-3);white-space:nowrap;}
+      #rd-eqi-ov .eqi-it .eqi-st.ya{background:#fef3c7;color:#b45309;}
+      #rd-eqi-ov .eqi-ft{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;}
+      #rd-eqi-ov .eqi-ft .eqi-r{margin-left:auto;display:flex;gap:8px;}
+      #rd-eqi-ov button.eqi-p{border:none;background:var(--teal-700,#0e7490);color:#fff;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;}
+      #rd-eqi-ov button.eqi-s{border:1px solid var(--border-strong);background:transparent;color:var(--text-2);border-radius:8px;padding:9px 14px;font-weight:600;cursor:pointer;}
+      #rd-eqi-ov .eqi-gr.cerrado .eqi-it{display:none;}
+      @media(max-width:640px){ #rd-eqi-ov .eqi-it{grid-template-columns:22px 1fr;} #rd-eqi-ov .eqi-it .eqi-q,#rd-eqi-ov .eqi-it .eqi-st{grid-column:2;} }
+    </style><div class="eqi-bx"></div>`;
+    document.body.appendChild(ov);
+  }
+  const lblEst = k => (EQ_ESTADOS.find(x=>x.k===k)||{}).lbl || '';
+  const esc = rdEsc2;
+  const EQI_LBL = { nombre:'Equipo', cantidad:'Cantidad', unidad:'Unidad', marca:'Marca', modelo:'Modelo', medida:'Medida', area:'Área', estado:'Estado' };
+  const colsTxt = Object.keys(EQI_LBL).filter(k=>D.cols[k]!==undefined)
+    .map(k=>`${EQI_LBL[k]} ← «${esc(rdPendTexto(D.hdr[D.cols[k]])||'columna '+(D.cols[k]+1))}»`).join(' · ');
+  const grupos = EQI_GRUPOS.map(g=>{
+    const its = D.items.map((it,i)=>({it,i})).filter(x=>x.it.tipo===g.k);
+    if (!its.length) return '';
+    const nSel = its.filter(x=>x.it.sel).length;
+    const todos = nSel===its.filter(x=>!x.it.ya).length && nSel>0;
+    return `<div class="eqi-gr ${g.k==='material'?'cerrado':''}" id="rd-eqi-g-${g.k}">
+      <div class="eqi-gh" onclick="if(event.target.tagName!=='INPUT') this.parentNode.classList.toggle('cerrado')">
+        <input type="checkbox" ${todos?'checked':''} onchange="rdEqiGrupo('${g.k}',this.checked)">
+        <div><b>${g.t}</b> <span>${g.d}</span></div><div class="eqi-n">${nSel} de ${its.length} ▾</div></div>
+      ${its.map(({it,i})=>`<label class="eqi-it">
+        <input type="checkbox" ${it.sel?'checked':''} ${it.ya?'disabled':''} onchange="_eqiData.items[${i}].sel=this.checked;rdEqImpModal()">
+        <div class="eqi-nm">${esc(it.nombre)}${it.marca_modelo?`<small>${esc(it.marca_modelo)}</small>`:''}</div>
+        <div class="eqi-q">${esc(String(+it.cantidad.toFixed(2)))} ${esc(it.unidad||'')}</div>
+        <div class="eqi-st ${it.ya?'ya':''}">${it.ya?'Ya está en la obra':(lblEst(it.estado)||'Sin estado')}</div>
+      </label>`).join('')}
+    </div>`;
+  }).join('');
+  const nSel = D.items.filter(x=>x.sel).length;
+  ov.querySelector('.eqi-bx').innerHTML = `
+    <div class="eqi-hd"><h3>Importar equipos · ${esc(D.archivo)}</h3>
+      <p>Hoja «${esc(D.hoja)}» · ${D.items.length} filas leídas · columnas: ${colsTxt}</p>
+      <p>Marqué solo los <b>equipos</b>. Toca un grupo para abrirlo y elegir más. El estado sale de la columna de estado del Excel y lo puedes cambiar después.</p></div>
+    <div class="eqi-bd">${grupos}</div>
+    <div class="eqi-ft"><span style="font-size:12.5px;color:var(--text-2)"><b>${nSel}</b> por agregar</span>
+      <div class="eqi-r"><button class="eqi-s" onclick="rdEqImpCerrar()">Cancelar</button>
+      <button class="eqi-p" ${nSel?'':'disabled style="opacity:.5"'} onclick="rdEqImpConfirmar()">Agregar ${nSel} equipo${nSel===1?'':'s'}</button></div></div>`;
+}
+function rdEqiGrupo(k, on){
+  _eqiData.items.forEach(it=>{ if(it.tipo===k && !it.ya) it.sel = on; });
+  const g = document.getElementById('rd-eqi-g-'+k); const abierto = g && !g.classList.contains('cerrado');
+  rdEqImpModal();
+  if (abierto){ const g2 = document.getElementById('rd-eqi-g-'+k); if(g2) g2.classList.remove('cerrado'); }
+}
+function rdEqImpCerrar(){ const ov = document.getElementById('rd-eqi-ov'); if(ov) ov.remove(); _eqiData = null; }
+async function rdEqImpConfirmar(){
+  const D = _eqiData; if(!D) return;
+  const sel = D.items.filter(x=>x.sel && !x.ya);
+  if (!sel.length) return;
+  const quien = (currentUser && (currentUser.email || currentUser.nombre)) || null;
+  const base = rdEqObra.length;
+  const filas = sel.map((it,k)=>({
+    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+k+Math.random().toString(16).slice(2)),
+    cod_proyecto: _rdEqCod, nombre: it.nombre.slice(0,300), marca_modelo: it.marca_modelo,
+    cantidad: it.cantidad, estado: it.estado || null, nota: null, activo: true, orden: base + k,
+    updated_by: quien }));
+  const btn = document.querySelector('#rd-eqi-ov button.eqi-p'); if (btn){ btn.disabled = true; btn.textContent = 'Guardando…'; }
+  try {
+    for (let i=0;i<filas.length;i+=100){
+      await sbFetch('/rest/v1/equipos_obra', { method:'POST', headers:{ Prefer:'return=minimal' }, body: JSON.stringify(filas.slice(i,i+100)) });
+    }
+  } catch(e){
+    console.warn('importar equipos', e);
+    showToast('No se pudieron guardar los equipos. Revisa tu conexión e inténtalo de nuevo.', 5000);
+    if (btn){ btn.disabled = false; btn.textContent = 'Reintentar'; }
+    return;
+  }
+  rdEqImpCerrar();
+  await rdEqObraCargar();
+  showToast(filas.length + ' equipo' + (filas.length===1?'':'s') + ' agregado' + (filas.length===1?'':'s') + ' ✓');
+  if (typeof scheduleAutosave === 'function') scheduleAutosave();
 }
 
 // Lo que se guarda en el reporte: foto de la lista de la obra con su estado de hoy

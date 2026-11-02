@@ -5,7 +5,7 @@ fuente de verdad: los datos del mapa viven en el bloque `const MAPA` que está a
 inicio del `<script>`. Si cambia el flujo, se edita ahí, en el **mismo commit**
 que el código. Este documento es la letra chica que no cabe en el dibujo.
 
-Última revisión: **23 de octubre de 2026**
+Última revisión: **2 de noviembre de 2026**
 
 ---
 
@@ -450,6 +450,16 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   son tareas del reporte ni entran al % de avance real: se gestionan en Licitaciones.
 - **Equipos** los registra el supervisor en `equipos_obra` (Supervisor). Ya no se leen de `equipos_pmo`
   en el reporte. `reportes.equipos_dia` guarda la foto del día (`origen:'supervisor'`).
+- **Importar equipos desde Excel** (2-nov-2026). Botón «Importar desde Excel» en Equipos del proyecto.
+  Sin plantilla: elige la hoja y la fila de encabezado que mejor reconoce (equipo/material/descripción,
+  cantidad, unidad, marca, modelo, medida, área, estado); sin encabezado toma la columna con más textos
+  como nombre y la numérica de al lado como cantidad. Cada fila se clasifica en Equipos / Puertas y
+  ventanas / Sin clasificar / Materiales y estructura (por palabras y por unidad: Ton, m, m², Jgo…);
+  solo los equipos van marcados. El nombre se acorta hasta el modelo y la ficha técnica pasa a
+  `marca_modelo`; el área se agrega al nombre; el estado sale de la columna de estado (traslado,
+  fabricación, almacén → Por llegar; en obra; montaje; instalado; observado). Las que ya están en la
+  obra (mismo nombre) no se repiten. Escribe en `equipos_obra` con la sesión del supervisor (RLS
+  `tiene_acceso`); el rol de solo lectura no ve el botón.
 - **Planos**: el reporte lee en vivo Seguimiento de Planos (Ingeniería) y guarda los conteos en
   `reportes.planos_dia`.
 - **Fotos**: máximo 3 por frente (los frentes = especialidades del reporte), sin texto de actividad.
