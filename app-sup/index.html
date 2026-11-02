@@ -589,39 +589,53 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 .personal-inp:focus{border-color:var(--teal-500);box-shadow:0 0 0 3px rgba(6,182,212,.16);}
 
 /* ── REPORT PDF PREVIEW ── */
+/* PDF del reporte diario (formato aprobado 02-nov-2026, maqueta A): paleta y logo oficiales de Friopacking */
 #pdf-preview{display:none;}
-.pdf-page{width:794px;min-height:1123px;background:white;padding:32px 36px;
-  font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1a1a2e;}
-.pdf-header{display:flex;justify-content:space-between;align-items:flex-start;
-  border-bottom:3px solid #1B2D5B;padding-bottom:12px;margin-bottom:16px;}
-.pdf-logo-img{height:34px;width:auto;display:block;}
-.pdf-logo{font-size:10px;font-weight:900;letter-spacing:.08em;color:white;
-  background:#1B2D5B;padding:5px 10px;border-radius:5px;}
-.pdf-title-block{text-align:right;}
-.pdf-title{font-size:14px;font-weight:900;color:#1B2D5B;text-transform:uppercase;letter-spacing:.05em;}
-.pdf-subtitle{font-size:10px;color:#6b7280;margin-top:2px;}
-.pdf-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
-.pdf-meta-item{background:#f0f3f9;border-radius:6px;padding:8px 10px;}
-.pdf-meta-label{font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;}
-.pdf-meta-val{font-size:12px;font-weight:700;color:#1B2D5B;margin-top:2px;}
-.pdf-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
-.pdf-kpi{background:#1B2D5B;border-radius:8px;padding:10px 12px;text-align:center;}
-.pdf-kpi-val{font-size:22px;font-weight:900;color:white;}
-.pdf-kpi-lbl{font-size:9px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
-.pdf-status{border-radius:8px;padding:10px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}
-.pdf-status.en-plan{background:#dcfce7;border:1.5px solid #86efac;}
-.pdf-status.atrasado{background:#fee2e2;border:1.5px solid #fca5a5;}
-.pdf-status-label{font-size:14px;font-weight:800;color:#166534;}
-.pdf-status.atrasado .pdf-status-label{color:#991b1b;}
-.pdf-spi-badge{font-size:12px;font-weight:700;color:#166534;}
-.pdf-section-title{font-size:10px;font-weight:800;color:#1B2D5B;text-transform:uppercase;
-  letter-spacing:.08em;border-left:3px solid #0E7490;padding-left:8px;margin:12px 0 8px;}
-.pdf-table{width:100%;border-collapse:collapse;font-size:10px;}
-.pdf-table th{background:#1B2D5B;color:white;padding:6px 8px;text-align:center;font-weight:700;}
-.pdf-table td{padding:5px 8px;border-bottom:1px solid #dde3ef;text-align:center;}
-.pdf-table td:first-child{text-align:left;}
-.pdf-rondas{display:flex;flex-wrap:wrap;gap:6px;}
-.pdf-ronda-chip{padding:4px 12px;background:#f0f3f9;border-radius:12px;font-size:10px;font-weight:600;}
+.pdf-page{width:794px;min-height:1123px;background:#fff;color:#102267;padding:26px 34px 18px;box-sizing:border-box;
+  font-family:'Inter','Segoe UI',Arial,sans-serif;font-size:10.5px;line-height:1.4;display:flex;flex-direction:column;}
+.pdf-page h3{font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 7px;color:#102267;}
+.pdf-page h3 small{font-weight:400;text-transform:none;letter-spacing:0;color:#000;font-size:9.5px;}
+.pdf-page .k{color:#000;font-size:9px;letter-spacing:.06em;text-transform:uppercase;}
+.pdf-page .r{text-align:right;}
+.pdf-head{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:10px;border-bottom:3px solid #39C1AD;}
+.pdf-head img{width:170px;height:auto;display:block;}
+.pdf-head .ttl{text-align:right;} .pdf-head .ttl b{font-weight:800;font-size:20px;display:block;} .pdf-head .ttl span{color:#000;font-size:10px;}
+.pdf-ficha{display:grid;grid-template-columns:2fr 1.3fr 1.25fr .95fr .95fr;margin:10px 0;border:1px solid #00CFE8;border-radius:6px;overflow:hidden;}
+.pdf-ficha div{padding:7px 10px;border-right:1px solid #BFF3FA;min-width:0;} .pdf-ficha div:last-child{border-right:0;}
+.pdf-ficha b{display:block;font-weight:700;font-size:11.5px;margin-top:2px;}
+.pdf-ficha div:nth-child(n+3) b{white-space:nowrap;}
+.pdf-hero{display:grid;grid-template-columns:1.25fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px;}
+.pdf-kpi{background:#EAF9FF;border-radius:6px;padding:8px 12px;}
+.pdf-kpi b{font-weight:800;font-size:22px;display:block;letter-spacing:-.02em;} .pdf-kpi small{font-size:9.5px;color:#000;}
+.pdf-kpi.estado{background:#102267;color:#fff;} .pdf-kpi.estado.atrasado{background:#007BDF;}
+.pdf-kpi.estado .k,.pdf-kpi.estado small{color:#EAF9FF;}
+.pdf-kpi.estado b{font-size:19px;display:flex;align-items:center;gap:7px;}
+.pdf-kpi.estado b i{width:11px;height:11px;border-radius:50%;background:#39C1AD;}
+.pdf-kpi.estado.atrasado b i{background:#fff;}
+.pdf-blq{border-top:1px solid #00CFE8;padding-top:7px;margin-bottom:9px;min-width:0;}
+.pdf-dos{display:grid;grid-template-columns:1.15fr 1fr;gap:14px;}
+.pdf-t{width:100%;border-collapse:collapse;font-size:inherit;}
+.pdf-t th{background:#102267;color:#fff;font-weight:600;font-size:9px;letter-spacing:.04em;text-transform:uppercase;text-align:left;padding:5px 7px;}
+.pdf-t td{padding:3px 7px;border-bottom:1px solid #BFF3FA;}
+.pdf-t tbody tr:nth-child(even) td{background:#EAF9FF;}
+.pdf-t tr.quieta td{color:#4a5a8a;}
+.pdf-t tfoot td{font-weight:700;border-top:2px solid #102267;padding:6px 7px;}
+.pdf-t .hoy{font-weight:700;color:#007BDF;}
+.pdf-bar{height:8px;background:#D6F6FB;border-radius:4px;position:relative;overflow:hidden;}
+.pdf-bar i{position:absolute;top:0;bottom:0;left:0;background:#102267;} .pdf-bar em{position:absolute;top:0;bottom:0;background:#39C1AD;}
+.pdf-ley{display:flex;gap:14px;flex-wrap:wrap;margin-top:5px;font-size:9px;color:#000;}
+.pdf-ley i{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:-1px;margin-right:4px;}
+.pdf-ex{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px;}
+.pdf-ex div{background:#EAF9FF;border-left:3px solid #39C1AD;padding:7px 10px;} .pdf-ex h3{margin-bottom:3px;}
+.pdf-rest{display:grid;gap:6px;} .pdf-rest div{border-left:3px solid #102267;background:#EAF9FF;padding:5px 8px;}
+.pdf-fotos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.pdf-foto{border-radius:4px;overflow:hidden;background:#EAF9FF;aspect-ratio:3/2;position:relative;}
+.pdf-foto img{width:100%;height:100%;object-fit:cover;display:block;}
+.pdf-foto span{position:absolute;left:5px;right:5px;bottom:4px;font-size:8.5px;color:#fff;background:rgba(16,34,103,.78);padding:2px 5px;border-radius:2px;}
+.pdf-vacio{color:#000;font-size:9.5px;padding:8px 0;}
+.pdf-pie{margin-top:auto;padding-top:10px;display:grid;grid-template-columns:1fr 1fr auto;gap:18px;align-items:end;border-top:1px solid #00CFE8;font-size:9px;color:#000;}
+.pdf-firma{border-bottom:1px solid #102267;height:40px;display:flex;align-items:flex-end;}
+.pdf-firma img{max-height:38px;max-width:180px;}
 
 /* ── TOAST ── */
 /* Arriba a la izquierda y por encima de todo: abajo a la derecha lo tapaba el botón del asistente.
@@ -4792,44 +4806,7 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 
 <!-- PDF PREVIEW (oculto, solo para generación) -->
 <div id="pdf-preview">
-  <div class="pdf-page" id="pdf-page-1">
-    <div class="pdf-header">
-      <div>
-        <img class="pdf-logo-img" src="assets/logo-color.png" alt="Grupo Friopacking" crossorigin="anonymous">
-      </div>
-      <div class="pdf-title-block">
-        <div class="pdf-title">Reporte Diario de Obra</div>
-        <div class="pdf-subtitle">Supervisor de Proyecto · <span id="pdf-fecha-header"></span></div>
-      </div>
-    </div>
-    <div class="pdf-meta">
-      <div class="pdf-meta-item"><div class="pdf-meta-label">Proyecto</div><div class="pdf-meta-val" id="pdf-proyecto"></div></div>
-      <div class="pdf-meta-item"><div class="pdf-meta-label">Supervisor</div><div class="pdf-meta-val" id="pdf-supervisor"></div></div>
-      <div class="pdf-meta-item"><div class="pdf-meta-label">Fin contractual</div><div class="pdf-meta-val" id="pdf-fin-cont"></div></div>
-      <div class="pdf-meta-item"><div class="pdf-meta-label">Fin proyectado</div><div class="pdf-meta-val" id="pdf-fin-proy"></div></div>
-    </div>
-    <div class="pdf-kpi-row">
-      <div class="pdf-kpi"><div class="pdf-kpi-val" id="pdf-avance"></div><div class="pdf-kpi-lbl">Avance físico</div></div>
-      <div class="pdf-kpi"><div class="pdf-kpi-val" id="pdf-spi"></div><div class="pdf-kpi-lbl">Cumplimiento del plazo</div></div>
-      <div class="pdf-kpi"><div class="pdf-kpi-val" id="pdf-eval-ct"></div><div class="pdf-kpi-lbl">Eval. contratas</div></div>
-    </div>
-    <div class="pdf-status en-plan" id="pdf-status-bar">
-      <div><span class="pdf-status-label" id="pdf-status-label">EN PLAN</span><br><span style="font-size:10px;color:#166534;" id="pdf-status-detail"></span></div>
-      <div class="pdf-spi-badge" id="pdf-spi-badge"></div>
-    </div>
-    <div class="pdf-section-title">Curva S — Avance físico acumulado</div>
-    <div style="background:#f0f3f9;height:100px;border-radius:6px;overflow:hidden;">
-      <canvas id="pdf-curva" style="width:100%;height:100%;"></canvas>
-    </div>
-    <div class="pdf-section-title">Avance por especialidad</div>
-    <table class="pdf-table" id="pdf-especialidades"></table>
-    <div class="pdf-section-title">Personal en obra</div>
-    <div id="pdf-personal-row" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
-    <div class="pdf-section-title">Contratas activas — Evaluación del día</div>
-    <table class="pdf-table" id="pdf-contratas-table"></table>
-    <div class="pdf-section-title" id="pdf-equipos-title">Equipos del proyecto</div>
-    <table class="pdf-table" id="pdf-equipos-table"></table>
-  </div>
+  <div class="pdf-page" id="pdf-page-1"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -17165,104 +17142,177 @@ async function guardarRiesgo() {
 }
 
 // ═══════════════════════════════════════════════
-// EXPORTAR PDF (formato Agrofloral)
+// EXPORTAR PDF · formato aprobado por Kiara el 02-nov-2026 (maqueta A):
+// avance por FAMILIA de NISIRA (no la lista de tareas), plazo/reprogramación y
+// visita del cliente. Cada bloque opcional sale solo si ese día tiene dato.
 // ═══════════════════════════════════════════════
+// Avance por familia con la misma regla que el avance global (rdAvanceRealFuente):
+// pondera por precio de venta si el cronograma lo tiene; si no, por duración.
+function rdPdfFamilias(){
+  const cuentan = rdTareasQueCuentan();
+  if (!cuentan.length) return [];
+  const conCosto = rdHayCostos();
+  const peso = h => conCosto ? (h.costo||0) : ((h.dur && h.dur > 0) ? h.dur : 1);
+  const fams = {}, orden = [];
+  const fam = f => { if (!fams[f]){ fams[f] = { nombre:f, w:0, ahora:0, antes:0, hoy:0, manana:0 }; orden.push(f); } return fams[f]; };
+  cuentan.forEach(h => { const F = fam(rdFamDe(h)), w = peso(h);
+    F.w += w; F.ahora += w * rdPctCalc(h,'pct_nuevo'); F.antes += w * rdPctCalc(h,'pct_actual'); });
+  rdHitos.forEach(h => { if (h.manual || h.es_hito) return; const f = rdFamDe(h); if (!fams[f]) return;
+    if (h.hoy || h.tocado) fams[f].hoy++; if (h.manana) fams[f].manana++; });
+  const total = orden.reduce((s,f) => s + fams[f].w, 0) || 1;
+  return orden.map(f => { const F = fams[f]; return { nombre:F.nombre, peso:F.w/total*100,
+      avance: F.w ? F.ahora/F.w : 0, antes: F.w ? F.antes/F.w : 0, hoy:F.hoy, manana:F.manana }; })
+    .sort((a,b) => b.peso - a.peso);
+}
+// Curva S en SVG (html2canvas la pinta nítida) a partir de los reportes ya enviados + el de hoy.
+function rdPdfCurvaSVG(serie){
+  if (serie.length < 2) return '<div class="pdf-vacio">Aún no hay reportes suficientes para trazar la curva.</div>';
+  const W=360, H=150, L=30, R=352, T=12, B=128;
+  const t0 = serie[0].t, t1 = serie[serie.length-1].t, dt = (t1 - t0) || 1;
+  const X = t => L + (t - t0) / dt * (R - L), Y = v => B - Math.max(0, Math.min(100, v)) / 100 * (B - T);
+  const linea = k => serie.map((p,i) => (i ? 'L' : 'M') + X(p.t).toFixed(1) + ' ' + Y(p[k]).toFixed(1)).join(' ');
+  const ult = serie[serie.length-1];
+  const grid = [25,50,75,100].map(v => `<line x1="${L}" y1="${Y(v)}" x2="${R}" y2="${Y(v)}" stroke="#BFF3FA"/><text x="${L-6}" y="${Y(v)+3}" text-anchor="end">${v}%</text>`).join('');
+  const meses = []; const d = new Date(t0); d.setDate(1); d.setMonth(d.getMonth()+1);
+  while (d.getTime() <= t1){ meses.push(`<text x="${X(d.getTime()).toFixed(1)}" y="141" text-anchor="middle">${d.toLocaleDateString('es-PE',{month:'short'}).replace('.','')}</text>`); d.setMonth(d.getMonth()+1); }
+  return `<svg viewBox="0 0 ${W} ${H+6}" width="100%" font-family="Inter,Arial" font-size="8" fill="#000">${grid}
+    <line x1="${L}" y1="${B}" x2="${R}" y2="${B}" stroke="#00CFE8"/>${meses.join('')}
+    <path d="${linea('real')} L${X(t1).toFixed(1)} ${B} L${L} ${B} Z" fill="#39C1AD" fill-opacity=".18"/>
+    <path d="${linea('plan')}" fill="none" stroke="#102267" stroke-width="1.6" stroke-dasharray="4 3"/>
+    <path d="${linea('real')}" fill="none" stroke="#39C1AD" stroke-width="2.4"/>
+    <circle cx="${X(t1)}" cy="${Y(ult.real)}" r="4" fill="#007BDF" stroke="#fff" stroke-width="1.5"/>
+    <text x="${X(t1)-6}" y="${Y(ult.real)-8}" text-anchor="end" font-size="9" font-weight="700" fill="#102267">Hoy ${ult.real.toFixed(1)}%</text>
+    <line x1="250" y1="152" x2="262" y2="152" stroke="#39C1AD" stroke-width="2.4"/><text x="265" y="155">Real</text>
+    <line x1="296" y1="152" x2="308" y2="152" stroke="#102267" stroke-dasharray="4 3" stroke-width="1.6"/><text x="311" y="155">Plan</text></svg>`;
+}
+// Imagen remota → dataURL (con CORS) para que html2canvas no deje el hueco en blanco.
+function rdPdfImg(src, maxW){
+  return new Promise(ok => {
+    if (!src) return ok(null);
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => { try { const k = Math.min(1, (maxW||600)/im.naturalWidth), c = document.createElement('canvas');
+      c.width = Math.round(im.naturalWidth*k); c.height = Math.round(im.naturalHeight*k);
+      c.getContext('2d').drawImage(im,0,0,c.width,c.height); ok(c.toDataURL('image/png')); } catch(e){ ok(null); } };
+    im.onerror = () => ok(null);
+    im.src = src;
+  });
+}
 async function exportarPDF() {
   const cod = currentProyecto?.cod || currentProyecto?.nombre;
   if (!cod) { showToast('Selecciona proyecto'); return; }
+  const E = rdEsc2, P = currentProyecto;
+  const fecha = document.getElementById('rd-fecha').value;
+  const plan  = parseFloat(document.getElementById('rd-plan').value)||0;
+  const real  = +rdAvanceRealFuente().valor.toFixed(1);
+  const spi   = plan > 0 ? real/plan : 0;
+  const delta = real - plan, enPlan = delta >= -2;
+  const f1 = v => (Math.round(v*10)/10).toFixed(1);
 
-  const fecha   = document.getElementById('rd-fecha').value;
-  const plan    = parseFloat(document.getElementById('rd-plan').value)||0;
-  const real    = parseFloat(document.getElementById('rd-real').value)||0;
-  const spi     = plan>0 ? (real/plan) : 0;
-  let personal = 0; ESPECIALIDADES.forEach(e => personal += parseInt(document.getElementById('rd-ob-'+e)?.value)||0);
+  // Fin proyectado: la reprogramación de hoy manda sobre la última y sobre la fecha de PMO
+  const reproOn = document.getElementById('rd-repro-chk')?.checked && document.getElementById('rd-repro-fecha')?.value;
+  const repro = reproOn ? { fecha_nueva: document.getElementById('rd-repro-fecha').value,
+      motivo: (document.getElementById('rd-repro-motivo')?.value||'').trim(),
+      formalizado: document.getElementById('rd-repro-formal')?.value === 'true' } : rdReproUlt;
+  const finProy = (repro && repro.fecha_nueva) || P.finReal || P.finCont;
+  const diasCorre = (P.finCont && finProy) ? Math.round((new Date(finProy) - new Date(P.finCont)) / 864e5) : 0;
 
-  // Llenar PDF preview
-  document.getElementById('pdf-fecha-header').textContent = fecha;
-  document.getElementById('pdf-proyecto').textContent    = currentProyecto.nombre;
-  document.getElementById('pdf-supervisor').textContent  = currentProyecto.supervisor||currentUser?.nombre||'';
-  document.getElementById('pdf-fin-cont').textContent    = rdFmtFecha(currentProyecto.finCont);
-  // Fin proyectado real: la reprogramación de hoy manda sobre la fecha de PMO
-  const _reproOn = document.getElementById('rd-repro-chk')?.checked;
-  const _reproF  = document.getElementById('rd-repro-fecha')?.value;
-  document.getElementById('pdf-fin-proy').textContent    = rdFmtFecha((_reproOn&&_reproF) ? _reproF
-    : ((rdReproUlt && rdReproUlt.fecha_nueva) || currentProyecto.finReal || currentProyecto.finCont));
-  document.getElementById('pdf-avance').textContent      = real.toFixed(1)+'%';
-  document.getElementById('pdf-spi').textContent         = spi.toFixed(2);
-  document.getElementById('pdf-eval-ct').textContent     = document.getElementById('kpi-eval').textContent;
+  // Personal por contratista (rdEsp ya trae una fila por contrata y especialidad)
+  const pers = {}; let personal = 0;
+  rdEsp.forEach(r => { const n = parseInt(r.personal)||0; personal += n; if (!n) return;
+    const k = (r.contrata||'').trim() || 'Personal propio'; (pers[k] = pers[k] || { n:0, esp:new Set() }).n += n; pers[k].esp.add(r.label); });
+  const persRows = Object.entries(pers).sort((a,b) => b[1].n - a[1].n);
 
-  const delta = real - plan;
-  const enPlan = delta >= -2;
-  const sb = document.getElementById('pdf-status-bar');
-  sb.className = 'pdf-status ' + (enPlan?'en-plan':'atrasado');
-  document.getElementById('pdf-status-label').textContent = enPlan?'EN PLAN':'ATRASADO';
-  document.getElementById('pdf-status-detail').textContent = `Real ${real.toFixed(1)}% · Plan ${plan.toFixed(1)}% · Delta ${delta.toFixed(1)}%`;
-  document.getElementById('pdf-spi-badge').textContent = 'Cumplimiento '+spi.toFixed(2);
+  const fams = rdPdfFamilias();
+  const hoyTot = fams.reduce((s,f) => s + (f.avance - f.antes) * f.peso / 100, 0);
+  const tareasHoy = fams.reduce((s,f) => s + f.hoy, 0), tareasMan = fams.reduce((s,f) => s + f.manana, 0);
+  const restr = (rdRestricciones||[]).filter(r => (r.titulo||r.descripcion||'').trim());
+  const equipos = rdEquiposPayload();
+  const eqLbl = { esperando:'Por llegar', en_obra:'En obra', montaje:'En montaje', instalado:'Instalado', observado:'Observado' };
+  const visita = document.getElementById('rd-visita')?.value === 'true';
 
-  // Personal chips
-  const perRow = document.getElementById('pdf-personal-row');
-  let persHtml = '';
-  ESPECIALIDADES.forEach(esp => {
-    const v = parseInt(document.getElementById('rd-ob-'+esp)?.value)||0;
-    if (v>0) persHtml += `<span style="background:#f0f3f9;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">${esp.replace(/_/g,' ')}: ${v}</span>`;
-  });
-  perRow.innerHTML = persHtml || `<span style="font-size:11px;color:#9ca3af;">Personal total: ${personal}</span>`;
-
-  // Equipos reportados hoy
-  const _eqPdf = (typeof rdEquiposPayload==='function') ? rdEquiposPayload() : [];
-  const _eqLbl = { esperando:'Por llegar', en_obra:'En obra', montaje:'En montaje', instalado:'Instalado', observado:'Observado' };
-  const _eqTitle = document.getElementById('pdf-equipos-title');
-  const _eqTable = document.getElementById('pdf-equipos-table');
-  if (_eqPdf.length){
-    if(_eqTitle) _eqTitle.style.display = '';
-    _eqTable.style.display = '';
-    _eqTable.innerHTML =
-      `<thead><tr><th>Equipo</th><th>Marca / modelo</th><th>Cant.</th><th>En obra</th><th>Nota</th></tr></thead>
-       <tbody>${_eqPdf.map(e=>`<tr>
-         <td>${rdEsc2(e.tipo||'—')}</td><td>${rdEsc2(e.proveedor||'—')}</td><td>${rdEsc2(e.cantidad||1)}</td>
-         <td>${_eqLbl[e.estado]||'—'}</td><td>${rdEsc2(e.nota||'')}</td></tr>`).join('')}</tbody>`;
-  } else {
-    if(_eqTitle) _eqTitle.style.display = 'none';
-    if(_eqTable) _eqTable.style.display = 'none';
-  }
-
-  // Cargar contratas del reporte
-  try {
-    const rows = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(currentProyecto.nombre)})&order=fecha_reporte.desc&limit=1`);
-    if (rows && rows.length > 0 && rows[0].contratas_detalle) {
-      const contratas = rows[0].contratas_detalle;
-      document.getElementById('pdf-contratas-table').innerHTML =
-        `<thead><tr><th>Empresa</th><th>Especialidad</th><th>Pers.</th><th>Equipo de protección</th><th>Hig.</th><th>Punt.</th><th>Unif.</th><th>Comp.</th><th>Orden</th><th>Prom.</th></tr></thead>
-        <tbody>${(Array.isArray(contratas)?contratas:[]).map(c=>`<tr>
-          <td>${c.empresa||c.contratista||'—'}</td><td>${c.especialidad||'—'}</td>
-          <td>${c.personal||0}</td><td>${c.epp||c.eval_epp||'—'}</td>
-          <td>${c.higiene||c.eval_higiene||'—'}</td><td>${c.puntualidad||c.eval_puntualidad||'—'}</td>
-          <td>${c.uniforme||c.eval_uniforme||'—'}</td><td>${c.comportamiento||c.eval_comportamiento||'—'}</td>
-          <td>${c.orden||c.eval_orden||'—'}</td>
-          <td><strong>${c.promedio||c.eval_promedio||'—'}</strong></td>
-        </tr>`).join('')}</tbody>`;
-    }
-  } catch(e) {}
-
-  // Generar PDF con html2canvas + jsPDF
   showToast('Generando PDF…');
+  // Historia para la curva S, fotos y firma: en paralelo
+  const [hist, fotos, firma, logo] = await Promise.all([
+    sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(currentProyecto.nombre)})&es_draft=not.is.true&select=fecha_reporte,pct_planificado,pct_ejecutado&order=fecha_reporte.asc&limit=1000`).catch(() => []),
+    Promise.all((rdFotos||[]).filter(f => f.url || f.previewUrl).slice(0,4).map(async f => ({ src: await rdPdfImg(f.url || f.previewUrl, 500), txt: f.actividad || f.frente || f.nombre || '' }))),
+    _firmaDirty ? Promise.resolve(document.getElementById('rd-firma-canvas')?.toDataURL('image/png')) : rdPdfImg(_rdFirmaUrlPrev, 400),
+    rdPdfImg('assets/logo-color.png', 600)
+  ]);
+  const porDia = {};   // un punto por día (el último reporte de esa fecha)
+  (hist||[]).forEach(r => { if (r.fecha_reporte && r.fecha_reporte < fecha) porDia[r.fecha_reporte] = r; });
+  const serie = Object.keys(porDia).sort().map(k => ({ t: new Date(k+'T12:00:00').getTime(),
+    plan: parseFloat(porDia[k].pct_planificado)||0, real: parseFloat(porDia[k].pct_ejecutado)||0 }));
+  serie.push({ t: new Date(fecha+'T12:00:00').getTime(), plan, real });
+
+  const famHTML = fams.length ? `<table class="pdf-t">
+      <thead><tr><th>Familia</th><th class="r">Peso</th><th style="width:200px">Acumulado</th><th class="r">Avance</th><th class="r">Hoy</th><th class="r">Tareas hoy</th><th class="r">Mañana</th></tr></thead>
+      <tbody>${fams.map(f => { const d = f.avance - f.antes; return `<tr${f.hoy ? '' : ' class="quieta"'}>
+        <td>${E(f.nombre)}</td><td class="r">${f1(f.peso)}%</td>
+        <td><div class="pdf-bar"><i style="width:${f.antes}%"></i><em style="left:${f.antes}%;width:${Math.max(0,d)}%"></em></div></td>
+        <td class="r">${f1(f.avance)}%</td><td class="r">${d >= 0.05 ? `<span class="hoy">+${f1(d)}</span>` : '—'}</td>
+        <td class="r">${f.hoy || '—'}</td><td class="r">${f.manana || '—'}</td></tr>`; }).join('')}</tbody>
+      <tfoot><tr><td>Total obra</td><td class="r">100%</td><td><div class="pdf-bar"><i style="width:${real-hoyTot}%"></i><em style="left:${real-hoyTot}%;width:${Math.max(0,hoyTot)}%"></em></div></td>
+        <td class="r">${f1(real)}%</td><td class="r">${hoyTot >= 0.05 ? '+'+f1(hoyTot) : '—'}</td><td class="r">${tareasHoy || '—'}</td><td class="r">${tareasMan || '—'}</td></tr></tfoot></table>
+      <div class="pdf-ley"><span><i style="background:#102267"></i>Acumulado a ayer</span><span><i style="background:#39C1AD"></i>Avance de hoy</span><span>El detalle tarea por tarea queda en la plataforma.</span></div>`
+    // Obra sin cronograma: el avance por especialidad que llena el supervisor
+    : `<table class="pdf-t"><thead><tr><th>Especialidad</th><th>Contratista</th><th style="width:200px">Avance</th><th class="r">%</th></tr></thead><tbody>${
+        rdEsp.map(r => `<tr><td>${E(r.label)}</td><td>${E(r.contrata||'—')}</td><td><div class="pdf-bar"><i style="width:${parseFloat(r.avance)||0}%"></i></div></td><td class="r">${f1(parseFloat(r.avance)||0)}%</td></tr>`).join('')}</tbody></table>`;
+
+  const extras = [];
+  if (repro && repro.fecha_nueva) extras.push(`<div><h3>Plazo y reprogramación</h3>Fin contractual <b>${rdFmtFecha(P.finCont)}</b> → proyectado <b>${rdFmtFecha(repro.fecha_nueva)}${diasCorre ? ` (${diasCorre > 0 ? '+' : ''}${diasCorre} días)` : ''}</b>.${repro.motivo ? ' Motivo: ' + E(repro.motivo) + '.' : ''} <b>${repro.formalizado ? 'Formalizada' : 'No formalizada'}</b> con el cliente.${reproOn ? '' : ' <span class="k">Reportada el ' + rdFmtFecha(repro.fecha_reporte) + '</span>'}</div>`);
+  if (visita) extras.push(`<div><h3>Visita del cliente</h3><b>${E(document.getElementById('rd-visita-nombre')?.value || 'Cliente')}</b>${(document.getElementById('rd-visita-obs')?.value||'').trim() ? '. ' + E(document.getElementById('rd-visita-obs').value.trim()) : ''}</div>`);
+
+  const entrada = document.getElementById('rd-entrada')?.value, salida = document.getElementById('rd-salida')?.value;
+  const fechaLarga = new Date(fecha+'T12:00:00').toLocaleDateString('es-PE',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  const firmante = document.getElementById('rd-firma-nombre')?.value || P.supervisor || currentUser?.nombre || '';
+  const ahora = new Date().toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  document.getElementById('pdf-page-1').innerHTML = `
+    <div class="pdf-head">${logo ? `<img src="${logo}" alt="Grupo Friopacking">` : '<b>Grupo Friopacking</b>'}
+      <div class="ttl"><b>Reporte Diario de Obra</b><span>${E(fechaLarga.charAt(0).toUpperCase() + fechaLarga.slice(1))}</span></div></div>
+    <div class="pdf-ficha">
+      <div><span class="k">Proyecto</span><b>${E(P.nombre)}</b></div>
+      <div><span class="k">Supervisor</span><b>${E(P.supervisor || currentUser?.nombre || '—')}</b></div>
+      <div><span class="k">Código</span><b>${E(rdCodReporte() || P.cod || '—')}</b></div>
+      <div><span class="k">Fin contractual</span><b>${rdFmtFecha(P.finCont)}</b></div>
+      <div><span class="k">Fin proyectado</span><b>${rdFmtFecha(finProy)}</b></div></div>
+    <div class="pdf-hero">
+      <div class="pdf-kpi estado${enPlan ? '' : ' atrasado'}"><span class="k">Estado del día</span><b><i></i>${enPlan ? 'En plan' : 'ATRASADO'}</b><small>Real ${f1(real)}% · Plan ${f1(plan)}% · Δ ${delta >= 0 ? '+' : ''}${f1(delta)} pts</small></div>
+      <div class="pdf-kpi"><span class="k">Avance físico</span><b>${f1(real)}%</b><small>${hoyTot >= 0.05 ? '+' + f1(hoyTot) + ' pts hoy' : 'Sin avance registrado hoy'}</small></div>
+      <div class="pdf-kpi"><span class="k">Cumplimiento del plazo</span><b>${spi.toFixed(2)}</b><small>Avance real ÷ planificado</small></div>
+      <div class="pdf-kpi"><span class="k">Personal en obra</span><b>${personal}</b><small>${persRows.length} contratista${persRows.length === 1 ? '' : 's'}${entrada && salida ? ' · ' + entrada + '–' + salida : ''}</small></div></div>
+    <div class="pdf-blq"><h3>${fams.length ? 'Avance por familia <small>· pondera por ' + (rdHayCostos() ? 'precio de venta de NISIRA' : 'duración de las tareas') + '</small>' : 'Avance por especialidad'}</h3>${famHTML}</div>
+    <div class="pdf-dos">
+      <div class="pdf-blq"><h3>Curva S · avance acumulado</h3>${rdPdfCurvaSVG(serie)}</div>
+      <div class="pdf-blq"><h3>Personal en obra</h3>${persRows.length ? `<table class="pdf-t"><thead><tr><th>Contratista</th><th>Especialidad</th><th class="r">Pers.</th></tr></thead><tbody>${
+        persRows.map(([n,v]) => `<tr><td>${E(n)}</td><td>${E([...v.esp].join(', '))}</td><td class="r">${v.n}</td></tr>`).join('')}</tbody></table>` : '<div class="pdf-vacio">Sin personal registrado.</div>'}</div></div>
+    ${extras.length ? `<div class="pdf-ex">${extras.join('')}</div>` : ''}
+    ${restr.length || equipos.length ? `<div class="pdf-dos">
+      ${restr.length ? `<div class="pdf-blq"><h3>Restricciones abiertas</h3><div class="pdf-rest">${restr.slice(0,4).map(r => `<div><b>${E((r.categoria||'otros').replace(/^./, c => c.toUpperCase()))} ·</b> ${E(r.titulo || r.descripcion)}${r.responsable || r.contratista ? '. Responsable: ' + E(r.responsable || r.contratista) : ''}${r.fecha_objetivo ? ' · objetivo ' + rdFmtFecha(r.fecha_objetivo) : ''}</div>`).join('')}${restr.length > 4 ? `<div>y ${restr.length - 4} más en la plataforma</div>` : ''}</div></div>` : '<div></div>'}
+      ${equipos.length ? `<div class="pdf-blq"><h3>Equipos del proyecto</h3><table class="pdf-t"><thead><tr><th>Equipo</th><th class="r">Cant.</th><th>Estado</th></tr></thead><tbody>${
+        equipos.slice(0,6).map(e => `<tr><td>${E(e.tipo)}</td><td class="r">${E(e.cantidad)}</td><td>${eqLbl[e.estado] || '—'}</td></tr>`).join('')}</tbody></table></div>` : '<div></div>'}</div>` : ''}
+    ${fotos.some(f => f.src) ? `<div class="pdf-blq"><h3>Registro fotográfico</h3><div class="pdf-fotos">${
+      fotos.filter(f => f.src).map(f => `<div class="pdf-foto"><img src="${f.src}">${f.txt ? `<span>${E(f.txt)}</span>` : ''}</div>`).join('')}</div></div>` : ''}
+    <div class="pdf-pie">
+      <div><div class="pdf-firma">${firma ? `<img src="${firma}">` : ''}</div>${E(firmante)} · Supervisor de obra</div>
+      <div><div class="pdf-firma"></div>Visto bueno · Residente / Cliente</div>
+      <div class="r">Generado por la Plataforma Friopacking<br>${ahora}</div></div>`;
+
   const preview = document.getElementById('pdf-preview');
   preview.style.display = 'block';
   preview.style.position = 'fixed';
   preview.style.left = '-9999px';
-
   try {
     await Promise.all([fpLib('jspdf'), fpLib('html2canvas')]);
     const { jsPDF } = window.jspdf;
-    const canvas = await html2canvas(document.getElementById('pdf-page-1'), {
-      scale: 2, useCORS: true, backgroundColor: '#ffffff'
-    });
-    const imgData = canvas.toDataURL('image/png');
+    const canvas = await html2canvas(document.getElementById('pdf-page-1'), { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
     const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-    const W = pdf.internal.pageSize.getWidth();
-    const H = pdf.internal.pageSize.getHeight();
-    pdf.addImage(imgData, 'PNG', 0, 0, W, H);
-    pdf.save(`Reporte_${currentProyecto.nombre.replace(/\s+/g,'_')}_${fecha}.pdf`);
+    const W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight();
+    // Sin deformar: si se pasa poco del A4 se achica a 1 página; si se pasa mucho, se reparte en páginas
+    const alto = W * canvas.height / canvas.width, img = canvas.toDataURL('image/jpeg', 0.92);
+    if (alto <= H * 1.2){ const k = Math.min(1, H / alto); pdf.addImage(img, 'JPEG', (W - W*k)/2, 0, W*k, alto*k); }
+    else for (let y = 0; y < alto - 1; y += H){ if (y) pdf.addPage(); pdf.addImage(img, 'JPEG', 0, -y, W, alto); }
+    pdf.save(`Reporte_${P.nombre.replace(/\s+/g,'_')}_${fecha}.pdf`);
     showToast('PDF generado ✓');
   } catch(e) {
     showToast('Error generando PDF: ' + e.message);
