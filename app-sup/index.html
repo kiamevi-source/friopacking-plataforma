@@ -4891,7 +4891,22 @@ async function sbTokenVigente(){
 }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden && localStorage.getItem('sb_token')) sbTokenVigente(); });
 
+// Rol 'lectura' de proyecto_accesos (p.ej. Planner): ve la obra pero no escribe.
+// La base ya rechaza la escritura (RLS); aquí solo se evita intentarla, para que
+// el autoguardado no pinte «Error al guardar» a quien solo mira.
+var _accesoRol = {};
+function soloLectura(){
+  try {   // try: setSyncStatus/showToast pueden correr antes de que exista currentProyecto
+    const cod = currentProyecto && currentProyecto.cod;
+    return !!cod && !!_accesoRol && _accesoRol[cod] === 'lectura';
+  } catch(e){ return false; }
+}
 async function sbFetch(path, opts = {}, _reintento) {
+  const metodo = String(opts.method || 'GET').toUpperCase();
+  if (metodo !== 'GET' && metodo !== 'HEAD' && soloLectura() && path.indexOf('/auth/') !== 0) {
+    setSyncStatus('', 'Solo lectura');
+    return null;
+  }
   const headers = {
     'apikey': SB_KEY,
     'Content-Type': 'application/json',
@@ -5059,8 +5074,10 @@ async function cargarProyectos() {
     if (!esAdmin) {
       let cods = null;
       try {
-        const acc = await sbFetch('/rest/v1/proyecto_accesos?select=cod_proyecto&activo=eq.true');
+        const acc = await sbFetch('/rest/v1/proyecto_accesos?select=cod_proyecto,rol&activo=eq.true');
         cods = [...new Set((acc || []).map(a => a.cod_proyecto).filter(Boolean))];
+        _accesoRol = {};
+        (acc || []).forEach(a => { if (a.cod_proyecto) _accesoRol[a.cod_proyecto] = a.rol; });
       } catch(e) {
         console.warn('No se pudo leer proyecto_accesos, se cae al filtro por correo:', e);
       }
@@ -17454,6 +17471,7 @@ function _chkEnsureStyles(){
 }
 
 function setSyncStatus(cls, lbl) {
+  if (soloLectura()) { cls = ''; lbl = 'Solo lectura'; }
   const d = document.getElementById('sync-dot');
   const l = document.getElementById('sync-lbl');
   if (d) { d.className = 'sync-dot' + (cls?' '+cls:''); }
@@ -17463,6 +17481,8 @@ function setSyncStatus(cls, lbl) {
 function showToast(msg, dur=2800, kind='') {
   const t = document.getElementById('toast');
   if (!t) return;
+  // En solo lectura nada se guarda: no confirmar ni alarmar por guardados que no ocurrieron.
+  if (soloLectura() && /guardad|guardar|enviad|subid|sincroniz|pendiente/i.test(String(msg))) { msg = 'Solo lectura: puedes ver la obra, los cambios no se guardan'; kind = ''; }
   t.className = 'toast' + (kind ? ' '+kind : '');
   t.textContent = msg;
   // reset animation
