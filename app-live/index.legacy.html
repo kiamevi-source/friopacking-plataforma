@@ -1349,7 +1349,7 @@ async function initFromSupabase(){
     // compute totals for toast
     const _tpers=window.PROJECTS.reduce((a,p)=>a+(p.personal_total||0),0);
     const _tcontr=window.PROJECTS.reduce((a,p)=>a+(p.contratas_activas||0),0);
-    const _sinHoy=window.PROJECTS.filter(p=>p._fromDB&&!p._reportedToday).length;
+    const _sinHoy=sinReporteP().length;
     showToast(`🔗 Supabase · <b>${proyectos.length}</b> proy · <b>${_tpers}</b> personal · <b>${_tcontr}</b> contratas${_sinHoy>0?` · ⚠ <b>${_sinHoy}</b> sin reporte hoy`:' · ✓ todos reportaron'}`,'ok',6000);
   }catch(err){
     console.error('Supabase fetch error:',err);
@@ -1438,6 +1438,15 @@ const activeP=()=>window.PROJECTS.filter(p=>{
   return !['PAUS','CERR','ANULA','FINAL','SUSPEND'].some(k=>e.includes(k));
 });
 window.activeP=activeP;
+// Obras a las que se les EXIGE reporte (diario, levantamiento de obs. o puesta en marcha).
+// Universo = lo que ve la app del supervisor (proyectos.activo=true, que es lo que carga
+// PROJECTS); dentro de eso se exige solo a estos estados. Misma regla que inicio.js y el
+// módulo Reporte diario. Por Iniciar / Pendiente Valorización / Cerrado no cuentan.
+const ESTADOS_REPORTE=['en progreso','en puesta en marcha','con obs'];
+const debeReportar=p=>!!p&&p._fromDB&&ESTADOS_REPORTE.includes((p._dbEstado||'').trim().toLowerCase());
+const sinRepHoy=p=>debeReportar(p)&&!p._reportedToday;
+const sinReporteP=()=>(window.PROJECTS||[]).filter(sinRepHoy);
+window.debeReportar=debeReportar;window.sinRepHoy=sinRepHoy;window.sinReporteP=sinReporteP;
 
 /* ====== APP STATE ====== */
 const app={view:'datos',period:'30d',cmpDate:null,filters:{estado:[],tipo:[],zona:[],sup:[],q:''},sort:'spi-asc',tm:1};
@@ -1684,7 +1693,7 @@ function renderKPIs(){
   const totalPersonal=psEjec.reduce((a,p)=>a+(p.personal_total||0),0);
   const totalContratas=psEjec.reduce((a,p)=>a+(p.contratas_activas||0),0);
   const psConPers=psEjec.filter(p=>p.personal_total>0); // proyectos con dato de personal
-  const sinReporteHoy=psEjec.filter(p=>p._fromDB&&!p._reportedToday).length;
+  const sinReporteHoy=sinReporteP().length;
   const todayStr2=localISO(today);
 
   const kpis=[
@@ -1777,7 +1786,7 @@ function detectAnomalies(){
   // sin reporte hoy — dinámico desde DB
   if(window._sbConnected){
     const todaySt=localISO(today);
-    ps.filter(p=>p._fromDB&&!p._reportedToday).forEach(p=>{
+    sinReporteP().forEach(p=>{
       const lastD=p._lastReportDate;
       const diasSin=lastD?Math.round((today-new Date(lastD))/86400000):null;
       const label=diasSin!=null?`${diasSin}d sin reporte`:'sin reporte hoy';
@@ -1917,7 +1926,7 @@ function renderProjects(){
     const cfParsed=parseD(p._cf||p.cf||'');
     const dias=rfParsed?daysBetween(today,rfParsed):null;
     const cfVencida=cfParsed&&today>cfParsed&&p.valp<99;
-    const noRepHoy=p._fromDB&&!p._reportedToday;
+    const noRepHoy=sinRepHoy(p);
     const persLabel=p.personal_total>0?`👷 ${p.personal_total} pers · 🏗 ${p.contratas_activas||0} contr`:'';
     // Override border color if contractual date passed
     const borderStyle=cfVencida?'border-top:3px solid #c1272d':noRepHoy?'border-top:2px solid var(--amber)':'';
@@ -3087,7 +3096,7 @@ function renderAlertas(){
   // ── Panel superior: resumen rápido ──
   const vencidos=ps.filter(p=>{const cf=parseD(p._cf||p.cf||'');return cf&&today>cf&&p.valp<99;});
   const proximos30=ps.filter(p=>{const cf=parseD(p._cf||p.cf||'');if(!cf)return false;const d=daysBetween(today,cf);return d>=0&&d<=30&&p.valp<99;});
-  const sinReporteHoy=ps.filter(p=>p._fromDB&&!p._reportedToday);
+  const sinReporteHoy=sinReporteP();
   const atrasados=ps.filter(p=>p.spi<0.85);
   const totalVenta=ps.reduce((a,p)=>a+p.venta,0);
   const totalFact=ps.reduce((a,p)=>a+p.fact,0);
@@ -3690,7 +3699,7 @@ function renderBriefing(){
   const ps=activeP();
   const ano=detectAnomalies();
   const today2=localISO(new Date());
-  const sinRep=ps.filter(p=>p._fromDB&&!p._reportedToday);
+  const sinRep=sinReporteP();
   const avgSpi=ps.length?ps.reduce((a,p)=>a+p.spi,0)/ps.length:1;
   const avgR=ps.length?ps.reduce((a,p)=>a+p.valp,0)/ps.length:0;
   const avgP=ps.length?ps.reduce((a,p)=>a+(p.plan||0),0)/ps.length:0;
@@ -4271,7 +4280,7 @@ const PMOCopilot={
         }
 
         // ── Por defecto: hoy ──
-        const sin=ps.filter(p=>p._fromDB&&!p._reportedToday);
+        const sin=sinReporteP();
         const diaHoy=today.toLocaleDateString('es-PE',{weekday:'long',day:'numeric',month:'short'});
         if(!sin.length)return{t:`✅ **¡Cumplimiento 100% hoy (${diaHoy})!** Todos los proyectos reportaron.`,a:[]};
         let t=`📵 **${sin.length} proyecto${sin.length>1?'s':''} sin reporte hoy (${diaHoy}):**\n\n`;
@@ -4320,7 +4329,7 @@ const PMOCopilot={
         const venc=ps.filter(p=>{const cf=p._cf?new Date(p._cf+'T12:00:00'):null;return cf&&today>cf&&p.valp<99;});
         const prox7=ps.filter(p=>{const cf=p._cf?new Date(p._cf+'T12:00:00'):null;if(!cf)return false;return Math.round((cf-today)/864e5)<=7&&p.valp<99;});
         const crit=ps.filter(p=>p.spi<0.85);
-        const sin=ps.filter(p=>p._fromDB&&!p._reportedToday);
+        const sin=sinReporteP();
         const mem=PMOMemory.analyze();
         let t=`🎯 **Prioridades PMO — Hoy**\n\n`;let n=1;
         if(venc.length)t+=`${n++}. 🚨 [URGENTE] ${venc.length} plazos vencidos → acción inmediata\n`;
@@ -4749,7 +4758,7 @@ const _parseD=s=>{if(!s)return null;const d=new Date(s+'T12:00:00');return isNaN
 
 // ─── Data computers ──────────────────────────────────────────────
 function _getSinReporte(){
-  return(W.PROJECTS||[]).filter(p=>p._fromDB&&!p._reportedToday);
+  return sinReporteP();
 }
 function _getValPendiente(){
   return(W.PROJECTS||[]).filter(p=>{
@@ -5497,7 +5506,7 @@ function _priorityScore(p){
   const daysVenc=cfVenc?Math.round((new Date()-cf)/864e5):0;
   if(p.spi<0.85)s+=30;else if(p.spi<0.95)s+=12;
   if(cfVenc){s+=25;if(daysVenc>30)s+=15;}
-  if(p._fromDB&&!p._reportedToday)s+=15;
+  if(sinRepHoy(p))s+=15;
   if(p.venta>1e6)s+=10;else if(p.venta>5e5)s+=5;
   if(p.fact===0&&p.valp>20)s+=8;
   return s;
@@ -6019,7 +6028,7 @@ function _pScore(p){
   // CF vencida only counts if project has actual avance (valp>0) — avoids flagging no-data projects
   if(cfV&&p.valp>0){s+=25;if(Math.round((_now()-cf)/864e5)>30)s+=15;}
   // Sin reporte only penalizes if project has real data (valp>0 or recently reported)
-  if(p._fromDB&&!p._reportedToday&&p.valp>0)s+=15;
+  if(sinRepHoy(p)&&p.valp>0)s+=15;
   if(p.venta>1e6)s+=10;else if(p.venta>5e5)s+=5;
   if(p.fact===0&&p.valp>20)s+=8;
   return s;
@@ -6042,7 +6051,7 @@ function _updatePulseBar(){
   const crits=ps.filter(p=>p.spi<0.85).length;
   const risks=ps.filter(p=>p.spi>=0.85&&p.spi<0.95).length;
   const cfV=ps.filter(p=>{const cf=_parseD(p._cf||p.cf||'');return cf&&_now()>cf&&p.valp<99;}).length;
-  const sin=ps.filter(p=>p._fromDB&&!p._reportedToday).length;
+  const sin=sinReporteP().length;
   const tV=ps.reduce((a,p)=>a+p.venta,0),tF=ps.reduce((a,p)=>a+p.fact,0);
   const avgSpi=ps.length?(ps.reduce((a,p)=>a+p.spi,0)/ps.length).toFixed(2):'—';
   const now=_now();
@@ -6089,8 +6098,8 @@ function _heroHTML(p,i){
   let tagH='';
   if(cfV)tagH=`<span class="pmo-hero-tag pmo-hero-tag-crit">⏰ ${cfDays}d vencida</span>`;
   else if(dLeft!==null&&dLeft<=30)tagH=`<span class="pmo-hero-tag pmo-hero-tag-warn">📅 ${dLeft}d restantes</span>`;
-  else if(p._fromDB&&!p._reportedToday)tagH=`<span class="pmo-hero-tag pmo-hero-tag-warn">📵 Sin reporte</span>`;
-  const actLbl=p._fromDB&&!p._reportedToday?'📵 Recordar reporte':cfV?'🚨 Gestionar plazos':'📊 Ver proyecto';
+  else if(sinRepHoy(p))tagH=`<span class="pmo-hero-tag pmo-hero-tag-warn">📵 Sin reporte</span>`;
+  const actLbl=sinRepHoy(p)?'📵 Recordar reporte':cfV?'🚨 Gestionar plazos':'📊 Ver proyecto';
   const actCls=lvl===1?'r':lvl===2?'a':'g';
   return `<div class="pmo-hero pmo-hero-p${lvl}" onclick="openProject('${p.name}')">
     <div class="pmo-hero-rank">${ranks[lvl]}</div>
@@ -6105,7 +6114,7 @@ function _heroHTML(p,i){
     </div>
     <div class="pmo-hero-foot">
       ${tagH}
-      <button class="pmo-hero-act pmo-hero-act-${actCls}" onclick="event.stopPropagation();${p._fromDB&&!p._reportedToday?`window.open('https://wa.me/?text=${encodeURIComponent('Hola '+p.sup+', recordatorio de reporte diario para el proyecto '+p.name+'. Grupo Friopacking · PMO')}','_blank')`:actCls==='r'?`showView('alertas')`:`openProject('${p.name}')`}">${actLbl}</button>
+      <button class="pmo-hero-act pmo-hero-act-${actCls}" onclick="event.stopPropagation();${sinRepHoy(p)?`window.open('https://wa.me/?text=${encodeURIComponent('Hola '+p.sup+', recordatorio de reporte diario para el proyecto '+p.name+'. Grupo Friopacking · PMO')}','_blank')`:actCls==='r'?`showView('alertas')`:`openProject('${p.name}')`}">${actLbl}</button>
     </div>
   </div>`;
 }
@@ -6328,7 +6337,7 @@ const ProactiveAI={
     const ps=_ps();
     // Pattern 1: Supervisor con 2+ sin reporte
     const sinBySup={};
-    ps.filter(p=>p._fromDB&&!p._reportedToday).forEach(p=>{
+    sinReporteP().forEach(p=>{
       const s=p.sup||'Sin asignar';(sinBySup[s]=sinBySup[s]||[]).push(p);
     });
     Object.entries(sinBySup).filter(([,pr])=>pr.length>=2).slice(0,1).forEach(([sup,projs])=>{
@@ -6842,7 +6851,7 @@ function renderSupervisoresPremium(){
     const avgValp=s.projs.reduce((a,p)=>a+p.valp,0)/s.projs.length;
     const crits=s.projs.filter(p=>p.spi<0.85).length;
     const alerts=ano.filter(a=>a.sup===s.name).length;
-    const sinRep=s.projs.filter(p=>p._fromDB&&!p._reportedToday).length;
+    const sinRep=s.projs.filter(sinRepHoy).length;
     const obj={...s,avgSpi,avgValp,crits,alerts,sinRep};
     obj.health=_supxHealthScore(obj);
     obj.healthColor=_supxHealthColor(obj.health);
@@ -7523,7 +7532,7 @@ function renderPendientesPremium(){
 function renderBriefingPremium(){
   const el=_$('brief-main');if(!el)return;
   const ps=_ps();const ano=W.detectAnomalies?W.detectAnomalies():[];
-  const sinRep=ps.filter(p=>p._fromDB&&!p._reportedToday);
+  const sinRep=sinReporteP();
   const avgSpi=ps.length?ps.reduce((a,p)=>a+p.spi,0)/ps.length:1;
   const avgR=ps.length?ps.reduce((a,p)=>a+p.valp,0)/ps.length:0;
   const avgP=ps.length?ps.reduce((a,p)=>a+(p.plan||0),0)/ps.length:0;
@@ -11194,7 +11203,7 @@ W._openSupPanel=function(supName){
         <div style="flex:1">
           <div class="spp-proj-name">${p.name}</div>
           <div class="spp-proj-meta">${p.dep||''} · ${p.valp.toFixed(0)}% avance · ${_fmtM(p.venta)}</div>
-          <div class="spp-proj-meta" style="margin-top:2px">${p._fromDB&&!p._reportedToday?'<span style="color:#f59e0b">📵 Sin reporte hoy</span>':'<span style="color:#22c55e">✓ Reportó hoy</span>'}</div>
+          <div class="spp-proj-meta" style="margin-top:2px">${sinRepHoy(p)?'<span style="color:#f59e0b">📵 Sin reporte hoy</span>':'<span style="color:#22c55e">✓ Reportó hoy</span>'}</div>
         </div>
         <div class="spp-proj-stat" style="color:${col}">Cumplimiento del plazo ${p.spi.toFixed(2)}<br><span style="font-size:10px;color:var(--muted)">${lastDate}</span></div>
       </div>`;
@@ -11258,7 +11267,7 @@ document.addEventListener('click',function(e){
       });
       _lastRefresh=Date.now();
       // Update "sin reporte" KPI label
-      const sinHoy=(W.PROJECTS||[]).filter(p=>p._fromDB&&!p._reportedToday).length;
+      const sinHoy=sinReporteP().length;
       document.querySelectorAll('.kpi').forEach(el=>{
         const lbl=el.querySelector('.label');
         if(lbl&&lbl.textContent.includes('Sin reporte')){
@@ -11495,7 +11504,7 @@ W.renderProjects = function(){
     const cfDate = p._cf || p.cf ? new Date((p._cf||p.cf)+'T12:00:00') : null;
     const now = new Date();
     const cfVencida = cfDate && now > cfDate && p.valp < 99;
-    const noRepHoy = p._fromDB && !p._reportedToday;
+    const noRepHoy = sinRepHoy(p);
     const diasAl = rfDate ? Math.round((rfDate - now)/86400000) : null;
 
     const planW = Math.min(100, p.plan || 0);
@@ -11734,7 +11743,7 @@ W.renderProjects = function(){
     const cfDate = (p._cf||p.cf) ? new Date((p._cf||p.cf)+'T12:00:00') : null;
     const rfDate = (p._rf||p.rf) ? new Date((p._rf||p.rf)+'T12:00:00') : null;
     const cfVencida = cfDate && now>cfDate && p.valp<99;
-    const noRepHoy = p._fromDB && !p._reportedToday;
+    const noRepHoy = sinRepHoy(p);
     const diasAl = rfDate ? Math.round((rfDate-now)/86400000) : null;
     const planW = Math.min(100, p.plan||0);
     const realW = Math.min(100, (p.valp||0)*tm);
@@ -17054,7 +17063,7 @@ W.renderKPIs = function(){
 
   const totalPersonal  = psEjec.reduce((a,p)=>a+(p.personal_total||0),0);
   const totalContratas = psEjec.reduce((a,p)=>a+(p.contratas_activas||0),0);
-  const sinReporteHoy  = psEjec.filter(p=>p._fromDB&&!p._reportedToday).length;
+  const sinReporteHoy  = sinReporteP().length;
   const factPct        = totalVenta > 0 ? (totalFact/totalVenta*100) : 0;
   const brechaReal     = avgReal - avgPlan;
   const _fU = v => v>=1e6?'$'+(v/1e6).toFixed(2)+'M':v>=1e3?'$'+(v/1e3).toFixed(0)+'K':'$'+Math.round(v);
@@ -18090,7 +18099,7 @@ function spcPriority(p){
 function spcInsight(p, status, planW, realW){
   const gap = realW - planW;
   if(status==='critical') return {t:'alert', txt:'plazo vencido · requiere acción inmediata'};
-  if(p._fromDB && !p._reportedToday) return {t:'warn', txt:'Sin reporte hoy · información desactualizada'};
+  if(sinRepHoy(p)) return {t:'warn', txt:'Sin reporte hoy · información desactualizada'};
   if(p.spi != null && p.spi < 0.80) return {t:'alert', txt:'Cumplimiento del plazo '+p.spi.toFixed(2)+' · riesgo alto de incumplimiento'};
   if(gap <= -8) return {t:'alert', txt:'Atraso de '+Math.abs(gap).toFixed(1)+' pts vs plan'};
   if(gap <= -3) return {t:'warn', txt:'Ligero atraso · '+Math.abs(gap).toFixed(1)+' pts bajo plan'};
@@ -18145,7 +18154,7 @@ W.renderProjects = function(){
     const rfDate = (p._rf || p.rf) ? new Date((p._rf||p.rf)+'T12:00:00') : null;
     const cfDate = (p._cf || p.cf) ? new Date((p._cf||p.cf)+'T12:00:00') : null;
     const cfVencida = cfDate && now > cfDate && p.valp < 99;
-    const noRepHoy = p._fromDB && !p._reportedToday;
+    const noRepHoy = sinRepHoy(p);
     const diasAl = rfDate ? Math.round((rfDate - now)/86400000) : null;
 
     const planW = Math.min(100, p.plan || 0);
@@ -18685,7 +18694,7 @@ function renderReportesCOC(){
     }
     if(spi>=1.1)alerts.push({sev:'ok',proj:r.projName,msg:`Adelantado · Cumplimiento del plazo ${spi.toFixed(2)}`,icon:'🔥',sup:r.sup});
   });
-  ps.filter(p=>p._fromDB&&!p._reportedToday).slice(0,4).forEach(p=>alerts.push({sev:'info',proj:p.name,msg:'Sin reporte hoy',icon:'📵',sup:p.sup}));
+  sinReporteP().slice(0,4).forEach(p=>alerts.push({sev:'info',proj:p.name,msg:'Sin reporte hoy',icon:'📵',sup:p.sup}));
   const sevOrd={crit:0,warn:1,info:2,ok:3};
   alerts.sort((a,b)=>(sevOrd[a.sev]||0)-(sevOrd[b.sev]||0));
 
@@ -20317,7 +20326,7 @@ function _renderExecutiveFull(p){
       insights.push({t:'info', txt:`<b>Proyección cierre ${_fmtD(etaDate)}</b> · alineado con ${_fmtD(rf)}`});
     }
   }
-  if(p._fromDB && !p._reportedToday){
+  if(sinRepHoy(p)){
     insights.push({t:'warn', txt:`<b>Sin reporte hoy</b> · información puede estar desactualizada`});
   }
   if(insights.length === 0){
@@ -20331,7 +20340,7 @@ function _renderExecutiveFull(p){
   else if(spi < 0.95) risks.push({lvl:'high', title:'Desviación de plan', desc:`Brecha ${gap.toFixed(1)} pts vs línea base`, score:'62'});
   if(factPct < 50 && real > 60) risks.push({lvl:'high', title:'Brecha de facturación', desc:`${factPct.toFixed(0)}% facturado vs ${real.toFixed(0)}% avance`, score:'58'});
   if(vel < 0.1 && real < 95) risks.push({lvl:'med', title:'Velocidad reducida', desc:`${vel.toFixed(2)} pts/día · Llegada estimada ${etaDate?_fmtD(etaDate):'—'}`, score:'48'});
-  if(p._fromDB && !p._reportedToday) risks.push({lvl:'med', title:'Sin reporte diario', desc:'Información desactualizada', score:'35'});
+  if(sinRepHoy(p)) risks.push({lvl:'med', title:'Sin reporte diario', desc:'Información desactualizada', score:'35'});
   if(risks.length === 0) risks.push({lvl:'low', title:'Sin riesgos detectados', desc:'Operación dentro de tolerancia', score:'12'});
 
   /* Timeline (synthetic from key events + last reports) */
@@ -20795,7 +20804,7 @@ function renderRisk(p){
   if(spi<0.85) risks.push({lvl:'crit', title:'Atraso crítico de cronograma', desc:`Cumplimiento del plazo ${spi.toFixed(2)}`, score:88, mit:'Refuerzo de cuadrilla + plan recuperación'});
   else if(spi<0.95) risks.push({lvl:'high', title:'Desviación de plan', desc:`Brecha ${gap.toFixed(1)} pts`, score:62, mit:'Replanteo semanal de hitos'});
   if(factPct<50 && real>60) risks.push({lvl:'high', title:'Brecha de facturación', desc:`${factPct.toFixed(0)}% facturado · ${real.toFixed(0)}% avance`, score:58, mit:'Acelerar valorización mensual'});
-  if(p._fromDB && !p._reportedToday) risks.push({lvl:'med', title:'Sin reporte diario', desc:'Información desactualizada', score:35, mit:'Comunicar a supervisor'});
+  if(sinRepHoy(p)) risks.push({lvl:'med', title:'Sin reporte diario', desc:'Información desactualizada', score:35, mit:'Comunicar a supervisor'});
   if(!risks.length) risks.push({lvl:'low', title:'Sin riesgos detectados', desc:'Operación dentro de tolerancia', score:12, mit:'Mantener monitoreo'});
 
   body.innerHTML = `<div class="mview on exc exc-section" id="mv-risk">

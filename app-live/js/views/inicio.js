@@ -16,7 +16,7 @@ window.loadDashboard = async function () {
     // "Proyectos activos" del hero se deriva por estado de ejecución (activosList).
     const { data: projs, error: e1 } = await window.sb
       .from('proyectos')
-      .select('id,nombre,estado,fecha_fin_contractual,fecha_ini_contractual,valorizacion_pct,supervisor');
+      .select('id,nombre,estado,activo,fecha_fin_contractual,fecha_ini_contractual,valorizacion_pct,supervisor');
     if (e1) throw e1;
     if (!projs) throw new Error('No data');
 
@@ -33,19 +33,32 @@ window.loadDashboard = async function () {
 
     // Reportes (histórico completo, no-draft) — para derivar avance y "último reporte"
     // EXACTAMENTE como la vista Alertas (legacy), y que los KPIs coincidan.
-    const { data: reps, error: e2 } = await window.sb
-      .from('reportes')
-      .select('nombre_proyecto,fecha_reporte,pct_ejecutado,spi')
-      .not('es_draft', 'is', true)
-      .order('fecha_reporte', { ascending: true });
-    if (e2) console.warn('reportes fetch error', e2);
+    // Supabase corta cada respuesta en 1000 filas: sin paginar, el Inicio se quedaba
+    // en los reportes de agosto y marcaba a todas las obras "sin reporte".
+    const reps = [];
+    for (let desde = 0; ; desde += 1000) {
+      const { data: pag, error: e2 } = await window.sb
+        .from('reportes')
+        .select('nombre_proyecto,fecha_reporte,pct_ejecutado,spi')
+        .not('es_draft', 'is', true)
+        .order('fecha_reporte', { ascending: true })
+        .order('id', { ascending: true })
+        .range(desde, desde + 999);
+      if (e2) { console.warn('reportes fetch error', e2); break; }
+      reps.push(...(pag || []));
+      if (!pag || pag.length < 1000) break;
+    }
 
     // Agrupar por proyecto con dedup anti-zombi (réplica de index.legacy.html)
     const repByProj = {};
+    const lastFechaByProj = {};
     (reps || []).forEach((r) => {
       const k = r.nombre_proyecto || '';
       if (!k) return;
       if (!repByProj[k]) repByProj[k] = [];
+      // La fecha del último reporte cuenta aunque el avance no haya crecido: el
+      // anti-zombi solo filtra avance/SPI, no si la obra reportó (igual que el legacy).
+      if ((r.fecha_reporte || '') > (lastFechaByProj[k] || '')) lastFechaByProj[k] = r.fecha_reporte;
       const av = parseFloat(r.pct_ejecutado) || 0;
       const prev = repByProj[k][repByProj[k].length - 1];
       if (prev && av > 0 && av < 99.5 && av === prev.av) return; // avance no creció → zombi
@@ -56,10 +69,11 @@ window.loadDashboard = async function () {
     const refDateStr = legacyRefDate();
     projs.forEach((p) => {
       let rs = repByProj[p.nombre];
+      let repKey = p.nombre;
       if (!rs || !rs.length) {
         const pNorm = normK(p.nombre || '');
         const altKey = Object.keys(repByProj).find((kk) => normK(kk) === pNorm);
-        if (altKey) rs = repByProj[altKey];
+        if (altKey) { rs = repByProj[altKey]; repKey = altKey; }
       }
       rs = rs || [];
       const last = rs[rs.length - 1];
@@ -67,14 +81,18 @@ window.loadDashboard = async function () {
       const lastOk = last && (last.av > 0 || (last.spi || 0) > 0);
       // _valp: avance del último reporte (fallback valorizacion_pct) — misma regla que el legacy
       p._valp = cerrado ? 100 : (lastOk ? last.av : (parseFloat(p.valorizacion_pct) || 0));
-      p._lastFecha = last ? last.fecha : '';
+      p._lastFecha = lastFechaByProj[repKey] || (last ? last.fecha : '');
       p._repRef = p._lastFecha === refDateStr; // ¿reportó en la fecha de referencia?
       p._spi = (last && last.spi != null) ? last.spi : null; // SPI del último reporte
     });
 
-    // KPI 1 — Sin reporte (solo proyectos en progreso). Réplica de "sin reporte hoy"
-    // del legacy: no reportaron en la fecha de referencia (regla 6pm).
-    const sinReporteList = enProgreso.filter((p) => !p._repRef);
+    // KPI 1 — Sin reporte. Réplica de sinReporteP() del legacy: obras que ve la app
+    // del supervisor (activo=true) y a las que se les exige reporte por su estado
+    // (En progreso, En Puesta en Marcha, Con obs), sin reporte en la fecha de
+    // referencia (regla 6pm). Por Iniciar / Pend. Valorización / Cerrado no cuentan.
+    const ESTADOS_REPORTE = ['en progreso', 'en puesta en marcha', 'con obs'];
+    const sinReporteList = projs.filter((p) => p.activo === true
+      && ESTADOS_REPORTE.includes((p.estado || '').trim().toLowerCase()) && !p._repRef);
     const sinReporte = sinReporteList.length;
     const elSin = document.getElementById('kpi-sin');
     elSin.innerHTML = '0';

@@ -91,7 +91,7 @@ async function cargar(){
   try{
     var r=await Promise.all([
       sup('/rest/v1/rpc/indicadores_reporte_diario',{p_desde:desde,p_hasta:hoy()}),
-      pmo('/rest/v1/proyectos?select=cod_proyecto,nombre,supervisor,estado&estado=in.(%22En%20progreso%22,%22En%20Puesta%20en%20Marcha%22)').catch(function(){ return []; }),
+      pmo('/rest/v1/proyectos?select=cod_proyecto,nombre,supervisor,estado&activo=eq.true').catch(function(){ return []; }),
       pmo('/rest/v1/valorizacion_lineas?select=cod_proyecto,periodo,valorizacion,valorizacion_proyectada,presupuesto&order=periodo.desc').catch(function(){ return []; }),
       pmo('/rest/v1/alerta_destinatarios?select=*&order=rol,nombre').catch(function(){ return []; })
     ]);
@@ -101,12 +101,15 @@ async function cargar(){
   }catch(e){ S.error='No se pudieron leer los indicadores: '+(e.message||e); }
   pintar();
 }
+var EXIGE=['en progreso','en puesta en marcha','con obs'];
 // Une las obras activas de Gerencia con lo que llega del reporte diario (una obra sin reporte también cuenta)
 function obras(){
   var by={}, out=[];
   ((S.data&&S.data.obras)||[]).forEach(function(o){ by[clave(o.cod_proyecto)]=o; });
   S.pmo.forEach(function(p){ var k=clave(p.cod_proyecto); var o=by[k]||{ cod_proyecto:p.cod_proyecto, nombre_proyecto:p.nombre, supervisor:p.supervisor, sinReporte:true };
-    o.nombre_proyecto=p.nombre||o.nombre_proyecto; o._activa=true; out.push(o); delete by[k]; });
+    // Lista = la que ve la app del supervisor (activo=true); se exige reporte solo por estado.
+    o.nombre_proyecto=p.nombre||o.nombre_proyecto; o.estado=p.estado; o._activa=EXIGE.indexOf(String(p.estado||'').trim().toLowerCase())>=0;
+    if(o._activa || !o.sinReporte) out.push(o); delete by[k]; });
   Object.keys(by).forEach(function(k){ out.push(by[k]); });
   out.forEach(function(o){
     var v=S.val[clave(o.cod_proyecto)];
@@ -171,7 +174,7 @@ function tablaObras(O){
     if(S.abierta===i) row+='<tr><td colspan="10" style="padding:0">'+detalle(o)+'</td></tr>';
     return row;
   }).join('');
-  return '<div class="card"><div class="card-h"><div><h2>Por obra</h2><p>Obras en progreso de Gerencia + las que reportaron en el periodo · toca una fila para ver el detalle</p></div></div>'+
+  return '<div class="card"><div class="card-h"><div><h2>Por obra</h2><p>Obras de la app del supervisor que deben reportar (En progreso, Puesta en Marcha, Con obs) + las que reportaron en el periodo · toca una fila para ver el detalle</p></div></div>'+
     '<div class="tw"><table><thead><tr><th>Obra</th><th>Último reporte</th><th>Avance real</th><th>SSOMA</th><th>Contratas</th><th>Restricciones</th><th>Planos aprob.</th><th>Requerim.</th><th>Equipos</th><th>Valorización</th></tr></thead><tbody>'+
     (filas||'<tr><td colspan="10" class="empty">Sin obras.</td></tr>')+'</tbody></table></div></div>';
 }
