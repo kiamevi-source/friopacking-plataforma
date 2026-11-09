@@ -8237,6 +8237,30 @@ body>#gcc-legend{display:none!important}
 .eqv2-btn.primary{background:linear-gradient(135deg,var(--eq-teal),#14b8a6);border-color:var(--eq-teal);color:#fff;box-shadow:0 4px 12px -2px rgba(13,148,136,.35)}
 .eqv2-btn.primary:hover{filter:brightness(1.06);color:#fff;transform:translateY(-1px);box-shadow:0 8px 18px -2px rgba(13,148,136,.45)}
 .eqv2-btn.icon-only{padding:8px 10px}
+/* EQ_HEADER_V2 (9-nov-2026, Kiara: «no me gusta» la cabecera de chips): título + una línea de contexto;
+   los conteos (críticos, fabricación, entregados…) ya están en las tarjetas de abajo, no se repiten. */
+.eqv2-cmd.v2{padding:16px 20px;align-items:center}
+.eqv2-cmd-ico{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#2FBCA3,#14b8a6);display:grid;place-items:center;color:#fff;flex:none;box-shadow:0 6px 14px -4px rgba(47,188,163,.55),inset 0 1px 0 rgba(255,255,255,.3)}
+.eqv2-cmd-ico svg{width:20px;height:20px}
+.eqv2-cmd-eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--eq-mut);margin-bottom:1px}
+.eqv2-cmd.v2 .eqv2-cmd-text h2{font-size:20px;font-weight:800;letter-spacing:-.02em;color:#14275C;line-height:1.15}
+.eqv2-cmd-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-top:5px;font-size:12px;color:var(--eq-mut)}
+.eqv2-cmd-meta>span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.eqv2-cmd-meta>span+span::before{content:'';width:3px;height:3px;border-radius:50%;background:#cbd5e1;margin-right:4px}
+.eqv2-st::after{content:none}
+.eqv2-st i{width:7px;height:7px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.14);display:inline-block}
+.eqv2-st.warn{color:#b45309;font-weight:600} .eqv2-st.warn i{background:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.16)}
+.eqv2-link{border:none;background:none;padding:0;font:inherit;font-weight:600;color:#4F8DF5;cursor:pointer}
+.eqv2-link:hover{text-decoration:underline}
+.eqv2-cmd.v2 .eqv2-cmd-actions{gap:6px}
+.eqv2-cmd.v2 .eqv2-btn{padding:7px 12px;font-size:12.5px;border-radius:9px;box-shadow:none}
+.eqv2-cmd.v2 .eqv2-btn svg{width:14px;height:14px;flex:none}
+.eqv2-cmd.v2 .eqv2-btn:hover{transform:none}
+.eqv2-cmd.v2 .eqv2-btn.primary{background:#14275C;border-color:#14275C;color:#fff;box-shadow:none}
+.eqv2-cmd.v2 .eqv2-btn.primary:hover{background:#1d3577;color:#fff;filter:none}
+.eqv2-cmd.v2 .eqv2-search input{width:220px;padding:7px 12px 7px 30px;border-radius:9px}
+.eqv2-cmd.v2 .eqv2-search::before{content:'';width:13px;height:13px;left:11px;opacity:.55;background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E")}
+@media (max-width:760px){.eqv2-cmd.v2 .eqv2-search{flex:1 1 100%}.eqv2-cmd.v2 .eqv2-search input{width:100%}.eqv2-cmd.v2 .eqv2-btn .lbl{display:none}}
 
 /* KPI strip */
 .eqv2-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
@@ -9446,56 +9470,64 @@ function renderEquiposPremium(){
   const diasAtrasoTotal=activos.filter(r=>r._vencido&&r._diasObra!=null)
     .reduce((a,r)=>a+Math.abs(r._diasObra),0);
   const atrasoProm=vencidos?Math.round(diasAtrasoTotal/vencidos):0;
-  h+=`<div class="eqv2-cmd">
+  // EQ_HEADER_V2: título + una línea de contexto (proyectos · fuente de datos · ocultos). Sin chips repetidos.
+  const _ic={
+    box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>',
+    up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0-4 4m4-4 4 4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>',
+    link:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>',
+    cloud:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4.5 4.5 0 1 1 .9-8.9A6 6 0 0 1 19 11a3.5 3.5 0 0 1-1 7z"/><path d="M12 12v6m0-6-2.5 2.5M12 12l2.5 2.5"/></svg>',
+    clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    ref:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></svg>'
+  };
+  const _fuente=(()=>{
+    const out=[];
+    const f=t=>t?new Date(t).toLocaleString('es-PE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+    const esc=t=>String(t||'').replace(/"/g,'&quot;');
+    const sp=W._eqSp, sc=W._eqDataSrc;
+    if(sp){
+      if(sp.estado==='ok'){
+        const tip=`Se actualiza solo desde SharePoint (se revisa cada 15 min).&#10;Archivo: ${esc(sp.archivo)}&#10;Editado: ${f(sp.modificado_en)}${sp.modificado_por?' por '+esc(sp.modificado_por):''}&#10;Última carga: ${f(sp.ts)} · ${sp.cambios||0} cambios`;
+        out.push(`<span class="eqv2-st" title="${tip}"><i></i>SharePoint · actualizado ${f(sp.ts)}</span>`);
+      } else {
+        const tip=`La última lectura de SharePoint (${f(sp.ts)}) no se aplicó:&#10;${esc(sp.mensaje)}&#10;Los supervisores siguen viendo la carga anterior.`;
+        out.push(`<span class="eqv2-st warn" title="${tip}"><i></i>SharePoint ${sp.estado==='bloqueado'?'bloqueado':'con error'}</span>`);
+      }
+    }
+    if(sc && !(sp&&sp.estado==='ok'&&sc.tipo==='supabase'&&sc.ts&&(Date.now()-sc.ts)<10*864e5)){
+      const et={import:'Importado',supabase:'Sincronizado',snapshot:'Datos embebidos'}[sc.tipo]||sc.tipo;
+      const dias=sc.ts?Math.floor((Date.now()-sc.ts)/864e5):null;
+      const viejo=dias!=null&&dias>10;   // la importación es semanal: pasados 10 días el dato está viejo
+      const tip=viejo?(sp?`El Excel de SharePoint no trae cambios hace ${dias} días.`:`Sin importar hace ${dias} días. La actualización es semanal: subí el Excel de importaciones.`):'Origen de los datos que estás viendo';
+      const cuando=sc.ts?' '+new Date(sc.ts).toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'2-digit'}):'';
+      out.push(`<span class="eqv2-st${viejo?' warn':''}" title="${tip}"><i></i>${et}${cuando}${viejo?` · hace ${dias} días`:''}</span>`);
+    }
+    return out.join('');
+  })();
+  h+=`<div class="eqv2-cmd v2">
     <div class="eqv2-cmd-title">
-      <div class="eqv2-cmd-emoji">📦</div>
+      <div class="eqv2-cmd-ico">${_ic.box}</div>
       <div class="eqv2-cmd-text">
-        <h2>Centro de Control · Equipos</h2>
-        <div class="eqv2-cmd-summary">
-          ${vencidos>0?`<span class="eqv2-cmd-chip dot crit">${vencidos} crítico${vencidos!==1?'s':''}</span>`:''}
-          ${proximos>0?`<span class="eqv2-cmd-chip dot warn">${proximos} Llegada estimada en riesgo</span>`:''}
-          ${enFabActivos>0?`<span class="eqv2-cmd-chip info">🔧 ${enFabActivos} en fabricación</span>`:''}
-          <span class="eqv2-cmd-chip ok">✓ ${entregados} entregados</span>
-          ${(()=>{const sc=W._eqDataSrc;if(!sc)return '';
-            if(W._eqSp&&W._eqSp.estado==='ok'&&sc.tipo==='supabase'&&sc.ts&&(Date.now()-sc.ts)<10*864e5)return '';
-            const et={import:'📥 importado',supabase:'☁️ sincronizado',snapshot:'📄 datos embebidos'}[sc.tipo]||sc.tipo;
-            const cuando=sc.ts?' '+new Date(sc.ts).toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'2-digit'}):'';
-            // La importación es semanal (viernes): pasados 10 días el dato está viejo
-            // y hasta ahora nada lo decía. 
-            const dias=sc.ts?Math.floor((Date.now()-sc.ts)/864e5):null;
-            const viejo=dias!=null&&dias>10;
-            const cls=viejo?'dot warn':'';
-            const extra=viejo?` · hace ${dias} d`:'';
-            const tip=viejo?(W._eqSp?`El Excel de SharePoint no trae cambios hace ${dias} días.`:`Sin importar hace ${dias} días. La actualización es semanal: subí el Excel de importaciones.`):'Origen de los datos que estás viendo';
-            return `<span class="eqv2-cmd-chip ${cls}" title="${tip}">${viejo?'⚠ ':''}${et}${cuando}${viejo?' · '+dias+'d':''}</span>`;})()}
-          ${(()=>{const sp=W._eqSp;if(!sp)return '';
-            /* Estado de la sincronización automática con SharePoint (equipos_sync_log). */
-            const f=t=>t?new Date(t).toLocaleString('es-PE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
-            const esc=t=>String(t||'').replace(/"/g,'&quot;');
-            if(sp.estado==='ok'){
-              const tip=`Se actualiza solo desde SharePoint (se revisa cada 15 min).&#10;Archivo: ${esc(sp.archivo)}&#10;Editado: ${f(sp.modificado_en)}${sp.modificado_por?' por '+esc(sp.modificado_por):''}&#10;Última carga: ${f(sp.ts)} · ${sp.cambios||0} cambios`;
-              return `<span class="eqv2-cmd-chip ok" title="${tip}">🔗 SharePoint · ${f(sp.ts)}</span>`;
-            }
-            const tip=`La última lectura de SharePoint (${f(sp.ts)}) no se aplicó:&#10;${esc(sp.mensaje)}&#10;Los supervisores siguen viendo la carga anterior.`;
-            return `<span class="eqv2-cmd-chip dot warn" title="${tip}">⚠ SharePoint ${sp.estado==='bloqueado'?'bloqueado':'con error'}</span>`;})()}
-          ${vencidos>0?`<span class="eqv2-cmd-chip" title="Suma de días de atraso de los equipos vencidos · promedio ${atrasoProm} d por equipo">⏱ ${diasAtrasoTotal} d atraso acum.</span>`:''}
-          <span class="eqv2-cmd-chip">🏗 ${activeProjList.length} proyectos activos</span>
-          ${corregidos.length?`<span class="eqv2-cmd-chip" title="Equipos con el año mal tipeado en el Excel, corregido automáticamente:&#10;${corregidos.slice(0,15).map(r=>(r.doc||'?')+' ('+r._fixes.map(f=>f.c).join(', ')+')').join('&#10;')}">✎ ${corregidos.length} con año corregido</span>`:''}
-          ${_ocultosPorActivos>0?`<span class="eqv2-cmd-chip" style="cursor:pointer;border-style:dashed" onclick="W._eqToggleShowAll&&W._eqToggleShowAll()" title="Equipos de proyectos cerrados o sin cruce con un proyecto vigente:&#10;${_sinMapear.slice(0,25).join(', ').replace(/"/g,'')}&#10;&#10;Clic para mostrarlos.">🙈 ${_ocultosPorActivos} no vigentes</span>`:''}
-          ${_eqShowAll?`<span class="eqv2-cmd-chip" style="cursor:pointer;border-style:dashed" onclick="W._eqToggleShowAll&&W._eqToggleShowAll()" title="Volver a mostrar sólo proyectos activos">👁 viendo todos · volver</span>`:''}
+        <div class="eqv2-cmd-eyebrow">Centro de Control</div>
+        <h2>Equipos</h2>
+        <div class="eqv2-cmd-meta">
+          <span>${activeProjList.length} proyectos activos</span>
+          ${_fuente}
+          ${corregidos.length?`<span title="Equipos con el año mal tipeado en el Excel, corregido automáticamente:&#10;${corregidos.slice(0,15).map(r=>(r.doc||'?')+' ('+r._fixes.map(f=>f.c).join(', ')+')').join('&#10;')}">${corregidos.length} con año corregido</span>`:''}
+          ${_ocultosPorActivos>0&&!_eqShowAll?`<span title="Equipos de proyectos cerrados o sin cruce con un proyecto vigente:&#10;${_sinMapear.slice(0,25).join(', ').replace(/"/g,'')}">${_ocultosPorActivos} de proyectos no vigentes ocultos · <button type="button" class="eqv2-link" onclick="W._eqToggleShowAll&&W._eqToggleShowAll()">Mostrar</button></span>`:''}
+          ${_eqShowAll?`<span>Viendo también proyectos no vigentes · <button type="button" class="eqv2-link" onclick="W._eqToggleShowAll&&W._eqToggleShowAll()">Solo activos</button></span>`:''}
         </div>
       </div>
     </div>
     <div class="eqv2-cmd-actions">
       <div class="eqv2-search">
-        <input id="imp-search" placeholder="Proyecto, equipo, doc…" oninput="W._eqSearch&&W._eqSearch(this.value)" value="${(el.querySelector('#imp-search')||{}).value||''}">
+        <input id="imp-search" placeholder="Buscar equipo o proyecto…" oninput="W._eqSearch&&W._eqSearch(this.value)" value="${(el.querySelector('#imp-search')||{}).value||''}">
       </div>
       <input type="file" id="eq-import-input" accept=".csv,.xlsx,.xls,.pdf,application/pdf" style="display:none" onchange="W.onEquiposImport&&W.onEquiposImport(event)">
-      <button class="eqv2-btn primary" onclick="document.getElementById('eq-import-input').click()">📂 Importar</button>
-      <button class="eqv2-btn" onclick="W._eqTraerSharePoint&&W._eqTraerSharePoint(this)" title="Leer ahora el Excel de importaciones de SharePoint (también se hace solo cada 15 min)">🔗 SharePoint</button>
-      <button class="eqv2-btn" onclick="W.eqSyncNow&&W.eqSyncNow()" title="Subir a supervisores los equipos que estás viendo, sin volver a cargar el Excel">☁️ Sincronizar</button>
-      <button class="eqv2-btn" onclick="W.openEquiposHistorial&&W.openEquiposHistorial()" title="Historial de cambios">🕑 Historial</button>
-      <button class="eqv2-btn icon-only" onclick="W.renderEquipos&&W.renderEquipos()" title="Refrescar">🔄</button>
+      <button class="eqv2-btn primary" onclick="document.getElementById('eq-import-input').click()" title="Cargar el Excel o PDF de importaciones">${_ic.up}<span class="lbl">Importar</span></button>
+      <button class="eqv2-btn" onclick="W._eqTraerSharePoint&&W._eqTraerSharePoint(this)" title="Leer ahora el Excel de importaciones de SharePoint (también se hace solo cada 15 min)">${_ic.link}<span class="lbl">SharePoint</span></button>
+      <button class="eqv2-btn" onclick="W.eqSyncNow&&W.eqSyncNow()" title="Subir a supervisores los equipos que estás viendo, sin volver a cargar el Excel">${_ic.cloud}<span class="lbl">Sincronizar</span></button>
+      <button class="eqv2-btn" onclick="W.openEquiposHistorial&&W.openEquiposHistorial()" title="Historial de cambios">${_ic.clock}<span class="lbl">Historial</span></button>
+      <button class="eqv2-btn icon-only" onclick="W.renderEquipos&&W.renderEquipos()" title="Refrescar">${_ic.ref}</button>
     </div>
   </div>`;
 
@@ -9506,7 +9538,7 @@ function renderEquiposPremium(){
     {k:'fab',l:'Fabricación',v:stageCount.fabricacion,c:'#f59e0b',sub:'en planta'},
     {k:'transito',l:'Tránsito',v:stageCount.transito+stageCount.aduana,c:'#0ea5e9',sub:'+ aduana'},
     {k:'proximo',l:'Próx. 14d',v:proximos,c:'#d97706',sub:prox7?prox7+' en 7d':'a obra'},
-    {k:'vencido',l:'Vencidos',v:vencidos,c:'#ef4444',sub:vencidos?'requieren acción':'sin críticos'},
+    {k:'vencido',l:'Vencidos',v:vencidos,c:'#ef4444',sub:vencidos?`${diasAtrasoTotal} d de atraso acum.`:'sin críticos'},
   ];
   h+=`<div class="eqv2-kpis">`;
   kpis.forEach(k=>{
