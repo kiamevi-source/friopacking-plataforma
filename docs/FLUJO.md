@@ -45,6 +45,24 @@ instancia que corresponde y abre la app en un iframe.
   muestra como «Por facturar (con IGV)» (`valorizacion_cobros.saldo_pendiente`,
   y `proyectos.fin_por_cobrar` / `fin_cobranza='Por facturar'` en las tarjetas).
   El Excel no trae cobranza real.
+  **Historial (9-nov-2026):** importar ya **no borra los otros meses**: solo
+  reemplaza el periodo elegido. El módulo trae todos los periodos (paginado de a
+  1000) y tiene selector de mes + gráfico «Evolución mensual». Se recargaron ene,
+  mar, abr, may, jun, ago y nov-2026 desde los Excel (jul, set y oct no estaban).
+  Las tarjetas de proyecto (`proyectos.fin_*`) solo se reescriben al ver el
+  **último** mes. Lectura nueva del libro:
+  - hoja **Resumen** → columna «Comentarios» = motivo por el que no se factura;
+    se pega en `valorizacion_lineas.comentario` por cliente + estado (+ supervisor)
+    y alimenta el panel «Qué frena la facturación».
+  - **Adicionales** (`Tipo de V.` = Adicional) ya entran a `valorizacion_cobros`
+    y se muestran aparte («Adicionales por facturar»). Libros sin esa columna
+    (may-2026): es adicional si su código difiere del de «Proyecto».
+  - libros ene–jun traen «Importe» en vez de «Valorización Proyectada»; el de
+    nov trae «Valorización Real» en vez de «Valorización». Ambos se aceptan.
+  - `proyectos.fin_pct_facturado` (nuevo, 0–1) = facturado / presupuesto del
+    contrato por código; las tarjetas muestran «Fact. X% · Av. Y%» (rojo si el
+    avance físico supera al facturado en 20+ puntos) y el módulo lista esas obras
+    en «Facturación atrasada vs avance».
 
 ## 2. Sincronizaciones automáticas
 
