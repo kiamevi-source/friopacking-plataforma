@@ -494,7 +494,10 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   `Mail.Send`, limitado a ese buzón con una Application Access Policy. Mientras falten los secretos responde
   `sin_credenciales` y las alertas siguen `pendiente` sin gastar intentos.
 - **Gerencia · Alertas** (`app-live/modulos/alertas.html`, se abre desde el Dashboard Gerencial):
-  mantenimiento de `alerta_destinatarios`. Los módulos Inicio y Reporte diario se retiraron el
+  mantenimiento de `alerta_destinatarios`. Roles: `PMO` y `Gerencia` reciben todas;
+  `Jefe de zona`, las de su especialidad. En el modal de proyecto de Gerencia quedan las pestañas
+  Executive, Equipos, Contratas, Partidas y Comentarios (Operaciones, Riesgos, Documentos y
+  Lecciones se retiraron el 9-nov-2026). Los módulos Inicio y Reporte diario se retiraron el
   9-nov-2026; la entrada de Gerencia es el Dashboard. La función `indicadores_reporte_diario` sigue
   en la base, sin pantalla que la use.
 - La copia de reportes a PMO (`sync_reportes_from_supervisor`) **no** lleva estas columnas nuevas:

@@ -12,7 +12,7 @@
   const HOME_KEY = 'gerencial';
   // Módulos retirados el 9-nov-2026: los enlaces guardados caen en el Dashboard.
   const RETIRADAS = new Set(['inicio', 'reporte-diario']);
-  const LEGACY_URL = 'index.legacy.html?v=20261109ini';
+  const LEGACY_URL = 'index.legacy.html?v=20261109tabs';
 
   // ── Alias de hash → nombre de vista real en el legacy ──
   // (el legacy tiene algunas vistas con renderers rotos o con nombres distintos)

@@ -10870,7 +10870,7 @@ function rdRestrDestinatarios(r){
   if (area && /@/.test(mail)) add({ tipo:'encargado', destinatario_nombre: (r.responsable||'').trim() || mail, destinatario_email: mail, rol: (r.responsable||'').trim() ? 'Área ' + r.responsable.trim() : 'Responsable' });
   (rdDest||[]).filter(x => !x.soloEncargado).forEach(x => {
     if (area && mail.toLowerCase() === (x.email||'').toLowerCase()) return;   // ya le llega como responsable
-    if (x.rol === 'PMO' || (!area && (!x.especialidad || (r.especialidad && nn(x.especialidad) === nn(r.especialidad)))))
+    if (x.rol === 'PMO' || x.rol === 'Gerencia' || (!area && (!x.especialidad || (r.especialidad && nn(x.especialidad) === nn(r.especialidad)))))
       add({ tipo:'especialidad', destinatario_nombre: x.nombre, destinatario_email: x.email, rol: x.rol });
   });
   if (!area && (r.contratista||'').trim()) add({ tipo:'contrata', destinatario_nombre: r.contratista.trim(), destinatario_email: null, rol:'Contrata' });

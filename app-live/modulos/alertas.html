@@ -67,9 +67,9 @@ async function pmo(path, opts){
 }
 function tablaDest(){
   var R=S.dest;
-  return '<div class="card"><div class="card-h"><div><h2>A quién llegan las alertas de restricciones</h2><p>PMO recibe todas; cada jefe de zona, las de su especialidad (vacío = todas). El encargado y la contrata se eligen en el reporte.</p></div></div>'+
-    '<div class="note">Las alertas ya se ven en la plataforma. El correo sale cuando Sistemas habilite la cuenta Microsoft 365; mientras tanto quedan como «correo pendiente».</div>'+
-    '<div class="frm"><input id="d-n" placeholder="Nombre"><input id="d-e" placeholder="Correo"><select id="d-r"><option>Jefe de zona</option><option>PMO</option></select><input id="d-s" placeholder="Especialidad (ej. Eléctrico)"><button class="btn primary" id="d-add">Agregar</button></div>'+
+  return '<div class="card"><div class="card-h"><div><h2>A quién llegan las alertas de restricciones</h2><p>Gerencia y PMO reciben todas; cada jefe de zona, las de su especialidad (vacío = todas). El encargado y la contrata se eligen en el reporte.</p></div></div>'+
+    '<div class="note">Las alertas ya se ven en la plataforma. El correo saldrá desde kmedina@friopacking.pe cuando TI habilite el permiso de Microsoft 365; mientras tanto quedan como «correo pendiente».</div>'+
+    '<div class="frm"><input id="d-n" placeholder="Nombre"><input id="d-e" placeholder="Correo"><select id="d-r"><option>Jefe de zona</option><option>PMO</option><option>Gerencia</option></select><input id="d-s" placeholder="Especialidad (ej. Eléctrico)"><button class="btn primary" id="d-add">Agregar</button></div>'+
     '<div class="tw"><table><thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Especialidad</th><th>Activo</th><th></th></tr></thead><tbody>'+
     (R.map(function(d){ return '<tr><td class="obra">'+esc(d.nombre)+'</td><td>'+esc(d.email)+'</td><td>'+esc(d.rol)+'</td><td>'+esc(d.especialidad||'Todas')+'</td><td><input type="checkbox" data-act="'+d.id+'"'+(d.activo?' checked':'')+'></td><td><button class="x" data-del="'+d.id+'" title="Quitar">×</button></td></tr>'; }).join('')
       ||'<tr><td colspan="6" class="empty">Aún no hay destinatarios. Agrega a PMO y a los jefes de zona.</td></tr>')+'</tbody></table></div></div>';
