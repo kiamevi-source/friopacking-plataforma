@@ -4433,32 +4433,22 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       </div>
     </div>
 
-    <!-- ══ PERSONAL ══ -->
+    <!-- ══ PERSONAL ══ (PR_DESDE_REPORTE · 9-nov-2026: solo lectura, sale del reporte diario) -->
     <div class="tab-content" id="tab-personal">
       <div class="sec-card">
         <div class="sec-head">
-          <span class="sec-title">Ingreso de personal por especialidad</span>
-          <button class="btn btn-primary btn-sm" onclick="guardarPersonal()">Guardar</button>
+          <span class="sec-title">Personal en obra por especialidad</span>
+          <button class="btn btn-outline btn-sm" onclick="showTab('diario')">Se registra en el Reporte diario</button>
         </div>
         <div class="sec-body">
-          <div class="form-row" style="max-width:250px;margin-bottom:20px;">
-            <div class="field"><label>Fecha</label><input type="date" id="per-fecha"></div>
-          </div>
-          <div class="personal-grid" id="personal-grid">
-            <!-- generado dinámicamente -->
-          </div>
-          <div style="margin-top:16px;padding:12px;background:var(--bg2);border-radius:8px;display:flex;align-items:center;gap:12px;">
-            <span style="font-size:12px;font-weight:700;color:var(--navy);">Total en obra:</span>
-            <span style="font-size:22px;font-weight:800;color:var(--teal2);" id="per-total">0</span>
-            <span style="font-size:11px;color:var(--muted);" id="per-vs-proy"></span>
-          </div>
+          <div id="per-ultimo"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
         </div>
       </div>
 
       <!-- HISTORIAL PERSONAL -->
       <div class="sec-card">
         <div class="sec-head"><span class="sec-title">Historial de personal</span></div>
-        <div class="sec-body" style="padding:0;">
+        <div class="sec-body" style="padding:0;overflow-x:auto;">
           <div id="personal-hist"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
         </div>
       </div>
@@ -4488,40 +4478,15 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
       </div>
     </div>
 
-    <!-- ══ RIESGOS ══ -->
+    <!-- ══ RIESGOS ══ (PR_DESDE_REPORTE · 9-nov-2026: solo lectura = restricciones del reporte diario) -->
     <div class="tab-content" id="tab-riesgos">
       <div class="sec-card">
         <div class="sec-head">
-          <span class="sec-title">Registro de riesgos</span>
-          <button class="btn btn-primary btn-sm" onclick="mostrarFormRiesgo()">+ Nuevo riesgo</button>
+          <span class="sec-title">Riesgos y restricciones</span>
+          <button class="btn btn-outline btn-sm" onclick="showTab('diario')">Se registran en el Reporte diario</button>
         </div>
         <div class="sec-body">
           <div id="riesgos-list"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
-        </div>
-      </div>
-
-      <div class="sec-card hidden" id="form-riesgo">
-        <div class="sec-head"><span class="sec-title">Nuevo riesgo</span></div>
-        <div class="sec-body">
-          <div class="form-row">
-            <div class="field"><label>Fecha</label><input type="date" id="fr-fecha"></div>
-            <div class="field"><label>Nivel</label>
-              <select id="fr-nivel"><option>BAJO</option><option selected>MEDIO</option><option>ALTO</option></select>
-            </div>
-            <div class="field"><label>Estado</label>
-              <select id="fr-estado"><option value="abierto">Abierto</option><option value="mitigado">Mitigado</option><option value="cerrado">Cerrado</option></select>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="field" style="grid-column:1/-1"><label>Descripción</label><textarea id="fr-desc"></textarea></div>
-          </div>
-          <div class="form-row">
-            <div class="field" style="grid-column:1/-1"><label>Acción / Mitigación</label><textarea id="fr-accion"></textarea></div>
-          </div>
-          <div style="display:flex;gap:8px;justify-content:flex-end;">
-            <button class="btn btn-outline" onclick="document.getElementById('form-riesgo').classList.add('hidden')">Cancelar</button>
-            <button class="btn btn-primary" onclick="guardarRiesgo()">Guardar riesgo</button>
-          </div>
         </div>
       </div>
     </div>
@@ -5005,7 +4970,6 @@ async function iniciarApp() {
   startClock();
   setProjectHealth('idle','Sin proyecto');
   await cargarProyectos();
-  initPersonalGrid();
   rdQrEntrada();
   // Fecha por defecto hoy
   const hoy = new Date().toISOString().split('T')[0];
@@ -5364,12 +5328,12 @@ async function cargarDashboard() {
     // ── Carga paralela de todas las fuentes ──
     const [reportes, riesgosTbl, contratasTbl, personalTbl, ganttTbl] = await Promise.all([
       sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(nombre)})&order=fecha_reporte.desc&limit=30`).catch(()=>[]),
-      sbFetch(`/rest/v1/riesgos?cod_proyecto=eq.${encodeURIComponent(cod)}&order=created_at.desc&limit=30`).catch(()=>[]),
+      prReportes(true).then(prRiesgosDe).catch(()=>[]),   // PR_DESDE_REPORTE: restricciones del reporte diario
       // NOTA: hoy filtra por supervisor porque evaluacion_contratistas NO tiene cod_proyecto poblado
       // (0/56 filas). Cuando el formulario de evaluación empiece a estampar cod_proyecto, cambiar a
       // `cod_proyecto=eq.${cod}` para que sea POR OBRA y no por supervisor (evita mostrar otras obras).
       sbFetch(`/rest/v1/evaluacion_contratistas?supervisor=ilike.${encodeURIComponent('%'+(currentProyecto.supervisor||'').split(' ')[0]+'%')}&order=created_at.desc&limit=20`).catch(()=>[]),
-      sbFetch(`/rest/v1/ingreso_personal?or=(proyecto.ilike.${encodeURIComponent('%'+nombre+'%')},cod_proyecto.eq.${encodeURIComponent(cod)})&order=fecha.desc&limit=14`).catch(()=>[]),
+      prReportes().then(r=>prComoIngresoPersonal(r).slice(0,14)).catch(()=>[]),   // PR_DESDE_REPORTE
       sbFetch(`/rest/v1/tareas_gantt?cod_proyecto=eq.${encodeURIComponent(cod)}&order=fecha_fin_base.asc&limit=200`).catch(()=>[])
     ]);
 
@@ -9905,7 +9869,7 @@ async function cargarHistograma() {
     // Proyección
     const proy = await sbFetch(`/rest/v1/histograma_proyeccion?cod_proyecto=eq.${encodeURIComponent(cod)}&order=semana`);
     // Real (ingreso_personal)
-    const real = await sbFetch(`/rest/v1/ingreso_personal?or=(proyecto.ilike.${encodeURIComponent('%'+currentProyecto.nombre+'%')},cod_proyecto.eq.${encodeURIComponent(cod)})&order=fecha.desc&limit=60`);
+    const real = prComoIngresoPersonal(await prReportes());   // PR_DESDE_REPORTE: personal del reporte diario
 
     if ((!proy || proy.length===0) && (!real || real.length===0)) {
       el.innerHTML = '<p style="color:var(--muted);padding:20px;">Sin datos de histograma. Agrega proyección semanal.</p>';
@@ -17221,70 +17185,99 @@ async function guardarPEM(){
 // ═══════════════════════════════════════════════
 // PERSONAL
 // ═══════════════════════════════════════════════
-function initPersonalGrid() {
-  const grid = document.getElementById('personal-grid');
-  grid.innerHTML = ESPECIALIDADES.map(esp => `
-    <div class="personal-card">
-      <div class="personal-esp">${esp.replace(/_/g,' ')}</div>
-      <input class="personal-inp" type="number" min="0" id="per-${esp}" value="0" oninput="actualizarTotalPersonal()">
-    </div>`).join('');
+// PR_DESDE_REPORTE (9-nov-2026, Kiara): Personal y Riesgos ya no se capturan aparte.
+// Todo sale de lo que el supervisor llena en el Reporte diario (tabla reportes):
+//   personal  → reportes.avance_especialidades / especialidades / personal_total
+//   riesgos   → reportes.restricciones
+let _prRepCache = { key:null, t:0, rows:[] };
+async function prReportes(force){
+  if (!currentProyecto) return [];
+  const cod = currentProyecto.cod || currentProyecto.nombre;
+  const nombre = currentProyecto.nombre || '';
+  const key = cod + '|' + nombre;
+  if (!force && _prRepCache.key === key && Date.now() - _prRepCache.t < 30000) return _prRepCache.rows;
+  const sel = 'fecha_reporte,created_at,es_draft,supervisor,cod_proyecto,personal_total,especialidades,avance_especialidades,restricciones';
+  const rows = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(nombre)})&select=${sel}&order=fecha_reporte.desc&limit=90`) || [];
+  // un reporte por fecha (si hubiese duplicados por código/nombre, gana el primero)
+  const vistos = new Set(); const out = [];
+  rows.forEach(r => { if (r.fecha_reporte && !vistos.has(r.fecha_reporte)) { vistos.add(r.fecha_reporte); out.push(r); } });
+  _prRepCache = { key, t: Date.now(), rows: out };
+  return out;
 }
-
-function actualizarTotalPersonal() {
-  let total = 0;
-  ESPECIALIDADES.forEach(esp => total += parseInt(document.getElementById('per-'+esp)?.value)||0);
-  document.getElementById('per-total').textContent = total;
+function prEspLabel(k){ const c = (typeof ESP_CAT!=='undefined'?ESP_CAT:[]).find(x=>x.key===k); return c ? c.label : String(k||'').replace(/_/g,' '); }
+// Personal de un reporte: [{esp,label,contrata,personal}]
+function prPersonalDe(r){
+  const det = Array.isArray(r.avance_especialidades) ? r.avance_especialidades : [];
+  if (det.length) return det.map(d=>({ esp:d.esp, label:d.label||prEspLabel(d.esp), contrata:(d.contrata||'').trim(), personal:parseInt(d.personal)||0 }));
+  const e = (r.especialidades && typeof r.especialidades==='object') ? r.especialidades : {};
+  return Object.keys(e).map(k=>({ esp:k, label:prEspLabel(k), contrata:'', personal:parseInt(e[k])||0 }));
 }
-
-async function guardarPersonal() {
-  const cod = currentProyecto?.cod || currentProyecto?.nombre;
-  if (!cod) { showToast('Selecciona proyecto'); return; }
-  const fecha = document.getElementById('per-fecha').value;
-  if (!fecha) { showToast('Selecciona fecha'); return; }
-
-  const row = { proyecto: currentProyecto.nombre, cod_proyecto: cod, supervisor: currentUser?.nombre||'', fecha, zona: currentProyecto.zona||'' };
-  let total = 0;
-  ESPECIALIDADES.forEach(esp => {
-    const v = parseInt(document.getElementById('per-'+esp)?.value)||0;
-    row[esp] = v; total += v;
-  });
-  row.total = total;
-
-  // Calcular semana (lunes)
-  const d = new Date(fecha);
-  const lunes = new Date(d.setDate(d.getDate() - d.getDay() + 1));
-  row.semana = lunes.toISOString().split('T')[0];
-
-  setSyncStatus('syncing','Guardando…');
-  try {
-    await sbFetch('/rest/v1/ingreso_personal', {
-      method:'POST', headers:{'Prefer':'return=minimal'},
-      body: JSON.stringify(row)
-    });
-    showToast('Personal guardado ✓');
-    setSyncStatus('ok','Guardado ✓');
-    await cargarPersonalHist();
-    await cargarHistograma();
-  } catch(e) {
-    setSyncStatus('error','Error');
-    showToast('Error al guardar: ' + e.message);
-  }
+function prTotal(r){ const t = prPersonalDe(r).reduce((a,x)=>a+x.personal,0); return t || parseInt(r.personal_total)||0; }
+// Formato legado (columnas de ingreso_personal) para Histograma / Dashboard
+const PR_MAP_LEGACY = { mecanica:'mecanico', electrica:'electrico', eemm:'montaje_eemm', paneles:'paneles', oocc:'oocc', aislamiento:'aislamiento',
+                        tuberia_glicol:'mecanico', tuberia_amoniaco:'mecanico', montaje_rack:'montaje_rack' };
+function prComoIngresoPersonal(rows){
+  return (rows||[]).map(r=>{
+    const o = { fecha:r.fecha_reporte, created_at:r.created_at, total:prTotal(r) };
+    ESPECIALIDADES.forEach(e=>o[e]=0);
+    prPersonalDe(r).forEach(x=>{ const k = PR_MAP_LEGACY[x.esp] || (ESPECIALIDADES.includes(x.esp)?x.esp:null); if (k) o[k]+=x.personal; });
+    return o;
+  }).filter(o=>o.total>0);
 }
+// Restricciones de los reportes → riesgos (una por uid; la más reciente gana)
+function prRiesgosDe(rows){
+  const ultimaFecha = rows.length ? rows[0].fecha_reporte : null;
+  const map = new Map(); const out = [];
+  rows.forEach(r=>{ (Array.isArray(r.restricciones)?r.restricciones:[]).forEach((x,i)=>{
+    if (!x || !(x.titulo||x.descripcion)) return;
+    const k = x.uid || (r.fecha_reporte+'#'+i+'#'+(x.titulo||''));
+    if (map.has(k)) { map.get(k).desde = r.fecha_reporte; return; }
+    const imp = (x.impacto||'medio').toLowerCase();
+    const o = { ...x, fecha_reporte:r.fecha_reporte, desde:r.fecha_reporte, created_at:r.created_at,
+      nivel: imp==='alto'?'ALTO':imp==='bajo'?'BAJO':'MEDIO',
+      descripcion: [x.titulo, x.descripcion].filter(Boolean).join(' — '),
+      vigente: r.fecha_reporte===ultimaFecha,
+      estado: r.fecha_reporte===ultimaFecha ? 'abierto' : 'sin reportar' };
+    map.set(k,o); out.push(o);
+  }); });
+  return out;
+}
+function prEsc(v){ return String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function prFecha(f){ if(!f) return '—'; const [y,m,d]=f.split('-'); return `${d}/${m}/${y}`; }
 
 async function cargarPersonalHist() {
   if (!currentProyecto) return;
   const el = document.getElementById('personal-hist');
-  const nombre = currentProyecto.nombre;
+  const top = document.getElementById('per-ultimo');
   try {
-    const rows = await sbFetch(`/rest/v1/ingreso_personal?proyecto=ilike.${encodeURIComponent('%'+nombre+'%')}&order=fecha.desc&limit=20`);
-    if (!rows || rows.length === 0) { el.innerHTML = '<p style="color:var(--muted);padding:20px;">Sin registros.</p>'; return; }
+    const reps = (await prReportes()).filter(r=>prTotal(r)>0 || prPersonalDe(r).length);
+    if (!reps.length) {
+      if (top) top.innerHTML = '<p style="color:var(--text-3);padding:6px 0;">Aún no hay personal reportado. Se llena en el <a href="#" onclick="showTab(\'diario\');return false;" style="font-weight:700">Reporte diario</a> (sección especialidades).</p>';
+      el.innerHTML = '<p style="color:var(--muted);padding:20px;">Sin registros.</p>';
+      return;
+    }
+    const u = reps[0]; const det = prPersonalDe(u).filter(x=>x.personal>0 || x.contrata);
+    if (top) top.innerHTML = `
+      <div style="font-size:12px;color:var(--text-3);margin-bottom:12px;">Último reporte: <b>${prFecha(u.fecha_reporte)}</b>${u.es_draft?' · <span style="color:var(--amber,#b45309)">borrador</span>':''}${u.supervisor?' · '+prEsc(u.supervisor):''}</div>
+      <div class="personal-grid">${det.map(x=>`
+        <div class="personal-card">
+          <div class="personal-esp">${prEsc(x.label)}</div>
+          <div style="font-size:24px;font-weight:800;color:var(--navy);">${x.personal}</div>
+          ${x.contrata?`<div style="font-size:11px;color:var(--text-3);margin-top:2px;">${prEsc(x.contrata)}</div>`:''}
+        </div>`).join('')}</div>
+      <div style="margin-top:16px;padding:12px;background:var(--bg2);border-radius:8px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:12px;font-weight:700;color:var(--navy);">Total en obra:</span>
+        <span style="font-size:22px;font-weight:800;color:var(--teal2);" id="per-total">${prTotal(u)}</span>
+      </div>`;
+    // columnas = especialidades que aparecen en algún reporte
+    const cols = []; reps.forEach(r=>prPersonalDe(r).forEach(x=>{ if(!cols.some(c=>c.esp===x.esp)) cols.push({esp:x.esp,label:x.label}); }));
     el.innerHTML = `<table class="gantt-table">
-      <thead><tr><th>Fecha</th><th>Paneles</th><th>Mecánico</th><th>Eléctrico</th><th>Aislamiento</th><th>Rack</th><th>Obras civiles</th><th>Estructuras metálicas</th><th>Total</th></tr></thead>
-      <tbody>${rows.map(r=>`<tr>
-        <td>${r.fecha||''}</td>
-        ${ESPECIALIDADES.map(e=>`<td>${r[e]||0}</td>`).join('')}
-        <td><strong>${r.total||0}</strong></td>
-      </tr>`).join('')}</tbody>
+      <thead><tr><th>Fecha</th>${cols.map(c=>`<th>${prEsc(c.label)}</th>`).join('')}<th>Total</th></tr></thead>
+      <tbody>${reps.slice(0,30).map(r=>{ const d = prPersonalDe(r); return `<tr>
+        <td>${prFecha(r.fecha_reporte)}${r.es_draft?' <span style="font-size:10px;color:var(--text-3)">(borrador)</span>':''}</td>
+        ${cols.map(c=>`<td>${d.filter(x=>x.esp===c.esp).reduce((a,x)=>a+x.personal,0)||'—'}</td>`).join('')}
+        <td><strong>${prTotal(r)}</strong></td>
+      </tr>`; }).join('')}</tbody>
     </table>`;
   } catch(e) {
     el.innerHTML = '<p style="color:var(--red);padding:20px;">Error cargando personal.</p>';
@@ -17347,98 +17340,42 @@ async function cargarContratast() {
 // ═══════════════════════════════════════════════
 async function cargarRiesgos() {
   if (!currentProyecto) return;
-  const cod = currentProyecto.cod || currentProyecto.nombre;
   const el = document.getElementById('riesgos-list');
   el.innerHTML = '<div class="loading"><span class="spinner"></span>Cargando…</div>';
   try {
-    const rows = await sbFetch(`/rest/v1/riesgos?cod_proyecto=eq.${encodeURIComponent(cod)}&order=created_at.desc`);
-    if (!rows || rows.length === 0) {
-      // También buscar en reportes.riesgos JSONB
-      const reps = await sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(currentProyecto.nombre)})&select=fecha_reporte,riesgos&not.riesgos.is.null&order=fecha_reporte.desc&limit=20`);
-      const todos = [];
-      (reps||[]).forEach(r => {
-        if (Array.isArray(r.riesgos)) r.riesgos.forEach(rg => todos.push({...rg, fecha_reporte: r.fecha_reporte}));
-      });
-      if (todos.length === 0) {
-        el.innerHTML = '<p style="color:var(--text-3);padding:20px;">Sin riesgos registrados.</p>';
-        setBadgeFromData('riesgos', 0);
-        setAlertDot(false);
-        return;
-      }
-      el.innerHTML = todos.map(r => renderRiesgo(r)).join('');
-      // ── badge desde JSONB ──
-      const altos = todos.filter(r => (r.nivel||'').toUpperCase()==='ALTO' && (r.estado||'abierto').toLowerCase()!=='cerrado' && (r.estado||'abierto').toLowerCase()!=='mitigado').length;
-      setBadgeFromData('riesgos', altos || todos.length, altos>0?'danger':'warn');
-      setAlertDot(altos > 0);
-      return;
+    const todos = prRiesgosDe(await prReportes());
+    if (!todos.length) {
+      el.innerHTML = '<p style="color:var(--text-3);padding:20px;">Sin riesgos ni restricciones reportados. Se registran en el <a href="#" onclick="showTab(\'diario\');return false;" style="font-weight:700">Reporte diario</a> (sección restricciones).</p>';
+      setBadgeFromData('riesgos', 0); setAlertDot(false); return;
     }
-    el.innerHTML = rows.map(r => renderRiesgo(r)).join('');
-    // ── badge inteligente: cuenta ALTO abiertos ──
-    const altos = rows.filter(r => (r.nivel||'').toUpperCase()==='ALTO' && (r.estado||'abierto').toLowerCase()==='abierto').length;
-    const abiertos = rows.filter(r => (r.estado||'abierto').toLowerCase()==='abierto').length;
-    if (altos > 0) {
-      setBadgeFromData('riesgos', altos, 'danger');
-      setAlertDot(true);
-    } else if (abiertos > 0) {
-      setBadgeFromData('riesgos', abiertos, 'warn');
-      setAlertDot(false);
-    } else {
-      setBadgeFromData('riesgos', 0);
-      setAlertDot(false);
-    }
+    const vig = todos.filter(r=>r.vigente), ant = todos.filter(r=>!r.vigente);
+    el.innerHTML =
+      (vig.length ? `<div style="font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">En el último reporte (${prFecha(vig[0].fecha_reporte)})</div>` + vig.map(renderRiesgo).join('') : '')
+      + (ant.length ? `<div style="font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--text-3);text-transform:uppercase;margin:18px 0 4px;">Reportados antes</div>` + ant.slice(0,40).map(renderRiesgo).join('') : '');
+    const altos = vig.filter(r=>r.nivel==='ALTO').length;
+    if (altos) { setBadgeFromData('riesgos', altos, 'danger'); setAlertDot(true); }
+    else if (vig.length) { setBadgeFromData('riesgos', vig.length, 'warn'); setAlertDot(false); }
+    else { setBadgeFromData('riesgos', 0); setAlertDot(false); }
   } catch(e) {
     el.innerHTML = '<p style="color:var(--danger);padding:20px;">Error cargando riesgos.</p>';
-    setBadgeFromData('riesgos', 0);
-    setAlertDot(false);
+    setBadgeFromData('riesgos', 0); setAlertDot(false);
   }
 }
 
 function renderRiesgo(r) {
   const nivClass = r.nivel==='ALTO'?'nivel-alto':r.nivel==='MEDIO'?'nivel-medio':'nivel-bajo';
+  const resp = r.tipo_resp==='area' ? (r.responsable||'') : [r.especialidad, r.contratista].filter(Boolean).join(' · ');
+  const meta = [ r.categoria ? (RD_CAT_ICON[r.categoria]||'📌')+' '+r.categoria : '', resp ? 'Responsable: '+resp : '',
+                 r.fecha_objetivo ? 'Objetivo: '+prFecha(r.fecha_objetivo) : '',
+                 r.desde && r.desde!==r.fecha_reporte ? `Reportado desde ${prFecha(r.desde)} hasta ${prFecha(r.fecha_reporte)}` : 'Reportado el '+prFecha(r.fecha_reporte) ].filter(Boolean).join(' · ');
   return `<div class="riesgo-item">
     <span class="riesgo-nivel ${nivClass}">${r.nivel||'MEDIO'}</span>
     <div class="riesgo-desc">
-      ${r.descripcion||r.desc||''}
-      <div class="riesgo-accion">${r.accion||r.fecha_reporte||''}</div>
+      ${prEsc(r.descripcion||r.desc||'')}
+      <div class="riesgo-accion">${prEsc(r.accion||meta)}</div>
     </div>
-    <span style="font-size:11px;color:var(--muted);">${r.estado||'abierto'}</span>
+    <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${r.vigente===false?'ya no figura':(r.estado||'abierto')}</span>
   </div>`;
-}
-
-function mostrarFormRiesgo() {
-  document.getElementById('form-riesgo').classList.remove('hidden');
-  document.getElementById('form-riesgo').scrollIntoView({behavior:'smooth'});
-}
-
-async function guardarRiesgo() {
-  const cod = currentProyecto?.cod || currentProyecto?.nombre;
-  if (!cod) { showToast('Selecciona proyecto'); return; }
-  const desc = document.getElementById('fr-desc').value.trim();
-  if (!desc) { showToast('Ingresa descripción del riesgo'); return; }
-
-  const payload = {
-    cod_proyecto: cod,
-    fecha_reporte: document.getElementById('fr-fecha').value,
-    descripcion: desc,
-    nivel: document.getElementById('fr-nivel').value,
-    estado: document.getElementById('fr-estado').value,
-    accion: document.getElementById('fr-accion').value||null
-  };
-
-  setSyncStatus('syncing','Guardando…');
-  try {
-    await sbFetch('/rest/v1/riesgos', {
-      method:'POST', headers:{'Prefer':'return=minimal'},
-      body: JSON.stringify(payload)
-    });
-    document.getElementById('form-riesgo').classList.add('hidden');
-    await cargarRiesgos();
-    showToast('Riesgo guardado ✓');
-    setSyncStatus('ok','Guardado ✓');
-  } catch(e) {
-    setSyncStatus('error','Error');
-    showToast('Error al guardar riesgo');
-  }
 }
 
 // ═══════════════════════════════════════════════
