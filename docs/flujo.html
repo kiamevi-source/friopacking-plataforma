@@ -164,6 +164,7 @@ const MAPA = {
     {id:'x-netlify',tipo:'ext', x:1352,y:60,  titulo:'Netlify viejo', sub:'donde reportan hoy'},
     {id:'x-nisira', tipo:'ext', x:1352,y:170, titulo:'NISIRA', sub:'Orden de Proyectos · copia manual'},
     {id:'x-ing',    tipo:'ext', x:1352,y:440, titulo:'Seguimiento de Planos', sub:'app de Ingeniería · Supabase propio'},
+    {id:'x-correo', tipo:'ext', x:1352,y:640, titulo:'Correo Microsoft 365', sub:'alertas de restricciones · buzón remitente'},
 
     /* ── las tres apps ── */
     {id:'a-ger', tipo:'app', x:338, y:40, color:'#14275C', titulo:'Gerencia · PMO', sub:'app-live', filas:[
@@ -290,6 +291,7 @@ const MAPA = {
     {from:'x-obs', to:'a-sup:riesgos', tipo:'entrada', label:'importador'},
     {from:'x-eqobra', to:'a-sup:equipos', tipo:'entrada', label:'importador'},
     {from:'x-voz', to:'a-sup:riesgos', tipo:'entrada', label:'recorrido · QR por zona'},
+    {from:'d-sup:restricciones', to:'x-correo', tipo:'sync', label:'función enviar-alertas-correo · cada 5 min'},
     {from:'a-sup:riesgos', to:'d-pmo:portafolio', tipo:'lee', label:'contratistas para asignar'},
     {from:'x-netlify', to:'d-pmo:reportes', tipo:'entrada', label:'escribe directo'},
     {from:'x-nisira', to:'d-pmo:proyectos', tipo:'entrada', label:'copia manual · obras nuevas'},

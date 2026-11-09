@@ -46,6 +46,7 @@ instancia que corresponde y abre la app en un iframe.
 | `push_accesos_to_supervisor` | PMO | 5 min | Quién puede reportar en cada obra |
 | `sync_reportes_from_pmo` | Supervisor | 2 min | Jalador anterior de reportes desde PMO |
 | `sync_equipos_sharepoint` | Supervisor | 15 min | Llama a la función `sync-equipos-sharepoint`: lee el Excel de importaciones de SharePoint y actualiza `equipos_pmo` |
+| `enviar_alertas_correo` | Supervisor | 5 min | Llama a la función `enviar-alertas-correo`: manda por Microsoft 365 las alertas de restricciones pendientes |
 | `cleanup_http_responses` | PMO y Supervisor | 30 min | Limpia respuestas HTTP acumuladas |
 
 La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
@@ -481,7 +482,16 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   `restriccion_alertas` (Supervisor): encargado, PMO + jefes de zona de la especialidad
   (`PMO.alerta_destinatarios`, la mantiene Gerencia) y la contrata. La lectura es abierta con la llave
   pública (misma postura que `restricciones`); con esa llave solo se puede marcar `visto_at`.
-  El correo queda `correo_estado='pendiente'` hasta tener la cuenta Microsoft 365.
+  **Correo (9-nov-2026):** la función `enviar-alertas-correo` (Supervisor, `pg_cron` cada 5 min)
+  manda un correo por destinatario con todas sus alertas nuevas, desde un buzón de Microsoft 365
+  vía Graph `sendMail`. Estados: `pendiente` → `enviado` | `error` (guarda `correo_error`,
+  reintenta hasta 3 veces por `correo_intentos`) | `sin_correo` (la contrata, sin email) |
+  `vencido` (más de 7 días sin poder enviarse; no se manda un aviso viejo de golpe). Con body
+  `{"prueba":true}` responde qué mandaría sin enviar nada. Usa los secretos de la app de Entra de
+  `sync-equipos-sharepoint` (`MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`) más `MS_SENDER`
+  (buzón remitente); la app necesita el permiso de aplicación `Mail.Send`, idealmente limitado a
+  ese buzón con una Application Access Policy. Mientras falten los secretos responde
+  `sin_credenciales` y las alertas siguen `pendiente` sin gastar intentos.
 - **Gerencia · Alertas** (`app-live/modulos/alertas.html`, se abre desde el Dashboard Gerencial):
   mantenimiento de `alerta_destinatarios`. Los módulos Inicio y Reporte diario se retiraron el
   9-nov-2026; la entrada de Gerencia es el Dashboard. La función `indicadores_reporte_diario` sigue
