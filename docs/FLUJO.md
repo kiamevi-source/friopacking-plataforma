@@ -5,7 +5,7 @@ fuente de verdad: los datos del mapa viven en el bloque `const MAPA` que está a
 inicio del `<script>`. Si cambia el flujo, se edita ahí, en el **mismo commit**
 que el código. Este documento es la letra chica que no cabe en el dibujo.
 
-Última revisión: **2 de noviembre de 2026**
+Última revisión: **9 de noviembre de 2026**
 
 ---
 
@@ -56,6 +56,11 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   `pmo-grupofriopacking` sigue vivo y escribe directo en `reportes` de PMO. Manda
   el código de obra vacío y el destino tiene índice único por código y fecha, así
   que el espejo resuelve el código por nombre de obra.
+- **`friopackingpmo.vercel.app` no puede escribir en `proyectos`.** Desde el 9 de
+  noviembre de 2026 el trigger `trg_bloquear_netlify_viejo` ignora sus escrituras,
+  igual que las del netlify viejo. Su `base_datos_pmo.html` empujaba su copia local
+  y recreó obras borradas el 21 de octubre. Sigue pudiendo escribir en `usuarios`
+  y `reportes` hasta que se pause el proyecto `friopacking.pmo` en Vercel.
 - **Hay dos caminos haciendo Gerencia hacia Supervisor.** El espejo
   `espejo_reportes_to_supervisor` y el jalador anterior `sync_reportes_from_pmo`,
   los dos cada 2 minutos. Vale consolidarlos en uno.

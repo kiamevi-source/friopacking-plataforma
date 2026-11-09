@@ -1101,19 +1101,30 @@ async function initFromSupabase(){
     const _REP_COLS='nombre_proyecto,fecha_reporte,supervisor,pct_ejecutado,pct_planificado,personal_total,contratas_activas,contratas_nombres,contratas_detalle,spi,actividad';
     const _REP_COLS_EXT=_REP_COLS+',fecha_ini_cont,fecha_fin_cont,fecha_ini_real,fecha_fin_proy,motivo_proyeccion,desfase_dias,venta_codigo,facturado_codigo';
     // Intentar con columnas contractuales; si falla (columnas no existen), usar solo las seguras
+    /* Supabase corta cada respuesta en 1000 filas: sin paginar, todo lo que sale de
+       acá (Reportes, avance de las obras, "reportó hoy") se quedaba en agosto. */
+    const _leerReportes=async cols=>{
+      const filas=[];
+      for(let desde=0;;desde+=1000){
+        const {data,error}=await db.from('reportes').select(cols).not('es_draft','is',true)
+          .order('fecha_reporte',{ascending:true}).order('id',{ascending:true})
+          .range(desde,desde+999);
+        if(error)return {data:null,error};
+        filas.push(...(data||[]));
+        if(!data||data.length<1000)break;
+      }
+      return {data:filas,error:null};
+    };
     const [_resProy,_resRep]=await Promise.all([
       db.from('proyectos').select('*').eq('activo',true).order('nombre'),
-      db.from('reportes').select(_REP_COLS_EXT).not('es_draft','is',true).order('fecha_reporte',{ascending:true})
+      _leerReportes(_REP_COLS_EXT)
     ]);
     const {data:proyectos,error:e1}=_resProy;
     if(e1)throw e1;
     let {data:reportes,error:e2}=_resRep;
     if(e2){
       console.warn('SELECT extendido falló, usando columnas base:',e2.message);
-      ({data:reportes,error:e2}=await db.from('reportes')
-        .select(_REP_COLS)
-        .not('es_draft','is',true)
-        .order('fecha_reporte',{ascending:true}));
+      ({data:reportes,error:e2}=await _leerReportes(_REP_COLS));
     }
     if(e2)throw e2;
     /* La foto ya venía en camino desde antes del try; acá solo la esperamos.
@@ -18650,10 +18661,15 @@ function renderReportesCOC(){
   const yesterdayR=allR.filter(r=>r.fecha===d1);
 
   /* ── KPI computation ── */
-  const totalP=ps.length||new Set(allR.map(r=>r.projName)).size;
+  /* Base = obras a las que se les exige reporte (misma regla que debeReportar), no
+     todas las activas: si no, las cerradas y por iniciar salían como "sin reporte". */
+  const exigidas=ps.filter(debeReportar);
+  const totalP=exigidas.length;
   const repHoy=new Set(todayR.map(r=>r.projName)).size;
-  const sinRep=Math.max(0,totalP-repHoy);
-  const cumpl=totalP?Math.round(repHoy/totalP*100):0;
+  const faltanEn=f=>{const s=new Set(allR.filter(r=>r.fecha===f).map(r=>r.projName));return exigidas.filter(p=>!s.has(p.name)).length;};
+  const sinRep=faltanEn(d0);
+  const repExig=totalP-sinRep;
+  const cumpl=totalP?Math.round(repExig/totalP*100):0;
 
   const spiArr=todayR.map(r=>parseFloat(r.spi||0)).filter(v=>v>0);
   const spiAvg=spiArr.length?spiArr.reduce((a,b)=>a+b)/spiArr.length:0;
@@ -18676,7 +18692,7 @@ function renderReportesCOC(){
   const spkPers=dailySeries(reps,'pers',7);
   const spkRep=dates.slice(0,7).reverse().map(d=>new Set(allR.filter(r=>r.fecha===d).map(r=>r.projName)).size);
   const spkRisk=dates.slice(0,7).reverse().map(d=>allR.filter(r=>r.fecha===d&&parseFloat(r.spi||1)<0.95).length);
-  const spkNR=dates.slice(0,7).reverse().map(d=>Math.max(0,totalP-new Set(allR.filter(r=>r.fecha===d).map(r=>r.projName)).size));
+  const spkNR=dates.slice(0,7).reverse().map(faltanEn);
 
   /* ── Alerts ── */
   const alerts=[];
@@ -18703,7 +18719,7 @@ function renderReportesCOC(){
   const botProj=[...todayR].sort((a,b)=>parseFloat(a.spi||1)-parseFloat(b.spi||1))[0];
   const topPers=[...todayR].sort((a,b)=>(parseFloat(b.pers||b.personal||0))-(parseFloat(a.pers||a.personal||0)))[0];
   const ins=[
-    `✅ ${repHoy} de ${totalP} proyectos reportaron · ${cumpl}% cumplimiento`,
+    `✅ ${repExig} de ${totalP} obras obligadas reportaron · ${cumpl}% cumplimiento`,
     sinRep>0?`⚠️ ${sinRep} proyecto${sinRep>1?'s':''} sin reporte hoy`:'✅ Todos los proyectos reportaron hoy',
     `📊 Cumplimiento promedio: ${spiAvg.toFixed(2)}${spiDelta?` (${spiDelta>0?'+':''}${spiDelta.toFixed(2)} vs ayer)`:''}`,
     persHoy>0?`👷 ${persHoy} personas en campo hoy`:'',
@@ -18797,7 +18813,7 @@ function renderReportesCOC(){
     <div class="coc-hdr">
       <div>
         <div class="coc-hdr-title">🎯 Centro de Monitoreo Operacional</div>
-        <div class="coc-hdr-sub">${d0Lbl} · ${allR.length} reportes históricos · ${dates.length} días registrados · ${totalP} proyectos</div>
+        <div class="coc-hdr-sub">${d0Lbl} · ${allR.length} reportes históricos · ${dates.length} días registrados · ${totalP} obras deben reportar</div>
       </div>
       <div class="coc-hdr-actions">
         <div style="display:flex;gap:4px;flex-wrap:wrap" id="coc-date-tabs">
