@@ -577,6 +577,14 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   solo marcar **Levantada** (o Reabrir). Al enviar el reporte (no en borrador) se conserva `fecha`
   = fecha de alta, las levantadas pasan a `estado='levantada'` con `resuelta_at` y `resuelta_by`
   y no generan alertas. El portal de Contratas ya filtraba `restriccion_estado=abierta`.
+  La tabla no aceptaba `levantada` ni la categoría `frentes` que usa la app (un reporte con una
+  restricción «frentes» no se copiaba entero): se agregaron a los `CHECK` de `restricciones`.
+- **Aviso al levantar.** Trigger `trg_restriccion_levantada_alerta` (Supervisor, `AFTER UPDATE OF
+  estado`): al pasar a `levantada` crea una fila `tipo='levantada'` en `restriccion_alertas` por cada
+  persona con correo que recibió la alerta original (una por correo); si se reabre antes de que
+  salga, la borra. `enviar-alertas-correo` la manda en el mismo correo, sección «Ya se levantaron»
+  (o un correo de «Restricción levantada» si es lo único). Los lectores de alertas abiertas
+  (Contratas, «Siguen abiertas» del reporte, módulo de Gerencia) no cuentan este tipo.
 - **Gerencia · Restricciones de obra** (`app-live/modulos/restricciones.html`, menú lateral,
   solo lectura, llave pública de Supervisor): abiertas de todas las obras (vencidas primero),
   por responsable, por obra y levantadas de los últimos 30 días con cuánto tardaron.

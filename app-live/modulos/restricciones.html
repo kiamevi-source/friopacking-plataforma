@@ -111,7 +111,7 @@ async function cargar(){
   try{
     const [rows, alertas]=await Promise.all([
       get('restricciones?select=uid,cod_proyecto,nombre_proyecto,fecha,categoria,titulo,descripcion,impacto,responsable,especialidad,contratista,fecha_objetivo,estado,resuelta_at,resuelta_by,reportada_por&order=fecha.asc&limit=2000'),
-      get('restriccion_alertas?select=restriccion_uid,destinatario_nombre,visto_at&limit=5000').catch(()=>[])
+      get('restriccion_alertas?select=restriccion_uid,destinatario_nombre,visto_at&tipo=neq.levantada&limit=5000').catch(()=>[])
     ]);
     const h=hoy();
     R=(rows||[]).filter(r=>r.titulo||r.descripcion).map(r=>{

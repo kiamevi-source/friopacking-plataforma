@@ -7,6 +7,10 @@
 // Lo dispara pg_cron cada 5 min (job «enviar_alertas_correo»). Se puede llamar a mano con
 // body {"prueba": true}: arma los correos y responde qué mandaría, SIN enviar ni marcar nada.
 //
+// Restricción levantada (9-nov-2026): el trigger fn_restriccion_levantada_alerta crea una fila
+// tipo='levantada' para cada persona que recibió la alerta original. Va en el mismo correo, en su
+// propia sección («Ya se levantaron»), y si solo hay levantadas el correo es de buena noticia.
+//
 // Reglas:
 // - Un correo por destinatario y por corrida: si a alguien le tocan 3 restricciones nuevas,
 //   recibe 1 correo con las 3.
@@ -68,41 +72,69 @@ const COLOR_IMPACTO: Record<string, string> = { alto: "#C0392B", medio: "#D68910
 
 type Alerta = Record<string, any>;
 
-function armarCorreo(nombre: string, alertas: Alerta[]) {
-  const obras = [...new Set(alertas.map((a) => a.nombre_proyecto || a.cod_proyecto).filter(Boolean))];
-  const asunto = alertas.length === 1
-    ? `Restricción en ${obras[0] ?? "obra"}: ${alertas[0].titulo ?? "sin título"}`
-    : `${alertas.length} restricciones nuevas · ${obras.slice(0, 3).join(", ")}${obras.length > 3 ? "…" : ""}`;
-
-  const tarjetas = alertas.map((a) => {
-    const imp = String(a.impacto ?? "").toLowerCase();
-    const filas = [
-      ["Obra", a.nombre_proyecto || a.cod_proyecto],
-      ["Especialidad", a.especialidad],
-      ["Contrata", a.contratista],
-      ["Fecha objetivo", fecha(a.fecha_objetivo)],
-      ["Reportada por", a.reportada_por],
-      ["Te llega como", a.rol],
-    ].filter(([, v]) => v).map(([k, v]) =>
-      `<tr><td style="padding:2px 12px 2px 0;color:#5A6478;font-size:13px;white-space:nowrap">${k}</td><td style="padding:2px 0;font-size:13px;color:#1B2235">${esc(v)}</td></tr>`).join("");
-    return `
-      <div style="border:1px solid #E3E7EF;border-left:4px solid ${COLOR_IMPACTO[imp] ?? "#38C0A8"};border-radius:8px;padding:14px 16px;margin:0 0 12px">
-        <div style="font-size:15px;font-weight:700;color:#081860;margin:0 0 4px">${esc(a.titulo || "Restricción sin título")}</div>
-        ${imp ? `<div style="font-size:12px;font-weight:700;color:${COLOR_IMPACTO[imp] ?? "#5A6478"};text-transform:uppercase;margin:0 0 8px">Impacto ${esc(imp)}</div>` : ""}
-        ${a.detalle ? `<div style="font-size:14px;color:#1B2235;margin:0 0 10px;white-space:pre-wrap">${esc(a.detalle)}</div>` : ""}
+function tarjeta(a: Alerta) {
+  const lev = a.tipo === "levantada";
+  const imp = String(a.impacto ?? "").toLowerCase();
+  const filas = [
+    ["Obra", a.nombre_proyecto || a.cod_proyecto],
+    ["Especialidad", a.especialidad],
+    ["Contrata", a.contratista],
+    [lev ? "Levantada por" : "Fecha objetivo", lev ? a.reportada_por : fecha(a.fecha_objetivo)],
+    [lev ? "" : "Reportada por", lev ? "" : a.reportada_por],
+    ["Te llega como", a.rol],
+  ].filter(([k, v]) => k && v).map(([k, v]) =>
+    `<tr><td style="padding:2px 12px 2px 0;color:#5A6478;font-size:13px;white-space:nowrap">${k}</td><td style="padding:2px 0;font-size:13px;color:#1B2235">${esc(v)}</td></tr>`).join("");
+  const borde = lev ? "#1E8449" : (COLOR_IMPACTO[imp] ?? "#38C0A8");
+  return `
+      <div style="border:1px solid #E3E7EF;border-left:4px solid ${borde};border-radius:8px;padding:14px 16px;margin:0 0 12px">
+        <div style="font-size:15px;font-weight:700;color:#081860;margin:0 0 4px">${lev ? "✓ " : ""}${esc(a.titulo || "Restricción sin título")}</div>
+        ${lev ? `<div style="font-size:12px;font-weight:700;color:#1E8449;text-transform:uppercase;margin:0 0 8px">Levantada</div>`
+              : imp ? `<div style="font-size:12px;font-weight:700;color:${COLOR_IMPACTO[imp] ?? "#5A6478"};text-transform:uppercase;margin:0 0 8px">Impacto ${esc(imp)}</div>` : ""}
+        ${a.detalle && !lev ? `<div style="font-size:14px;color:#1B2235;margin:0 0 10px;white-space:pre-wrap">${esc(a.detalle)}</div>` : ""}
         <table cellpadding="0" cellspacing="0" style="border-collapse:collapse">${filas}</table>
       </div>`;
-  }).join("");
+}
 
-  const html = `<!doctype html><html><body style="margin:0;background:#F4F6FA;font-family:Segoe UI,Arial,sans-serif">
+function armarCorreo(nombre: string, alertas: Alerta[]) {
+  const nuevas = alertas.filter((a) => a.tipo !== "levantada");
+  const levantadas = alertas.filter((a) => a.tipo === "levantada");
+  const obras = [...new Set(alertas.map((a) => a.nombre_proyecto || a.cod_proyecto).filter(Boolean))];
+  const obrasTxt = `${obras.slice(0, 3).join(", ")}${obras.length > 3 ? "…" : ""}`;
+  let asunto: string, titulo: string;
+  if (!levantadas.length) {
+    asunto = nuevas.length === 1
+      ? `Restricción en ${obras[0] ?? "obra"}: ${nuevas[0].titulo ?? "sin título"}`
+      : `${nuevas.length} restricciones nuevas · ${obrasTxt}`;
+    titulo = nuevas.length === 1 ? "Nueva restricción reportada" : `${nuevas.length} restricciones nuevas`;
+  } else if (!nuevas.length) {
+    asunto = levantadas.length === 1
+      ? `Levantada en ${obras[0] ?? "obra"}: ${levantadas[0].titulo ?? "restricción"}`
+      : `${levantadas.length} restricciones levantadas · ${obrasTxt}`;
+    titulo = levantadas.length === 1 ? "Restricción levantada" : `${levantadas.length} restricciones levantadas`;
+  } else {
+    asunto = `${nuevas.length} nueva${nuevas.length === 1 ? "" : "s"} y ${levantadas.length} levantada${levantadas.length === 1 ? "" : "s"} · ${obrasTxt}`;
+    titulo = "Novedades de restricciones";
+  }
+  const sec = (t: string) => `<div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5A6478;margin:6px 0 10px">${t}</div>`;
+  const cuerpo = [
+    nuevas.length ? (levantadas.length ? sec("Nuevas") : "") + nuevas.map(tarjeta).join("") : "",
+    levantadas.length ? (nuevas.length ? sec("Ya se levantaron") : "") + levantadas.map(tarjeta).join("") : "",
+  ].join("");
+  const intro = !levantadas.length
+    ? `el supervisor registró ${nuevas.length === 1 ? "esta restricción" : "estas restricciones"} en el reporte diario:`
+    : !nuevas.length
+      ? `${levantadas.length === 1 ? "esta restricción ya se levantó" : "estas restricciones ya se levantaron"}; ya no frena${levantadas.length === 1 ? "" : "n"} la obra:`
+      : "hay novedades en las restricciones del reporte diario:";
+
+  const html = `<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;background:#F4F6FA;font-family:Segoe UI,Arial,sans-serif">
   <div style="max-width:620px;margin:0 auto;padding:24px 16px">
     <div style="background:#081860;color:#fff;border-radius:10px 10px 0 0;padding:16px 20px">
       <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#38C0A8;font-weight:700">Grupo Friopacking · Alerta de obra</div>
-      <div style="font-size:18px;font-weight:700;margin-top:4px">${alertas.length === 1 ? "Nueva restricción reportada" : `${alertas.length} restricciones nuevas`}</div>
+      <div style="font-size:18px;font-weight:700;margin-top:4px">${titulo}</div>
     </div>
     <div style="background:#fff;border-radius:0 0 10px 10px;padding:20px">
-      <p style="font-size:14px;color:#1B2235;margin:0 0 16px">Hola ${esc(nombre.split(" ")[0] || "")}, el supervisor registró ${alertas.length === 1 ? "esta restricción" : "estas restricciones"} en el reporte diario:</p>
-      ${tarjetas}
+      <p style="font-size:14px;color:#1B2235;margin:0 0 16px">Hola ${esc(nombre.split(" ")[0] || "")}, ${intro}</p>
+      ${cuerpo}
       <p style="margin:18px 0 0"><a href="${APP_URL}" style="display:inline-block;background:#38C0A8;color:#081860;font-weight:700;font-size:14px;text-decoration:none;padding:10px 18px;border-radius:6px">Abrir la plataforma</a></p>
     </div>
     <p style="font-size:11px;color:#8A93A6;text-align:center;margin:14px 0 0">Correo automático de la Plataforma Friopacking.</p>
