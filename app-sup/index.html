@@ -5324,6 +5324,23 @@ async function cargarCierreCompromiso(){
   el.innerHTML = _cierreCompromisoHTML(reps);
 }
 
+// EVAL_DESDE_REPORTE: una fila por contrata evaluada (solo las que tienen nota) · más reciente primero
+function dashEvalFilas(reps){
+  const out = [];
+  (reps||[]).forEach(r => {
+    const cs = (r && r.evaluaciones && Array.isArray(r.evaluaciones.contratas)) ? r.evaluaciones.contratas : [];
+    cs.forEach(c => { const p = parseFloat(c && c.promedio);
+      if (c && c.contratista && p > 0) out.push({ fecha:r.fecha_reporte, created_at:r.created_at, contratista:c.contratista, especialidad:c.especialidad||'', puntaje_final:p,
+        coordinacion:c.coordinacion||null, epp:c.epp||null, bpm:c.bpm||null, orden:c.orden||null }); });
+  });
+  return out;
+}
+// Promedio por día (asc) para KPI, delta y sparkline
+function dashEvalPorDia(filas){
+  const m = {}; (filas||[]).forEach(f => { (m[f.fecha] = m[f.fecha] || []).push(f.puntaje_final); });
+  return Object.keys(m).sort().map(k => ({ fecha:k, prom: m[k].reduce((a,b)=>a+b,0) / m[k].length }));
+}
+
 async function cargarDashboard() {
   if (!currentProyecto) return;
   const cod = currentProyecto.cod || currentProyecto.nombre;
@@ -5338,7 +5355,9 @@ async function cargarDashboard() {
       // NOTA: hoy filtra por supervisor porque evaluacion_contratistas NO tiene cod_proyecto poblado
       // (0/56 filas). Cuando el formulario de evaluación empiece a estampar cod_proyecto, cambiar a
       // `cod_proyecto=eq.${cod}` para que sea POR OBRA y no por supervisor (evita mostrar otras obras).
-      sbFetch(`/rest/v1/evaluacion_contratistas?supervisor=ilike.${encodeURIComponent('%'+(currentProyecto.supervisor||'').split(' ')[0]+'%')}&order=created_at.desc&limit=20`).catch(()=>[]),
+      // EVAL_DESDE_REPORTE (9-nov-2026): las evaluaciones se llenan en el Reporte diario (escala 1–5), por obra.
+      // Antes leía evaluacion_contratistas filtrada por supervisor (mezclaba obras y estaba congelada).
+      sbFetch(`/rest/v1/reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(nombre)})&evaluaciones=not.is.null&select=fecha_reporte,created_at,evaluaciones&order=fecha_reporte.desc&limit=30`).then(dashEvalFilas).catch(()=>[]),
       prReportes().then(r=>prComoIngresoPersonal(r).slice(0,14)).catch(()=>[]),   // PR_DESDE_REPORTE
       sbFetch(`/rest/v1/tareas_gantt?cod_proyecto=eq.${encodeURIComponent(cod)}&order=fecha_fin_base.asc&limit=200`).catch(()=>[])
     ]);
@@ -5373,15 +5392,10 @@ async function cargarDashboard() {
     const delta = avance - plan;
 
     // ── Eval. contratas promedio (del último reporte si tiene, sino global recientes) ──
-    let evalCt = null; // null = sin evaluaciones (se muestra "—", no "0.0")
-    if (ultimo.contratas_detalle && Array.isArray(ultimo.contratas_detalle) && ultimo.contratas_detalle.length) {
-      const proms = ultimo.contratas_detalle.map(c => parseFloat(c.eval_promedio||c.promedio||0)).filter(v=>v>0);
-      if (proms.length) evalCt = proms.reduce((a,b)=>a+b,0)/proms.length;
-    }
-    if (evalCt == null && (contratasTbl||[]).length) {
-      const recent = (contratasTbl||[]).slice(0,5).map(c=>parseFloat(c.puntaje_final||0)).filter(v=>v>0);
-      if (recent.length) evalCt = recent.reduce((a,b)=>a+b,0)/recent.length;
-    }
+    // EVAL_DESDE_REPORTE: promedio de las contratas evaluadas en el último reporte que tiene evaluaciones (1–5)
+    const evalDias = dashEvalPorDia(contratasTbl||[]);
+    const evalUlt  = evalDias.length ? evalDias[evalDias.length-1] : null;
+    let evalCt = evalUlt ? evalUlt.prom : null; // null = sin evaluaciones (se muestra "—", no "0.0")
 
     // ── Reporte anterior para deltas ──
     const prev = reportes[1] || null;
@@ -5390,7 +5404,7 @@ async function cargarDashboard() {
     const deltaSpi    = (prev && spi!=null) ? (spi    - (parseFloat(prev.spi||0) || (parseFloat(prev.pct_planificado||0)>0 ? parseFloat(prev.pct_ejecutado||0)/parseFloat(prev.pct_planificado||0) : 0))) : null;
     const deltaRondas = prev ? (rondasPct - ((parseInt(prev.rondas_ok)||0)/(parseInt(prev.rondas_total)||10))*100) : null;
     const deltaPersonal = prev ? (personal - (parseInt(prev.personal_total)||0)) : null;
-    const deltaEval = null; // sin histórico fácil; queda para refinar
+    const deltaEval = evalDias.length > 1 ? evalCt - evalDias[evalDias.length-2].prom : null;
 
     // ── Sparklines (asc en el tiempo) ──
     const histAsc = [...reportes].slice(0,10).reverse();
@@ -5402,12 +5416,12 @@ async function cargarDashboard() {
       return tt ? (ok/tt)*100 : 0;
     });
     const sparkPersonal = histAsc.map(r => parseInt(r.personal_total)||0);
-    const sparkEval = (contratasTbl||[]).slice(0,8).reverse().map(c=>parseFloat(c.puntaje_final)||0).filter(v=>v>0);
+    const sparkEval = evalDias.slice(-8).map(d => d.prom);
 
     // ── Estados por KPI ──
     const stateAvance = delta >= -2 ? 'good' : delta >= -8 ? 'warn' : 'bad';
     const stateSpi    = spi==null ? 'neutral' : spi >= 0.96 ? 'good' : spi >= 0.85 ? 'warn' : 'bad';
-    const stateEval   = evalCt >= 8 ? 'good' : evalCt >= 6 ? 'warn' : evalCt > 0 ? 'bad' : 'neutral';
+    const stateEval   = evalCt >= 4 ? 'good' : evalCt >= 3 ? 'warn' : evalCt > 0 ? 'bad' : 'neutral';   // escala 1–5
     const stateRondas = rondasPct >= 80 ? 'good' : rondasPct >= 50 ? 'warn' : 'bad';
 
     // ── Status badge (curva S) ──
@@ -5427,7 +5441,7 @@ async function cargarDashboard() {
     // ── Señales para prioridades / briefing ──
     const hoyStr = new Date().toISOString().slice(0,10);
     const riesgosAltos = (riesgosTbl||[]).filter(r => (r.nivel||'').toUpperCase()==='ALTO' && (r.estado||'abierto').toLowerCase()==='abierto').length;
-    const contratasBajas = (contratasTbl||[]).slice(0,8).filter(c => parseFloat(c.puntaje_final||0) > 0 && parseFloat(c.puntaje_final||0) < 6).length;
+    const contratasBajas = evalUlt ? new Set((contratasTbl||[]).filter(c => c.fecha === evalUlt.fecha && c.puntaje_final < 3).map(c => c.contratista)).size : 0;
     const ganttAtrasadas = (ganttTbl||[]).filter(t => parseFloat(t.pct_avance||0) < 100 && t.fecha_fin_base && t.fecha_fin_base < hoyStr).length;
     const diasSinReporte = ultimo.fecha_reporte && ultimo.fecha_reporte < hoyStr
       ? Math.floor((new Date(hoyStr) - new Date(ultimo.fecha_reporte))/86400000) : 0;
@@ -17376,50 +17390,46 @@ async function cargarPersonalHist() {
 // CONTRATAS
 // ═══════════════════════════════════════════════
 async function cargarContratast() {
+  // EVAL_CT_TAB (9-nov-2026): las evaluaciones salen del Reporte diario de ESTA obra (escala 1–5).
+  // Antes leía evaluacion_contratistas por supervisor (otras obras, escala 0–10, congelada).
   if (!currentProyecto) return;
   const cod = currentProyecto.cod || currentProyecto.nombre;
-
-  // Historial desde evaluacion_contratistas
+  const nombre = currentProyecto.nombre || '';
+  const hoy = document.getElementById('contratas-hoy');
+  const hist = document.getElementById('contratas-hist');
   try {
-    // NOTA: filtra por supervisor mientras evaluacion_contratistas no tenga cod_proyecto poblado (ver cargarDashboard).
-    const rows = await sbFetch(`/rest/v1/evaluacion_contratistas?supervisor=ilike.${encodeURIComponent('%'+currentProyecto.supervisor?.split(' ')[0]+'%')}&order=created_at.desc&limit=20`);
-    const hoy = document.getElementById('contratas-hoy');
-    const hist = document.getElementById('contratas-hist');
-
-    if (!rows || rows.length === 0) {
-      hoy.innerHTML = '<p style="color:var(--text-3);padding:20px;">Sin evaluaciones registradas.</p>';
-      hist.innerHTML = '<p style="color:var(--text-3);padding:20px;">Sin historial.</p>';
-      setBadgeFromData('contratas', 0);
-      return;
+    const reps = await sbFetch(`/rest/v1/reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(nombre)})&evaluaciones=not.is.null&select=fecha_reporte,created_at,evaluaciones&order=fecha_reporte.desc&limit=60`);
+    const filas = dashEvalFilas(reps);
+    if (!filas.length) {
+      const msg = '<p style="color:var(--text-3);padding:20px;">Sin evaluaciones aún. Se califican en el <a href="#" onclick="showTab(\'diario\');return false;" style="font-weight:700">Reporte diario</a> (sección evaluaciones).</p>';
+      hoy.innerHTML = msg; hist.innerHTML = '<p style="color:var(--text-3);padding:20px;">Sin historial.</p>';
+      setBadgeFromData('contratas', 0); return;
     }
-
-    // ── Badge: contratas con score bajo (< 6) ──
-    const recientes = rows.slice(0, 8);
-    const lows = recientes.filter(r => parseFloat(r.puntaje_final||0) > 0 && parseFloat(r.puntaje_final||0) < 6).length;
-    if (lows > 0) setBadgeFromData('contratas', lows, 'warn');
-    else setBadgeFromData('contratas', 0);
-
-    const tabla = (filas) => `<table class="contratas-table">
-      <thead><tr><th>Contratista</th><th>Especialidad</th><th>Seguridad</th><th>Cumplimiento</th><th>Calidad</th><th>Gestión</th><th>Puntaje</th><th>Clasificación</th></tr></thead>
-      <tbody>${filas.map(r=>{
-        const s = r.puntaje_final||0;
-        const cls = s>=8?'high':s>=6?'mid':'low';
-        return `<tr>
-          <td>${r.contratista||'—'}</td><td>${r.especialidad||'—'}</td>
-          <td class="score ${cls}">${r.prom_seguridad||'—'}</td>
-          <td class="score ${cls}">${r.prom_cumplimiento||'—'}</td>
-          <td class="score ${cls}">${r.prom_calidad||'—'}</td>
-          <td class="score ${cls}">${r.prom_gestion||'—'}</td>
-          <td class="score ${cls}">${s}</td>
-          <td>${r.clasificacion||'—'}</td>
-        </tr>`;}).join('')}
-      </tbody>
-    </table>`;
-
-    hoy.innerHTML = tabla(rows.slice(0,5));
-    hist.innerHTML = tabla(rows);
+    const ult = filas[0].fecha;
+    const deHoy = filas.filter(f => f.fecha === ult);
+    const lows = new Set(deHoy.filter(f => f.puntaje_final < 3).map(f => f.contratista)).size;
+    if (lows > 0) setBadgeFromData('contratas', lows, 'warn'); else setBadgeFromData('contratas', 0);
+    const cls = v => v == null ? '' : v >= 4 ? 'high' : v >= 3 ? 'mid' : 'low';
+    const n = v => v == null ? '—' : (Math.round(v*10)/10);
+    const tabla = (L, conFecha) => `<table class="contratas-table">
+      <thead><tr>${conFecha?'<th>Fecha</th>':''}<th>Contrata</th><th>Especialidad</th><th>Coordinación</th><th>EPP's</th><th>BPM</th><th>Orden y limpieza</th><th>Promedio (1–5)</th></tr></thead>
+      <tbody>${L.map(r => `<tr>
+        ${conFecha?`<td>${prFecha(r.fecha)}</td>`:''}<td>${prEsc(r.contratista)}</td><td>${prEsc(r.especialidad||'—')}</td>
+        <td class="score ${cls(r.coordinacion)}">${n(r.coordinacion)}</td><td class="score ${cls(r.epp)}">${n(r.epp)}</td>
+        <td class="score ${cls(r.bpm)}">${n(r.bpm)}</td><td class="score ${cls(r.orden)}">${n(r.orden)}</td>
+        <td class="score ${cls(r.puntaje_final)}"><strong>${n(r.puntaje_final)}</strong></td></tr>`).join('')}
+      </tbody></table>`;
+    hoy.innerHTML = `<div style="font-size:12px;color:var(--text-3);padding:12px 16px 0;">Reporte del <b>${prFecha(ult)}</b></div>` + tabla(deHoy, false);
+    // Historial: promedio por contrata en todos los reportes + detalle por fecha
+    const por = {}; filas.forEach(f => { const k = f.contratista; (por[k] = por[k] || { contratista:k, especialidad:f.especialidad, v:[] }).v.push(f.puntaje_final); });
+    const resumen = Object.values(por).map(x => ({ ...x, prom: x.v.reduce((a,b)=>a+b,0)/x.v.length })).sort((a,b) => a.prom - b.prom);
+    hist.innerHTML = `<table class="contratas-table">
+      <thead><tr><th>Contrata</th><th>Especialidad</th><th>Días evaluada</th><th>Promedio acumulado (1–5)</th></tr></thead>
+      <tbody>${resumen.map(x => `<tr><td>${prEsc(x.contratista)}</td><td>${prEsc(x.especialidad||'—')}</td><td>${x.v.length}</td><td class="score ${cls(x.prom)}"><strong>${n(x.prom)}</strong></td></tr>`).join('')}</tbody>
+    </table>
+    <details style="padding:10px 16px;"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--text-2);">Ver detalle por fecha (${filas.length})</summary>${tabla(filas, true)}</details>`;
   } catch(e) {
-    document.getElementById('contratas-hoy').innerHTML = '<p style="color:var(--muted);padding:20px;">Sin datos de contratas.</p>';
+    hoy.innerHTML = '<p style="color:var(--muted);padding:20px;">Sin datos de contratas.</p>';
   }
 }
 
@@ -18000,7 +18010,7 @@ function renderKPIs(d) {
     card({ id:'kpi-avance',  icon:'avance',   name:'Avance real',     value:d.avance,  unit:'%', decimals:1, delta:d.deltaAvance, state:d.stateAvance, sub:'% físico ejecutado',           spark:d.sparkAvance }),
     card({ id:'kpi-plan',    icon:'plan',     name:'Plan acum.',      value:d.plan,    unit:'%', decimals:1, delta:d.deltaPlan,   state:'neutral',     sub:'% planificado a la fecha',     spark:d.sparkPlan }),
     card({ id:'kpi-spi',     icon:'spi',      name:'Cumplimiento del plazo',             value:d.spi,     unit:'',  decimals:2, delta:d.deltaSpi, deltaUnit:'', state:d.stateSpi, sub:'avance real ÷ plan', spark:d.sparkSpi }),
-    card({ id:'kpi-eval',    icon:'eval',     name:'Eval. contratas', value:d.evalCt,  unit:'',  decimals:1, delta:d.deltaEval, deltaUnit:'', state:d.stateEval, sub:'Puntaje promedio',          spark:d.sparkEval }),
+    card({ id:'kpi-eval',    icon:'eval',     name:'Eval. contratas', value:d.evalCt,  unit:'/5',  decimals:1, delta:d.deltaEval, deltaUnit:' pts', state:d.stateEval, sub:'Promedio del último reporte',          spark:d.sparkEval }),
     card({ id:'kpi-rondas',  icon:'rondas',   name:'Rondas',          value:d.rondasPct, unit:'%', decimals:0, delta:d.deltaRondas, state:d.stateRondas, sub:`${d.rondasOk||0}/${d.rondasTot||10} hoy`, spark:d.sparkRondas }),
     card({ id:'kpi-personal',icon:'personal', name:'Personal hoy',    value:d.personal, unit:'', decimals:0, delta:d.deltaPersonal, deltaUnit:'p', state:'neutral', sub:'personas en obra',          spark:d.sparkPersonal })
   ].join('');
@@ -18071,7 +18081,7 @@ function generarBriefingDeterministico(ctx) {
   // Contratas bajas
   if (ctx.contratasBajas > 0) {
     lines.push(`<strong>${ctx.contratasBajas} contrata${ctx.contratasBajas===1?'':'s'}</strong> con desempeño por debajo del umbral aceptable.`);
-    insights.push({ tone:'warn', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>', t:'Bajo rendimiento contrata', d:`${ctx.contratasBajas} con puntaje < 6` });
+    insights.push({ tone:'warn', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>', t:'Bajo rendimiento contrata', d:`${ctx.contratasBajas} con promedio menor a 3 de 5` });
   }
 
   // Gantt atrasadas
@@ -18158,7 +18168,7 @@ function renderPrioridades(ctx) {
 
   if (ctx.contratasBajas > 0) {
     items.push({ imp:'high', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
-      title:`${ctx.contratasBajas} contrata${ctx.contratasBajas===1?'':'s'} con bajo desempeño`, desc:'Puntaje < 6 · planifica reunión de cierre', tab:'contratas', score: 65 });
+      title:`${ctx.contratasBajas} contrata${ctx.contratasBajas===1?'':'s'} con bajo desempeño`, desc:'Promedio menor a 3 de 5 en el último reporte · conversa con la contrata', tab:'contratas', score: 65 });
   }
 
   if (ctx.ganttAtrasadas > 0) {
@@ -18248,8 +18258,8 @@ function renderTimeline(ctx, sources) {
   (sources.contratas||[]).forEach(c => {
     if (c.created_at && c.created_at.slice(0,10) === hoyStr) {
       const s = parseFloat(c.puntaje_final||0);
-      events.push({ time: hhmm(c.created_at), tone: s>=8?'success':s>=6?'info':'warn',
-        chip:'Contrata', title:`Evaluación <b>${c.contratista||c.empresa||'—'}</b> · ${c.especialidad||''} · puntaje <b>${s||'—'}</b>` });
+      events.push({ time: hhmm(c.created_at), tone: s>=4?'success':s>=3?'info':'warn',
+        chip:'Contrata', title:`Evaluación <b>${c.contratista||c.empresa||'—'}</b> · ${c.especialidad||''} · puntaje <b>${s?s.toFixed(1)+'/5':'—'}</b>` });
     }
   });
 
@@ -18305,7 +18315,7 @@ function renderFeed(sources) {
     if (!c.created_at) return;
     const s = parseFloat(c.puntaje_final||0);
     events.push({ ts:c.created_at, kind:'contrata',
-      tag:'Contrata', msg:`<b>${c.contratista||c.empresa||'—'}</b> evaluada · ${c.especialidad||''} · puntaje <b>${s||'—'}</b>` });
+      tag:'Contrata', msg:`<b>${c.contratista||c.empresa||'—'}</b> evaluada · ${c.especialidad||''} · puntaje <b>${s?s.toFixed(1)+'/5':'—'}</b>` });
   });
   (sources.personal||[]).slice(0,5).forEach(p => {
     if (!p.created_at && !p.fecha) return;
