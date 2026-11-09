@@ -36,6 +36,15 @@ instancia que corresponde y abre la app en un iframe.
   elige **periodo (AAAA-MM) y fecha de corte**, que se guardan en
   `valorizacion_lineas.fecha_corte` y `valorizacion_cobros.fecha_corte` y se
   muestran en la cabecera del módulo. Sigue siendo reemplazo total del periodo.
+  **(9-nov-2026)** El periodo y el corte se proponen **desde el propio libro**
+  («…facturar en Noviembre 2026», «al 02 de Noviembre del 2026» o «NOV 2026» en
+  el nombre del archivo); solo si no se detecta se usa la fecha de hoy.
+  **Gotcha:** en el «Estado de Proyección» la columna `Saldo pendiente` es
+  Presupuesto+IGV − Pagado, y `pagado` = facturado con IGV: es lo que **falta
+  facturar del contrato (con IGV)**, no cuentas por cobrar. Por eso el módulo lo
+  muestra como «Por facturar (con IGV)» (`valorizacion_cobros.saldo_pendiente`,
+  y `proyectos.fin_por_cobrar` / `fin_cobranza='Por facturar'` en las tarjetas).
+  El Excel no trae cobranza real.
 
 ## 2. Sincronizaciones automáticas
 
