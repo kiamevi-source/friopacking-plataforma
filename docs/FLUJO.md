@@ -506,7 +506,13 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   mantenimiento de `alerta_destinatarios`. Roles: `PMO` y `Gerencia` reciben todas;
   `Jefe de zona`, las de su especialidad. En el modal de proyecto de Gerencia quedan las pestañas
   Executive, Equipos, Contratas, Partidas y Comentarios (Operaciones, Riesgos, Documentos y
-  Lecciones se retiraron el 9-nov-2026). Los módulos Inicio y Reporte diario se retiraron el
+  Lecciones se retiraron el 9-nov-2026). Esas pestañas leen el reporte diario con
+  `Supervisor.reportes_obra_gerencia(códigos, días)` (SECURITY DEFINER, solo lectura, llave pública,
+  sin fotos ni firmas; une `reportes` y `reportes_historico`) + `restricciones` abiertas +
+  `equipos_obra`: Executive suma la franja «Último reporte diario»; Equipos = estado que marca el
+  supervisor (`equipos_dia`, ya no la lista de importaciones); Contratas = personal y evaluación de
+  los últimos 30 días arriba del portafolio de Servicios; Comentarios = bitácora día por día
+  (omite la actividad que arma sola la app). Los módulos Inicio y Reporte diario se retiraron el
   9-nov-2026; la entrada de Gerencia es el Dashboard. La función `indicadores_reporte_diario` sigue
   en la base, sin pantalla que la use.
 - La copia de reportes a PMO (`sync_reportes_from_supervisor`) **no** lleva estas columnas nuevas:

@@ -19995,6 +19995,197 @@ function svContratoDe(f, filas){
   };
 })();
 
+/* ─── Pestañas alimentadas por el reporte diario (Kiara, 9-nov-2026) ───
+   Executive (franja «Último reporte»), Equipos, Contratas y Comentarios leen lo que el supervisor
+   manda en el reporte diario. Una sola lectura por obra: Supervisor.reportes_obra_gerencia(códigos)
+   (función de solo lectura, sin fotos ni firmas) + restricciones abiertas + equipos_obra. */
+(function(){
+  var SUPU=_PREP_SUP_URL, SUPK=_PREP_SUP_KEY;
+  var H={apikey:SUPK,Authorization:'Bearer '+SUPK};
+  function supGet(q){ return fetch(SUPU+'/rest/v1/'+q,{headers:H}).then(function(r){ return r.ok?r.json():[]; }).catch(function(){ return []; }); }
+  function supRpc(fn,args){ return fetch(SUPU+'/rest/v1/rpc/'+fn,{method:'POST',headers:Object.assign({'Content-Type':'application/json'},H),body:JSON.stringify(args)}).then(function(r){ return r.ok?r.json():[]; }).catch(function(){ return []; }); }
+  function pmoGet(q){ return fetch(_SB_URL+'/rest/v1/'+q,{headers:{apikey:_SB_KEY,Authorization:'Bearer '+_SB_KEY}}).then(function(r){ return r.ok?r.json():[]; }).catch(function(){ return []; }); }
+  function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function arr(v){ return Array.isArray(v)?v:[]; }
+  function n(v){ var x=Number(v); return isFinite(x)?x:null; }
+  function fd(s){ if(!s) return '—'; var d=new Date(String(s).slice(0,10)+'T12:00:00'); return isNaN(d)?esc(s):d.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'}); }
+  function hace(s){ if(!s) return ''; var d=Math.round((new Date().setHours(12,0,0,0)-new Date(String(s).slice(0,10)+'T12:00:00'))/864e5); return d<=0?'hoy':d===1?'ayer':'hace '+d+' días'; }
+  function card(inner,extra){ return '<div style="background:#fff;border:1px solid #e6edf5;border-radius:14px;padding:16px 18px;margin-bottom:14px;'+(extra||'')+'">'+inner+'</div>'; }
+  function h4(t,sub){ return '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px"><h4 style="margin:0;font-size:15px;font-weight:800;color:#081860">'+t+'</h4>'+(sub?'<span style="font-size:12px;color:#64748b">'+sub+'</span>':'')+'</div>'; }
+  function kpi(l,v,s,col){ return '<div style="flex:1;min-width:140px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:11px 13px"><div style="font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#64748b">'+l+'</div><div style="font-size:20px;font-weight:900;color:'+(col||'#081860')+';margin-top:3px">'+v+'</div>'+(s?'<div style="font-size:11.5px;color:#64748b;margin-top:1px">'+s+'</div>':'')+'</div>'; }
+  function chip(t,bg,fg){ return '<span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;background:'+bg+';color:'+fg+'">'+t+'</span>'; }
+  function vacio(t){ return '<div style="padding:26px;text-align:center;color:#64748b;font-size:13px">'+t+'</div>'; }
+
+  // ── Carga única por obra (se refresca a los 2 min) ──
+  var cache={};
+  function cargar(p){
+    var cod=p._cod||''; if(!cod) return Promise.resolve(null);
+    var c=cache[cod]; if(c && Date.now()-c.t<120000) return c.pr;
+    var pr=pmoGet('proyectos?cod_proyecto=eq.'+encodeURIComponent(cod)+'&select=codigos&limit=1').then(function(pp){
+      var cods=[cod]; ((pp[0]&&pp[0].codigos)||[]).forEach(function(x){ if(x&&x.codigo&&cods.indexOf(x.codigo)<0) cods.push(x.codigo); });
+      var inC='in.('+cods.map(function(x){ return '"'+x+'"'; }).join(',')+')';
+      return Promise.all([
+        supRpc('reportes_obra_gerencia',{p_cods:cods,p_dias:365}),
+        supGet('restricciones?cod_proyecto='+encodeURIComponent(inC)+'&estado=eq.abierta&select=uid,titulo,descripcion,impacto,especialidad,contratista,responsable,fecha,fecha_objetivo&order=fecha.desc'),
+        supGet('equipos_obra?cod_proyecto='+encodeURIComponent(inC)+'&activo=is.true&select=id,nombre,marca_modelo,cantidad,estado,nota,orden&order=orden')
+      ]).then(function(r){ return { cods:cods, reps:arr(r[0]), restr:arr(r[1]), eqObra:arr(r[2]) }; });
+    });
+    cache[cod]={t:Date.now(),pr:pr}; return pr;
+  }
+  W._rdObraCargar=cargar;
+  function vigente(p){ return W.curProject===p; }
+
+  var EQ={ esperando:['Por llegar','#f1f5f9','#475569'], en_obra:['En obra','#dbeafe','#1d4ed8'], montaje:['En montaje','#fef3c7','#92400e'], instalado:['Instalado','#dcfce7','#166534'], observado:['Observado','#fee2e2','#b91c1c'] };
+  function eqChip(k){ var e=EQ[k]||[k||'Sin estado','#f1f5f9','#64748b']; return chip(esc(e[0]),e[1],e[2]); }
+  var IMP={ alto:['#fee2e2','#b91c1c'], medio:['#fef3c7','#92400e'], bajo:['#dcfce7','#166534'] };
+  function impChip(i){ var k=String(i||'').toLowerCase(), c=IMP[k]||['#f1f5f9','#475569']; return chip(esc(k||'—'),c[0],c[1]); }
+
+  // ── Executive: franja «Último reporte diario» arriba de lo que ya existe ──
+  function franjaExecutive(p,d){
+    if(!d) return '';
+    var r=d.reps[0];
+    if(!r) return card('<div style="font-size:13px;color:#92400e"><b>Sin reportes diarios</b> de esta obra en el último año. Lo de abajo sale de la ficha del proyecto.</div>','border-color:#fde68a;background:#fffbeb');
+    var re=n(r.pct_ejecutado), pl=n(r.pct_planificado), gap=(re!=null&&pl!=null)?re-pl:null;
+    var fc=r.fecha_fin_cont||p._cf||p.cf||null, fp=r.fecha_fin_proy || (r.reprogramacion&&r.reprogramacion.fecha_nueva) || null;
+    var dias=hace(r.fecha_reporte), viejo=(new Date()-new Date(String(r.fecha_reporte)+'T12:00:00'))/864e5>3;
+    var rs=d.restr, altas=rs.filter(function(x){ return String(x.impacto).toLowerCase()==='alto'; }).length;
+    return card(
+      h4('Último reporte diario', fd(r.fecha_reporte)+' · '+esc(r.supervisor||'')+' · '+'<b style="color:'+(viejo?'#b91c1c':'#166534')+'">'+dias+'</b>')+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+        kpi('Avance real', re!=null?re.toFixed(1)+'%':'—', pl!=null?'planificado '+pl.toFixed(1)+'%':'')+
+        kpi('Brecha', gap!=null?(gap>=0?'+':'')+gap.toFixed(1)+' pts':'—', r.spi?'cumplimiento del plazo '+esc(r.spi):'', gap==null?null:gap<-2?'#b91c1c':gap>2?'#166534':'#92400e')+
+        kpi('Fin de obra', fp?fd(fp):fc?fd(fc):'—', fp&&fc&&fp!==fc?'contractual '+fd(fc):fc?'fecha contractual':'sin fecha registrada')+
+        kpi('Personal en obra', r.personal_total!=null?esc(r.personal_total):'—', 'en el último reporte')+
+        kpi('Restricciones abiertas', rs.length, altas?altas+' de impacto alto':'', rs.length?(altas?'#b91c1c':'#92400e'):'#166534')+
+      '</div>'+
+      (r.motivo_proyeccion?'<div style="margin-top:10px;font-size:12.5px;color:#475569"><b>Motivo de la nueva fecha:</b> '+esc(r.motivo_proyeccion)+'</div>':'')+
+      (rs.length?'<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">'+rs.slice(0,5).map(function(x){ return '<div style="display:flex;gap:8px;align-items:center;font-size:12.5px">'+impChip(x.impacto)+'<b style="color:#0f172a">'+esc(x.titulo||'Sin título')+'</b><span style="color:#64748b">'+esc([x.especialidad,x.contratista||x.responsable].filter(Boolean).join(' · '))+(x.fecha_objetivo?' · objetivo '+fd(x.fecha_objetivo):'')+'</span></div>'; }).join('')+(rs.length>5?'<div style="font-size:12px;color:#64748b">y '+(rs.length-5)+' más</div>':'')+'</div>':'')
+    );
+  }
+  var _execOrig=renderExecutive;
+  renderExecutive=function(p){
+    var out=_execOrig.apply(this,arguments);
+    cargar(p).then(function(d){
+      if(!vigente(p) || (W.curMV||'resumen')!=='resumen') return;
+      var mv=document.querySelector('#modal-body .mview'); if(!mv || mv.querySelector('[data-rd-franja]')) return;
+      var w=document.createElement('div'); w.setAttribute('data-rd-franja','1'); w.innerHTML=franjaExecutive(p,d);
+      mv.insertBefore(w, mv.firstChild);
+    });
+    return out;
+  };
+
+  // ── Equipos: lo que marca el supervisor en el reporte ──
+  W.renderModalEquiposRD=function(p){
+    var body=document.getElementById('modal-body'); if(!body) return;
+    body.innerHTML='<div class="mview on exc">'+vacio('Cargando equipos del reporte diario…')+'</div>';
+    cargar(p).then(function(d){
+      if(!vigente(p) || W.curMV!=='equipos') return;
+      if(!d){ body.innerHTML='<div class="mview on exc">'+card(vacio('Esta obra no tiene código NISIRA.'))+'</div>'; return; }
+      var crono=d.reps.slice().reverse(), ult=null, desde={}, previo={};
+      crono.forEach(function(r){ var eq=arr(r.equipos_dia); if(!eq.length) return; ult=r;
+        eq.forEach(function(e){ var k=e.doc||e.tipo; if(previo[k]!==e.estado){ desde[k]=r.fecha_reporte; previo[k]=e.estado; } }); });
+      var lista=ult?arr(ult.equipos_dia):[];
+      var fuente=ult?'Último reporte con equipos: '+fd(ult.fecha_reporte)+' · '+esc(ult.supervisor||''):'';
+      if(!lista.length && d.eqObra.length){
+        lista=d.eqObra.map(function(e){ return { doc:e.id, tipo:e.nombre, proveedor:e.marca_modelo, cantidad:e.cantidad, estado:e.estado, nota:e.nota }; });
+        fuente='Lista de equipos de la obra (aún sin estado en un reporte)';
+      }
+      if(!lista.length){ body.innerHTML='<div class="mview on exc">'+card(h4('Equipos de la obra')+vacio('El supervisor todavía no registra equipos en el reporte diario de esta obra.'))+'</div>'; return; }
+      var cnt={}; lista.forEach(function(e){ cnt[e.estado||'']=(cnt[e.estado||'']||0)+1; });
+      body.innerHTML='<div class="mview on exc">'+card(
+        h4('Equipos de la obra', fuente)+
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">'+
+          kpi('Equipos',lista.length,'')+kpi('Por llegar',cnt.esperando||0,'')+kpi('En obra',cnt.en_obra||0,'')+kpi('En montaje',cnt.montaje||0,'')+kpi('Instalados',cnt.instalado||0,'','#166534')+(cnt.observado?kpi('Observados',cnt.observado,'','#b91c1c'):'')+
+        '</div>'+
+        '<div style="overflow:auto;border:1px solid #e2e8f0;border-radius:12px"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:#081860;color:#fff;text-align:left"><th style="padding:8px 10px">Equipo</th><th style="padding:8px 10px">Proveedor / modelo</th><th style="padding:8px 10px;text-align:right">Cant.</th><th style="padding:8px 10px">Estado</th><th style="padding:8px 10px">Desde</th><th style="padding:8px 10px">Nota</th></tr></thead><tbody>'+
+        lista.map(function(e){ var k=e.doc||e.tipo; return '<tr style="border-top:1px solid #f1f5f9"><td style="padding:7px 10px;font-weight:700;color:#0f172a">'+esc(e.tipo||'—')+'</td><td style="padding:7px 10px;color:#475569">'+esc((e.proveedor||'').trim()||'—')+'</td><td style="padding:7px 10px;text-align:right">'+esc(e.cantidad!=null?e.cantidad:'—')+'</td><td style="padding:7px 10px">'+eqChip(e.estado)+'</td><td style="padding:7px 10px;color:#475569;white-space:nowrap">'+(desde[k]?fd(desde[k]):'—')+'</td><td style="padding:7px 10px;color:#475569">'+esc(e.nota||'')+'</td></tr>'; }).join('')+
+        '</tbody></table></div>'+
+        '<div style="margin-top:10px;font-size:11.5px;color:#64748b">Las órdenes de importación (fabricación, tránsito, aduanas) siguen en el módulo <b>Equipos</b> del menú.</div>'
+      )+'</div>';
+    });
+  };
+
+  // ── Contratas: quién trabaja en la obra según los reportes (últimos 30 días) ──
+  function bloqueContratas(d){
+    var lim=new Date(Date.now()-30*864e5).toISOString().slice(0,10);
+    var reps=d.reps.filter(function(r){ return String(r.fecha_reporte)>=lim; });
+    if(!reps.length) return card(h4('Contratas en obra','según el reporte diario')+vacio('No hay reportes de esta obra en los últimos 30 días.'));
+    var ult=reps[0], g={}, ev={}, ss=[];
+    reps.forEach(function(r){
+      var dia={};
+      arr(r.contratas_detalle).forEach(function(c){ var nm=(c.nombre||'').trim(); if(!nm) return; var k=nm.toLowerCase();
+        var o=g[k]=g[k]||{nombre:nm,esp:{},dias:{},obreros:0,hoy:null};
+        if(c.especialidad) o.esp[c.especialidad]=1;
+        var ob=Number(c.obreros)||0; if(ob>0){ o.dias[r.fecha_reporte]=1; dia[k]=(dia[k]||0)+ob; } });
+      Object.keys(dia).forEach(function(k){ g[k].obreros+=dia[k]; if(r===ult) g[k].hoy=dia[k]; });
+      var e=r.evaluaciones||{};
+      arr(e.contratas).forEach(function(c){ var k=(c.contratista||'').trim().toLowerCase(); if(!k) return; var o=ev[k]=ev[k]||{s:0,n:0,c:{epp:[],orden:[],bpm:[],coordinacion:[]}}; var pr=Number(c.promedio); if(pr>0){ o.s+=pr; o.n++; } ['epp','orden','bpm','coordinacion'].forEach(function(f){ var v=Number(c[f]); if(v>0) o.c[f].push(v); }); });
+      if(e.ssoma && Number(e.ssoma.promedio)>0) ss.push(Number(e.ssoma.promedio));
+    });
+    var avg=function(a){ return a.length?a.reduce(function(x,y){ return x+y; },0)/a.length:null; };
+    var filas=Object.keys(g).map(function(k){ var o=g[k], nd=Object.keys(o.dias).length, e=ev[k]; return { o:o, nd:nd, prom:nd?o.obreros/nd:0, ev:e&&e.n?e.s/e.n:null, c:e?e.c:null }; })
+      .sort(function(a,b){ return b.nd-a.nd; });
+    var ssA=avg(ss), col=function(v){ return v==null?'#94a3b8':v>=4?'#166534':v>=3?'#92400e':'#b91c1c'; };
+    return card(
+      h4('Contratas en obra','según el reporte diario · últimos 30 días ('+reps.length+' reportes)')+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">'+
+        kpi('Contratas',filas.length,'con personal registrado')+
+        kpi('Personal hoy',ult.personal_total!=null?esc(ult.personal_total):'—','reporte del '+fd(ult.fecha_reporte))+
+        kpi('Evaluación SSOMA',ssA!=null?ssA.toFixed(1)+' / 5':'—',ss.length?ss.length+' evaluaciones':'sin evaluar',ssA!=null?col(ssA):null)+
+      '</div>'+
+      (filas.length?'<div style="overflow:auto;border:1px solid #e2e8f0;border-radius:12px"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:#081860;color:#fff;text-align:left"><th style="padding:8px 10px">Contrata</th><th style="padding:8px 10px">Especialidad</th><th style="padding:8px 10px;text-align:right">Obreros hoy</th><th style="padding:8px 10px;text-align:right">Promedio / día</th><th style="padding:8px 10px;text-align:right">Días en obra</th><th style="padding:8px 10px">Evaluación (1–5)</th></tr></thead><tbody>'+
+        filas.map(function(f){ var c=f.c, det=c?['EPP '+(avg(c.epp)||0).toFixed(1),'Orden '+(avg(c.orden)||0).toFixed(1),'BPM '+(avg(c.bpm)||0).toFixed(1),'Coord. '+(avg(c.coordinacion)||0).toFixed(1)].join(' · '):'';
+          return '<tr style="border-top:1px solid #f1f5f9"><td style="padding:7px 10px;font-weight:700;color:#0f172a">'+esc(f.o.nombre)+'</td><td style="padding:7px 10px;color:#475569">'+esc(Object.keys(f.o.esp).join(', ')||'—')+'</td><td style="padding:7px 10px;text-align:right">'+(f.o.hoy!=null?f.o.hoy:'—')+'</td><td style="padding:7px 10px;text-align:right">'+(f.nd?f.prom.toFixed(1):'—')+'</td><td style="padding:7px 10px;text-align:right">'+f.nd+'</td><td style="padding:7px 10px"><b style="color:'+col(f.ev)+'">'+(f.ev!=null?f.ev.toFixed(1):'Sin evaluar')+'</b>'+(det?'<div style="font-size:11px;color:#64748b">'+det+'</div>':'')+'</td></tr>'; }).join('')+
+        '</tbody></table></div>':vacio('Los reportes no traen contratas con personal.'))
+    );
+  }
+  W.renderModalContratasRD=async function(p){
+    await _renderContratas(p);
+    var d=await cargar(p);
+    if(!vigente(p) || W.curMV!=='contratas' || !d) return;
+    var mv=document.querySelector('#modal-body .mview'); if(!mv) return;
+    var w=document.createElement('div'); w.innerHTML=bloqueContratas(d);
+    mv.insertBefore(w, mv.firstChild);
+  };
+
+  // ── Comentarios: bitácora día por día ──
+  W.renderModalBitacora=function(p){
+    var body=document.getElementById('modal-body'); if(!body) return;
+    body.innerHTML='<div class="mview on exc">'+vacio('Cargando bitácora…')+'</div>';
+    cargar(p).then(function(d){
+      if(!vigente(p) || W.curMV!=='comments') return;
+      if(!d){ body.innerHTML='<div class="mview on exc">'+card(vacio('Esta obra no tiene código NISIRA.'))+'</div>'; return; }
+      var reps=d.reps.slice(0,60), crono=d.reps.slice().reverse(), prevEq={}, cambios={}, vistas={}, nuevas={};
+      crono.forEach(function(r){
+        arr(r.equipos_dia).forEach(function(e){ var k=e.doc||e.tipo; if(prevEq[k]!==undefined && prevEq[k]!==e.estado) (cambios[r.id]=cambios[r.id]||[]).push(e); prevEq[k]=e.estado; });
+        arr(r.restricciones).forEach(function(x){ var k=x.uid||x.titulo; if(k && !vistas[k]){ vistas[k]=1; (nuevas[r.id]=nuevas[r.id]||[]).push(x); } });
+      });
+      if(!reps.length){ body.innerHTML='<div class="mview on exc">'+card(h4('Bitácora de obra')+vacio('Aún no hay reportes diarios de esta obra.'))+'</div>'; return; }
+      var linea=function(ic,t){ return '<div style="display:flex;gap:8px;font-size:13px;color:#1e293b;margin-top:6px"><span style="flex:none;width:18px;text-align:center">'+ic+'</span><div>'+t+'</div></div>'; };
+      body.innerHTML='<div class="mview on exc">'+card(
+        h4('Bitácora de obra','lo que escribe el supervisor cada día · '+reps.length+' reportes'+(d.reps.length>60?' (últimos 60)':''))+
+        reps.map(function(r){
+          var re=n(r.pct_ejecutado), pl=n(r.pct_planificado), t=[];
+          // La actividad que arma sola la app (lista de partidas) no es un comentario: se omite.
+          var act=(r.actividad_auto||/punto de partida:/.test(r.actividad||''))?'':(r.actividad||'').trim(), obs=(r.observaciones||'').trim(), plan=((r.plan_manana&&r.plan_manana.texto)||'').trim();
+          if(act) t.push(linea('📝','<b>Actividades:</b> '+esc(act)));
+          if(obs) t.push(linea('💬','<b>Observaciones:</b> '+esc(obs)));
+          if(r.cliente_visita) t.push(linea('🤝','<b>Visita del cliente</b>'+(r.cliente_nombre?' · '+esc(r.cliente_nombre):'')+(r.cliente_obs?': '+esc(r.cliente_obs):'')));
+          (nuevas[r.id]||[]).forEach(function(x){ t.push(linea('⚠️','<b>Restricción nueva:</b> '+esc(x.titulo||'Sin título')+' '+impChip(x.impacto)+(x.descripcion?'<div style="color:#475569;font-size:12px">'+esc(x.descripcion)+'</div>':''))); });
+          (cambios[r.id]||[]).forEach(function(e){ t.push(linea('📦','<b>'+esc(e.tipo||'Equipo')+'</b> pasó a '+eqChip(e.estado))); });
+          if(r.motivo_proyeccion) t.push(linea('📅','<b>Nueva fecha de fin:</b> '+(r.fecha_fin_proy?fd(r.fecha_fin_proy)+' · ':'')+esc(r.motivo_proyeccion)));
+          if(plan) t.push(linea('➡️','<b>Plan para mañana:</b> '+esc(plan)));
+          if(!t.length) t.push('<div style="font-size:12.5px;color:#94a3b8;margin-top:6px">Sin comentarios escritos este día.</div>');
+          return '<div style="border-left:3px solid #38C0A8;padding:4px 0 12px 14px;margin-bottom:6px">'+
+            '<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><b style="color:#081860;font-size:13.5px">'+fd(r.fecha_reporte)+'</b><span style="font-size:12px;color:#64748b">'+esc(r.supervisor||'')+(d.cods.length>1?' · '+esc(r.cod_proyecto):'')+'</span>'+
+            '<span style="margin-left:auto;font-size:12px;color:#475569">'+(re!=null?'Avance '+re.toFixed(1)+'%':'')+(pl!=null?' · plan '+pl.toFixed(1)+'%':'')+(r.personal_total!=null?' · '+esc(r.personal_total)+' personas':'')+'</span></div>'+
+            t.join('')+'</div>';
+        }).join('')
+      )+'</div>';
+    });
+  };
+})();
+
 /* ─── 2. Tab dispatcher (handles new tabs + fallback to legacy) ─── */
 W.renderModalView = function(){
   _ensureTabsBar();
@@ -20013,8 +20204,10 @@ W.renderModalView = function(){
 
   try {
     if(mv === 'resumen') return renderExecutive(p);
-    if(mv === 'equipos' && typeof W.renderModalEquipos === 'function') return W.renderModalEquipos(p);
-    if(mv === 'contratas') return _renderContratas(p);
+    // Equipos, Contratas y Comentarios salen del reporte diario (9-nov-2026).
+    if(mv === 'equipos') return W.renderModalEquiposRD(p);
+    if(mv === 'contratas') return W.renderModalContratasRD(p);
+    if(mv === 'comments') return W.renderModalBitacora(p);
     if(mv === 'partidas') return W.renderModalPartidas(p);
     // Fallback for legacy tabs (vault, lecciones, comments): render placeholder
     _renderPlaceholder(p, mv);
