@@ -233,6 +233,7 @@ const MAPA = {
       {id:'planos', t:'planos'},
       {id:'riesgos', t:'riesgos · pendientes · obra_zonas'},
       {id:'checklist', t:'checklist_proyecto · requerimientos'},
+      {id:'proy_val', t:'proyecto_valorizaciones · proyección del supervisor'},
       {id:'equipos_obra', t:'equipos_obra · obra_frentes · del supervisor', key:true},
       {id:'restricciones', t:'restricciones · restriccion_alertas', key:true},
       {id:'accesos', t:'proyecto_accesos', key:true},
@@ -302,6 +303,9 @@ const MAPA = {
     {from:'a-sup:licitaciones', to:'x-ing', tipo:'lee', label:'copia planos al expediente de la licitación'},
     {from:'a-sup:licitaciones', to:'d-pmo:portafolio', tipo:'lee', label:'recomienda contratistas por historial y evaluación'},
     {from:'a-sup:diario', to:'d-sup:presupuestos', tipo:'lee', label:'costo por partida (v_gantt_supervisor) · pesa el avance'},
+    {from:'a-sup:diario', to:'d-sup:proy_val', tipo:'lee', label:'escribe la proyección por mes · cumplió/no cumplió se calcula solo'},
+    {from:'a-sup:diario', to:'d-pmo:valorizacion', tipo:'lee', label:'lo que espera Gerencia, motivo, tope por facturar e historial de la obra'},
+    {from:'a-ger:valorizacion', to:'d-sup:proy_val', tipo:'lee', label:'proyección de todos los supervisores · acierto · obras sin proyección'},
     {from:'a-sup:licitaciones', to:'d-sup:partida_contrata', tipo:'lee', label:'el supervisor asigna la contrata de cada partida'},
     {from:'d-pmo:lic', to:'d-pmo:portafolio', tipo:'sync', fromSide:'r', toSide:'r', bulge:60, label:'al adjudicar crea la contrata (trigger)'}
   ]

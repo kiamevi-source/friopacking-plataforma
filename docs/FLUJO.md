@@ -504,6 +504,20 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
 - **Valorización**: proyección por mes (mes en curso → fin de obra, máx. 8) con % automático sobre el
   presupuesto de `valorizacion_lineas`; indicador «sin valorizar» si el mes en curso no tiene
   valorización → `reportes.sin_valorizar`.
+  **(9-nov-2026)** La proyección (`proyecto_valorizaciones`, instancia Supervisor) ahora se cruza con
+  Valorización de Gerencia (PMO `valorizacion_lineas` / `valorizacion_cobros` de ese código, todos
+  los meses):
+  - **Cumplimiento automático**: un mes cerrado con dato de Gerencia queda «Cumplió» si se valorizó
+    ≥95% de lo proyectado, si no «No cumplió»; el supervisor ya no lo marca. Al abrir el reporte se
+    escribe `estado` y `monto_real`. Mes en curso = «En curso»; futuro = «Por venir»; mes sin Excel
+    de Gerencia = «Sin dato».
+  - Bajo cada mes: **lo que Gerencia espera** (`valorizacion_proyectada`), lo ya valorizado y el
+    **motivo** (`comentario`, de la hoja Resumen). Aviso si lo proyectado supera lo que le queda por
+    facturar al contrato (`saldo_pendiente` ÷ 1.18, solo tipo Proyecto).
+  - Gráfico **«Cómo viene la obra»**: valorizado vs lo esperado por Gerencia vs lo proyectado.
+  - **Gerencia → Valorización** lee `proyecto_valorizaciones` (anon, instancia Supervisor) en el
+    panel «Proyección de los supervisores»: próximos 6 meses, acierto por supervisor y obras activas
+    sin proyección (con WhatsApp). Toma la versión más alta por código y mes.
 - **Restricciones → alertas.** Cada restricción lleva `uid` (reenviar ya no duplica), `cod_proyecto`,
   `especialidad`, `contratista` y `responsable_email`. Por cada destinatario se crea una fila en
   `restriccion_alertas` (Supervisor): encargado, PMO + jefes de zona de la especialidad

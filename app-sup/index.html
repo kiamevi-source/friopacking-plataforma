@@ -11907,10 +11907,43 @@ function rdEnsureEspStyles(){
 // PROYECCIÓN DE VALORIZACIONES (versionada: cumplió sí/no + historial de replanteo)
 // ═══════════════════════════════════════════════
 let rval = [];
+/* Lo que Gerencia tiene de ESTA obra en Valorización (PMO), todos los meses (9-nov-2026):
+   sirve para medir solo la proyección (cumplió / no cumplió), mostrar lo que Gerencia
+   espera cada mes con su motivo, el tope de lo que queda por facturar y el historial. */
+let rvalG = { porPer:{}, pers:[], saldo:null, pres:null };
+async function rvalGLoad(cod){
+  rvalG = { porPer:{}, pers:[], saldo:null, pres:null };
+  if(!cod) return;
+  try{
+    const [lin, cob] = await Promise.all([
+      pmoDbFetch('/rest/v1/valorizacion_lineas?select=periodo,valorizacion_proyectada,valorizacion,estado,comentario,presupuesto&cod_proyecto=eq.' + encodeURIComponent(cod)),
+      pmoDbFetch('/rest/v1/valorizacion_cobros?select=periodo,presupuesto,facturado,saldo_pendiente,tipo_v&cod_proyecto=eq.' + encodeURIComponent(cod) + '&order=periodo.desc')
+    ]);
+    (lin||[]).forEach(l => { const g = rvalG.porPer[l.periodo] = rvalG.porPer[l.periodo] || {proy:0, real:0, est:'', coment:''};
+      g.proy += parseFloat(l.valorizacion_proyectada)||0; g.real += parseFloat(l.valorizacion)||0;
+      if(l.estado && l.estado!=='Pendiente') g.est = l.estado; else if(!g.est) g.est = l.estado||'';
+      if(l.comentario && !g.coment) g.coment = l.comentario; });
+    rvalG.pers = Object.keys(rvalG.porPer).sort();
+    const c = (cob||[]).filter(x => String(x.tipo_v||'Proyecto').toLowerCase() !== 'adicional');
+    const ult = c.length ? c[0].periodo : null, cu = c.filter(x => x.periodo === ult);
+    if(cu.length){ rvalG.saldo = cu.reduce((a,x)=>a+(parseFloat(x.saldo_pendiente)||0),0) / 1.18;   // el Excel lo trae con IGV; la proyección va sin IGV
+      rvalG.pres = cu.reduce((a,x)=>a+(parseFloat(x.presupuesto)||0),0); }
+  }catch(e){ console.warn('val gerencia (historial)', e); }
+}
+/* Cumplimiento automático: se compara lo proyectado con lo que Gerencia valorizó ese mes.
+   Mes en curso o futuro → «En curso»; mes sin Excel de Gerencia → «Sin dato». Cumple con ≥95%. */
+function rvalAuto(per, monto){
+  const g = rvalG.porPer[per], hoy = new Date().toISOString().slice(0,7), m = parseFloat(monto)||0;
+  if(per > hoy) return { est:'por_venir', real:null, pct:null };
+  if(!g) return { est: per === hoy ? 'en_curso' : 'sin_dato', real:null, pct:null };
+  const pct = m > 0 ? g.real / m * 100 : null;
+  if(per >= hoy) return { est:'en_curso', real:g.real, pct };
+  return { est: (m <= 0 || g.real >= m * 0.95) ? 'cumplido' : 'no_cumplido', real:g.real, pct };
+}
 // Valorización y proyección en DÓLARES (Kiara, 23-oct-2026): el presupuesto de Gerencia está en US$.
 function rvalMoney(v){ const n=parseFloat(v); return isNaN(n)?'—':'US$ '+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function rvalMesLabel(p){ if(!p) return '—'; const [y,m]=String(p).split('-'); const mm=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return (mm[parseInt(m)-1]||m)+' '+y; }
-const RVAL_EST = {cumplido:'Cumplió', no_cumplido:'No cumplió', replanteado:'Replanteado', vigente:'Vigente'};
+const RVAL_EST = {cumplido:'Cumplió', no_cumplido:'No cumplió', replanteado:'Replanteado', vigente:'Vigente', en_curso:'En curso', sin_dato:'Sin dato de Gerencia', por_venir:'Por venir'};
 
 async function rvalLoad(cod){
   rval = [];
@@ -11939,34 +11972,35 @@ function rvalRender(){
       <span class="rval-mes-l">${rvalMesLabel(per)}${cur&&cur.version>1?` <small>v${cur.version}</small>`:''}</span>
       <input type="number" class="rval-inp rval-mes-in" data-per="${per}" data-prev="${v}" min="0" step="0.01" placeholder="US$ 0.00" value="${v}" oninput="rvalPctVivo()">
       <span class="rval-mes-pct" id="rval-pct-${per}">—</span>
-    </div>`;
+    </div>${(()=>{ const g = rvalG.porPer[per]; if(!g || !(g.proy>0 || g.coment)) return '';
+      return `<div class="rval-ger"><i data-lucide="building-2" class="ri"></i><span>Gerencia espera <b>${rvalMoney(g.proy)}</b>${g.real>0?` · valorizado ${rvalMoney(g.real)}`:''}${g.coment?` · <span class="rval-mot">${rdEsc2(g.coment)}</span>`:''}</span></div>`; })()}`;
   }).join('');
-  let html=`<div class="rval-hd"><i data-lucide="trending-up" class="ri"></i><span>Proyección de valorización por mes</span></div>
+  let html=rvalHistHtml(periodos)+`<div class="rval-hd"><i data-lucide="trending-up" class="ri"></i><span>Proyección de valorización por mes</span></div>
     <div class="rval-base">${base>0 ? `El % se calcula solo sobre el presupuesto de Gerencia: <b>${rvalMoney(base)}</b>` : 'Gerencia aún no carga el presupuesto de la obra: el % se calculará cuando lo tenga.'}</div>
     <div class="rval-meses">${filas}</div>
     <div class="rval-tot" id="rval-tot"></div>
+    <div class="rval-tope" id="rval-tope" style="display:none"></div>
     <button class="btn btn-teal btn-sm" style="margin-top:8px;" onclick="rvalGuardar()">Guardar proyección</button>`;
   if(keys.length) html+=`<div class="rval-hd" style="margin-top:16px;"><i data-lucide="history" class="ri"></i><span>Seguimiento de lo proyectado</span></div>`;
   keys.forEach(p=>{
     const vs=periodos[p].slice().sort((a,b)=>b.version-a.version);
     const cur=vs[0];
-    const estCls=cur.estado==='cumplido'?'ok':(cur.estado==='no_cumplido'?'no':(cur.estado==='replanteado'?'rep':'vig'));
+    const au=rvalAuto(p, cur.monto_proyectado);
+    const est=au.est;
+    const estCls=est==='cumplido'?'ok':(est==='no_cumplido'?'no':(est==='sin_dato'?'sd':'vig'));
+    // se guarda el resultado para que Gerencia lo vea igual (solo si cambió)
+    if((est==='cumplido'||est==='no_cumplido') && (cur.estado!==est || parseFloat(cur.monto_real)!==Math.round(au.real*100)/100)){ cur.estado=est; cur.monto_real=Math.round(au.real*100)/100; rvalPersist(cur.id, est, cur.monto_real); }
     html+=`<div class="rval-card">
       <div class="rval-row">
         <div class="rval-per">${rvalMesLabel(p)}${cur.version>1?` · v${cur.version}`:''}</div>
         <div class="rval-monto">${rvalMoney(cur.monto_proyectado)}${cur.pct!=null&&cur.pct!==''?` · ${(+cur.pct).toFixed(1)}%`:''}</div>
-        <span class="rval-badge ${estCls}">${RVAL_EST[cur.estado]||cur.estado}</span>
+        <span class="rval-badge ${estCls}">${RVAL_EST[est]||est}</span>
       </div>`;
-    if(cur.estado==='vigente'){
-      html+=`<div class="rval-actions">
-        <button class="btn btn-outline btn-sm rval-ok" onclick="rvalMarcar(${cur.id},'cumplido')">✓ Cumplió</button>
-        <button class="btn btn-outline btn-sm rval-no" onclick="rvalMarcar(${cur.id},'no_cumplido')">✗ No cumplió</button></div>`;
-    } else if(cur.estado==='no_cumplido'){
-      html+=`<div class="rval-actions">
-        <button class="btn btn-teal btn-sm" onclick="rvalReplantear('${p}')">+ Replantear</button>
-        <button class="btn btn-outline btn-sm" onclick="rvalToggleHist('${p}')">Ver historial de replanteo</button></div>`;
-    }
-    if(cur.monto_real!=null) html+=`<div class="rval-real">Valorizado real: <strong>${rvalMoney(cur.monto_real)}</strong></div>`;
+    if(au.real!=null){
+      const dif = au.real - (parseFloat(cur.monto_proyectado)||0);
+      html+=`<div class="rval-real">Gerencia valorizó <strong>${rvalMoney(au.real)}</strong>${au.pct!=null?` · <b>${au.pct.toFixed(0)}%</b> de lo proyectado`:''}${est==='no_cumplido'?` · faltaron ${rvalMoney(-dif)}`:''}${est==='en_curso'?' · el mes sigue abierto':''}</div>`;
+    } else if(est!=='por_venir') html+=`<div class="rval-real">Gerencia aún no carga la valorización de ${rvalMesLabel(p)}: se medirá sola cuando la importe.</div>`;
+    if(vs.length>1) html+=`<div class="rval-actions"><button class="btn btn-outline btn-sm" onclick="rvalToggleHist('${p}')">Ver historial de replanteo</button></div>`;
     if(vs.length>1){
       html+=`<div class="rval-hist" id="rval-hist-${p}" style="display:none;">`;
       vs.forEach(v=>{ html+=`<div class="rval-hist-row"><span>v${v.version} · ${rvalMoney(v.monto_proyectado)}</span><span class="rval-badge sm ${v.estado==='cumplido'?'ok':(v.estado==='no_cumplido'?'no':(v.estado==='replanteado'?'rep':'vig'))}">${RVAL_EST[v.estado]||v.estado}</span><span>${v.fecha_proyeccion||''}</span></div>`; });
@@ -11984,7 +12018,27 @@ function rvalRender(){
   if(window.lucide) lucide.createIcons();
 }
 // Presupuesto contra el que se mide el %: el de la valorización de Gerencia.
-function rvalBase(){ return parseFloat(rdValG && rdValG.presupuesto) || 0; }
+function rvalBase(){ return parseFloat(rdValG && rdValG.presupuesto) || parseFloat(rvalG && rvalG.pres) || 0; }
+async function rvalPersist(id, estado, monto_real){
+  try{ await sbFetch(`/rest/v1/proyecto_valorizaciones?id=eq.${id}`,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({estado, monto_real})}); }catch(e){ console.warn('rval persist', e); }
+}
+/* Cómo viene la obra: valorizado real (Gerencia) vs lo que se proyectó, mes a mes */
+function rvalHistHtml(periodos){
+  const hoy = new Date().toISOString().slice(0,7);
+  const ks = {}; rvalG.pers.forEach(k => ks[k]=1); Object.keys(periodos||{}).forEach(k => { if(k <= hoy) ks[k]=1; });
+  const pers = Object.keys(ks).sort().slice(-8);
+  if(!pers.length) return '';
+  const rows = pers.map(k => { const g = rvalG.porPer[k]; const vs = (periodos[k]||[]).slice().sort((a,b)=>b.version-a.version);
+    return { k, real: g ? g.real : null, ger: g ? g.proy : null, sup: vs.length ? (parseFloat(vs[0].monto_proyectado)||0) : null }; });
+  const max = Math.max(1, ...rows.map(r => Math.max(r.real||0, r.ger||0, r.sup||0)));
+  const h = v => v==null ? 0 : Math.max(2, Math.round(v/max*84));
+  const bars = rows.map(r => `<div class="rval-hb" title="${rvalMesLabel(r.k)} · valorizado ${r.real==null?'—':rvalMoney(r.real)} · Gerencia esperaba ${r.ger==null?'—':rvalMoney(r.ger)}${r.sup!=null?' · tú proyectaste '+rvalMoney(r.sup):''}">
+      <div class="rval-hb-cols"><i class="r" style="height:${h(r.real)}px"></i><i class="g" style="height:${h(r.ger)}px"></i>${r.sup!=null?`<i class="s" style="height:${h(r.sup)}px"></i>`:''}</div>
+      <span>${rvalMesLabel(r.k).replace(' 20',' ')}</span></div>`).join('');
+  return `<div class="rval-hd"><i data-lucide="bar-chart-3" class="ri"></i><span>Cómo viene la obra</span></div>
+    <div class="rval-hist-chart">${bars}</div>
+    <div class="rval-leg"><span><i class="r"></i>Valorizado (Gerencia)</span><span><i class="g"></i>Lo que Gerencia esperaba</span><span><i class="s"></i>Lo que proyectaste</span></div>`;
+}
 // Montos escritos que aún no se guardaron con el botón: quedan en el equipo para no perderlos (23-oct-2026)
 function _rvalKey(){ return 'fp_rval_' + String(currentProyecto?.cod || currentProyecto?.nombre || '').replace(/[^a-zA-Z0-9._-]/g,'_'); }
 function rvalPctVivo(){
@@ -12000,6 +12054,10 @@ function rvalPctVivo(){
   });
   const t = document.getElementById('rval-tot');
   if (t) t.innerHTML = tot > 0 ? `Total proyectado <b>${rvalMoney(tot)}</b>${base>0?` · <b>${(tot/base*100).toFixed(1)}%</b> del presupuesto`:''}` : '';
+  const tp = document.getElementById('rval-tope');
+  if (tp){ const sal = rvalG.saldo; const pasa = sal != null && tot > sal * 1.01;
+    tp.style.display = pasa ? '' : 'none';
+    if (pasa) tp.innerHTML = `Proyectas <b>${rvalMoney(tot)}</b> pero al contrato le quedan <b>${rvalMoney(sal)}</b> por facturar (sin IGV), según Gerencia. Revisa los montos o confirma si hay adicionales.`; }
 }
 function rvalToggleHist(p){ const el=document.getElementById('rval-hist-'+p); if(el) el.style.display = (el.style.display==='none'?'block':'none'); }
 async function rvalGuardar(){
@@ -12054,7 +12112,19 @@ function rvalEnsureStyles(){
   .rval-ok{color:#15803d;border-color:#86efac !important;} .rval-no{color:#b91c1c;border-color:#fca5a5 !important;}
   .rval-real{margin-top:8px;font-size:12.5px;color:var(--text-2);}
   .rval-hist{margin-top:9px;border-top:1px dashed var(--border-strong);padding-top:8px;}
-  .rval-hist-row{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--text-2);padding:4px 0;}`;
+  .rval-hist-row{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--text-2);padding:4px 0;}
+  .rval-badge.sd{background:var(--surface-2);color:var(--text-3);}
+  .rval-ger{display:flex;gap:6px;align-items:flex-start;font-size:11px;color:var(--text-3);margin:-2px 0 4px 98px;} .rval-ger i{width:12px;height:12px;flex:none;margin-top:1px;}
+  .rval-ger b{color:var(--text-2);} .rval-mot{color:#b45309;font-weight:700;}
+  .rval-tope{margin-top:8px;font-size:11.5px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:7px 10px;}
+  .rval-hist-chart{display:flex;align-items:flex-end;gap:10px;height:110px;padding:4px 2px 0;margin-bottom:6px;border-bottom:1px solid var(--border);}
+  .rval-hb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;}
+  .rval-hb-cols{display:flex;align-items:flex-end;gap:2px;height:86px;}
+  .rval-hb-cols i{display:block;width:9px;border-radius:3px 3px 0 0;}
+  .rval-hb span{font-size:10px;color:var(--text-3);white-space:nowrap;}
+  .rval-hb-cols i.r,.rval-leg i.r{background:var(--teal-700,#0e7490);} .rval-hb-cols i.g,.rval-leg i.g{background:#cbd5e1;} .rval-hb-cols i.s,.rval-leg i.s{background:#14275C;}
+  .rval-leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10.5px;color:var(--text-3);margin-bottom:16px;} .rval-leg span{display:inline-flex;align-items:center;gap:5px;} .rval-leg i{display:inline-block;width:8px;height:8px;border-radius:2px;}
+  @media (max-width:520px){ .rval-ger{margin-left:0;} }`;
   const st=document.createElement('style'); st.id='rval-styles'; st.textContent=css; document.head.appendChild(st);
 }
 
@@ -15391,6 +15461,7 @@ async function cargarComercialReporte() {
   // Las cifras comerciales ya NO las escribe el supervisor: salen de la
   // Valorización de Gerencia. Acá solo se leen.
   await rdValGLoad(cod);
+  await rvalGLoad(cod);
   await rvalLoad(cod || currentProyecto?.nombre);
 }
 
