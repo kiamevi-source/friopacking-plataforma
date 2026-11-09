@@ -548,3 +548,21 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
 - Valorización y proyección en **US$**.
 - Evaluaciones con 4 criterios: SSOMA (facilitador, tiempo en campo, charla de seguridad,
   inspecciones y permisos de trabajo) y contrata (coordinación, EPP's, BPM, orden y limpieza).
+
+### Ajustes del 9-nov-2026 · todo sale del reporte diario
+
+- **Personal, Riesgos y Contratas del Supervisor son de solo lectura.** Personal (y el Histograma
+  y el Dashboard) lee `reportes.avance_especialidades`; Riesgos lee las restricciones; la pestaña
+  Contratas y el KPI «Eval. contratas» del Dashboard leen `reportes.evaluaciones` de **la obra**
+  (escala 1 a 5, baja = promedio menor a 3). `v_reportes` no trae `evaluaciones`: se lee `reportes`.
+  Quedaron sin uso, sin borrar: `ingreso_personal`, `riesgos` y `evaluacion_contratistas`
+  (esta última la siguen usando los módulos de Contratistas de Gerencia).
+- **Restricciones con estado.** `restricciones` (Supervisor, por `uid`) es la fuente del estado
+  `abierta` / `levantada`. Al abrir el reporte del día, las abiertas de la obra entran solas con
+  su mismo `uid` («abierta desde · N días»); las que vienen de días anteriores no se pueden borrar,
+  solo marcar **Levantada** (o Reabrir). Al enviar el reporte (no en borrador) se conserva `fecha`
+  = fecha de alta, las levantadas pasan a `estado='levantada'` con `resuelta_at` y `resuelta_by`
+  y no generan alertas. El portal de Contratas ya filtraba `restriccion_estado=abierta`.
+- **Gerencia · Restricciones de obra** (`app-live/modulos/restricciones.html`, menú lateral,
+  solo lectura, llave pública de Supervisor): abiertas de todas las obras (vencidas primero),
+  por responsable, por obra y levantadas de los últimos 30 días con cuánto tardaron.

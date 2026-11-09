@@ -80,6 +80,11 @@
       el: document.getElementById('view-observaciones'),
       init: () => {},
     },
+    // Restricciones de obra (todas las obras · lee restricciones de Supervisor · 9-nov-2026)
+    restricciones: {
+      el: document.getElementById('view-restricciones'),
+      init: () => {},
+    },
     // Licitaciones (módulo editable · lic_* en PMO — cockpit de Operaciones/Carlos)
     licitaciones: {
       el: document.getElementById('view-licitaciones'),

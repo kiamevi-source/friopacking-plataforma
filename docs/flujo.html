@@ -176,6 +176,7 @@ const MAPA = {
       {id:'contratistas', t:'Contratistas · resumen · por obra · directorio', key:true},
       {id:'licitaciones', t:'Licitaciones · aprueba y adjudica', key:true},
       {id:'observaciones', t:'Observaciones de obra', key:true},
+      {id:'restricciones', t:'Restricciones de obra · abiertas y levantadas', key:true},
       {id:'alertasdest', t:'Dashboard · a quién llegan las alertas'},
       {id:'valorizacion', t:'Valorización', key:true}
     ]},
@@ -183,7 +184,7 @@ const MAPA = {
       {id:'dash', t:'Dashboard de obra'},
       {id:'diario', t:'Reporte diario · familias, evaluaciones, requerimientos, restricciones', key:true},
       {id:'gantt', t:'Gantt y avance', key:true},
-      {id:'personal', t:'Histograma y personal'},
+      {id:'personal', t:'Personal, riesgos e histograma · solo lectura del reporte'},
       {id:'planos', t:'Planos · desde Ingeniería', key:true},
       {id:'riesgos', t:'Levantamiento de observaciones', key:true},
       {id:'licitaciones', t:'Licitaciones · partidas → licitar → invita', key:true},
@@ -235,7 +236,7 @@ const MAPA = {
       {id:'equipos_obra', t:'equipos_obra · obra_frentes · del supervisor', key:true},
       {id:'restricciones', t:'restricciones · restriccion_alertas', key:true},
       {id:'accesos', t:'proyecto_accesos', key:true},
-      {id:'personal', t:'ingreso_personal · histograma'},
+      {id:'personal', t:'ingreso_personal · riesgos · sin uso desde 9-nov'},
       {id:'nisira', t:'nisira_* · sin datos'}
     ]},
     {id:'d-ct', tipo:'db', x:800, y:1010, titulo:'Supabase · Contratas', sub:'uijuo…', filas:[
@@ -267,7 +268,8 @@ const MAPA = {
     {from:'a-ger:proyectos', to:'d-sup:reportes', tipo:'lee', label:'ficha · Executive, Equipos, Contratas y Comentarios (reportes_obra_gerencia)'},
     {from:'a-ger:alertasdest', to:'d-pmo:alerta_dest', tipo:'lee', label:'Gerencia mantiene a quién llegan las alertas'},
     {from:'a-sup:diario', to:'d-pmo:alerta_dest', tipo:'lee', label:'destinatarios de cada restricción'},
-    {from:'a-sup:diario', to:'d-sup:restricciones', tipo:'lee', label:'crea la restricción y una alerta por destinatario'},
+    {from:'a-sup:diario', to:'d-sup:restricciones', tipo:'lee', label:'crea, arrastra al día siguiente y levanta · alerta por destinatario'},
+    {from:'a-ger:restricciones', to:'d-sup:restricciones', tipo:'lee', label:'todas las obras · abiertas, vencidas y levantadas'},
     {from:'a-sup:diario', to:'x-ing', tipo:'lee', label:'conteo de planos de la obra'},
     {from:'a-ct:resumen', to:'d-sup:restricciones', tipo:'lee', label:'ve sus restricciones y las marca vistas'},
     {from:'a-ger:proyectos', to:'d-sup:partida_contrata', tipo:'lee', label:'ficha · pestaña Partidas: avance en $ y contrata por partida'},

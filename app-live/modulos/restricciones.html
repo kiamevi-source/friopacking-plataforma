@@ -1,0 +1,201 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Restricciones de obra · Gerencia</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<!-- 9-nov-2026 (Kiara): todas las restricciones de todas las obras, con su estado.
+     Fuente: tabla `restricciones` (instancia Supervisor). La escribe el supervisor desde el
+     Reporte diario: se abre al reportarla y se cierra cuando la marca «Levantada». Solo lectura. -->
+<style>
+:root{--ground:#f5f7fb;--surface:#fff;--surface-2:#f7f9fd;--ink:#0b1226;--ink-2:#475569;--muted:#94a3b8;
+  --line:rgba(15,23,42,.08);--line-2:rgba(15,23,42,.15);--navy:#14275C;--teal:#2FBCA3;--blue:#4F8DF5;
+  --late:#c0392b;--late-soft:#fbecea;--warn:#b45309;--warn-soft:#fdf3e3;--ok:#15803d;--ok-soft:#e6f4ec;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:13.5px/1.5 'Inter',system-ui,sans-serif;padding:18px}
+h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.015em}
+.sub{margin:2px 0 0;font-size:12.5px;color:var(--ink-2);max-width:760px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.btn{height:34px;padding:0 13px;border-radius:9px;border:1px solid var(--line-2);background:var(--surface);
+  font:600 12.5px 'Inter',sans-serif;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--navy)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:default}
+.kpi.clic{cursor:pointer} .kpi.clic:hover{border-color:var(--line-2)} .kpi.on{border-color:var(--navy);box-shadow:0 0 0 3px rgba(20,39,92,.08)}
+.kpi b{display:block;font-size:23px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.kpi span{display:block;margin-top:5px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.kpi small{display:block;margin-top:2px;font-size:11px;color:var(--ink-2)}
+.kpi.late b{color:var(--late)} .kpi.ok b{color:var(--ok)} .kpi.warn b{color:var(--warn)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:16px;overflow:hidden}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid var(--line)}
+.card-h h2{margin:0;font-size:14px;font-weight:800}
+.card-h p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filtros input,.filtros select{height:32px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);font:500 12.5px 'Inter',sans-serif;color:var(--ink);padding:0 10px}
+.filtros input{width:220px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:8px 14px;background:var(--surface-2);color:var(--muted);font-size:10.5px;
+  font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:hover td{background:var(--surface-2)}
+.obra{font-weight:700;color:var(--navy)}
+.cod{display:block;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tit{display:block;font-weight:600;max-width:440px}
+.det{display:block;font-size:11.5px;color:var(--ink-2);max-width:440px}
+.pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.pill.late{background:var(--late-soft);color:var(--late)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.gris{background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)}
+.hint{font-size:11.5px;color:var(--muted)}
+.vacio{padding:26px 16px;text-align:center;color:var(--muted);font-size:12.5px}
+.dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px}
+.dias{font-weight:800;font-variant-numeric:tabular-nums}
+.dias.late{color:var(--late)}
+.aviso{font-size:11px;color:var(--muted);display:block;margin-top:2px}
+.err{background:var(--late-soft);color:var(--late);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12.5px}
+@media (max-width:600px){body{padding:12px}.filtros input{width:100%}.dos{grid-template-columns:1fr}}
+</style>
+<div class="top">
+  <div><h1>Restricciones de obra</h1><p class="sub">Lo que hoy frena a las obras, todas juntas. El supervisor las reporta en el Reporte diario; siguen abiertas día a día hasta que las marca como levantadas.</p></div>
+  <div><button class="btn" onclick="cargar()"><span id="ref">Actualizar</span></button></div>
+</div>
+<div id="err"></div>
+<div class="kpis" id="kpis"></div>
+
+<div class="card">
+  <div class="card-h">
+    <div><h2>Abiertas</h2><p id="ab-sub"></p></div>
+    <div class="filtros">
+      <input id="q" placeholder="Buscar obra, restricción o responsable" oninput="pintar()">
+      <select id="f-obra" onchange="pintar()"></select>
+      <select id="f-resp" onchange="pintar()"></select>
+    </div>
+  </div>
+  <div class="tw"><table id="t-ab"></table></div>
+</div>
+
+<div class="dos">
+  <div class="card"><div class="card-h"><div><h2>Por responsable</h2><p>De quién depende levantarlas</p></div></div>
+    <div class="tw"><table id="t-resp"></table></div></div>
+  <div class="card"><div class="card-h"><div><h2>Por obra</h2><p>Obras con restricciones abiertas</p></div></div>
+    <div class="tw"><table id="t-obras"></table></div></div>
+</div>
+
+<div class="card"><div class="card-h"><div><h2>Levantadas · últimos 30 días</h2><p id="lev-sub"></p></div></div>
+  <div class="tw"><table id="t-lev"></table></div></div>
+
+<script>
+const SUP_URL='https://iiceeajjmugtuzcfqggs.supabase.co', SUP_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpY2VlYWpqbXVndHV6Y2ZxZ2dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODg5OTUsImV4cCI6MjA5NDc2NDk5NX0.xeOFlxEGoPsqO5mBLz2_o6UqMCiUw5t8Aghg0ieRqs4';
+const H={apikey:SUP_KEY,Authorization:'Bearer '+SUP_KEY};
+const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hoy=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const entre=(a,b)=>(a&&b)?Math.max(0,Math.round((new Date(String(b).slice(0,10)+'T12:00:00')-new Date(String(a).slice(0,10)+'T12:00:00'))/864e5)):0;
+const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const fch=f=>{if(!f)return '—';const [y,m,d]=String(f).slice(0,10).split('-');return `${+d} ${MES[+m-1]}`;};
+const IMP={alto:0,medio:1,bajo:2};
+const impPill=i=>{i=String(i||'medio').toLowerCase();return `<span class="pill ${i==='alto'?'late':i==='bajo'?'gris':'warn'}">${esc(i)}</span>`;};
+// Responsable: el área escrita, o la contrata, o la especialidad
+const resp=r=>(r.responsable||'').trim()||(r.contratista||'').trim()||(r.especialidad||'').trim()||'Sin responsable';
+const respTipo=r=>(r.responsable||'').trim()?'Área':(r.contratista||'').trim()?'Contrata':(r.especialidad||'').trim()?'Especialidad':'';
+
+let R=[], AV={}, filtroKpi='';
+
+async function get(path){
+  const r=await fetch(SUP_URL+'/rest/v1/'+path,{headers:H});
+  if(!r.ok) throw new Error(r.status+' '+(await r.text()).slice(0,140));
+  return r.json();
+}
+async function cargar(){
+  const ref=document.getElementById('ref'); ref.textContent='Cargando…';
+  document.getElementById('err').innerHTML='';
+  try{
+    const [rows, alertas]=await Promise.all([
+      get('restricciones?select=uid,cod_proyecto,nombre_proyecto,fecha,categoria,titulo,descripcion,impacto,responsable,especialidad,contratista,fecha_objetivo,estado,resuelta_at,resuelta_by,reportada_por&order=fecha.asc&limit=2000'),
+      get('restriccion_alertas?select=restriccion_uid,destinatario_nombre,visto_at&limit=5000').catch(()=>[])
+    ]);
+    const h=hoy();
+    R=(rows||[]).filter(r=>r.titulo||r.descripcion).map(r=>{
+      const lev=r.estado==='levantada';
+      return {...r, lev, dias: entre(r.fecha, lev?(r.resuelta_at||h):h),
+        vencida: !lev && r.fecha_objetivo && String(r.fecha_objetivo).slice(0,10) < h,
+        diasVenc: (!lev && r.fecha_objetivo) ? entre(r.fecha_objetivo, h) : 0,
+        resp: resp(r), respTipo: respTipo(r), obra: r.nombre_proyecto||r.cod_proyecto||'—'};
+    });
+    AV={}; (alertas||[]).forEach(a=>{ (AV[a.restriccion_uid]=AV[a.restriccion_uid]||[]).push(a); });
+    llenarFiltros(); pintar();
+    ref.textContent='Actualizar';
+  }catch(e){
+    ref.textContent='Reintentar';
+    document.getElementById('err').innerHTML=`<div class="err">No se pudieron leer las restricciones: ${esc(e.message)}</div>`;
+  }
+}
+function llenarFiltros(){
+  const ab=R.filter(r=>!r.lev);
+  const opt=(id,lbl,vals)=>{const el=document.getElementById(id),cur=el.value;
+    el.innerHTML=`<option value="">${lbl}</option>`+[...new Set(vals)].sort((a,b)=>a.localeCompare(b,'es')).map(v=>`<option ${v===cur?'selected':''}>${esc(v)}</option>`).join('');};
+  opt('f-obra','Todas las obras',ab.map(r=>r.obra));
+  opt('f-resp','Todos los responsables',ab.map(r=>r.resp));
+}
+function setKpi(k){ filtroKpi = filtroKpi===k ? '' : k; pintar(); }
+function pintar(){
+  const h=hoy();
+  const ab=R.filter(r=>!r.lev);
+  const venc=ab.filter(r=>r.vencida), altas=ab.filter(r=>String(r.impacto).toLowerCase()==='alto');
+  const lev30=R.filter(r=>r.lev && r.resuelta_at && entre(r.resuelta_at,h)<=30);
+  const prom=ab.length?Math.round(ab.reduce((a,r)=>a+r.dias,0)/ab.length):0;
+  const promLev=lev30.length?Math.round(lev30.reduce((a,r)=>a+r.dias,0)/lev30.length):null;
+  const obras=new Set(ab.map(r=>r.obra)).size;
+  const k=(id,cls,v,l,s,clic)=>`<div class="kpi ${cls} ${clic?'clic':''} ${id&&filtroKpi===id?'on':''}" ${clic?`onclick="setKpi('${id}')"`:''}><b>${v}</b><span>${l}</span>${s?`<small>${s}</small>`:''}</div>`;
+  document.getElementById('kpis').innerHTML=
+      k('', '', ab.length, 'Abiertas', `en ${obras} obra${obras===1?'':'s'}`, false)
+    + k('venc', venc.length?'late':'ok', venc.length, 'Vencidas', 'pasaron su fecha objetivo', true)
+    + k('alto', altas.length?'warn':'', altas.length, 'Impacto alto', 'abiertas', true)
+    + k('', '', prom+' d', 'Días abiertas', 'en promedio', false)
+    + k('', 'ok', lev30.length, 'Levantadas', promLev!=null?`en 30 días · tardaron ${promLev} d en prom.`:'en los últimos 30 días', false);
+
+  // ── Abiertas (con filtros) ──
+  const q=(document.getElementById('q').value||'').toLowerCase().trim();
+  const fo=document.getElementById('f-obra').value, fr=document.getElementById('f-resp').value;
+  let L=ab.filter(r=>(!fo||r.obra===fo)&&(!fr||r.resp===fr)
+    &&(!q||[r.obra,r.cod_proyecto,r.titulo,r.descripcion,r.resp].join(' ').toLowerCase().includes(q))
+    &&(filtroKpi!=='venc'||r.vencida)&&(filtroKpi!=='alto'||String(r.impacto).toLowerCase()==='alto'));
+  L.sort((a,b)=>(b.vencida-a.vencida)||(IMP[String(a.impacto).toLowerCase()]??1)-(IMP[String(b.impacto).toLowerCase()]??1)||b.dias-a.dias);
+  document.getElementById('ab-sub').textContent = L.length===ab.length ? 'Vencidas primero, luego por impacto y antigüedad' : `${L.length} de ${ab.length} con los filtros`;
+  document.getElementById('t-ab').innerHTML = L.length ? `<thead><tr><th>Obra</th><th>Restricción</th><th>Impacto</th><th>Responsable</th><th>Abierta</th><th>Fecha objetivo</th></tr></thead><tbody>${L.map(r=>{
+      const av=AV[r.uid]||[], vistos=av.filter(a=>a.visto_at).length;
+      return `<tr>
+      <td><span class="obra">${esc(r.obra)}</span><span class="cod">${esc(r.cod_proyecto||'')}</span></td>
+      <td><span class="tit">${esc(r.titulo||r.descripcion)}</span>${r.titulo&&r.descripcion?`<span class="det">${esc(r.descripcion)}</span>`:''}
+        ${av.length?`<span class="aviso" title="${esc(av.map(a=>a.destinatario_nombre+(a.visto_at?' ✓':'')).join(', '))}">Avisado a ${av.length}${vistos?` · ${vistos} lo vio`:''}</span>`:''}</td>
+      <td>${impPill(r.impacto)}</td>
+      <td>${esc(r.resp)}${r.respTipo?`<span class="cod">${r.respTipo}</span>`:''}</td>
+      <td class="n"><span class="dias ${r.dias>14?'late':''}">${r.dias} d</span><span class="cod">desde ${fch(r.fecha)}</span></td>
+      <td>${r.fecha_objetivo?(r.vencida?`<span class="pill late">vencida hace ${r.diasVenc} d</span><span class="cod">${fch(r.fecha_objetivo)}</span>`:`${fch(r.fecha_objetivo)}`):'<span class="hint">sin fecha</span>'}</td>
+    </tr>`;}).join('')}</tbody>` : `<tbody><tr><td class="vacio">${ab.length?'Ninguna con estos filtros.':'No hay restricciones abiertas. 🎉'}</td></tr></tbody>`;
+
+  // ── Por responsable ──
+  const G=(arr,key)=>{const m={};arr.forEach(r=>{const k=key(r);(m[k]=m[k]||[]).push(r);});return Object.entries(m);};
+  const gr=G(ab,r=>r.resp).map(([k,v])=>({k,tipo:v[0].respTipo,n:v.length,venc:v.filter(r=>r.vencida).length,max:Math.max(...v.map(r=>r.dias)),obras:new Set(v.map(r=>r.obra)).size}))
+    .sort((a,b)=>b.venc-a.venc||b.n-a.n);
+  document.getElementById('t-resp').innerHTML = gr.length ? `<thead><tr><th>Responsable</th><th class="n">Abiertas</th><th class="n">Vencidas</th><th class="n">Obras</th><th class="n">Más antigua</th></tr></thead><tbody>${gr.map(g=>`<tr style="cursor:pointer" onclick="document.getElementById('f-resp').value=${esc(JSON.stringify(g.k))};pintar();window.scrollTo({top:0,behavior:'smooth'})">
+      <td><b>${esc(g.k)}</b>${g.tipo?`<span class="cod">${g.tipo}</span>`:''}</td><td class="n">${g.n}</td><td class="n">${g.venc?`<span class="pill late">${g.venc}</span>`:'—'}</td><td class="n">${g.obras}</td><td class="n">${g.max} d</td></tr>`).join('')}</tbody>`
+    : `<tbody><tr><td class="vacio">Nada pendiente.</td></tr></tbody>`;
+
+  // ── Por obra ──
+  const go=G(ab,r=>r.obra).map(([k,v])=>({k,cod:v[0].cod_proyecto,n:v.length,venc:v.filter(r=>r.vencida).length,alto:v.filter(r=>String(r.impacto).toLowerCase()==='alto').length,max:Math.max(...v.map(r=>r.dias))}))
+    .sort((a,b)=>b.venc-a.venc||b.alto-a.alto||b.n-a.n);
+  document.getElementById('t-obras').innerHTML = go.length ? `<thead><tr><th>Obra</th><th class="n">Abiertas</th><th class="n">Vencidas</th><th class="n">Alto</th><th class="n">Más antigua</th></tr></thead><tbody>${go.map(g=>`<tr style="cursor:pointer" onclick="document.getElementById('f-obra').value=${esc(JSON.stringify(g.k))};pintar();window.scrollTo({top:0,behavior:'smooth'})">
+      <td><span class="obra">${esc(g.k)}</span><span class="cod">${esc(g.cod||'')}</span></td><td class="n">${g.n}</td><td class="n">${g.venc?`<span class="pill late">${g.venc}</span>`:'—'}</td><td class="n">${g.alto||'—'}</td><td class="n">${g.max} d</td></tr>`).join('')}</tbody>`
+    : `<tbody><tr><td class="vacio">Ninguna obra con restricciones abiertas.</td></tr></tbody>`;
+
+  // ── Levantadas 30 días ──
+  const LV=lev30.sort((a,b)=>String(b.resuelta_at).localeCompare(String(a.resuelta_at)));
+  document.getElementById('lev-sub').textContent = LV.length ? `${LV.length} resueltas · tardaron ${promLev} días en promedio` : 'Las que el supervisor marque como levantadas en su reporte aparecen aquí';
+  document.getElementById('t-lev').innerHTML = LV.length ? `<thead><tr><th>Obra</th><th>Restricción</th><th>Responsable</th><th class="n">Tardó</th><th>Levantada</th></tr></thead><tbody>${LV.map(r=>`<tr>
+      <td><span class="obra">${esc(r.obra)}</span><span class="cod">${esc(r.cod_proyecto||'')}</span></td>
+      <td><span class="tit">${esc(r.titulo||r.descripcion)}</span></td><td>${esc(r.resp)}</td>
+      <td class="n">${r.dias} d</td><td>${fch(r.resuelta_at)}${r.resuelta_by?`<span class="cod">${esc(r.resuelta_by)}</span>`:''}</td></tr>`).join('')}</tbody>`
+    : `<tbody><tr><td class="vacio">Aún no hay restricciones levantadas.</td></tr></tbody>`;
+}
+cargar();
+</script>
