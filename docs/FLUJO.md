@@ -50,7 +50,7 @@ instancia que corresponde y abre la app en un iframe.
 
 | Job | Dónde corre | Cada | Qué mueve |
 |---|---|---|---|
-| `sync_reportes_from_supervisor` | PMO | 2 min | Reportes nuevos de Supervisor hacia PMO |
+| `sync_reportes_from_supervisor` | PMO | 2 min | Reportes nuevos **y corregidos** de Supervisor hacia PMO (desde el 9-nov-2026 actualiza la fila de PMO del mismo día y obra; marca = `greatest(created_at, updated_at)` del origen; fila por fila, un rechazo no tumba el lote; respaldo previo en `reportes_backup_20261109`) |
 | `espejo_reportes_to_supervisor` | PMO | 2 min | Reportes que entran por el netlify viejo hacia Supervisor |
 | `push_accesos_to_supervisor` | PMO | 5 min | Quién puede reportar en cada obra |
 | `sync_reportes_from_pmo` | Supervisor | 2 min | Jalador anterior de reportes desde PMO |
