@@ -1,0 +1,96 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Alertas de restricciones · Gerencia</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<script src="../js/auth.js"></script>
+<style>
+:root{--ground:#f5f7fb;--surface:#fff;--surface-2:#f7f9fd;--ink:#0b1226;--ink-2:#475569;--muted:#94a3b8;
+  --line:rgba(15,23,42,.08);--line-2:rgba(15,23,42,.15);--navy:#14224d;--teal:#0891b2;--teal-soft:#e2f3f8;
+  --late:#c0392b;--late-soft:#fbecea;--warn:#b45309;--warn-soft:#fdf3e3;--ok:#15803d;--ok-soft:#e6f4ec;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:13.5px/1.5 'Inter',system-ui,sans-serif;padding:18px}
+h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.015em}
+.sub{margin:2px 0 0;font-size:12.5px;color:var(--ink-2)}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.btn{height:34px;padding:0 13px;border-radius:9px;border:1px solid var(--line-2);background:var(--surface);
+  font:600 12.5px 'Inter',sans-serif;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--navy)} .btn.on,.btn.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+.seg{display:inline-flex;gap:6px;flex-wrap:wrap}
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi b{display:block;font-size:23px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.kpi span{display:block;margin-top:5px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.kpi small{display:block;margin-top:3px;font-size:11.5px;color:var(--ink-2)}
+.kpi.late b{color:var(--late)} .kpi.ok b{color:var(--ok)} .kpi.warn b{color:var(--warn)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:16px;overflow:hidden}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid var(--line)}
+.card-h h2{margin:0;font-size:14px;font-weight:800} .card-h p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:8px 12px;background:var(--surface-2);color:var(--muted);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.click{cursor:pointer} tr.click:hover td{background:var(--surface-2)}
+.obra{font-weight:700;color:var(--navy)} .cod{display:block;font-size:11px;color:var(--muted)}
+.pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.pill.late{background:var(--late-soft);color:var(--late)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.gris{background:var(--surface-2);color:var(--ink-2)}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.det{padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;background:var(--surface-2)}
+.det .box{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.det h4{margin:0 0 6px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.det .l{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:2px 0}
+.frm{display:grid;grid-template-columns:1.2fr 1.4fr 140px 1.2fr auto;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.frm input,.frm select{height:34px;border:1px solid var(--line-2);border-radius:8px;padding:0 10px;font:13px 'Inter',sans-serif;min-width:0}
+.x{border:none;background:none;color:var(--muted);cursor:pointer;font-size:16px}
+.x:hover{color:var(--late)}
+.note{font-size:12px;color:var(--ink-2);padding:10px 16px;background:var(--warn-soft);border-bottom:1px solid var(--line)}
+@media(max-width:760px){ .frm{grid-template-columns:1fr 1fr} }
+</style>
+<body>
+<div id="app"><div class="empty">Cargando destinatarios…</div></div>
+<script>
+(function(){
+'use strict';
+// Quién recibe las alertas de restricciones (PMO.alerta_destinatarios). auth.js pone el token de Gerencia.
+var PMO_URL='https://vsploxglutkbeokumunp.supabase.co';
+var PMO_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcGxveGdsdXRrYmVva3VtdW5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3OTMyMzEsImV4cCI6MjA5MjM2OTIzMX0.wca52ejPsimIyG-iHS3TFRv4xjZF-55eDWoRR2I9nL0';
+var S={ dest:[] };
+var $=function(s){ return document.querySelector(s); };
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+async function pmo(path, opts){
+  opts=opts||{};
+  var r=await fetch(PMO_URL+path,Object.assign({},opts,{headers:Object.assign({apikey:PMO_KEY,Authorization:'Bearer '+PMO_KEY,'Content-Type':'application/json'},opts.headers||{})}));
+  if(!r.ok) throw new Error(await r.text()); var t=await r.text(); return t?JSON.parse(t):null;
+}
+function tablaDest(){
+  var R=S.dest;
+  return '<div class="card"><div class="card-h"><div><h2>A quién llegan las alertas de restricciones</h2><p>PMO recibe todas; cada jefe de zona, las de su especialidad (vacío = todas). El encargado y la contrata se eligen en el reporte.</p></div></div>'+
+    '<div class="note">Las alertas ya se ven en la plataforma. El correo sale cuando Sistemas habilite la cuenta Microsoft 365; mientras tanto quedan como «correo pendiente».</div>'+
+    '<div class="frm"><input id="d-n" placeholder="Nombre"><input id="d-e" placeholder="Correo"><select id="d-r"><option>Jefe de zona</option><option>PMO</option></select><input id="d-s" placeholder="Especialidad (ej. Eléctrico)"><button class="btn primary" id="d-add">Agregar</button></div>'+
+    '<div class="tw"><table><thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Especialidad</th><th>Activo</th><th></th></tr></thead><tbody>'+
+    (R.map(function(d){ return '<tr><td class="obra">'+esc(d.nombre)+'</td><td>'+esc(d.email)+'</td><td>'+esc(d.rol)+'</td><td>'+esc(d.especialidad||'Todas')+'</td><td><input type="checkbox" data-act="'+d.id+'"'+(d.activo?' checked':'')+'></td><td><button class="x" data-del="'+d.id+'" title="Quitar">×</button></td></tr>'; }).join('')
+      ||'<tr><td colspan="6" class="empty">Aún no hay destinatarios. Agrega a PMO y a los jefes de zona.</td></tr>')+'</tbody></table></div></div>';
+}
+function enlazar(){
+  var add=$('#d-add'); if(add) add.onclick=async function(){
+    var body={ nombre:$('#d-n').value.trim(), email:$('#d-e').value.trim().toLowerCase(), rol:$('#d-r').value, especialidad:$('#d-s').value.trim()||null };
+    if(!body.nombre||!/@/.test(body.email)){ alert('Escribe el nombre y un correo válido'); return; }
+    try{ await pmo('/rest/v1/alerta_destinatarios',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)}); S.dest=await pmo('/rest/v1/alerta_destinatarios?select=*&order=rol,nombre'); pintar(); }
+    catch(e){ alert('No se pudo guardar (¿sesión de Gerencia vigente?): '+(e.message||e)); }
+  };
+  document.querySelectorAll('[data-del]').forEach(function(b){ b.onclick=async function(){ if(!confirm('¿Quitar este destinatario?')) return;
+    try{ await pmo('/rest/v1/alerta_destinatarios?id=eq.'+b.dataset.del,{method:'DELETE'}); S.dest=S.dest.filter(function(d){ return String(d.id)!==b.dataset.del; }); pintar(); }catch(e){ alert('No se pudo quitar: '+(e.message||e)); } }; });
+  document.querySelectorAll('[data-act]').forEach(function(c){ c.onchange=async function(){
+    try{ await pmo('/rest/v1/alerta_destinatarios?id=eq.'+c.dataset.act,{method:'PATCH',body:JSON.stringify({activo:c.checked,updated_at:new Date().toISOString()})}); }catch(e){ alert('No se pudo guardar'); c.checked=!c.checked; } }; });
+}
+function pintar(){ $('#app').innerHTML=tablaDest(); enlazar(); }
+async function cargar(){
+  try{ S.dest=await pmo('/rest/v1/alerta_destinatarios?select=*&order=rol,nombre')||[]; pintar(); }
+  catch(e){ $('#app').innerHTML='<div class="empty">No se pudieron cargar los destinatarios: '+esc(e.message||e)+'</div>'; }
+}
+cargar();
+})();
+</script>

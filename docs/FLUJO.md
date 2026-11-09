@@ -482,9 +482,10 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   (`PMO.alerta_destinatarios`, la mantiene Gerencia) y la contrata. La lectura es abierta con la llave
   pública (misma postura que `restricciones`); con esa llave solo se puede marcar `visto_at`.
   El correo queda `correo_estado='pendiente'` hasta tener la cuenta Microsoft 365.
-- **Gerencia · Reporte diario** (`app-live/modulos/reporte-diario.html`): indicadores generales y por
-  obra vía la función `indicadores_reporte_diario(p_desde, p_hasta)` (SECURITY DEFINER, solo agregados),
-  ranking de contratas y mantenimiento de `alerta_destinatarios`.
+- **Gerencia · Alertas** (`app-live/modulos/alertas.html`, se abre desde el Dashboard Gerencial):
+  mantenimiento de `alerta_destinatarios`. Los módulos Inicio y Reporte diario se retiraron el
+  9-nov-2026; la entrada de Gerencia es el Dashboard. La función `indicadores_reporte_diario` sigue
+  en la base, sin pantalla que la use.
 - La copia de reportes a PMO (`sync_reportes_from_supervisor`) **no** lleva estas columnas nuevas:
   Gerencia las lee del Supervisor por la función de indicadores.
 

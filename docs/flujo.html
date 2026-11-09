@@ -145,7 +145,7 @@
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    DATOS DEL FLUJO — esto es lo único que se edita cuando algo cambia.
-   Revisado: 2 de noviembre de 2026
+   Revisado: 9 de noviembre de 2026
    ═══════════════════════════════════════════════════════════════════ */
 const MAPA = {
   nodes:[
@@ -167,7 +167,6 @@ const MAPA = {
 
     /* ── las tres apps ── */
     {id:'a-ger', tipo:'app', x:338, y:40, color:'#14275C', titulo:'Gerencia · PMO', sub:'app-live', filas:[
-      {id:'inicio', t:'Inicio · KPIs'},
       {id:'proyectos', t:'Proyectos', key:true},
       {id:'gerencial', t:'Dashboard gerencial'},
       {id:'mapa', t:'Mapa de obras'},
@@ -176,7 +175,7 @@ const MAPA = {
       {id:'contratistas', t:'Contratistas · resumen · por obra · directorio', key:true},
       {id:'licitaciones', t:'Licitaciones · aprueba y adjudica', key:true},
       {id:'observaciones', t:'Observaciones de obra', key:true},
-      {id:'rdiario', t:'Reporte diario · indicadores y alertas', key:true},
+      {id:'alertasdest', t:'Dashboard · a quién llegan las alertas'},
       {id:'valorizacion', t:'Valorización', key:true}
     ]},
     {id:'a-sup', tipo:'app', x:338, y:470, color:'#2FBCA3', titulo:'Supervisión · Campo', sub:'app-sup', filas:[
@@ -264,8 +263,7 @@ const MAPA = {
     {from:'a-ct:licitaciones', to:'d-pmo:lic', tipo:'lee', label:'solo lo suyo, vía función lic-portal'},
     {from:'a-ger:equipos', to:'d-sup:equipos_pmo', tipo:'lee', label:'escribe equipos importados'},
     {from:'a-ger:proyectos', to:'d-sup:checklist', tipo:'lee', label:'lee los requerimientos'},
-    {from:'a-ger:rdiario', to:'d-sup:reportes', tipo:'lee', label:'función indicadores_reporte_diario · agregados por obra'},
-    {from:'a-ger:rdiario', to:'d-pmo:alerta_dest', tipo:'lee', label:'Gerencia mantiene a quién llegan las alertas'},
+    {from:'a-ger:alertasdest', to:'d-pmo:alerta_dest', tipo:'lee', label:'Gerencia mantiene a quién llegan las alertas'},
     {from:'a-sup:diario', to:'d-pmo:alerta_dest', tipo:'lee', label:'destinatarios de cada restricción'},
     {from:'a-sup:diario', to:'d-sup:restricciones', tipo:'lee', label:'crea la restricción y una alerta por destinatario'},
     {from:'a-sup:diario', to:'x-ing', tipo:'lee', label:'conteo de planos de la obra'},

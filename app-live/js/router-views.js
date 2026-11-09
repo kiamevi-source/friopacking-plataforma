@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════════
    router-views.js — Router de vistas con iframe-bridge al legacy
-   - "inicio" muestra #view-home (KPIs + paneles)
+   - La entrada de Gerencia es el Dashboard Gerencial (vista "gerencial" del legacy)
    - Cualquier otro hash carga index.legacy.html y llama showView() adentro
    - Oculta el chrome del legacy via CSS injection en el iframe
    Dependencias: ninguna (autónomo)
@@ -9,8 +9,10 @@
 (function () {
   'use strict';
 
-  const HOME_KEY = 'inicio';
-  const LEGACY_URL = 'index.legacy.html?v=20261109rep';
+  const HOME_KEY = 'gerencial';
+  // Módulos retirados el 9-nov-2026: los enlaces guardados caen en el Dashboard.
+  const RETIRADAS = new Set(['inicio', 'reporte-diario']);
+  const LEGACY_URL = 'index.legacy.html?v=20261109ini';
 
   // ── Alias de hash → nombre de vista real en el legacy ──
   // (el legacy tiene algunas vistas con renderers rotos o con nombres distintos)
@@ -21,7 +23,6 @@
     'lecciones': 'briefing',
   };
 
-  const homeEl  = document.getElementById('view-home');
   const vistaEl = document.getElementById('view-vista');
   const iframe  = document.getElementById('vista-frame');
 
@@ -77,11 +78,6 @@
     // adicionales/requerimientos de PMO)
     observaciones: {
       el: document.getElementById('view-observaciones'),
-      init: () => {},
-    },
-    // Reporte diario (lectura · indicadores que manda el Supervisor, generales y por obra)
-    'reporte-diario': {
-      el: document.getElementById('view-reporte-diario'),
       init: () => {},
     },
     // Licitaciones (módulo editable · lic_* en PMO — cockpit de Operaciones/Carlos)
@@ -618,20 +614,10 @@
   // ── API principal ──
   function showView(name) {
     name = (name || '').trim();
-    if (!name) name = HOME_KEY;
-
-    // Vista HOME: mostrar contenido nativo, ocultar iframe
-    if (name === HOME_KEY) {
-      homeEl.style.display  = '';
-      vistaEl.style.display = 'none';
-      hideNativeViews();
-      updateActive(HOME_KEY);
-      return;
-    }
+    if (!name || RETIRADAS.has(name)) name = HOME_KEY;
 
     // Vistas nativas (ej. "servicios"): contenido propio, sin iframe legacy
     if (NATIVE_VIEWS[name]) {
-      homeEl.style.display  = 'none';
       vistaEl.style.display = 'none';
       hideNativeViews();
       const v = NATIVE_VIEWS[name];
@@ -644,8 +630,7 @@
     // Resolver alias (ej. "proyectos" → "datos")
     const legacyView = HASH_ALIAS[name] || name;
 
-    // Cualquier otra vista: mostrar iframe, ocultar home
-    homeEl.style.display  = 'none';
+    // Cualquier otra vista: mostrar iframe
     vistaEl.style.display = '';
     hideNativeViews();
     updateActive(name);
@@ -682,10 +667,5 @@
 
   // ── Boot ──
   interceptClicks();
-  const initialHash = (location.hash || '').slice(1);
-  if (initialHash && initialHash !== HOME_KEY) {
-    showView(initialHash);
-  } else {
-    updateActive(HOME_KEY);
-  }
+  showView((location.hash || '').slice(1));
 })();
