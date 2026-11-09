@@ -3405,6 +3405,12 @@ canvas.curva-canvas{position:absolute;inset:0;width:100%;height:100%;}
 .rd-restr-ab.alto{border-left-color:#dc2626;} .rd-restr-ab.bajo{border-left-color:#16a34a;}
 .rd-restr-ab small.venc{color:#b91c1c;font-weight:700;}
 .rd-restr-dest b{color:var(--text-1);}
+/* RESTR_ESTADO: restricción abierta que viene de días anteriores / levantada */
+.rd-ticket.lev{opacity:.62;} .rd-ticket.lev::before{background:#16a34a !important;}
+.rd-restr-est{font-size:10.5px;font-weight:700;color:var(--text-3);}
+.rd-restr-est.arr{color:#92400e;} .rd-restr-est.venc{color:#b91c1c;} .rd-restr-est.lev{color:#15803d;}
+.rd-lev-btn{border:1px solid var(--border-strong);background:var(--surface);border-radius:7px;padding:5px 10px;font-size:11.5px;font-weight:700;color:var(--text-2);cursor:pointer;white-space:nowrap;}
+.rd-lev-btn.ok{border-color:#16a34a;color:#15803d;} .rd-lev-btn.ok:hover{background:#f0fdf4;}
 
 /* Kanban riesgos */
 .rd-kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
@@ -5328,7 +5334,7 @@ async function cargarDashboard() {
     // ── Carga paralela de todas las fuentes ──
     const [reportes, riesgosTbl, contratasTbl, personalTbl, ganttTbl] = await Promise.all([
       sbFetch(`/rest/v1/v_reportes?or=(cod_proyecto.eq.${encodeURIComponent(cod)},nombre_proyecto.eq.${encodeURIComponent(nombre)})&order=fecha_reporte.desc&limit=30`).catch(()=>[]),
-      prReportes(true).then(prRiesgosDe).catch(()=>[]),   // PR_DESDE_REPORTE: restricciones del reporte diario
+      prRiesgos(true).catch(()=>[]),   // PR_DESDE_REPORTE + RESTR_ESTADO: restricciones con su estado
       // NOTA: hoy filtra por supervisor porque evaluacion_contratistas NO tiene cod_proyecto poblado
       // (0/56 filas). Cuando el formulario de evaluación empiece a estampar cod_proyecto, cambiar a
       // `cod_proyecto=eq.${cod}` para que sea POR OBRA y no por supervisor (evita mostrar otras obras).
@@ -9999,6 +10005,7 @@ async function cargarReporteDiario() {
   rdFotos = []; renderFotosReporte();
   rdEquipos = {}; await rdEqObraCargar();
   await cargarReporteDeHoy();   // multi-dispositivo: retoma el borrador de hoy si ya existe
+  await rdRestrArrastrar();     // RESTR_ESTADO: las abiertas de días anteriores entran solas
   rdRestrAbiertasLoad();
   initFirmaCanvas();
   rdSetupDrop();
@@ -10898,6 +10905,46 @@ function rdRestrDestTxt(r){
   return '🔔 Llega a: ' + d.map(x => `<b>${rdEsc2(x.destinatario_nombre)}</b> <small>(${rdEsc2(x.rol)})</small>`).join(', ');
 }
 function eliminarRestriccion(i){ rdRestricciones.splice(i,1); renderRestricciones(); }
+// RESTR_ESTADO (9-nov-2026, Kiara): la restricción ya no se reescribe cada día.
+// Las abiertas de la obra (tabla restricciones, estado='abierta') entran solas al reporte del día
+// con el mismo uid; el supervisor la marca «Levantada» y al enviar el reporte se cierra en la tabla.
+function rdHoyISO(){ return document.getElementById('rd-fecha')?.value || new Date().toISOString().slice(0,10); }
+function rdDiasEntre(a, b){ if(!a||!b) return 0; return Math.max(0, Math.round((new Date(b+'T12:00:00') - new Date(a+'T12:00:00')) / 864e5)); }
+async function rdRestrArrastrar(){
+  const cods = [...new Set([currentProyecto?.cod, (typeof rdCodReporte==='function' ? rdCodReporte() : null)].filter(Boolean))];
+  if (!cods.length) return;
+  const fecha = rdHoyISO();
+  try {
+    const inList = cods.map(c => encodeURIComponent('"' + String(c).replace(/"/g,'') + '"')).join(',');
+    const rows = await sbFetch('/rest/v1/restricciones?cod_proyecto=in.(' + inList + ')&estado=eq.abierta&fecha=lte.' + fecha
+      + '&select=uid,fecha,categoria,titulo,descripcion,impacto,responsable,responsable_email,especialidad,contratista,fecha_objetivo&order=fecha.asc') || [];
+    let n = 0;
+    rows.forEach(x => {
+      if (!x.uid) return;
+      const ya = rdRestricciones.find(r => r.uid === x.uid);
+      if (ya) { if (!ya.fecha_alta && x.fecha && x.fecha < fecha) { ya.fecha_alta = x.fecha; ya.arrastrada = true; } return; }
+      rdRestricciones.push({ uid:x.uid, categoria:x.categoria||'otros', titulo:x.titulo||'', descripcion:x.descripcion||'', impacto:x.impacto||'medio',
+        tipo_resp: (x.responsable_email || x.responsable) ? 'area' : 'especialidad',
+        responsable:x.responsable||'', responsable_email:x.responsable_email||'', especialidad:x.especialidad||'', contratista:x.contratista||'',
+        fecha_objetivo:x.fecha_objetivo||'', estado:'abierta', fecha_alta:x.fecha, arrastrada:true });
+      n++;
+    });
+    renderRestricciones();
+  } catch(e){ console.warn('arrastre restricciones', e); }
+}
+function rdRestrLevantar(i, on){
+  const r = rdRestricciones[i]; if (!r) return;
+  if (on) { r.estado = 'levantada'; r.levantada_fecha = rdHoyISO(); r.levantada_por = currentUser?.nombre || currentProyecto?.supervisor || null; delete r.reabierta; }
+  else    { const era = r.estado === 'levantada'; r.estado = 'abierta'; delete r.levantada_fecha; delete r.levantada_por; if (era) r.reabierta = true; }
+  renderRestricciones();
+}
+function rdRestrEstadoTxt(r, i){
+  const hoy = rdHoyISO();
+  if (r.estado === 'levantada') return `<span class="rd-restr-est lev">✓ Levantada el ${rdFmtFecha(r.levantada_fecha||hoy)}${r.fecha_alta?` · estuvo ${rdDiasEntre(r.fecha_alta, r.levantada_fecha||hoy)} día(s)`:''}</span>`;
+  const venc = r.fecha_objetivo && r.fecha_objetivo < hoy;
+  if (r.arrastrada && r.fecha_alta) return `<span class="rd-restr-est ${venc?'venc':'arr'}">Abierta desde ${rdFmtFecha(r.fecha_alta)} · ${rdDiasEntre(r.fecha_alta, hoy)} día(s)${venc?' · vencida':''}</span>`;
+  return `<span class="rd-restr-est${venc?' venc':''}">Nueva · ticket #${i+1}${venc?' · vencida':''}</span>`;
+}
 const RD_CAT_ICON = { materiales:'📦', personal:'👷', frentes:'🚧', otros:'📌' };
 function renderRestricciones() {
   const wrap = document.getElementById('rd-restricciones-list');
@@ -10905,7 +10952,7 @@ function renderRestricciones() {
   if (!wrap) return;
   empty.style.display = rdRestricciones.length ? 'none' : 'block';
   wrap.innerHTML = rdRestricciones.map((r,i)=>`
-    <div class="rd-ticket ${r.impacto||'medio'}">
+    <div class="rd-ticket ${r.impacto||'medio'}${r.estado==='levantada'?' lev':''}">
       <div class="rd-ticket-top">
         <span class="rd-ticket-cat">${RD_CAT_ICON[r.categoria]||'📌'}
           <select onchange="rdRestricciones[${i}].categoria=this.value;renderRestricciones()" style="width:auto;margin:0;font-weight:800;">${RD_CATEGORIAS.map(c=>`<option value="${c}" ${r.categoria===c?'selected':''}>${c}</option>`).join('')}</select>
@@ -10931,8 +10978,13 @@ function renderRestricciones() {
       </div>`}
       <div class="rd-restr-dest" id="rd-restr-dest-${i}">${rdRestrDestTxt(r)}</div>
       <div class="rd-ticket-foot">
-        <span style="font-size:10.5px;color:var(--text-3);font-weight:700;">Ticket #${i+1}</span>
-        <button class="rd-ico-btn" onclick="eliminarRestriccion(${i})"><i data-lucide="trash-2" class="ri"></i></button>
+        ${rdRestrEstadoTxt(r,i)}
+        <span style="display:flex;gap:6px;align-items:center;">
+          ${r.estado==='levantada'
+            ? `<button type="button" class="rd-lev-btn" onclick="rdRestrLevantar(${i},false)">Reabrir</button>`
+            : `<button type="button" class="rd-lev-btn ok" onclick="rdRestrLevantar(${i},true)" title="Ya se resolvió: sale de las abiertas al enviar el reporte">✓ Levantada</button>`}
+          ${r.arrastrada ? '' : `<button class="rd-ico-btn" onclick="eliminarRestriccion(${i})" title="Borrar (solo si se cargó por error)"><i data-lucide="trash-2" class="ri"></i></button>`}
+        </span>
       </div>
     </div>`).join('');
   rdIcons();
@@ -15978,10 +16030,10 @@ function rvRenderReporte(r){
       : `<p class="rv-none">Sin riesgos registrados. Buen día.</p>`);
 
   // Restricciones
-  html += card('octagon-alert','Restricciones', `${restr.length} abierta(s)`,
+  html += card('octagon-alert','Restricciones', `${restr.filter(x=>x.estado!=='levantada').length} abierta(s)${restr.some(x=>x.estado==='levantada')?` · ${restr.filter(x=>x.estado==='levantada').length} levantada(s)`:''}`,
     restr.length
       ? `<div class="rv-list">${restr.map(x=>`<div class="rv-li col">
-          <div class="rv-li-hd"><strong>${rvEsc(x.titulo||x.categoria||'Restricción')}</strong>${x.impacto?`<span class="rv-tag imp">${rvEsc(x.impacto)}</span>`:''}</div>
+          <div class="rv-li-hd"><strong>${rvEsc(x.titulo||x.categoria||'Restricción')}</strong>${x.impacto?`<span class="rv-tag imp">${rvEsc(x.impacto)}</span>`:''}${x.estado==='levantada'?`<span class="rv-tag">✓ levantada</span>`:''}</div>
           ${x.descripcion?`<p>${rvEsc(x.descripcion)}</p>`:''}
           <div class="rv-li-ft">${x.categoria?`<span>${rvEsc(x.categoria)}</span>`:''}${x.responsable?`<span><i data-lucide="user" class="ri"></i> ${rvEsc(x.responsable)}</span>`:''}${x.fecha_objetivo?`<span><i data-lucide="flag" class="ri"></i> ${rvEsc(x.fecha_objetivo)}</span>`:''}</div>
         </div>`).join('')}</div>`
@@ -16305,7 +16357,11 @@ async function hidratarReporte(r, cod){
   }
   if (Array.isArray(r.fotos)) { rdFotos = r.fotos; renderFotosReporte(); _rehidratarFotosPendientes(); }
   rdEquiposLoad(r);
-  if (Array.isArray(r.restricciones)) { rdRestricciones = r.restricciones; if (typeof renderRestricciones==='function') renderRestricciones(); }
+  if (Array.isArray(r.restricciones)) {
+    const _mismo = r.fecha_reporte && r.fecha_reporte === (g('rd-fecha')?.value || '');
+    rdRestricciones = _mismo ? r.restricciones : r.restricciones.filter(x => x && x.estado !== 'levantada');
+    if (typeof renderRestricciones==='function') renderRestricciones();
+  }
   if (g('rd-visita')) g('rd-visita').value = r.cliente_visita ? 'true' : 'false';
   if (r.cliente_nombre && g('rd-visita-nombre')) g('rd-visita-nombre').value = r.cliente_nombre;
   if (r.cliente_obs && g('rd-visita-obs')) g('rd-visita-obs').value = r.cliente_obs;
@@ -16515,7 +16571,7 @@ function _collectReportePayload(esDraft, firmaUrl){
     contratas_detalle: contratas,
     contratas_activas: contratas.length,
     contratas_nombres: contratas.map(c=>c.nombre).join(', ') || null,
-    impedimentos_count: rdRestricciones.length,
+    impedimentos_count: rdRestricciones.filter(x => x && x.estado !== 'levantada' && (x.titulo || x.descripcion)).length,
     equipos_dia: rdEquiposPayload(),
     fotos: rdFotos,
     fotos_count: rdFotos.length,
@@ -16946,7 +17002,7 @@ async function _persistirExtras(payload){
   lista.forEach((r, k) => { if (!r.uid) r.uid = 'rep-' + (payload.cod_proyecto||'') + '-' + payload.fecha_reporte + '-' + k; });
   const rows = lista.map(r => ({
       uid: r.uid, cod_proyecto: payload.cod_proyecto || null,
-      nombre_proyecto: payload.nombre_proyecto, fecha: payload.fecha_reporte,
+      nombre_proyecto: payload.nombre_proyecto, fecha: r.fecha_alta || payload.fecha_reporte,
       categoria: r.categoria, titulo: r.titulo, descripcion: r.descripcion,
       impacto: r.impacto, responsable: r.responsable || null, responsable_email: r.responsable_email || null,
       especialidad: r.especialidad || null, contratista: r.contratista || null,
@@ -16956,11 +17012,21 @@ async function _persistirExtras(payload){
   if (rows.length) {
     try { await sbFetch('/rest/v1/restricciones?on_conflict=uid', { method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}, body: JSON.stringify(rows) }); }
     catch(e){ console.warn('restricciones insert', e); }
+    // RESTR_ESTADO: levantadas → se cierran; reabiertas → vuelven a abierta
+    try {
+      const q = l => l.map(x => encodeURIComponent('"' + String(x.uid).replace(/"/g,'') + '"')).join(',');
+      const lev = lista.filter(r => r.estado === 'levantada');
+      if (lev.length) await sbFetch('/rest/v1/restricciones?uid=in.(' + q(lev) + ')&estado=eq.abierta', { method:'PATCH', headers:{'Prefer':'return=minimal'},
+        body: JSON.stringify({ estado:'levantada', resuelta_at: new Date().toISOString(), resuelta_by: payload.supervisor || currentUser?.nombre || null }) });
+      const reab = lista.filter(r => r.reabierta && r.estado !== 'levantada');
+      if (reab.length) await sbFetch('/rest/v1/restricciones?uid=in.(' + q(reab) + ')&estado=eq.levantada', { method:'PATCH', headers:{'Prefer':'return=minimal'},
+        body: JSON.stringify({ estado:'abierta', resuelta_at: null, resuelta_by: null }) });
+    } catch(e){ console.warn('restricciones estado', e); }
     // Alertas: una fila por destinatario (plataforma ya; el correo sale cuando esté la cuenta Microsoft 365)
     try {
       await rdDestLoad();
       const alertas = [];
-      lista.forEach(r => rdRestrDestinatarios(r).forEach(d => alertas.push({
+      lista.filter(r => r.estado !== 'levantada').forEach(r => rdRestrDestinatarios(r).forEach(d => alertas.push({
         restriccion_uid: r.uid, cod_proyecto: payload.cod_proyecto || null, nombre_proyecto: payload.nombre_proyecto,
         tipo: d.tipo, destinatario_nombre: d.destinatario_nombre, destinatario_email: d.destinatario_email, rol: d.rol,
         especialidad: r.especialidad || null, contratista: r.contratista || null,
@@ -17225,22 +17291,44 @@ function prComoIngresoPersonal(rows){
   }).filter(o=>o.total>0);
 }
 // Restricciones de los reportes → riesgos (una por uid; la más reciente gana)
-function prRiesgosDe(rows){
+// RESTR_ESTADO: si viene `tabla` (restricciones), su estado manda: abierta / levantada.
+function prRiesgosDe(rows, tabla){
+  const hoy = new Date().toISOString().slice(0,10);
   const ultimaFecha = rows.length ? rows[0].fecha_reporte : null;
-  const map = new Map(); const out = [];
+  const nivelDe = imp => { imp = String(imp||'medio').toLowerCase(); return imp==='alto'?'ALTO':imp==='bajo'?'BAJO':'MEDIO'; };
+  const out = []; const vistos = new Set();
+  (tabla||[]).forEach(x => {
+    if (!x || !(x.titulo||x.descripcion)) return;
+    vistos.add(x.uid);
+    const lev = x.estado === 'levantada';
+    const fin = lev ? String(x.resuelta_at||'').slice(0,10) || hoy : hoy;
+    out.push({ ...x, nivel:nivelDe(x.impacto), descripcion:[x.titulo, x.descripcion].filter(Boolean).join(' — '),
+      tipo_resp: (x.responsable_email || x.responsable) ? 'area' : 'especialidad',
+      fecha_reporte:x.fecha, desde:x.fecha, fecha_alta:x.fecha, con_estado:true, levantada:lev,
+      dias: rdDiasEntre(x.fecha, fin), vencida: !lev && x.fecha_objetivo && x.fecha_objetivo < hoy,
+      vigente: !lev, estado: lev ? 'cerrado' : 'abierto' });
+  });
+  const map = new Map();
   rows.forEach(r=>{ (Array.isArray(r.restricciones)?r.restricciones:[]).forEach((x,i)=>{
     if (!x || !(x.titulo||x.descripcion)) return;
+    if (x.uid && vistos.has(x.uid)) return;
     const k = x.uid || (r.fecha_reporte+'#'+i+'#'+(x.titulo||''));
     if (map.has(k)) { map.get(k).desde = r.fecha_reporte; return; }
-    const imp = (x.impacto||'medio').toLowerCase();
     const o = { ...x, fecha_reporte:r.fecha_reporte, desde:r.fecha_reporte, created_at:r.created_at,
-      nivel: imp==='alto'?'ALTO':imp==='bajo'?'BAJO':'MEDIO',
-      descripcion: [x.titulo, x.descripcion].filter(Boolean).join(' — '),
-      vigente: r.fecha_reporte===ultimaFecha,
-      estado: r.fecha_reporte===ultimaFecha ? 'abierto' : 'sin reportar' };
+      nivel: nivelDe(x.impacto), descripcion: [x.titulo, x.descripcion].filter(Boolean).join(' — '),
+      vigente: r.fecha_reporte===ultimaFecha && x.estado!=='levantada', levantada: x.estado==='levantada',
+      estado: (r.fecha_reporte===ultimaFecha && x.estado!=='levantada') ? 'abierto' : 'sin reportar' };
     map.set(k,o); out.push(o);
   }); });
   return out;
+}
+async function prRiesgos(force){
+  const cod = currentProyecto?.cod || currentProyecto?.nombre;
+  const [reps, tabla] = await Promise.all([
+    prReportes(force),
+    sbFetch(`/rest/v1/restricciones?cod_proyecto=eq.${encodeURIComponent(cod)}&select=uid,fecha,categoria,titulo,descripcion,impacto,responsable,responsable_email,especialidad,contratista,fecha_objetivo,estado,resuelta_at,resuelta_by,created_at&order=fecha.desc&limit=300`).catch(()=>[])
+  ]);
+  return prRiesgosDe(reps||[], tabla||[]);
 }
 function prEsc(v){ return String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function prFecha(f){ if(!f) return '—'; const [y,m,d]=f.split('-'); return `${d}/${m}/${y}`; }
@@ -17343,18 +17431,25 @@ async function cargarRiesgos() {
   const el = document.getElementById('riesgos-list');
   el.innerHTML = '<div class="loading"><span class="spinner"></span>Cargando…</div>';
   try {
-    const todos = prRiesgosDe(await prReportes());
+    const todos = await prRiesgos();
     if (!todos.length) {
       el.innerHTML = '<p style="color:var(--text-3);padding:20px;">Sin riesgos ni restricciones reportados. Se registran en el <a href="#" onclick="showTab(\'diario\');return false;" style="font-weight:700">Reporte diario</a> (sección restricciones).</p>';
       setBadgeFromData('riesgos', 0); setAlertDot(false); return;
     }
-    const vig = todos.filter(r=>r.vigente), ant = todos.filter(r=>!r.vigente);
+    const ord = { ALTO:0, MEDIO:1, BAJO:2 };
+    const ab  = todos.filter(r=>r.vigente).sort((a,b)=> (b.vencida?1:0)-(a.vencida?1:0) || ord[a.nivel]-ord[b.nivel] || String(a.desde).localeCompare(String(b.desde)));
+    const lev = todos.filter(r=>r.levantada).sort((a,b)=> String(b.resuelta_at||b.fecha_reporte).localeCompare(String(a.resuelta_at||a.fecha_reporte)));
+    const ant = todos.filter(r=>!r.vigente && !r.levantada);
+    const h = (t, mt) => `<div style="font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--text-3);text-transform:uppercase;margin:${mt}px 0 4px;">${t}</div>`;
+    const venc = ab.filter(r=>r.vencida).length;
     el.innerHTML =
-      (vig.length ? `<div style="font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">En el último reporte (${prFecha(vig[0].fecha_reporte)})</div>` + vig.map(renderRiesgo).join('') : '')
-      + (ant.length ? `<div style="font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--text-3);text-transform:uppercase;margin:18px 0 4px;">Reportados antes</div>` + ant.slice(0,40).map(renderRiesgo).join('') : '');
-    const altos = vig.filter(r=>r.nivel==='ALTO').length;
-    if (altos) { setBadgeFromData('riesgos', altos, 'danger'); setAlertDot(true); }
-    else if (vig.length) { setBadgeFromData('riesgos', vig.length, 'warn'); setAlertDot(false); }
+      h(`Abiertas (${ab.length})${venc?` · <span style="color:#b91c1c">${venc} vencida(s)</span>`:''}`, 0)
+      + (ab.length ? ab.map(renderRiesgo).join('') : '<p style="color:var(--text-3);padding:8px 0;">No hay restricciones abiertas.</p>')
+      + (lev.length ? h(`Levantadas (${lev.length})`, 18) + lev.slice(0,40).map(renderRiesgo).join('') : '')
+      + (ant.length ? h('Reportadas antes, sin seguimiento', 18) + ant.slice(0,40).map(renderRiesgo).join('') : '');
+    const altos = ab.filter(r=>r.nivel==='ALTO').length;
+    if (altos || venc) { setBadgeFromData('riesgos', ab.length, 'danger'); setAlertDot(true); }
+    else if (ab.length) { setBadgeFromData('riesgos', ab.length, 'warn'); setAlertDot(false); }
     else { setBadgeFromData('riesgos', 0); setAlertDot(false); }
   } catch(e) {
     el.innerHTML = '<p style="color:var(--danger);padding:20px;">Error cargando riesgos.</p>';
@@ -17365,16 +17460,22 @@ async function cargarRiesgos() {
 function renderRiesgo(r) {
   const nivClass = r.nivel==='ALTO'?'nivel-alto':r.nivel==='MEDIO'?'nivel-medio':'nivel-bajo';
   const resp = r.tipo_resp==='area' ? (r.responsable||'') : [r.especialidad, r.contratista].filter(Boolean).join(' · ');
-  const meta = [ r.categoria ? (RD_CAT_ICON[r.categoria]||'📌')+' '+r.categoria : '', resp ? 'Responsable: '+resp : '',
-                 r.fecha_objetivo ? 'Objetivo: '+prFecha(r.fecha_objetivo) : '',
-                 r.desde && r.desde!==r.fecha_reporte ? `Reportado desde ${prFecha(r.desde)} hasta ${prFecha(r.fecha_reporte)}` : 'Reportado el '+prFecha(r.fecha_reporte) ].filter(Boolean).join(' · ');
-  return `<div class="riesgo-item">
+  let cuando;
+  if (r.levantada && r.con_estado) cuando = `Levantada el ${prFecha(String(r.resuelta_at||'').slice(0,10))}${r.resuelta_by?' por '+prEsc(r.resuelta_by):''} · estuvo ${r.dias} día(s)`;
+  else if (r.con_estado) cuando = `Abierta desde ${prFecha(r.fecha_alta)} · ${r.dias} día(s)`;
+  else cuando = r.desde && r.desde!==r.fecha_reporte ? `Reportado desde ${prFecha(r.desde)} hasta ${prFecha(r.fecha_reporte)}` : 'Reportado el '+prFecha(r.fecha_reporte);
+  const meta = [ r.categoria ? (RD_CAT_ICON[r.categoria]||'📌')+' '+r.categoria : '', resp ? 'Responsable: '+prEsc(resp) : '',
+                 r.fecha_objetivo ? 'Objetivo: '+prFecha(r.fecha_objetivo) : '', cuando ].filter(Boolean).join(' · ');
+  const est = r.levantada ? '<span style="color:#15803d;font-weight:700">✓ levantada</span>'
+            : r.vencida ? '<span style="color:#b91c1c;font-weight:700">vencida</span>'
+            : r.vigente ? 'abierta' : 'ya no figura';
+  return `<div class="riesgo-item"${r.levantada?' style="opacity:.7"':''}>
     <span class="riesgo-nivel ${nivClass}">${r.nivel||'MEDIO'}</span>
     <div class="riesgo-desc">
       ${prEsc(r.descripcion||r.desc||'')}
-      <div class="riesgo-accion">${prEsc(r.accion||meta)}</div>
+      <div class="riesgo-accion">${r.accion?prEsc(r.accion):meta}</div>
     </div>
-    <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${r.vigente===false?'ya no figura':(r.estado||'abierto')}</span>
+    <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${est}</span>
   </div>`;
 }
 
@@ -17462,7 +17563,7 @@ async function exportarPDF() {
   const fams = rdPdfFamilias();
   const hoyTot = fams.reduce((s,f) => s + (f.avance - f.antes) * f.peso / 100, 0);
   const tareasHoy = fams.reduce((s,f) => s + f.hoy, 0), tareasMan = fams.reduce((s,f) => s + f.manana, 0);
-  const restr = (rdRestricciones||[]).filter(r => (r.titulo||r.descripcion||'').trim());
+  const restr = (rdRestricciones||[]).filter(r => r.estado !== 'levantada' && (r.titulo||r.descripcion||'').trim());
   const equipos = rdEquiposPayload();
   const eqLbl = { esperando:'Por llegar', en_obra:'En obra', montaje:'En montaje', instalado:'Instalado', observado:'Observado' };
   const visita = document.getElementById('rd-visita')?.value === 'true';
