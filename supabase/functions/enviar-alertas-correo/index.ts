@@ -16,11 +16,16 @@
 // - Sin credenciales todavía → no toca nada; las alertas siguen 'pendiente'.
 //
 // Secretos (Edge Functions → Secrets), los mismos de sync-equipos-sharepoint:
-//   MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET  + MS_SENDER (ej. alertas@friopacking.pe)
+//   MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET. Opcional MS_SENDER para cambiar el remitente.
 // La app de Microsoft necesita el permiso de aplicación Mail.Send (consentido por un admin).
+//
+// Remitente: por ahora el buzón de Kiara (lo decidió el 9-nov-2026). Cuando Sistemas cree
+// alertas@friopacking.pe, basta con poner el secreto MS_SENDER (o cambiar esta línea).
+// No se guarda copia en Enviados para no llenarle el buzón.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
+const SENDER = Deno.env.get("MS_SENDER") || "kmedina@friopacking.pe";
 const APP_URL = Deno.env.get("APP_SUP_URL") ?? "https://friopacking-plataforma.vercel.app/app-sup/";
 const MAX_INTENTOS = 3;
 const DIAS_VIGENCIA = 7;
@@ -39,7 +44,7 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 
 async function tokenMicrosoft(): Promise<string> {
   const tenant = Deno.env.get("MS_TENANT_ID"), id = Deno.env.get("MS_CLIENT_ID"), secreto = Deno.env.get("MS_CLIENT_SECRET");
-  if (!tenant || !id || !secreto || !Deno.env.get("MS_SENDER")) throw new Error("SIN_CREDENCIALES");
+  if (!tenant || !id || !secreto) throw new Error("SIN_CREDENCIALES");
   const res = await fetch(`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -100,14 +105,13 @@ function armarCorreo(nombre: string, alertas: Alerta[]) {
       ${tarjetas}
       <p style="margin:18px 0 0"><a href="${APP_URL}" style="display:inline-block;background:#38C0A8;color:#081860;font-weight:700;font-size:14px;text-decoration:none;padding:10px 18px;border-radius:6px">Abrir la plataforma</a></p>
     </div>
-    <p style="font-size:11px;color:#8A93A6;text-align:center;margin:14px 0 0">Correo automático de la Plataforma Friopacking. No respondas a este mensaje.</p>
+    <p style="font-size:11px;color:#8A93A6;text-align:center;margin:14px 0 0">Correo automático de la Plataforma Friopacking.</p>
   </div></body></html>`;
   return { asunto, html };
 }
 
 async function enviar(token: string, para: string, asunto: string, html: string) {
-  const sender = Deno.env.get("MS_SENDER")!;
-  const res = await fetch(`${GRAPH}/users/${encodeURIComponent(sender)}/sendMail`, {
+  const res = await fetch(`${GRAPH}/users/${encodeURIComponent(SENDER)}/sendMail`, {
     method: "POST",
     headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -116,7 +120,7 @@ async function enviar(token: string, para: string, asunto: string, html: string)
         body: { contentType: "HTML", content: html },
         toRecipients: [{ emailAddress: { address: para } }],
       },
-      saveToSentItems: true,
+      saveToSentItems: false,
     }),
   });
   if (!res.ok) {
@@ -175,7 +179,7 @@ Deno.serve(async (req) => {
   catch (e) {
     const msg = (e as Error).message;
     // Sin credenciales: no es un error de las alertas, siguen 'pendiente' sin gastar intentos.
-    if (msg === "SIN_CREDENCIALES") return json({ estado: "sin_credenciales", pendientes: filas!.length });
+    if (msg === "SIN_CREDENCIALES") return json({ estado: "sin_credenciales", remitente: SENDER, pendientes: filas!.length });
     return json({ estado: "error", mensaje: msg }, 502);
   }
 

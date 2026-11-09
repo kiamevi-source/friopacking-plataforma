@@ -488,9 +488,10 @@ La instancia Contratas no tiene tareas programadas: se conecta en vivo a PMO.
   reintenta hasta 3 veces por `correo_intentos`) | `sin_correo` (la contrata, sin email) |
   `vencido` (más de 7 días sin poder enviarse; no se manda un aviso viejo de golpe). Con body
   `{"prueba":true}` responde qué mandaría sin enviar nada. Usa los secretos de la app de Entra de
-  `sync-equipos-sharepoint` (`MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`) más `MS_SENDER`
-  (buzón remitente); la app necesita el permiso de aplicación `Mail.Send`, idealmente limitado a
-  ese buzón con una Application Access Policy. Mientras falten los secretos responde
+  `sync-equipos-sharepoint` (`MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`). Remitente por
+  ahora: `kmedina@friopacking.pe` (decisión de Kiara; sin copia en Enviados); para pasar a
+  `alertas@friopacking.pe` basta el secreto `MS_SENDER`. La app necesita el permiso de aplicación
+  `Mail.Send`, limitado a ese buzón con una Application Access Policy. Mientras falten los secretos responde
   `sin_credenciales` y las alertas siguen `pendiente` sin gastar intentos.
 - **Gerencia · Alertas** (`app-live/modulos/alertas.html`, se abre desde el Dashboard Gerencial):
   mantenimiento de `alerta_destinatarios`. Los módulos Inicio y Reporte diario se retiraron el
